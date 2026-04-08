@@ -546,6 +546,10 @@ export const handlers = [
     return HttpResponse.json({ data: true });
   }),
 
+  http.post("*/proxy2/v2/stocks/active-sets", async () => {
+    return HttpResponse.json({ data: true });
+  }),
+
   http.get("*/proxy/v1/stocks/search", ({ request }) => {
     const keyword = new URL(request.url).searchParams.get("keyword") ?? "";
     return HttpResponse.json({ data: searchStocks(keyword) });

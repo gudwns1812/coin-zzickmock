@@ -1,5 +1,6 @@
 "use client";
 
+import { recordStockSearchSelection } from "@/api/stocks";
 import clsx from "clsx";
 import { ChevronRight, Search, SearchIcon } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import Modal from "../../Modal";
 import { useDebounce } from "@/hooks/useDebounce";
 import UpPrice from "../UpPrice";
 import DownPrice from "../DownPrice";
+import { useActiveStockSetStore } from "@/store/useActiveStockSetStore";
 
 type StockSearchResult = {
   changeAmount: string;
@@ -31,6 +33,7 @@ const Navigation = () => {
   >([]);
   const [isMac, setIsMac] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const { setSourceStocks, clearSourceStocks } = useActiveStockSetStore();
 
   const debouncedStockSearch = useDebounce(stockSearch, 500);
   const pathname = usePathname();
@@ -81,6 +84,29 @@ const Navigation = () => {
     }
   }, [isOpenSearchModal]);
 
+  useEffect(() => {
+    if (!isOpenSearchModal || !stockSearch || stockSearchResult.length === 0) {
+      setSourceStocks("search-results", []);
+      return;
+    }
+
+    setSourceStocks(
+      "search-results",
+      stockSearchResult.map((stock) => stock.stockCode)
+    );
+  }, [
+    isOpenSearchModal,
+    setSourceStocks,
+    stockSearch,
+    stockSearchResult,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      clearSourceStocks("search-results");
+    };
+  }, [clearSourceStocks]);
+
   if (!pathname || pathname === "/") {
     return null;
   }
@@ -97,6 +123,7 @@ const Navigation = () => {
   };
 
   const handleClickSearchResult = (stockCode: string) => {
+    void recordStockSearchSelection(stockCode).catch(() => undefined);
     setIsOpenSearchModal(false);
     router.push(`/stock/${stockCode}`);
   };

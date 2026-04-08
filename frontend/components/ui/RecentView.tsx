@@ -1,6 +1,7 @@
 "use client";
 
 import { useRecentViewStore } from "@/store/useRecentViewStore";
+import { useActiveStockSetStore } from "@/store/useActiveStockSetStore";
 import { Clock, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -8,8 +9,22 @@ import React, { useEffect } from "react";
 
 const RecentView = () => {
   const { recentViewStocks, setRecentViewStocks } = useRecentViewStore();
+  const { setSourceStocks, clearSourceStocks } = useActiveStockSetStore();
 
   const router = useRouter();
+
+  useEffect(() => {
+    setSourceStocks(
+      "recent-view",
+      recentViewStocks.map((stock) => stock.stockCode)
+    );
+  }, [recentViewStocks, setSourceStocks]);
+
+  useEffect(() => {
+    return () => {
+      clearSourceStocks("recent-view");
+    };
+  }, [clearSourceStocks]);
 
   const handleRemoveStock = (
     e: React.MouseEvent<HTMLButtonElement>,

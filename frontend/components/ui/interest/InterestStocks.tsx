@@ -27,6 +27,7 @@ import {
   InterestStock,
   SearchResult,
 } from "@/store/useInterestStore";
+import { useActiveStockSetStore } from "@/store/useActiveStockSetStore";
 import { IconButton } from "@/components/animate-ui/buttons/icon";
 import Link from "next/link";
 
@@ -44,6 +45,7 @@ const InterestStocks = ({ token }: { token: JwtToken | null }) => {
   const [settingMainGroupId, setSettingMainGroupId] = useState<string | null>(
     null
   ); // 메인 그룹 설정 중 방지
+  const { setSourceStocks, clearSourceStocks } = useActiveStockSetStore();
 
   const inputRefs = useRef<{ [id: string]: HTMLInputElement | null }>({});
 
@@ -125,6 +127,23 @@ const InterestStocks = ({ token }: { token: JwtToken | null }) => {
     interestStocks,
     isOpenSettingModal,
   ]);
+
+  useEffect(() => {
+    if (!token || !selectedGroupId) {
+      setSourceStocks("interest-selected", []);
+      return;
+    }
+    setSourceStocks(
+      "interest-selected",
+      interestStocks.map((stock) => stock.stockInfo.stockCode)
+    );
+  }, [interestStocks, selectedGroupId, setSourceStocks, token]);
+
+  useEffect(() => {
+    return () => {
+      clearSourceStocks("interest-selected");
+    };
+  }, [clearSourceStocks]);
 
   const handleEditGroupName = (groupId: string, currentName: string) => {
     setEditingGroupId(groupId);

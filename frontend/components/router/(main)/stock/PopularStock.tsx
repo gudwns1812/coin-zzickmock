@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import UpPrice from "@/components/ui/shared/UpPrice";
 import DownPrice from "@/components/ui/shared/DownPrice";
@@ -12,6 +12,7 @@ import { JwtToken } from "@/type/jwt";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
+import { useActiveStockSetStore } from "@/store/useActiveStockSetStore";
 
 const PopularStock = ({ token }: { token: JwtToken | null }) => {
   const {
@@ -25,12 +26,31 @@ const PopularStock = ({ token }: { token: JwtToken | null }) => {
         res.json().then((data) => data.data)
       ),
   });
+  const { setSourceStocks, clearSourceStocks } = useActiveStockSetStore();
 
   const router = useRouter();
 
   const handleClickStock = (code: string) => {
     router.push(`/stock/${code}`);
   };
+
+  useEffect(() => {
+    if (!popularStocks || popularStocks.length === 0) {
+      setSourceStocks("popular-list", []);
+      return;
+    }
+
+    setSourceStocks(
+      "popular-list",
+      popularStocks.map((stock) => stock.stockCode)
+    );
+  }, [popularStocks, setSourceStocks]);
+
+  useEffect(() => {
+    return () => {
+      clearSourceStocks("popular-list");
+    };
+  }, [clearSourceStocks]);
 
   // 로딩 중일 때 스켈레톤 표시
   if (isLoading) {

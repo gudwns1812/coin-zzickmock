@@ -18,6 +18,7 @@ import {
   AccordionPanel,
 } from "@/components/animate-ui/headless/accordion";
 import ErrorComponent from "@/components/ui/shared/ErrorComponent";
+import { useActiveStockSetStore } from "@/store/useActiveStockSetStore";
 
 interface StockData {
   stockName: string;
@@ -153,6 +154,7 @@ const StocksSkeleton = () => {
 const CategoryStock = ({ token }: { token: JwtToken | null }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const { setSourceStocks, clearSourceStocks } = useActiveStockSetStore();
   const router = useRouter();
 
   const {
@@ -208,6 +210,24 @@ const CategoryStock = ({ token }: { token: JwtToken | null }) => {
       setSelectedCategory(categoryData[0]);
     }
   }, [categoryData, selectedCategory]);
+
+  useEffect(() => {
+    if (!selectedCategory || !categoryStocks?.stocks) {
+      setSourceStocks("category-page", []);
+      return;
+    }
+
+    setSourceStocks(
+      "category-page",
+      categoryStocks.stocks.map((stock: StockData) => stock.stockCode)
+    );
+  }, [categoryStocks?.stocks, selectedCategory, setSourceStocks]);
+
+  useEffect(() => {
+    return () => {
+      clearSourceStocks("category-page");
+    };
+  }, [clearSourceStocks]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > totalPage) return;

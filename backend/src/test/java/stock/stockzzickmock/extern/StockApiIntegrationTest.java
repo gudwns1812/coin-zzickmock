@@ -1,5 +1,7 @@
 package stock.stockzzickmock.extern;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,20 +10,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import stock.stockzzickmock.core.domain.stock.Stock;
-import stock.stockzzickmock.core.domain.stock.StockHistory;
-import stock.stockzzickmock.storage.db.stock.StockHistoryRepository;
-import stock.stockzzickmock.storage.db.stock.StockRepository;
+import stock.stockzzickmock.storage.db.stock.entity.StockEntity;
+import stock.stockzzickmock.storage.db.stock.entity.StockHistoryEntity;
+import stock.stockzzickmock.storage.db.stock.repository.StockHistoryJpaRepository;
+import stock.stockzzickmock.storage.db.stock.repository.StockJpaRepository;
 
 import java.time.LocalDate;
 
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,26 +38,30 @@ class StockApiIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private StockRepository stockRepository;
+    private StockJpaRepository stockRepository;
 
     @Autowired
-    private StockHistoryRepository stockHistoryRepository;
+    private StockHistoryJpaRepository stockHistoryRepository;
 
     @MockBean
     private RedisTemplate<String, Object> redisTemplate;
 
     private ValueOperations<String, Object> valueOperations;
+    private StreamOperations<String, Object, Object> streamOperations;
 
     @BeforeEach
     void setUp() {
         stockHistoryRepository.deleteAll();
         stockRepository.deleteAll();
         valueOperations = Mockito.mock(ValueOperations.class);
+        streamOperations = Mockito.mock(StreamOperations.class);
         Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        Mockito.when(valueOperations.get(anyString())).thenReturn(null);
+        Mockito.when(redisTemplate.opsForStream()).thenReturn(streamOperations);
+        Mockito.when(valueOperations.get(any())).thenReturn(null);
+        Mockito.when(streamOperations.add(any())).thenReturn(RecordId.of("1-0"));
 
         stockRepository.save(
-                Stock.builder()
+                StockEntity.builder()
                         .stockCode("005930")
                         .name("삼성전자")
                         .price("70000")
@@ -72,7 +80,7 @@ class StockApiIntegrationTest {
                         .build()
         );
         stockRepository.save(
-                Stock.builder()
+                StockEntity.builder()
                         .stockCode("000660")
                         .name("SK하이닉스")
                         .price("180000")
@@ -91,7 +99,7 @@ class StockApiIntegrationTest {
                         .build()
         );
         stockHistoryRepository.save(
-                StockHistory.builder()
+                StockHistoryEntity.builder()
                         .stockCode("005930")
                         .date(LocalDate.of(2025, 1, 1))
                         .type("D")
@@ -120,6 +128,94 @@ class StockApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("SUCCESS"))
                 .andExpect(jsonPath("$.data[0].stockCode").value("005930"));
+    }
+
+    @Test
+    void searchSelectionEndpointIncreasesCountOnly() throws Exception {
+        mockMvc.perform(post("/api/v2/stocks/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "stockCode": "005930"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("SUCCESS"));
+
+        assertThat(stockRepository.findByStockCode("005930"))
+                .isPresent()
+                .get()
+                .extracting(StockEntity::getStockSearchCount)
+                .isEqualTo(11);
+        Mockito.verify(streamOperations, Mockito.never()).add(any());
+    }
+
+    @Test
+    void searchSelectionEndpointRejectsBlankStockCode() throws Exception {
+        mockMvc.perform(post("/api/v2/stocks/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                                {
+                                  "stockCode": " "
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.result").value("FAIL"));
+
+        assertThat(stockRepository.findByStockCode("005930"))
+                .isPresent()
+                .get()
+                .extracting(StockEntity::getStockSearchCount)
+                .isEqualTo(10);
+        Mockito.verify(streamOperations, Mockito.never()).add(any());
+    }
+
+    @Test
+    void activeSetsEndpointPublishesSnapshot() throws Exception {
+        mockMvc.perform(post("/api/v2/stocks/active-sets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "source": "portfolio",
+                                  "stockCodes": ["005930", "000660"]
+                                }
+                                """))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.result").value("SUCCESS"));
+
+        Mockito.verify(streamOperations).add(any());
+    }
+
+    @Test
+    void activeSetsEndpointAcceptsEmptyStockCodes() throws Exception {
+        mockMvc.perform(post("/api/v2/stocks/active-sets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "source": "recent-view",
+                                  "stockCodes": []
+                                }
+                                """))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.result").value("SUCCESS"));
+
+        Mockito.verify(streamOperations).add(any());
+    }
+
+    @Test
+    void activeSetsEndpointRejectsBlankSource() throws Exception {
+        mockMvc.perform(post("/api/v2/stocks/active-sets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "source": " ",
+                                  "stockCodes": ["005930"]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.result").value("FAIL"));
+
+        Mockito.verify(streamOperations, Mockito.never()).add(any());
     }
 
     @Test

@@ -1,9 +1,11 @@
 package stock.stockzzickmock.core.api.stock;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import stock.stockzzickmock.core.api.stock.dto.request.ActiveStockSetRequestDto;
 import stock.stockzzickmock.core.api.stock.dto.request.StockCountRequestDto;
 import stock.stockzzickmock.core.api.stock.dto.response.CategoryPageResponseDto;
 import stock.stockzzickmock.core.api.stock.dto.response.SearchResponseDto;
@@ -50,8 +52,15 @@ public class StockApiController {
 
     @PostMapping("/search")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Void> stockCounter(@RequestBody StockCountRequestDto dto) {
-        stockService.stockSearchCounter(dto.getStockCode());
+    public ApiResponse<Void> recordSearchSelection(@Valid @RequestBody StockCountRequestDto request) {
+        stockService.recordSearchSelection(request.stockCode());
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/active-sets")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ApiResponse<Void> publishActiveStockSet(@Valid @RequestBody ActiveStockSetRequestDto request) {
+        stockService.publishActiveStockSet(request.source(), request.stockCodes());
         return ApiResponse.success();
     }
 }

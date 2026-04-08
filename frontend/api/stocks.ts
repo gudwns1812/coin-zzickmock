@@ -1,6 +1,19 @@
 import { StockSearchResult } from "@/type/stocks/StockSearchResult";
 import { StockData, TestStockData } from "@/type/stocks/stockData";
 
+export const ACTIVE_STOCK_SET_SOURCES = [
+  "portfolio",
+  "interest-main",
+  "interest-selected",
+  "stock-detail",
+  "popular-list",
+  "category-page",
+  "recent-view",
+  "search-results",
+] as const;
+
+export type ActiveStockSetSource = (typeof ACTIVE_STOCK_SET_SOURCES)[number];
+
 /**
  * 주식 검색
  */
@@ -118,11 +131,14 @@ export async function fetchStocksByCategory(
 }
 
 /**
- * 주식 검색 카운트 증가
+ * 검색 결과 선택 이벤트 기록
  */
-export async function incrementSearchCount(stockCode: string): Promise<void> {
+export async function recordStockSearchSelection(
+  stockCode: string
+): Promise<void> {
   const res = await fetch(`/proxy2/v2/stocks/search`, {
     method: "POST",
+    keepalive: true,
     headers: {
       "Content-Type": "application/json",
     },
@@ -132,6 +148,30 @@ export async function incrementSearchCount(stockCode: string): Promise<void> {
   });
 
   if (!res.ok) {
-    throw new Error(`주식 검색 카운트 증가 실패: ${res.status}`);
+    throw new Error(`종목 선택 이벤트 기록 실패: ${res.status}`);
+  }
+}
+
+/**
+ * 활성 종목 집합 스냅샷 전달
+ */
+export async function publishActiveStockSet(
+  source: ActiveStockSetSource,
+  stockCodes: string[]
+): Promise<void> {
+  const res = await fetch(`/proxy2/v2/stocks/active-sets`, {
+    method: "POST",
+    keepalive: true,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      source,
+      stockCodes,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`활성 종목 집합 전송 실패: ${res.status}`);
   }
 }

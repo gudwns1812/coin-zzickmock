@@ -1,4 +1,5 @@
 import Sidebar from "@/components/ui/Sidebar";
+import ActiveStockRequestCoordinator from "@/components/router/ActiveStockRequestCoordinator";
 import React from "react";
 import Header from "@/components/ui/shared/header/Header";
 import { getJwtToken } from "@/utils/auth";
@@ -15,6 +16,7 @@ export default async function MainLayout({
     <div className="w-screen h-screen flex">
       {/* <main className="flex-1 flex flex-col overflow-hidden py-main pl-main"> */}
       <div className="flex-1 rounded-r-main relative flex flex-col overflow-x-scroll bg-white">
+        <ActiveStockRequestCoordinator token={token} />
         <Header />
         <div
           id="main-layout"

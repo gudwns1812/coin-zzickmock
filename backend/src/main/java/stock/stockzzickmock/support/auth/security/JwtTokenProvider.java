@@ -6,14 +6,14 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.Date;
+import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
+import stock.stockzzickmock.core.domain.member.Member;
 import stock.stockzzickmock.support.error.AuthErrorType;
 import stock.stockzzickmock.support.error.CoreException;
-import stock.stockzzickmock.core.domain.member.Member;
-
-import javax.crypto.SecretKey;
-import java.time.Instant;
-import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
@@ -92,6 +92,6 @@ public class JwtTokenProvider {
     }
 
     private String toBase64(String rawSecret) {
-        return java.util.Base64.getEncoder().encodeToString(rawSecret.getBytes());
+        return Base64.getEncoder().encodeToString(rawSecret.getBytes());
     }
 }

@@ -2,37 +2,37 @@ package stock.stockzzickmock.support.auth.application;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import stock.stockzzickmock.core.domain.member.Member;
+import stock.stockzzickmock.storage.db.member.entity.MemberEntity;
+import stock.stockzzickmock.storage.db.member.repository.MemberJpaRepository;
 import stock.stockzzickmock.support.error.AuthErrorType;
 import stock.stockzzickmock.support.error.CoreException;
 import stock.stockzzickmock.support.auth.api.dto.request.InvestRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.LoginRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.RegisterRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.WithdrawRequest;
-import stock.stockzzickmock.core.domain.member.Member;
-import stock.stockzzickmock.storage.db.member.MemberRepository;
 import stock.stockzzickmock.support.auth.security.AuthenticatedMember;
 import stock.stockzzickmock.support.auth.security.JwtCookieFactory;
 import stock.stockzzickmock.support.auth.security.JwtTokenProvider;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final MemberRepository memberRepository;
+    private final MemberJpaRepository memberJpaRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtCookieFactory jwtCookieFactory;
 
     @Transactional
     public void register(RegisterRequest request) {
-        if (memberRepository.existsByAccount(request.account())) {
+        if (memberJpaRepository.existsByAccount(request.account())) {
             throw new CoreException(AuthErrorType.DUPLICATE_ACCOUNT);
         }
 
@@ -46,17 +46,16 @@ public class AuthService {
                 request.address().address(),
                 request.address().addressDetail() == null ? "" : request.address().addressDetail()
         );
-        memberRepository.save(member);
+        memberJpaRepository.save(toEntity(member));
     }
 
-    @Transactional(readOnly = true)
     public boolean isAccountAvailable(String account) {
-        return !memberRepository.existsByAccount(account);
+        return !memberJpaRepository.existsByAccount(account);
     }
 
-    @Transactional(readOnly = true)
     public List<String> login(LoginRequest request, HttpServletRequest httpServletRequest) {
-        Member member = memberRepository.findByAccount(request.account())
+        Member member = memberJpaRepository.findByAccount(request.account())
+                .map(MemberEntity::toDomain)
                 .orElseThrow(() -> new CoreException(AuthErrorType.INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.password(), member.getPasswordHash())) {
@@ -66,13 +65,13 @@ public class AuthService {
         return issueTokenCookies(member, httpServletRequest, true);
     }
 
-    @Transactional
     public List<String> refresh(String refreshToken, HttpServletRequest request) {
         Claims claims = jwtTokenProvider.parseRefreshToken(refreshToken);
         String memberId = claims.get("memberId", String.class);
         Long version = claims.get("version", Long.class);
 
-        Member member = memberRepository.findById(memberId)
+        Member member = memberJpaRepository.findById(memberId)
+                .map(MemberEntity::toDomain)
                 .orElseThrow(() -> new CoreException(AuthErrorType.MEMBER_NOT_FOUND));
 
         if (!member.getRefreshTokenVersion().equals(version)) {
@@ -86,6 +85,7 @@ public class AuthService {
     public List<String> logout(AuthenticatedMember authenticatedMember, HttpServletRequest request) {
         Member member = getMember(authenticatedMember.memberId());
         member.updateRefreshTokenVersion();
+        memberJpaRepository.save(toEntity(member));
         return expireCookies(request);
     }
 
@@ -97,7 +97,7 @@ public class AuthService {
     ) {
         validateMemberOwnership(authenticatedMember.memberId(), request.memberId());
         Member member = getMember(authenticatedMember.memberId());
-        memberRepository.delete(member);
+        memberJpaRepository.delete(toEntity(member));
         return expireCookies(httpServletRequest);
     }
 
@@ -110,6 +110,7 @@ public class AuthService {
         validateMemberOwnership(authenticatedMember.memberId(), request.memberId());
         Member member = getMember(authenticatedMember.memberId());
         member.updateInvest(request.investScore());
+        memberJpaRepository.save(toEntity(member));
         return List.of(cookieHeader(jwtCookieFactory.createAccessTokenCookie(
                 jwtTokenProvider.createAccessToken(member),
                 httpServletRequest
@@ -117,7 +118,8 @@ public class AuthService {
     }
 
     private Member getMember(String memberId) {
-        return memberRepository.findById(memberId)
+        return memberJpaRepository.findById(memberId)
+                .map(MemberEntity::toDomain)
                 .orElseThrow(() -> new CoreException(AuthErrorType.MEMBER_NOT_FOUND));
     }
 
@@ -152,5 +154,21 @@ public class AuthService {
         if (!authenticatedMemberId.equals(requestMemberId)) {
             throw new CoreException(AuthErrorType.MEMBER_ACCESS_DENIED);
         }
+    }
+
+    private MemberEntity toEntity(Member member) {
+        return MemberEntity.builder()
+                .memberId(member.getMemberId())
+                .account(member.getAccount())
+                .passwordHash(member.getPasswordHash())
+                .name(member.getName())
+                .email(member.getEmail())
+                .phoneNumber(member.getPhoneNumber())
+                .zipCode(member.getZipCode())
+                .address(member.getAddress())
+                .addressDetail(member.getAddressDetail())
+                .invest(member.getInvest())
+                .refreshTokenVersion(member.getRefreshTokenVersion())
+                .build();
     }
 }

@@ -1,6 +1,16 @@
 package stock.stockzzickmock.extern;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.LinkedHashMap;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,20 +24,11 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockCookie;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import stock.stockzzickmock.core.domain.member.Member;
-import stock.stockzzickmock.storage.db.member.MemberRepository;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import stock.stockzzickmock.storage.db.member.entity.MemberEntity;
+import stock.stockzzickmock.storage.db.member.repository.MemberJpaRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -41,7 +42,7 @@ class AuthControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private MemberRepository memberRepository;
+    private MemberJpaRepository memberRepository;
 
     @MockBean
     private RedisTemplate<String, Object> redisTemplate;
@@ -174,16 +175,7 @@ class AuthControllerIntegrationTest {
 
     @Test
     void duplicateReturnsConflictWhenDuplicated() throws Exception {
-        memberRepository.save(Member.create(
-                "tester",
-                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("Password!123"),
-                "테스터",
-                "tester@example.com",
-                "010-1234-5678",
-                "12345",
-                "서울시 강남구",
-                "101동"
-        ));
+        memberRepository.save(memberEntity("tester"));
 
         mockMvc.perform(post("/api/auth/duplicate")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -200,16 +192,7 @@ class AuthControllerIntegrationTest {
 
     @Test
     void investRejectsDifferentMemberId() throws Exception {
-        Member member = memberRepository.save(Member.create(
-                "tester",
-                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("Password!123"),
-                "테스터",
-                "tester@example.com",
-                "010-1234-5678",
-                "12345",
-                "서울시 강남구",
-                "101동"
-        ));
+        MemberEntity member = memberRepository.save(memberEntity("tester"));
 
         var loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -227,7 +210,7 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/api/auth/invest")
                         .cookie(new MockCookie("accessToken", accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new java.util.LinkedHashMap<>() {{
+                        .content(objectMapper.writeValueAsString(new LinkedHashMap<>() {{
                             put("memberId", "another-member");
                             put("investScore", 4);
                         }})))
@@ -244,5 +227,21 @@ class AuthControllerIntegrationTest {
                 .findFirst()
                 .map(header -> header.substring((cookieName + "=").length(), header.indexOf(';')))
                 .orElseThrow();
+    }
+
+    private MemberEntity memberEntity(String account) {
+        return MemberEntity.builder()
+                .memberId("member-" + account)
+                .account(account)
+                .passwordHash(new BCryptPasswordEncoder().encode("Password!123"))
+                .name("테스터")
+                .email("tester@example.com")
+                .phoneNumber("010-1234-5678")
+                .zipCode("12345")
+                .address("서울시 강남구")
+                .addressDetail("101동")
+                .invest(0)
+                .refreshTokenVersion(0L)
+                .build();
     }
 }

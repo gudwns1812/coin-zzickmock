@@ -1,9 +1,12 @@
 package stock.stockzzickmock.support.auth.api;
 
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,22 +15,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import stock.stockzzickmock.support.error.AuthErrorType;
-import stock.stockzzickmock.support.error.CoreException;
+import org.springframework.web.bind.annotation.RestController;
 import stock.stockzzickmock.support.auth.api.dto.request.DuplicateAccountRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.InvestRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.LoginRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.RegisterRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.WithdrawRequest;
+import stock.stockzzickmock.support.auth.application.AuthService;
 import stock.stockzzickmock.support.auth.security.AuthenticatedMember;
 import stock.stockzzickmock.support.auth.security.JwtCookieFactory;
-import stock.stockzzickmock.support.auth.application.AuthService;
+import stock.stockzzickmock.support.error.AuthErrorType;
+import stock.stockzzickmock.support.error.CoreException;
 import stock.stockzzickmock.support.response.ApiResponse;
-
-import java.util.Arrays;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -110,10 +110,10 @@ public class AuthController {
         return ApiResponse.success();
     }
 
-    private java.util.Optional<String> resolveCookie(HttpServletRequest request, String name) {
+    private Optional<String> resolveCookie(HttpServletRequest request, String name) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         return Arrays.stream(cookies)
                 .filter(cookie -> name.equals(cookie.getName()))

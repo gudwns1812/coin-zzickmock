@@ -10,14 +10,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import stock.stockzzickmock.core.domain.member.Member;
+import stock.stockzzickmock.storage.db.member.entity.MemberEntity;
+import stock.stockzzickmock.storage.db.member.repository.MemberJpaRepository;
 import stock.stockzzickmock.support.error.AuthErrorType;
 import stock.stockzzickmock.support.error.CoreException;
 import stock.stockzzickmock.support.auth.api.dto.request.AddressRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.InvestRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.LoginRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.RegisterRequest;
-import stock.stockzzickmock.core.domain.member.Member;
-import stock.stockzzickmock.storage.db.member.MemberRepository;
 import stock.stockzzickmock.support.auth.security.AuthenticatedMember;
 import stock.stockzzickmock.support.auth.security.JwtCookieFactory;
 import stock.stockzzickmock.support.auth.security.JwtTokenProvider;
@@ -35,7 +36,7 @@ import static org.mockito.Mockito.when;
 class AuthServiceTest {
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberJpaRepository memberJpaRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -82,13 +83,13 @@ class AuthServiceTest {
                 new AddressRequest("12345", "서울시 강남구", "101동"),
                 "ignored"
         );
-        when(memberRepository.existsByAccount("tester")).thenReturn(false);
+        when(memberJpaRepository.existsByAccount("tester")).thenReturn(false);
         when(passwordEncoder.encode("plain-password")).thenReturn("encoded-password");
 
         authService.register(request);
 
-        ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
-        verify(memberRepository).save(captor.capture());
+        ArgumentCaptor<MemberEntity> captor = ArgumentCaptor.forClass(MemberEntity.class);
+        verify(memberJpaRepository).save(captor.capture());
         assertThat(captor.getValue().getAccount()).isEqualTo("tester");
         assertThat(captor.getValue().getPasswordHash()).isEqualTo("encoded-password");
     }
@@ -104,7 +105,7 @@ class AuthServiceTest {
                 new AddressRequest("12345", "서울시 강남구", "101동"),
                 null
         );
-        when(memberRepository.existsByAccount("tester")).thenReturn(true);
+        when(memberJpaRepository.existsByAccount("tester")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(CoreException.class)
@@ -114,7 +115,7 @@ class AuthServiceTest {
 
     @Test
     void loginRejectsInvalidPassword() {
-        when(memberRepository.findByAccount("tester")).thenReturn(Optional.of(member));
+        when(memberJpaRepository.findByAccount("tester")).thenReturn(Optional.of(toEntity(member)));
         when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("tester", "wrong-password"), httpServletRequest))
@@ -135,10 +136,10 @@ class AuthServiceTest {
 
     @Test
     void loginReturnsCookieHeaders() {
-        when(memberRepository.findByAccount("tester")).thenReturn(Optional.of(member));
+        when(memberJpaRepository.findByAccount("tester")).thenReturn(Optional.of(toEntity(member)));
         when(passwordEncoder.matches("plain-password", "encoded-password")).thenReturn(true);
-        when(jwtTokenProvider.createAccessToken(member)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken(member)).thenReturn("refresh-token");
+        when(jwtTokenProvider.createAccessToken(any(Member.class))).thenReturn("access-token");
+        when(jwtTokenProvider.createRefreshToken(any(Member.class))).thenReturn("refresh-token");
         when(jwtCookieFactory.createAccessTokenCookie(eq("access-token"), any(HttpServletRequest.class)))
                 .thenReturn(ResponseCookie.from("accessToken", "access-token").path("/").build());
         when(jwtCookieFactory.createRefreshTokenCookie(eq("refresh-token"), any(HttpServletRequest.class)))
@@ -149,5 +150,21 @@ class AuthServiceTest {
         assertThat(cookies).hasSize(2);
         assertThat(cookies.get(0)).contains("accessToken=access-token");
         assertThat(cookies.get(1)).contains("refreshToken=refresh-token");
+    }
+
+    private MemberEntity toEntity(Member domain) {
+        return MemberEntity.builder()
+                .memberId(domain.getMemberId())
+                .account(domain.getAccount())
+                .passwordHash(domain.getPasswordHash())
+                .name(domain.getName())
+                .email(domain.getEmail())
+                .phoneNumber(domain.getPhoneNumber())
+                .zipCode(domain.getZipCode())
+                .address(domain.getAddress())
+                .addressDetail(domain.getAddressDetail())
+                .invest(domain.getInvest())
+                .refreshTokenVersion(domain.getRefreshTokenVersion())
+                .build();
     }
 }

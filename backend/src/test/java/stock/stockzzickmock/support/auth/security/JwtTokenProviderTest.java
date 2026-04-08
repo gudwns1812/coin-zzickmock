@@ -3,9 +3,9 @@ package stock.stockzzickmock.support.auth.security;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import stock.stockzzickmock.core.domain.member.Member;
 import stock.stockzzickmock.support.error.AuthErrorType;
 import stock.stockzzickmock.support.error.CoreException;
-import stock.stockzzickmock.core.domain.member.Member;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -1,5 +1,6 @@
 "use client";
 
+import { recordStockSearchSelection } from "@/api/stocks";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/shared/Input";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -86,6 +87,9 @@ const SearchStock = ({ onSelect }: SearchStockProps) => {
                   className="w-full flex cursor-pointer flex-col justify-around hover:bg-main-blue/10 rounded-main transition-colors duration-200 ease-in-out p-main gap-[5px] group relative"
                   key={`search-stock-${result.stockCode}-${idx}`}
                   onClick={() => {
+                    void recordStockSearchSelection(result.stockCode).catch(
+                      () => undefined
+                    );
                     setIsOpen(false);
                     setStockSearch("");
                     setSearchResult([]);

@@ -1,35 +1,35 @@
 package stock.stockzzickmock.core.application.stock.implement;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import stock.stockzzickmock.core.domain.stock.Stock;
-import stock.stockzzickmock.storage.db.stock.StockRepository;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import stock.stockzzickmock.storage.db.stock.entity.StockEntity;
+import stock.stockzzickmock.storage.db.stock.repository.StockJpaRepository;
 
 @ExtendWith(MockitoExtension.class)
 class StockSearchHandlerTest {
 
     @Mock
-    private StockRepository stockRepository;
+    private StockJpaRepository stockJpaRepository;
 
     @InjectMocks
     private StockSearchHandler stockSearchHandler;
 
     @Test
     void returnsPopularStocksWhenKeywordIsBlank() {
-        when(stockRepository.findTop6ByOrderByStockSearchCountDesc()).thenReturn(
+        when(stockJpaRepository.findTop6ByOrderByStockSearchCountDesc()).thenReturn(
                 List.of(
-                        stock("A1"), stock("A2"), stock("A3"),
-                        stock("A4"), stock("A5"), stock("A6")
+                        entity("A1"), entity("A2"), entity("A3"),
+                        entity("A4"), entity("A5")
                 )
         );
 
@@ -42,20 +42,21 @@ class StockSearchHandlerTest {
 
     @Test
     void searchesByStockCodeWhenKeywordIsNumeric() {
-        when(stockRepository.searchByStockCode(any(), any())).thenReturn(List.of(stock("005930")));
+        when(stockJpaRepository.searchByStockCode(any(), any())).thenReturn(
+                List.of(entity("005930")));
 
         List<Stock> result = stockSearchHandler.search("005");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getStockCode()).isEqualTo("005930");
-        verify(stockRepository).searchByStockCode(any(), any());
+        verify(stockJpaRepository).searchByStockCode(any(), any());
     }
 
     @Test
     void fallsBackToPopularStocksWhenSearchResultIsEmpty() {
-        when(stockRepository.searchByName(any(), any())).thenReturn(List.of());
-        when(stockRepository.findTop6ByOrderByStockSearchCountDesc()).thenReturn(
-                List.of(stock("A1"), stock("A2"), stock("A3"))
+        when(stockJpaRepository.searchByName(any(), any())).thenReturn(List.of());
+        when(stockJpaRepository.findTop6ByOrderByStockSearchCountDesc()).thenReturn(
+                List.of(entity("A1"), entity("A2"), entity("A3"))
         );
 
         List<Stock> result = stockSearchHandler.search("없는종목");
@@ -64,8 +65,20 @@ class StockSearchHandlerTest {
                 .containsExactly("A1", "A2", "A3");
     }
 
-    private Stock stock(String stockCode) {
-        return Stock.builder()
+    @Test
+    void searchesByNameWhenKeywordIsNotNumeric() {
+        when(stockJpaRepository.searchByName(any(), any())).thenReturn(
+                List.of(entity("005930")));
+
+        List<Stock> result = stockSearchHandler.search("삼성");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getName()).isEqualTo("종목-005930");
+        verify(stockJpaRepository).searchByName(any(), any());
+    }
+
+    private StockEntity entity(String stockCode) {
+        return StockEntity.builder()
                 .stockCode(stockCode)
                 .name("종목-" + stockCode)
                 .build();

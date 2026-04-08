@@ -2,10 +2,13 @@ package stock.stockzzickmock.core.api.stock.dto.response;
 
 import org.junit.jupiter.api.Test;
 import stock.stockzzickmock.core.application.stock.implement.result.StockPeriodResult;
+import stock.stockzzickmock.core.domain.market.MarketIndexSnapshot;
+import stock.stockzzickmock.core.domain.market.MarketIndices;
+import stock.stockzzickmock.core.domain.market.PopularStock;
 import stock.stockzzickmock.core.domain.stock.Stock;
-import stock.stockzzickmock.storage.redis.dto.KisPopularRedisDto;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,12 +36,56 @@ class StockResponseDtoFactoryTest {
 
     @Test
     void createsPopularResponseFromRedisDto() {
-        KisPopularRedisDto redisDto = new KisPopularRedisDto("삼성전자", "005930", "1", "70000", "2", "1000", "1.45", "image");
+        PopularStock redisDto = PopularStock.builder()
+                .stockName("삼성전자")
+                .stockCode("005930")
+                .rank("1")
+                .price("70000")
+                .sign("2")
+                .changeAmount("1000")
+                .changeRate("1.45")
+                .stockImage("image")
+                .build();
 
         PopularStockResponseDto result = PopularStockResponseDto.from(redisDto);
 
         assertThat(result.getRank()).isEqualTo("1");
         assertThat(result.getStockCode()).isEqualTo("005930");
+    }
+
+    @Test
+    void createsStockInfoResponseFromStock() {
+        Stock stock = stock();
+
+        StockInfoResponseDto result = StockInfoResponseDto.from(stock);
+
+        assertThat(result.getStockName()).isEqualTo("삼성전자");
+        assertThat(result.getCategoryName()).isNull();
+    }
+
+    @Test
+    void createsIndicesResponseFromDomain() {
+        MarketIndices indices = MarketIndices.builder()
+                .prev("10")
+                .sign("2")
+                .prevRate("1.2")
+                .indices(List.of(
+                        MarketIndexSnapshot.builder()
+                                .date("20250101")
+                                .currentPrice("300.1")
+                                .highPrice("301.0")
+                                .lowPrice("299.9")
+                                .accumulatedVolume("1000")
+                                .accumulatedVolumePrice("2000")
+                                .build()
+                ))
+                .build();
+
+        IndicesResponseDto result = IndicesResponseDto.from(indices);
+
+        assertThat(result.getPrevRate()).isEqualTo("1.2");
+        assertThat(result.getIndices()).hasSize(1);
+        assertThat(result.getIndices().get(0).getCurPrice()).isEqualTo("300.1");
     }
 
     @Test

@@ -1,18 +1,17 @@
 package stock.stockzzickmock.core.application.stock.implement;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import stock.stockzzickmock.storage.db.stock.StockRepository;
-
-import java.util.List;
+import stock.stockzzickmock.storage.db.stock.repository.StockJpaRepository;
 
 @Component
 @RequiredArgsConstructor
 public class StockCategoryLoader {
 
-    private final StockRepository stockRepository;
+    private final StockJpaRepository stockJpaRepository;
 
     public List<String> load() {
-        return stockRepository.findCategoryAll();
+        return stockJpaRepository.findCategoryAll();
     }
 }

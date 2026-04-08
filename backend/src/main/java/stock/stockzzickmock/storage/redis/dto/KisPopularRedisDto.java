@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import stock.stockzzickmock.core.domain.market.PopularStock;
 
 @Data
 @AllArgsConstructor
@@ -33,5 +34,16 @@ public class KisPopularRedisDto {
 
     private String stockImage;
 
-
+    public PopularStock toDomain() {
+        return PopularStock.builder()
+                .stockName(stockName)
+                .stockCode(stockCode)
+                .rank(rank)
+                .price(price)
+                .sign(sign)
+                .changeAmount(changeAmount)
+                .changeRate(changeRate)
+                .stockImage(stockImage)
+                .build();
+    }
 }

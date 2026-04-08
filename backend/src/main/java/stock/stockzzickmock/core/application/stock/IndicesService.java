@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import stock.stockzzickmock.core.application.stock.implement.IndicesInfoLoader;
-import stock.stockzzickmock.storage.redis.dto.IndicesRedisDto;
+import stock.stockzzickmock.core.domain.market.MarketIndices;
 
 @Service
 @RequiredArgsConstructor
@@ -13,7 +13,7 @@ public class IndicesService {
 
     private final IndicesInfoLoader indicesInfoLoader;
 
-    public IndicesRedisDto getIndicesInfo(String market) {
+    public MarketIndices getIndicesInfo(String market) {
         return indicesInfoLoader.load(market);
     }
 

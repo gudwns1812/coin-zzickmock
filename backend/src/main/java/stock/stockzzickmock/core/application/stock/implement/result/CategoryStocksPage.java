@@ -1,8 +1,7 @@
 package stock.stockzzickmock.core.application.stock.implement.result;
 
-import stock.stockzzickmock.core.domain.stock.Stock;
-
 import java.util.List;
+import stock.stockzzickmock.core.domain.stock.Stock;
 
 public record CategoryStocksPage(
         int totalPages,

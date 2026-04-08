@@ -4,10 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import stock.stockzzickmock.core.domain.stock.Stock;
+import stock.stockzzickmock.storage.db.stock.entity.StockEntity;
+import stock.stockzzickmock.storage.db.stock.repository.StockJpaRepository;
+import stock.stockzzickmock.storage.redis.dto.StockDto;
 import stock.stockzzickmock.support.error.CoreException;
 import stock.stockzzickmock.support.error.StockErrorType;
-import stock.stockzzickmock.storage.redis.dto.StockDto;
-import stock.stockzzickmock.storage.db.stock.StockRepository;
 
 @Component
 @RequiredArgsConstructor
@@ -17,16 +19,16 @@ public class StockInfoLoader {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
-    private final StockRepository stockRepository;
+    private final StockJpaRepository stockJpaRepository;
 
-    public StockDto load(String stockCode) {
+    public Stock load(String stockCode) {
         Object stockInfo = redisTemplate.opsForValue().get(STOCK_KEY_PREFIX + stockCode);
         if (stockInfo != null) {
-            return objectMapper.convertValue(stockInfo, StockDto.class);
+            return objectMapper.convertValue(stockInfo, StockDto.class).toDomain();
         }
 
-        return stockRepository.findByStockCode(stockCode)
-                .map(StockDto::from)
+        return stockJpaRepository.findByStockCode(stockCode)
+                .map(StockEntity::toDomain)
                 .orElseThrow(() -> new CoreException(StockErrorType.STOCK_NOT_FOUND));
     }
 }

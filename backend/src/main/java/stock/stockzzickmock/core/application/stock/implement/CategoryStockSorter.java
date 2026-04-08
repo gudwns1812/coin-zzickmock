@@ -1,11 +1,10 @@
 package stock.stockzzickmock.core.application.stock.implement;
 
+import java.util.Comparator;
+import java.util.List;
 import org.springframework.stereotype.Component;
 import stock.stockzzickmock.core.application.stock.implement.result.CategoryStocksPage;
 import stock.stockzzickmock.core.domain.stock.Stock;
-
-import java.util.Comparator;
-import java.util.List;
 
 @Component
 public class CategoryStockSorter {

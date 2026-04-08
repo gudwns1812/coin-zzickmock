@@ -3,7 +3,7 @@ package stock.stockzzickmock.core.api.stock.dto.response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import stock.stockzzickmock.storage.redis.dto.KisPopularRedisDto;
+import stock.stockzzickmock.core.domain.market.PopularStock;
 
 @Data
 @AllArgsConstructor
@@ -26,7 +26,7 @@ public class PopularStockResponseDto {
 
     private String stockImage;
 
-    public static PopularStockResponseDto from(KisPopularRedisDto dto) {
+    public static PopularStockResponseDto from(PopularStock dto) {
         return new PopularStockResponseDto(
                 dto.getStockName(),
                 dto.getStockCode(),

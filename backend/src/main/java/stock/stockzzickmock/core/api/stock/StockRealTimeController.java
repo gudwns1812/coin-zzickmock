@@ -1,19 +1,18 @@
 package stock.stockzzickmock.core.api.stock;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import stock.stockzzickmock.storage.redis.dto.IndicesRedisDto;
-import stock.stockzzickmock.storage.redis.dto.StockDto;
+import stock.stockzzickmock.core.api.stock.dto.response.IndicesResponseDto;
 import stock.stockzzickmock.core.api.stock.dto.response.PopularStockResponseDto;
+import stock.stockzzickmock.core.api.stock.dto.response.StockInfoResponseDto;
 import stock.stockzzickmock.core.api.stock.dto.response.StockPeriodResponseDto;
 import stock.stockzzickmock.core.application.stock.IndicesService;
 import stock.stockzzickmock.core.application.stock.PopularService;
 import stock.stockzzickmock.core.application.stock.StockService;
 import stock.stockzzickmock.support.response.ApiResponse;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,16 +26,19 @@ public class StockRealTimeController {
 
     @GetMapping("/indices/{market}")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<IndicesRedisDto> getIndicesByMarket(@PathVariable String market) {
+    public ApiResponse<IndicesResponseDto> getIndicesByMarket(@PathVariable String market) {
         log.info("getIndicesByMarket called with market: {}", market);
-        IndicesRedisDto indicesInfo = indicesService.getIndicesInfo(market);
-        return ApiResponse.success(indicesInfo);
+        return ApiResponse.success(
+                IndicesResponseDto.from(indicesService.getIndicesInfo(market))
+        );
     }
 
     @GetMapping("/popular")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<List<PopularStockResponseDto>> getPopularStocks() {
-        List<PopularStockResponseDto> response = popularService.getPopularTop6Stock();
+        List<PopularStockResponseDto> response = popularService.getPopularTop6Stock().stream()
+                .map(PopularStockResponseDto::from)
+                .toList();
         return ApiResponse.success(response);
     }
 
@@ -50,8 +52,9 @@ public class StockRealTimeController {
 
     @GetMapping("/info/{stockCode}")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<StockDto> getStockPrice(@PathVariable String stockCode) {
-        StockDto stockInfo = stockService.getStockInfo(stockCode);
-        return ApiResponse.success(stockInfo);
+    public ApiResponse<StockInfoResponseDto> getStockPrice(@PathVariable String stockCode) {
+        return ApiResponse.success(
+                StockInfoResponseDto.from(stockService.getStockInfo(stockCode))
+        );
     }
 }

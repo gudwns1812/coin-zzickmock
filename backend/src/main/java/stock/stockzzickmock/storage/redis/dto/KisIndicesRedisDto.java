@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import stock.stockzzickmock.core.domain.market.MarketIndexSnapshot;
 
 @Data
 @AllArgsConstructor
@@ -27,4 +28,15 @@ public class KisIndicesRedisDto {
 
     @JsonProperty("acml_tr_pbmn")
     private String acml_vol_price;
+
+    public MarketIndexSnapshot toDomain() {
+        return MarketIndexSnapshot.builder()
+                .date(indice_date)
+                .currentPrice(cur_price)
+                .highPrice(high_price)
+                .lowPrice(low_price)
+                .accumulatedVolume(acml_vol)
+                .accumulatedVolumePrice(acml_vol_price)
+                .build();
+    }
 }

@@ -6,7 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
-import stock.stockzzickmock.core.domain.stock.Stock;
+import stock.stockzzickmock.storage.db.stock.entity.StockEntity;
+import stock.stockzzickmock.storage.db.stock.repository.StockJpaRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,13 +16,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StockRepositoryTest {
 
     @Autowired
-    private StockRepository stockRepository;
+    private StockJpaRepository stockRepository;
 
     @BeforeEach
     void setUp() {
         stockRepository.deleteAll();
         stockRepository.save(
-                Stock.builder()
+                StockEntity.builder()
                         .stockCode("005930")
                         .name("삼성전자")
                         .price("70000")
@@ -31,7 +32,7 @@ class StockRepositoryTest {
                         .build()
         );
         stockRepository.save(
-                Stock.builder()
+                StockEntity.builder()
                         .stockCode("000660")
                         .name("SK하이닉스")
                         .price("180000")
@@ -41,7 +42,7 @@ class StockRepositoryTest {
                         .build()
         );
         stockRepository.save(
-                Stock.builder()
+                StockEntity.builder()
                         .stockCode("035420")
                         .name("NAVER")
                         .price("200000")

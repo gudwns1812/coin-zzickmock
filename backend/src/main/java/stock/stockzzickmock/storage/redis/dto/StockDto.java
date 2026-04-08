@@ -24,22 +24,22 @@ public class StockDto {
     private String volumeValue;
     private String stockImage;
 
-    public static StockDto from(Stock stock) {
-        return new StockDto(
-                stock.getStockCode(),
-                stock.getName(),
-                stock.getCategory(),
-                stock.getPrice(),
-                stock.getOpenPrice(),
-                stock.getHighPrice(),
-                stock.getLowPrice(),
-                stock.getMarketName(),
-                stock.getChangeAmount(),
-                stock.getSign(),
-                stock.getChangeRate(),
-                stock.getVolume(),
-                stock.getVolumeValue(),
-                stock.getStockImage()
-        );
+    public Stock toDomain() {
+        return Stock.builder()
+                .stockCode(stockCode)
+                .name(stockName)
+                .category(categoryName)
+                .price(price)
+                .openPrice(openPrice)
+                .highPrice(highPrice)
+                .lowPrice(lowPrice)
+                .marketName(marketName)
+                .changeAmount(changeAmount)
+                .sign(sign)
+                .changeRate(changeRate)
+                .volume(volume)
+                .volumeValue(volumeValue)
+                .stockImage(stockImage)
+                .build();
     }
 }

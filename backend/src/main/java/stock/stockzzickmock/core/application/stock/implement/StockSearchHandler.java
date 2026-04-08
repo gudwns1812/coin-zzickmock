@@ -1,30 +1,36 @@
 package stock.stockzzickmock.core.application.stock.implement;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import stock.stockzzickmock.core.domain.stock.Stock;
-import stock.stockzzickmock.storage.db.stock.StockRepository;
-
-import java.util.List;
+import stock.stockzzickmock.storage.db.stock.entity.StockEntity;
+import stock.stockzzickmock.storage.db.stock.repository.StockJpaRepository;
 
 @Component
 @RequiredArgsConstructor
 public class StockSearchHandler {
 
     private static final int SEARCH_LIMIT = 5;
-    private static final int POPULAR_SEARCH_LIMIT = 6;
-
-    private final StockRepository stockRepository;
+    private final StockJpaRepository stockJpaRepository;
 
     public List<Stock> search(String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return popularStocks();
         }
 
-        List<Stock> stocks = keyword.matches("\\d+")
-                ? stockRepository.searchByStockCode(keyword, PageRequest.of(0, SEARCH_LIMIT))
-                : stockRepository.searchByName(keyword, PageRequest.of(0, SEARCH_LIMIT));
+        List<Stock> stocks;
+        if (keyword.matches("\\d+")) {
+            stocks = stockJpaRepository.searchByStockCode(keyword, org.springframework.data.domain.PageRequest.of(0, SEARCH_LIMIT))
+                    .stream()
+                    .map(StockEntity::toDomain)
+                    .toList();
+        } else {
+            stocks = stockJpaRepository.searchByName(keyword, org.springframework.data.domain.PageRequest.of(0, SEARCH_LIMIT))
+                    .stream()
+                    .map(StockEntity::toDomain)
+                    .toList();
+        }
 
         if (stocks.isEmpty()) {
             return popularStocks();
@@ -34,8 +40,9 @@ public class StockSearchHandler {
     }
 
     private List<Stock> popularStocks() {
-        return stockRepository.findTop6ByOrderByStockSearchCountDesc().stream()
+        return stockJpaRepository.findTop6ByOrderByStockSearchCountDesc().stream()
                 .limit(SEARCH_LIMIT)
+                .map(StockEntity::toDomain)
                 .toList();
     }
 }

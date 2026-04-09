@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static stock.stockzzickmock.storage.db.Address.builder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
@@ -71,12 +72,10 @@ class AuthControllerIntegrationTest {
                   "name": "테스터",
                   "phoneNumber": "010-1234-5678",
                   "email": "tester@example.com",
-                  "fgOffset": "ignored",
-                  "address": {
-                    "zipcode": "12345",
-                    "address": "서울시 강남구",
-                    "addressDetail": "101동"
-                  }
+                  "zipcode": "12345",
+                  "address": "서울시 강남구",
+                  "addressDetail": "101동",
+                  "fgOffset": "ignored"
                 }
                 """;
 
@@ -111,8 +110,19 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.result").value("SUCCESS"))
                 .andReturn();
 
-        assertThat(refreshResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+        List<String> refreshedCookieHeaders = refreshResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE);
+        String rotatedRefreshToken = extractCookie(refreshedCookieHeaders, "refreshToken");
+
+        assertThat(refreshedCookieHeaders)
                 .anyMatch(header -> header.startsWith("accessToken="));
+        assertThat(rotatedRefreshToken).isNotBlank();
+        assertThat(rotatedRefreshToken).isNotEqualTo(refreshToken);
+
+        mockMvc.perform(get("/api/auth/refresh")
+                        .cookie(new MockCookie("refreshToken", refreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.result").value("FAIL"))
+                .andExpect(jsonPath("$.error.errorCode").value("AUTH_401_INVALID_JWT"));
 
         mockMvc.perform(post("/api/auth/logout")
                         .cookie(new MockCookie("accessToken", accessToken)))
@@ -237,9 +247,11 @@ class AuthControllerIntegrationTest {
                 .name("테스터")
                 .email("tester@example.com")
                 .phoneNumber("010-1234-5678")
-                .zipCode("12345")
-                .address("서울시 강남구")
-                .addressDetail("101동")
+                .address(builder()
+                        .zipCode("12345")
+                        .address("서울시 강남구")
+                        .addressDetail("101동")
+                        .build())
                 .invest(0)
                 .refreshTokenVersion(0L)
                 .build();

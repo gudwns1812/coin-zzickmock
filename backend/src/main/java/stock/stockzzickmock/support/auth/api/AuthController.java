@@ -5,9 +5,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,6 +23,7 @@ import stock.stockzzickmock.support.auth.api.dto.request.LoginRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.RegisterRequest;
 import stock.stockzzickmock.support.auth.api.dto.request.WithdrawRequest;
 import stock.stockzzickmock.support.auth.application.AuthService;
+import stock.stockzzickmock.support.auth.application.result.AuthTokens;
 import stock.stockzzickmock.support.auth.security.AuthenticatedMember;
 import stock.stockzzickmock.support.auth.security.JwtCookieFactory;
 import stock.stockzzickmock.support.error.AuthErrorType;
@@ -34,23 +35,32 @@ import stock.stockzzickmock.support.response.ApiResponse;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtCookieFactory jwtCookieFactory;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtCookieFactory jwtCookieFactory) {
         this.authService = authService;
+        this.jwtCookieFactory = jwtCookieFactory;
     }
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Void> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
+        authService.register(
+                request.account(),
+                request.password(),
+                request.name(),
+                request.phoneNumber(),
+                request.email(),
+                request.zipcode(),
+                request.address(),
+                request.addressDetail()
+        );
         return ApiResponse.success();
     }
 
     @PostMapping("/duplicate")
     public ResponseEntity<ApiResponse<Boolean>> duplicate(@Valid @RequestBody DuplicateAccountRequest request) {
-        if (!authService.isAccountAvailable(request.account())) {
-            throw new CoreException(AuthErrorType.DUPLICATE_ACCOUNT);
-        }
+        authService.validateAccountAvailable(request.account());
         return ResponseEntity.ok(ApiResponse.success(true));
     }
 
@@ -61,7 +71,8 @@ public class AuthController {
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse
     ) {
-        appendCookies(authService.login(request, httpServletRequest), httpServletResponse);
+        AuthTokens tokens = authService.login(request.account(), request.password());
+        appendAuthCookies(tokens, httpServletRequest, httpServletResponse);
         return ApiResponse.success();
     }
 
@@ -72,7 +83,8 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        appendCookies(authService.logout(authenticatedMember, request), response);
+        authService.logout(authenticatedMember.memberId());
+        expireAuthCookies(request, response);
         return ApiResponse.success();
     }
 
@@ -82,7 +94,8 @@ public class AuthController {
         String refreshToken = resolveCookie(request, JwtCookieFactory.REFRESH_TOKEN_COOKIE_NAME)
                 .orElseThrow(() -> new CoreException(AuthErrorType.REFRESH_TOKEN_NOT_FOUND));
 
-        appendCookies(authService.refresh(refreshToken, request), response);
+        AuthTokens tokens = authService.refresh(refreshToken);
+        appendAuthCookies(tokens, request, response);
         return ApiResponse.success();
     }
 
@@ -94,7 +107,8 @@ public class AuthController {
             HttpServletRequest httpServletRequest,
             HttpServletResponse response
     ) {
-        appendCookies(authService.withdraw(authenticatedMember, request, httpServletRequest), response);
+        authService.withdraw(authenticatedMember.memberId(), request.memberId());
+        expireAuthCookies(httpServletRequest, response);
         return ApiResponse.success();
     }
 
@@ -106,7 +120,15 @@ public class AuthController {
             HttpServletRequest httpServletRequest,
             HttpServletResponse response
     ) {
-        appendCookies(authService.updateInvest(authenticatedMember, request, httpServletRequest), response);
+        String accessToken = authService.updateInvest(
+                authenticatedMember.memberId(),
+                request.memberId(),
+                request.investScore()
+        );
+        appendCookie(
+                jwtCookieFactory.createAccessTokenCookie(accessToken, httpServletRequest),
+                response
+        );
         return ApiResponse.success();
     }
 
@@ -121,9 +143,23 @@ public class AuthController {
                 .findFirst();
     }
 
-    private void appendCookies(List<String> cookieHeaders, HttpServletResponse response) {
-        for (String cookieHeader : cookieHeaders) {
-            response.addHeader("Set-Cookie", cookieHeader);
+    private void appendAuthCookies(
+            AuthTokens tokens,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        appendCookie(jwtCookieFactory.createAccessTokenCookie(tokens.accessToken(), request), response);
+        if (tokens.refreshToken() != null) {
+            appendCookie(jwtCookieFactory.createRefreshTokenCookie(tokens.refreshToken(), request), response);
         }
+    }
+
+    private void expireAuthCookies(HttpServletRequest request, HttpServletResponse response) {
+        appendCookie(jwtCookieFactory.expireAccessTokenCookie(request), response);
+        appendCookie(jwtCookieFactory.expireRefreshTokenCookie(request), response);
+    }
+
+    private void appendCookie(ResponseCookie cookie, HttpServletResponse response) {
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 }

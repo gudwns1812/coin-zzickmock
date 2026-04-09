@@ -1,6 +1,5 @@
 package stock.stockzzickmock.support.auth.api.dto.request;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -10,7 +9,9 @@ public record RegisterRequest(
         @NotBlank String name,
         @NotBlank String phoneNumber,
         @Email @NotBlank String email,
-        @Valid AddressRequest address,
+        @NotBlank String zipcode,
+        @NotBlank String address,
+        String addressDetail,
         String fgOffset
 ) {
 }

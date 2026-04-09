@@ -1,6 +1,7 @@
 package stock.stockzzickmock.storage.db.member.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -10,7 +11,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import stock.stockzzickmock.core.domain.member.Member;
+import stock.stockzzickmock.core.domain.member.MemberAccount;
+import stock.stockzzickmock.core.domain.member.MemberProfile;
+import stock.stockzzickmock.storage.db.Address;
 import stock.stockzzickmock.storage.db.BaseTimeEntity;
+import stock.stockzzickmock.support.error.AuthErrorType;
+import stock.stockzzickmock.support.error.CoreException;
 
 @Entity
 @Table(name = "member")
@@ -39,14 +45,8 @@ public class MemberEntity extends BaseTimeEntity {
     @Column(name = "phone_number", nullable = false, length = 30)
     private String phoneNumber;
 
-    @Column(name = "zip_code", nullable = false, length = 20)
-    private String zipCode;
-
-    @Column(nullable = false, length = 255)
-    private String address;
-
-    @Column(name = "address_detail", nullable = false, length = 255)
-    private String addressDetail;
+    @Embedded
+    private Address address;
 
     @Column(nullable = false)
     private Integer invest;
@@ -57,16 +57,26 @@ public class MemberEntity extends BaseTimeEntity {
     public Member toDomain() {
         return Member.builder()
                 .memberId(memberId)
-                .account(account)
-                .passwordHash(passwordHash)
-                .name(name)
-                .email(email)
-                .phoneNumber(phoneNumber)
-                .zipCode(zipCode)
-                .address(address)
-                .addressDetail(addressDetail)
+                .account(MemberAccount.of(account, passwordHash))
+                .profile(MemberProfile.of(name, email, phoneNumber))
+                .address(stock.stockzzickmock.core.domain.member.Address.of(
+                        address.getZipCode(),
+                        address.getAddress(),
+                        address.getAddressDetail()))
                 .invest(invest)
                 .refreshTokenVersion(refreshTokenVersion)
                 .build();
+    }
+
+    public void updateInvest(int investScore) {
+        this.invest = investScore;
+    }
+
+    public void updateRefreshVersion(Long version) {
+        if (this.refreshTokenVersion != version) {
+            throw new CoreException(AuthErrorType.INVALID_JWT);
+        }
+
+        this.refreshTokenVersion += 1;
     }
 }

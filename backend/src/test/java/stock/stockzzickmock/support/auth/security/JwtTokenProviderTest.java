@@ -1,14 +1,17 @@
 package stock.stockzzickmock.support.auth.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import stock.stockzzickmock.core.domain.member.Address;
 import stock.stockzzickmock.core.domain.member.Member;
+import stock.stockzzickmock.core.domain.member.MemberAccount;
+import stock.stockzzickmock.core.domain.member.MemberProfile;
 import stock.stockzzickmock.support.error.AuthErrorType;
 import stock.stockzzickmock.support.error.CoreException;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtTokenProviderTest {
 
@@ -27,14 +30,9 @@ class JwtTokenProviderTest {
         );
         member = Member.builder()
                 .memberId("member-1")
-                .account("tester")
-                .passwordHash("encoded")
-                .name("테스터")
-                .email("tester@example.com")
-                .phoneNumber("010-1234-5678")
-                .zipCode("12345")
-                .address("서울시 강남구")
-                .addressDetail("101동")
+                .account(MemberAccount.of("tester", "encoded"))
+                .profile(MemberProfile.of("테스터", "tester@example.com", "010-1234-5678"))
+                .address(Address.of("12345", "서울시 강남구", "101동"))
                 .invest(3)
                 .refreshTokenVersion(7L)
                 .build();

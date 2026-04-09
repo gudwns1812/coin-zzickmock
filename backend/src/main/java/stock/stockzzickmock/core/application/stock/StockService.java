@@ -7,15 +7,10 @@ import org.springframework.stereotype.Service;
 import stock.stockzzickmock.core.api.stock.dto.response.CategoryPageResponseDto;
 import stock.stockzzickmock.core.api.stock.dto.response.SearchResponseDto;
 import stock.stockzzickmock.core.api.stock.dto.response.StockPeriodResponseDto;
-import stock.stockzzickmock.core.application.stock.implement.CategoryStockLoader;
-import stock.stockzzickmock.core.application.stock.implement.CategoryStockSorter;
-import stock.stockzzickmock.core.application.stock.implement.ActiveStockSetRecorder;
-import stock.stockzzickmock.core.application.stock.implement.StockCategoryLoader;
-import stock.stockzzickmock.core.application.stock.implement.StockHistoryLoader;
-import stock.stockzzickmock.core.application.stock.implement.StockInfoLoader;
+import stock.stockzzickmock.core.application.stock.implement.StockCommandHandler;
+import stock.stockzzickmock.core.application.stock.implement.StockLoader;
 import stock.stockzzickmock.core.application.stock.implement.StockPeriodCalculator;
 import stock.stockzzickmock.core.application.stock.implement.StockSearchHandler;
-import stock.stockzzickmock.core.application.stock.implement.StockSearchSelectionRecorder;
 import stock.stockzzickmock.core.domain.stock.Stock;
 
 @Service
@@ -23,39 +18,32 @@ import stock.stockzzickmock.core.domain.stock.Stock;
 @Slf4j
 public class StockService {
 
-    private final StockInfoLoader stockInfoLoader;
-    private final StockHistoryLoader stockHistoryLoader;
+    private final StockLoader stockLoader;
+    private final StockCommandHandler stockCommandHandler;
     private final StockPeriodCalculator stockPeriodCalculator;
-    private final ActiveStockSetRecorder activeStockSetRecorder;
-    private final StockSearchSelectionRecorder stockSearchSelectionRecorder;
-    private final StockCategoryLoader stockCategoryLoader;
-    private final CategoryStockLoader categoryStockLoader;
-    private final CategoryStockSorter categoryStockSorter;
     private final StockSearchHandler stockSearchHandler;
 
     public Stock getStockInfo(String stockCode) {
-        return stockInfoLoader.load(stockCode);
+        return stockLoader.loadInfo(stockCode);
     }
 
     public List<StockPeriodResponseDto> getStockPeriodInfo(String stockCode, String type) {
-        return stockHistoryLoader.load(stockCode, type).stream()
+        return stockLoader.loadHistory(stockCode, type).stream()
                 .map(stockPeriodCalculator::calculate)
                 .map(StockPeriodResponseDto::from)
                 .toList();
     }
 
     public void recordSearchSelection(String stockCode) {
-        stockSearchSelectionRecorder.record(stockCode);
+        stockCommandHandler.increaseSearchCount(stockCode);
     }
 
     public List<String> getCategories() {
-        return stockCategoryLoader.load();
+        return stockLoader.loadCategories();
     }
 
     public CategoryPageResponseDto getCategoryStocks(String category, int page) {
-        return CategoryPageResponseDto.of(
-                categoryStockSorter.sortAndSlice(categoryStockLoader.load(category), page)
-        );
+        return CategoryPageResponseDto.of(stockLoader.loadCategoryPage(category, page));
     }
 
     public List<SearchResponseDto> searchStocks(String keyword) {
@@ -65,6 +53,6 @@ public class StockService {
     }
 
     public void publishActiveStockSet(String source, List<String> stockCodes) {
-        activeStockSetRecorder.record(source, stockCodes);
+        stockCommandHandler.publishActiveStockSet(source, stockCodes);
     }
 }

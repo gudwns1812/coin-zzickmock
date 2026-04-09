@@ -3,7 +3,7 @@ package stock.stockzzickmock.core.application.stock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import stock.stockzzickmock.core.application.stock.implement.IndicesInfoLoader;
+import stock.stockzzickmock.core.application.stock.implement.MarketLoader;
 import stock.stockzzickmock.core.domain.market.MarketIndices;
 
 @Service
@@ -11,10 +11,9 @@ import stock.stockzzickmock.core.domain.market.MarketIndices;
 @Slf4j
 public class IndicesService {
 
-    private final IndicesInfoLoader indicesInfoLoader;
+    private final MarketLoader marketLoader;
 
     public MarketIndices getIndicesInfo(String market) {
-        return indicesInfoLoader.load(market);
+        return marketLoader.loadIndices(market);
     }
-
 }

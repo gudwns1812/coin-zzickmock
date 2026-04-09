@@ -2,6 +2,7 @@ package stock.stockzzickmock.core.application.stock.implement;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import stock.stockzzickmock.core.domain.stock.Stock;
 import stock.stockzzickmock.storage.db.stock.entity.StockEntity;
@@ -21,12 +22,12 @@ public class StockSearchHandler {
 
         List<Stock> stocks;
         if (keyword.matches("\\d+")) {
-            stocks = stockJpaRepository.searchByStockCode(keyword, org.springframework.data.domain.PageRequest.of(0, SEARCH_LIMIT))
+            stocks = stockJpaRepository.searchByStockCode(keyword, PageRequest.of(0, SEARCH_LIMIT))
                     .stream()
                     .map(StockEntity::toDomain)
                     .toList();
         } else {
-            stocks = stockJpaRepository.searchByName(keyword, org.springframework.data.domain.PageRequest.of(0, SEARCH_LIMIT))
+            stocks = stockJpaRepository.searchByName(keyword, PageRequest.of(0, SEARCH_LIMIT))
                     .stream()
                     .map(StockEntity::toDomain)
                     .toList();

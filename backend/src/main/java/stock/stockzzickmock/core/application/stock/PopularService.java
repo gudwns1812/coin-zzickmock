@@ -4,7 +4,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import stock.stockzzickmock.core.application.stock.implement.PopularStockLoader;
+import stock.stockzzickmock.core.application.stock.implement.MarketLoader;
 import stock.stockzzickmock.core.domain.market.PopularStock;
 
 @Service
@@ -12,9 +12,9 @@ import stock.stockzzickmock.core.domain.market.PopularStock;
 @Slf4j
 public class PopularService {
 
-    private final PopularStockLoader popularStockLoader;
+    private final MarketLoader marketLoader;
 
     public List<PopularStock> getPopularTop6Stock() {
-        return popularStockLoader.load();
+        return marketLoader.loadPopularTop6();
     }
 }

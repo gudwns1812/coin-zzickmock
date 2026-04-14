@@ -1,4 +1,0 @@
-interface:
-  display_name: "Backend Guideline First"
-  short_description: "Read this repo's backend guideline before backend work"
-  default_prompt: "Use $backend-guideline-first to read /Users/hj.park/projects/stock-zzickmock/backend/docs/BACKEND_GUIDELINE.md before backend work, extract the relevant rules, and follow them while implementing changes."

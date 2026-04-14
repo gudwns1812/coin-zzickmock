@@ -1,6 +1,6 @@
-# stock-zzickmock
+# coin-zzickmock
 
-주식 서비스 실험을 위한 풀스택 프로젝트입니다.
+코인 선물 모의 투자 플랫폼입니다.
 프론트엔드는 Next.js 기반이고, 백엔드는 Spring Boot 기반으로 구성되어 있습니다.
 
 ## 기술 스택
@@ -12,14 +12,10 @@
 ## 프로젝트 구조
 
 ```text
-stock-zzickmock/
+coin-zzickmock/
 ├── frontend/                 # Next.js 프론트엔드
 ├── backend/                  # Spring Boot 백엔드
-│   └── docs/
-│       └── BACKEND_GUIDELINE.md
-├── .codex/
-│   └── skills/
-│       └── backend-guideline-first/
+│   └── AGENTS.md             # 백엔드 작업 규칙
 ├── Legacy.md                 # 리팩토링 분석 문서
 └── README.md
 ```
@@ -59,10 +55,9 @@ npm run lint
 
 ## 백엔드 개발 규칙
 
-이 프로젝트의 백엔드 작업은 먼저 가이드 문서를 확인하고 진행합니다.
+이 프로젝트의 백엔드 작업은 `backend/AGENTS.md`를 단일 기준으로 진행합니다.
 
-- 가이드 문서: [backend/docs/BACKEND_GUIDELINE.md](/Users/hj.park/projects/stock-zzickmock/backend/docs/BACKEND_GUIDELINE.md)
-- 로컬 스킬: [.codex/skills/backend-guideline-first/SKILL.md](/Users/hj.park/projects/stock-zzickmock/.codex/skills/backend-guideline-first/SKILL.md)
+- 규칙 문서: [backend/AGENTS.md](backend/AGENTS.md)
 
 핵심 원칙:
 
@@ -74,11 +69,11 @@ npm run lint
 
 ## 참고 문서
 
-- 리팩토링 분석: [Legacy.md](/Users/hj.park/projects/stock-zzickmock/Legacy.md)
-- 백엔드 개발 규율: [backend/docs/BACKEND_GUIDELINE.md](/Users/hj.park/projects/stock-zzickmock/backend/docs/BACKEND_GUIDELINE.md)
+- 리팩토링 분석: [Legacy.md](Legacy.md)
+- 백엔드 작업 규칙: [backend/AGENTS.md](backend/AGENTS.md)
 
 ## 현재 상태
 
 - 프론트엔드: npm workspace 기반으로 실행
 - 백엔드: Gradle 기반 단독 실행
-- 백엔드 구조는 객체지향 리팩토링과 응답/예외 통일화를 진행 중이며, 가이드 문서를 기준으로 계속 정리합니다.
+- 백엔드 구조는 객체지향 리팩토링과 응답/예외 통일화를 진행 중이며, `backend/AGENTS.md` 기준으로 계속 정리합니다.

@@ -1,24 +1,8 @@
 package coin.coinzzickmock;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import coin.coinzzickmock.bootstrap.CoinZzickmockApplication;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.env.Environment;
-import org.springframework.test.context.ActiveProfiles;
 
-import java.util.Arrays;
-
-@SpringBootTest
-@ActiveProfiles("test")
+@SpringBootTest(classes = CoinZzickmockApplication.class)
 class CoinZzickmockApplicationTests {
-
-    @Autowired
-    Environment env;
-
-    @Test
-    void contextLoads() {
-        System.out.println(">>> active profile: " + Arrays.toString(env.getActiveProfiles()));
-
-    }
-
 }

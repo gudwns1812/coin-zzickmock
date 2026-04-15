@@ -1,6 +1,8 @@
+import groovy.json.JsonOutput
+
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.2.3'
+    id 'org.springframework.boot' version '3.5.13'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -18,29 +20,267 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0'
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    compileOnly 'org.projectlombok:lombok'
+    implementation 'org.springframework.boot:spring-boot-starter'
 
-    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
-    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-    runtimeOnly 'com.mysql:mysql-connector-j'
-
-    annotationProcessor 'org.projectlombok:lombok'
-
-    testImplementation 'com.h2database:h2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+def architectureRootPackage = 'coin.coinzzickmock'
+def architectureAllowedTopLevel = ['bootstrap', 'common', 'providers', 'feature'] as Set
+def architectureForbiddenTopLevel = ['support', 'core', 'extern', 'storage'] as Set
+def architectureLayers = ['api', 'application', 'domain', 'infrastructure'] as Set
+def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
+
+def architectureEmit = { Writer writer, String level, String event, Map payload ->
+    def record = [
+        ts   : new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+        level: level,
+        tool : 'backend-architecture-lint',
+        event: event,
+    ] + payload
+    def line = JsonOutput.toJson(record)
+    writer.write(line)
+    writer.write(System.lineSeparator())
+    println(line)
+}
+
+tasks.register('architectureLint') {
+    group = 'verification'
+    description = 'Validates project-specific backend architecture rules and emits JSONL logs.'
+
+    inputs.files(fileTree('src/main/java') { include '**/*.java' })
+    outputs.file(architectureReport)
+
+    doLast {
+        def reportFile = architectureReport.get().asFile
+        reportFile.parentFile.mkdirs()
+
+        int violationCount = 0
+        def sourceFiles = fileTree('src/main/java') { include '**/*.java' }.files.sort { it.path }
+
+        reportFile.withWriter('UTF-8') { writer ->
+            architectureEmit(writer, 'INFO', 'architecture_lint_started', [
+                sourceSet : 'src/main/java',
+                reportPath: project.relativePath(reportFile),
+                rules     : [
+                    'PACKAGE_ROOT_MATCH',
+                    'PACKAGE_PATH_MATCH',
+                    'TOP_LEVEL_PACKAGE_ALLOWED',
+                    'FORBIDDEN_LEGACY_TOP_LEVEL',
+                    'FEATURE_LAYER_REQUIRED',
+                    'DOMAIN_FRAMEWORK_FREE',
+                    'APPLICATION_NO_SECURITY_CONTEXT',
+                    'API_NO_PERSISTENCE_IMPORTS',
+                ],
+            ])
+
+            def logViolation = { File file, int line, String rule, String message, String suggestedFix, Map extras = [:] ->
+                violationCount++
+                architectureEmit(writer, 'ERROR', 'architecture_violation', [
+                    rule        : rule,
+                    category    : 'architecture',
+                    severity    : 'ERROR',
+                    file        : project.relativePath(file).replace('\\', '/'),
+                    line        : line,
+                    message     : message,
+                    suggestedFix: suggestedFix,
+                ] + extras)
+            }
+
+            sourceFiles.each { sourceFile ->
+                def relativePath = project.relativePath(sourceFile).replace('\\', '/')
+                def text = sourceFile.getText('UTF-8')
+                def lines = text.readLines()
+                def packageMatcher = text =~ /(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;/
+                String packageName = packageMatcher.find() ? packageMatcher.group(1) : null
+
+                if (packageName == null) {
+                    logViolation(
+                        sourceFile,
+                        1,
+                        'PACKAGE_DECLARATION_REQUIRED',
+                        '모든 백엔드 Java 파일은 package 선언을 가져야 합니다.',
+                        "파일 상단에 `package ${architectureRootPackage}.<...>;` 형태의 선언을 추가하세요."
+                    )
+                    return
+                }
+
+                int packageLine = lines.findIndexOf { it.contains("package ${packageName};") } + 1
+                def expectedPath = "src/main/java/${packageName.replace('.', '/')}/${sourceFile.name}"
+
+                if (!packageName.startsWith(architectureRootPackage)) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'PACKAGE_ROOT_MATCH',
+                        "패키지 루트는 `${architectureRootPackage}`여야 합니다. 현재 값: `${packageName}`.",
+                        "패키지를 `${architectureRootPackage}` 아래로 옮기세요.",
+                        [packageName: packageName]
+                    )
+                }
+
+                if (relativePath != expectedPath) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'PACKAGE_PATH_MATCH',
+                        "패키지 선언과 파일 경로가 일치하지 않습니다. 기대 경로: `${expectedPath}`.",
+                        'package 선언에 맞게 파일을 옮기거나 package 선언을 수정하세요.',
+                        [packageName: packageName, expectedPath: expectedPath]
+                    )
+                }
+
+                def packageSegments = packageName == architectureRootPackage
+                    ? []
+                    : packageName.substring(architectureRootPackage.length() + 1).tokenize('.')
+
+                if (packageSegments.isEmpty()) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'TOP_LEVEL_PACKAGE_ALLOWED',
+                        '루트 패키지 바로 아래에 업무 클래스를 두지 않습니다.',
+                        '파일을 `bootstrap`, `common`, `providers`, `feature` 중 하나의 하위 패키지로 옮기세요.',
+                        [packageName: packageName]
+                    )
+                    return
+                }
+
+                def topLevel = packageSegments[0]
+                if (!architectureAllowedTopLevel.contains(topLevel)) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'TOP_LEVEL_PACKAGE_ALLOWED',
+                        "최상위 패키지 `${topLevel}`는 허용되지 않습니다.",
+                        "최상위 패키지는 `${architectureAllowedTopLevel.join(', ')}` 중 하나를 사용하세요.",
+                        [packageName: packageName, topLevel: topLevel]
+                    )
+                }
+
+                if (architectureForbiddenTopLevel.contains(topLevel)) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'FORBIDDEN_LEGACY_TOP_LEVEL',
+                        "레거시 최상위 패키지 `${topLevel}`는 금지됩니다.",
+                        '`feature`, `providers`, `common`, `bootstrap` 구조로 재배치하세요.',
+                        [packageName: packageName, topLevel: topLevel]
+                    )
+                }
+
+                if (topLevel == 'feature') {
+                    if (packageSegments.size() < 3) {
+                        logViolation(
+                            sourceFile,
+                            packageLine,
+                            'FEATURE_LAYER_REQUIRED',
+                            'feature 패키지 아래 파일은 `feature.<name>.<layer>` 형태를 따라야 합니다.',
+                            '예: `feature.market.application`, `feature.member.domain`.',
+                            [packageName: packageName]
+                        )
+                    } else if (!architectureLayers.contains(packageSegments[2])) {
+                        logViolation(
+                            sourceFile,
+                            packageLine,
+                            'FEATURE_LAYER_REQUIRED',
+                            "feature 레이어는 `${architectureLayers.join(', ')}` 중 하나여야 합니다. 현재 값: `${packageSegments[2]}`.",
+                            '`api`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요.',
+                            [packageName: packageName, layer: packageSegments[2]]
+                        )
+                    }
+                }
+
+                def layer = packageSegments.find { architectureLayers.contains(it) }
+
+                if (layer == 'domain') {
+                    lines.eachWithIndex { lineText, index ->
+                        def trimmed = lineText.trim()
+                        if (trimmed.startsWith('import org.springframework.') || trimmed.startsWith('import jakarta.persistence.')) {
+                            logViolation(
+                                sourceFile,
+                                index + 1,
+                                'DOMAIN_FRAMEWORK_FREE',
+                                'domain 레이어는 Spring 또는 JPA import에 의존하면 안 됩니다.',
+                                '해당 의존성은 `application` 또는 `infrastructure`로 이동하세요.',
+                                [packageName: packageName, importLine: trimmed]
+                            )
+                        }
+                        if (['@Entity', '@Transactional', '@Service', '@Component', '@Repository', '@RestController'].any { trimmed.contains(it) }) {
+                            logViolation(
+                                sourceFile,
+                                index + 1,
+                                'DOMAIN_FRAMEWORK_FREE',
+                                'domain 레이어는 Spring/JPA annotation에 의존하면 안 됩니다.',
+                                '프레임워크 annotation은 `api` 또는 `infrastructure`로 이동하세요.',
+                                [packageName: packageName, code: trimmed]
+                            )
+                        }
+                    }
+                }
+
+                if (layer == 'application') {
+                    lines.eachWithIndex { lineText, index ->
+                        def trimmed = lineText.trim()
+                        if (trimmed.startsWith('import org.springframework.security.core.context.SecurityContextHolder') ||
+                            trimmed.startsWith('import org.springframework.security.core.Authentication')) {
+                            logViolation(
+                                sourceFile,
+                                index + 1,
+                                'APPLICATION_NO_SECURITY_CONTEXT',
+                                'application 레이어는 Spring Security context를 직접 읽으면 안 됩니다.',
+                                '`Providers.auth()` 같은 추상화로 현재 actor를 주입하세요.',
+                                [packageName: packageName, importLine: trimmed]
+                            )
+                        }
+                        if (['@RestController', '@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping'].any { trimmed.contains(it) }) {
+                            logViolation(
+                                sourceFile,
+                                index + 1,
+                                'APPLICATION_NO_WEB_ANNOTATION',
+                                'application 레이어는 웹 annotation을 가지면 안 됩니다.',
+                                'HTTP 진입점은 `api` 레이어로 이동하세요.',
+                                [packageName: packageName, code: trimmed]
+                            )
+                        }
+                    }
+                }
+
+                if (layer == 'api') {
+                    lines.eachWithIndex { lineText, index ->
+                        def trimmed = lineText.trim()
+                        if (trimmed.startsWith('import org.springframework.data.') || trimmed.startsWith('import jakarta.persistence.')) {
+                            logViolation(
+                                sourceFile,
+                                index + 1,
+                                'API_NO_PERSISTENCE_IMPORTS',
+                                'api 레이어는 persistence import에 직접 의존하면 안 됩니다.',
+                                '영속성 의존은 `application` port 또는 `infrastructure` adapter 뒤로 숨기세요.',
+                                [packageName: packageName, importLine: trimmed]
+                            )
+                        }
+                    }
+                }
+            }
+
+            architectureEmit(writer, 'INFO', 'architecture_lint_summary', [
+                status     : violationCount == 0 ? 'passed' : 'failed',
+                violations : violationCount,
+                reportPath : project.relativePath(reportFile),
+            ])
+        }
+
+        if (violationCount > 0) {
+            throw new GradleException("Architecture lint failed with ${violationCount} violation(s). See ${project.relativePath(reportFile)}")
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('architectureLint')
 }

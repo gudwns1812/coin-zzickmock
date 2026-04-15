@@ -1,6 +1,6 @@
 # frontend
 
-`주식 찍먹` 프론트엔드 워크스페이스입니다.
+`coin-zzickmock`의 현재 사용자 경험을 담당하는 Next.js 워크스페이스입니다.
 
 ## Stack
 
@@ -11,6 +11,15 @@
 - React Query
 - Zustand
 
+## Role
+
+이 워크스페이스는 다음 책임을 가집니다.
+
+- 라우트와 화면 레이아웃 조립
+- 인증/접근 제어의 1차 처리
+- 종목 조회, 포트폴리오, 회원가입 등 사용자 흐름 렌더링
+- 백엔드 또는 프록시 호출 결과를 사용자에게 표시
+
 ## Routes
 
 - `/stock`
@@ -18,6 +27,104 @@
 - `/portfolio`
 - `/signup`
 - `/only-desktop`
+
+## Key Entry Points
+
+- `app/layout.tsx`
+  전역 앱 셸입니다. Query Client, MSW, Sentry, Toast, 투자 설문 provider를 조립합니다.
+- `app/page.tsx`
+  루트 진입점입니다. 현재는 `/stock` 쪽 흐름으로 보내는 역할이 중심입니다.
+- `app/(main)/layout.tsx`
+  로그인 이후 주요 화면의 공통 레이아웃입니다.
+- `middleware.ts`
+  디바이스 제한, 로그인 여부, URL 형식 검증 같은 요청 경계 규칙을 처리합니다.
+
+## Codemap
+
+### `app/`
+
+라우트와 레이아웃을 둡니다. "주소와 화면 흐름"이 이 폴더의 기준입니다.
+
+- `app/(main)/stock/`: 종목 목록/상세 흐름
+- `app/(main)/portfolio/`: 포트폴리오 흐름
+- `app/signup/`: 회원가입 흐름
+- `app/only-desktop/`: 모바일 차단 화면
+- `app/error.tsx`, `app/not-found.tsx`: 전역 오류/404 경계
+
+페이지 파일은 가능한 한 얇게 유지하고, 반복되는 로직은 컴포넌트/훅/API 계층으로 내립니다.
+
+### `components/`
+
+렌더링 가능한 UI를 둡니다.
+
+- `components/router/`
+  라우트 조립에 가까운 컴포넌트와 provider를 둡니다.
+- `components/ui/`
+  화면에서 반복 사용하는 UI 조각을 둡니다.
+- `components/ui/shared/`
+  버튼, 입력, 에러 표시처럼 공통 조합을 둡니다.
+- `components/animate-ui/`, `components/lottie/`
+  표현 계층의 애니메이션과 시각 효과를 둡니다.
+
+새 컴포넌트를 추가할 때는 "라우트 조립인지, 화면 조각인지, 공용 조합인지"를 먼저 구분합니다.
+
+### `api/`
+
+백엔드 또는 프록시 호출을 설명하는 얇은 함수 레이어입니다.
+
+- `api/stocks.ts`: 종목 조회와 시세 관련 호출
+- `api/portfolio.ts`: 포트폴리오와 관심 종목 관련 호출
+
+이 레이어는 네트워크 요청을 설명하는 역할에 집중하고, UI 토글이나 렌더링 관심사는 섞지 않는 편이 좋습니다.
+
+### `hooks/`
+
+브라우저에서 반복되는 상호작용과 클라이언트 동작을 캡슐화합니다.
+
+- `useDebounce`, `useOutsideClick`: UI 상호작용 보조
+- `useRealTimeStock`: 종목 상세의 실시간 폴링 경계
+- `useTokenExpire`: 로그인 만료 반영
+
+### `store/`
+
+Zustand 기반 공유 상태를 둡니다.
+
+- `sidebarStore.ts`: 순수 UI 상태
+- `useActiveStockSetStore.ts`: 활성 종목 집합
+- `usePortfolio.ts`, `useInterestStore.ts`, `useRecentViewStore.ts`: 사용자 중심 상태
+
+서버에서 다시 가져올 수 있는 값은 무조건 store에 복제하기보다, 서버 상태 관리 도구를 우선 고려합니다.
+
+### `utils/`, `lib/`, `type/`
+
+- `utils/auth.ts`: 쿠키/JWT 기반 인증 정보 읽기 경계
+- `utils/formatDate.ts`: 표현용 유틸
+- `lib/`: 작은 공용 유틸
+- `type/`: API 응답과 도메인 타입
+
+가능한 한 UI와 분리된 순수 코드로 유지하는 편이 좋습니다.
+
+### `mocks/`
+
+MSW 기반 목킹 코드를 둡니다. 백엔드와 프론트 작업을 분리하거나 불안정한 API를 우회할 때 사용합니다.
+
+## Cross-cutting Concerns
+
+### Authentication
+
+인증 정보 읽기의 기준점은 `utils/auth.ts`입니다. `middleware.ts`와 서버 컴포넌트 레이아웃이 이 경계를 통해 사용자 정보를 판단합니다.
+
+### Query and App Providers
+
+전역 provider 조립은 `app/layout.tsx`에서 끝냅니다. 새로운 cross-cutting concern을 추가할 때도 먼저 여기서 조립해야 하는지 검토합니다.
+
+### Mocking
+
+MSW는 `app/MSWProvider.tsx`와 `mocks/`를 중심으로 동작합니다.
+
+### Real-time-ish Updates
+
+실시간 시세는 WebSocket보다 폴링에 가깝습니다. `useRealTimeStock`와 `components/router/ActiveStockRequestCoordinator.tsx`가 핵심 축입니다.
 
 ## Commands
 
@@ -36,14 +143,19 @@ npm run dev --workspace frontend
 npm run build --workspace frontend
 ```
 
+## Where To Start
+
+- 새 페이지/화면 흐름: `app/`
+- 기존 화면 조립 변경: `app/(main)/layout.tsx`, 관련 route 파일
+- 공용 UI 추가/수정: `components/ui/`, `components/ui/shared/`
+- API 호출 추가: `api/`
+- 반복 상호작용 추가: `hooks/`
+- 여러 화면이 공유하는 상태 추가: `store/`
+- 인증/접근 경계 변경: `middleware.ts`, `utils/auth.ts`
+
 ## Environment Variables
 
 - `NEXT_PUBLIC_BASE_URL`
 - `NEXT_PUBLIC_BASE_URL2`
 - `JWT_SECRET`
 - `NEXT_PUBLIC_API_MOCKING=enabled` (선택, MSW 사용 시)
-
-## Notes
-
-- 뉴스, 캘린더, 챗봇 관련 프론트 코드는 제거되었습니다.
-- Spring Boot 백엔드는 이후 루트의 `backend/` 위치에 추가될 예정입니다.

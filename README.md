@@ -15,7 +15,7 @@
 coin-zzickmock/
 ├── frontend/                 # Next.js 프론트엔드
 ├── backend/                  # Spring Boot 백엔드
-│   └── AGENTS.md             # 백엔드 작업 규칙
+├── BACKEND.md                # 백엔드 아키텍처 기준 문서
 ├── Legacy.md                 # 리팩토링 분석 문서
 └── README.md
 ```
@@ -53,27 +53,28 @@ npm run lint
 ./gradlew clean test
 ```
 
-## 백엔드 개발 규칙
+## 백엔드 아키텍처 기준
 
-이 프로젝트의 백엔드 작업은 `backend/AGENTS.md`를 단일 기준으로 진행합니다.
+이 프로젝트의 백엔드 작업은 `BACKEND.md`를 기준으로 진행합니다.
 
-- 규칙 문서: [backend/AGENTS.md](backend/AGENTS.md)
+- 기준 문서: [BACKEND.md](BACKEND.md)
 
 핵심 원칙:
 
-- `Service`는 얇게 유지하고 세부 책임은 협력 객체로 분리
+- 기능은 `feature-first`로 자른다
+- 레이어는 `api`, `application`, `domain`, `infrastructure`로 고정한다
+- 교차 관심사(인증, 커넥터, 텔레메트리, 기능 플래그)는 `Providers`를 통해서만 접근한다
 - 예외는 `CoreException`과 `ErrorType`으로 통일
 - 응답은 `ApiResponse`로 통일
-- 외부 연동은 `extern`, 스케줄링은 `batch`로 분리
 - 리팩토링 시 기능 변경 없이 회귀 테스트 통과를 기준으로 검증
 
 ## 참고 문서
 
 - 리팩토링 분석: [Legacy.md](Legacy.md)
-- 백엔드 작업 규칙: [backend/AGENTS.md](backend/AGENTS.md)
+- 백엔드 아키텍처 기준: [BACKEND.md](BACKEND.md)
 
 ## 현재 상태
 
 - 프론트엔드: npm workspace 기반으로 실행
 - 백엔드: Gradle 기반 단독 실행
-- 백엔드 구조는 객체지향 리팩토링과 응답/예외 통일화를 진행 중이며, `backend/AGENTS.md` 기준으로 계속 정리합니다.
+- 백엔드 구조는 객체지향 리팩토링과 응답/예외 통일화를 진행 중이며, `BACKEND.md` 기준으로 계속 정리합니다.

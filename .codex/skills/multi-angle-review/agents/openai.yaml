@@ -1,4 +1,0 @@
-interface:
-  display_name: "Multi-Angle Review"
-  short_description: "Run fresh reviewer agents per quality angle"
-  default_prompt: "Use $multi-angle-review to run independent readability, performance, security, test, and architecture reviews on the current code changes."

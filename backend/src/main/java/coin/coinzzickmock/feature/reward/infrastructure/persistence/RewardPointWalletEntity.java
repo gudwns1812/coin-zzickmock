@@ -1,19 +1,17 @@
 package coin.coinzzickmock.feature.reward.infrastructure.persistence;
 
+import coin.coinzzickmock.common.persistence.AuditableEntity;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
 @Entity
 @Table(name = "reward_point_wallets")
-public class RewardPointWalletJpaEntity {
+public class RewardPointWalletEntity extends AuditableEntity {
     @Id
     @Column(name = "member_id", nullable = false, length = 64)
     private String memberId;
@@ -21,19 +19,11 @@ public class RewardPointWalletJpaEntity {
     @Column(name = "reward_point", nullable = false, precision = 19, scale = 2)
     private BigDecimal rewardPoint;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
-    protected RewardPointWalletJpaEntity() {
+    protected RewardPointWalletEntity() {
     }
 
-    public static RewardPointWalletJpaEntity from(RewardPointWallet rewardPointWallet) {
-        RewardPointWalletJpaEntity entity = new RewardPointWalletJpaEntity();
+    public static RewardPointWalletEntity from(RewardPointWallet rewardPointWallet) {
+        RewardPointWalletEntity entity = new RewardPointWalletEntity();
         entity.memberId = rewardPointWallet.memberId();
         entity.rewardPoint = BigDecimal.valueOf(rewardPointWallet.rewardPoint());
         return entity;

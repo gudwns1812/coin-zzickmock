@@ -4,6 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface FuturesOrderSpringDataRepository extends JpaRepository<FuturesOrderJpaEntity, Long> {
-    List<FuturesOrderJpaEntity> findAllByMemberIdOrderByCreatedAtDesc(String memberId);
+public interface FuturesOrderSpringDataRepository extends JpaRepository<FuturesOrderEntity, Long> {
+    List<FuturesOrderEntity> findAllByMemberIdOrderByCreatedAtDesc(String memberId);
 }

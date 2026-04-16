@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.market.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.common.error.NotFoundException;
+import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -27,7 +27,7 @@ public class GetMarketSummaryService {
     public MarketSummaryResult getMarket(GetMarketQuery query) {
         MarketSnapshot snapshot = providers.connector().marketDataGateway().loadMarket(query.symbol());
         if (snapshot == null) {
-            throw new NotFoundException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + query.symbol());
+            throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + query.symbol());
         }
         return toResult(snapshot);
     }

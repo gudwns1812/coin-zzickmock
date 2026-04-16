@@ -33,6 +33,10 @@
 - [x] (2026-04-16 15:33+09:00) 품질 게이트용 자체 리뷰 수행 및 결과 기록
 - [x] (2026-04-16 16:18+09:00) 사용자 요청에 따라 `bootstrap` 제거 방향으로 active 계획 갱신
 - [x] (2026-04-16 16:21+09:00) `bootstrap` 제거를 반영한 문서, 린트, 패키지 구조 수정 및 재검증
+- [x] (2026-04-16 16:56+09:00) PR #1 pending 리뷰 스레드 조사 및 수정 범위 확정
+- [x] (2026-04-16 19:54+09:00) PR 리뷰 코멘트를 반영한 테스트 추가 및 핵심 동작 확인
+- [x] (2026-04-16 19:55+09:00) PR 리뷰 코멘트를 반영한 문서/코드/린트 규칙 정리
+- [x] (2026-04-16 19:56+09:00) 변경 범위 재검증 및 품질 게이트 재실행
 
 ## 놀라움과 발견
 
@@ -65,6 +69,11 @@
   주문 서비스 테스트는 기존의 가짜 `OrderPreviewPolicy`에 기대고 있었기 때문에, 정책을 서비스 내부로 옮기자 기대 증거금 값도 함께 바뀌었다.
   증거:
   [backend/src/test/java/coin/coinzzickmock/feature/order/application/service/CreateOrderServiceTest.java](/Users/hj.park/projects/coin-zzickmock/backend/src/test/java/coin/coinzzickmock/feature/order/application/service/CreateOrderServiceTest.java)의 기대 `availableMargin` 값을 `98990`에서 `98995`로 조정했다.
+
+- 관찰:
+  PR #1에는 아직 제출되지 않은 pending 리뷰 스레드가 9개 남아 있으며, 대부분이 예외 단순화, 엔티티 네이밍, 계층 책임, 매직 넘버 제거처럼 현재 리팩토링 방향과 직접 연결된다.
+  증거:
+  GitHub PR `Build coin futures MVP foundation`의 conversation 화면에서 `BadRequestException`, `NotFoundException`, `TradingAccountJpaEntity`, `CreateOrderService.preview`, `GrantProfitPointService`, `BitgetMarketDataGateway` 등에 대한 pending 코멘트를 확인했다.
 
 ## 의사결정 기록
 
@@ -103,6 +112,13 @@
   날짜/작성자:
   2026-04-16 / Codex
 
+- 결정:
+  이번 후속 루프에서는 PR #1의 pending 리뷰 스레드 전체를 같은 active 계획의 연장선으로 반영한다.
+  근거:
+  사용자 요청은 "내가 PR에 리뷰 달았는데 확인해서 문서/린트/코드를 수정"하는 것이고, 현재 열려 있는 active 계획과 같은 브랜치/PR 범위 안에서 닫히는 작업이기 때문이다.
+  날짜/작성자:
+  2026-04-16 / Codex
+
 ## 결과 및 회고
 
 이번 리팩토링으로 공개 API 경로는 유지한 채 내부 구조를 문서 기준에 더 가깝게 맞췄다.
@@ -116,6 +132,8 @@
 - `bootstrap` 패키지를 제거하고 `CoinZzickmockApplication`을 루트 패키지로 이동했다.
 - Bitget, Querydsl, demo account seed 설정을 각각 owner의 `infrastructure/config`로 나눴다.
 - 문서와 아키텍처 린트도 같은 기준으로 갱신해 루트 `*Application`과 owner별 config 배치를 자동 검증하게 만들었다.
+- PR 리뷰 반영으로 `CoreException` 단일 예외 모델, `*Entity` 네이밍, 공통 감사 필드, `OrderPreviewPolicy`, `RewardPointPolicy`, `BitgetTickerSnapshotMapper`를 도입했다.
+- 계정 도메인이 `memberEmail`을 명시적으로 소유하게 바꿔 저장소가 임의 기본값을 주입하지 않도록 정리했다.
 
 남은 리스크는 크지 않지만 두 가지가 있다.
 
@@ -147,31 +165,31 @@
 
 ## 작업 계획
 
-먼저 공통 예외 모델을 추가한다. `backend/src/main/java/coin/coinzzickmock/common/error/` 아래에 `ErrorCode`, `CoreException`, `NotFoundException`, `BadRequestException`, `ErrorResponse`, `GlobalExceptionHandler`를 만든다. 기존 `IllegalArgumentException`을 그대로 노출하지 않고, 각 서비스에서 구조화된 예외를 던지도록 바꾼다.
+먼저 공통 예외 모델을 `CoreException` 단일 타입 중심으로 다시 단순화한다. `backend/src/main/java/coin/coinzzickmock/common/error/` 아래에서 `NotFoundException`, `BadRequestException` 같은 세분화 클래스를 제거하고, `ErrorCode`의 HTTP 상태와 메시지로 분류를 유지한다. 관련 설계 문서의 예외 규칙도 같은 방향으로 갱신한다.
 
-그 다음 feature별 application 구조를 정리한다. `application/usecase`와 `application/port`에 있는 타입을 제거하거나 `application/service`, `application/gateway`, `application/repository` 같은 실제 역할 이름으로 옮긴다. 저장소 계약은 `application`이 소유하게 만들고, JPA 구현체는 `infrastructure/persistence`에서 그 계약을 구현하게 바꾼다.
+그 다음 feature별 application 구조를 리뷰 의도에 맞게 다듬는다. 주문 미리보기는 `CreateOrderService.preview`가 진입가격, 실행 가능 여부, 수수료 타입, 증거금 계산을 모두 책임지도록 정리하고, 컨트롤러는 계산 결과를 그대로 응답으로 매핑만 하게 만든다. 문자열 상수와 보상 포인트 임계값은 명시적 상수로 끌어올린다.
 
-이후 controller를 정리한다. 각 controller는 concrete application service를 주입받아 request DTO를 command/query로 바꾸고 response DTO로 매핑하는 역할만 맡는다. 특히 reward 조회는 `RewardController -> application service -> repository` 흐름으로 바꾼다.
+이후 controller와 persistence를 정리한다. 컨트롤러 생성자 보일러플레이트는 Lombok으로 줄이고, 계정 도메인이 `memberEmail`을 명시적으로 가지도록 바꿔 저장소가 임의 기본 이메일을 주입하지 않게 만든다. JPA 엔티티는 기술명을 뺀 이름으로 통일하고, 반복되는 `created_at`/`updated_at` 필드는 공통 기반 클래스로 추출한다.
 
-마지막으로 조립을 정리한다. `bootstrap` 패키지는 제거하고 `CoinZzickmockApplication`을 루트 패키지로 이동한다. Bitget connector, Querydsl, demo account seed 설정은 각각 `providers` 또는 해당 feature의 `infrastructure/config`로 재배치해 owner가 파일 위치에서 바로 드러나게 만든다.
+마지막으로 provider 조립을 정리한다. `BitgetMarketDataGateway`가 외부 응답을 직접 `MarketSnapshot`으로 조립하던 책임은 `providers/infrastructure/mapper`의 전용 mapper로 분리하고, gateway는 호출과 fallback 경계만 담당하게 만든다.
 
 ## 구체적인 단계
 
-1. `backend/src/test/java`에 현재 구조가 고정해야 하는 핵심 동작 테스트를 먼저 추가하거나 보강한다.
-   목표는 다음 두 가지다.
-   - reward 조회가 application service를 통해도 동일 결과를 돌려주는지
-   - 주문/포지션 서비스가 새 계약 패키지 구조로 옮겨도 기존 계산을 유지하는지
+1. `backend/src/test/java`에 PR 리뷰 반영으로 바뀌면 안 되는 핵심 동작 테스트를 먼저 추가하거나 보강한다.
+   목표는 다음 세 가지다.
+   - 주문 preview가 진입가격, 실행 가능 여부, 수수료 타입을 서비스에서 일관되게 계산하는지
+   - 계정/포지션 서비스가 `memberEmail`을 잃지 않고 계정 잔액을 갱신하는지
+   - 보상 포인트 임계값이 상수화 뒤에도 같은 결과를 유지하는지
 
-2. `backend/src/main/java/coin/coinzzickmock/common/error/`를 추가하고 서비스 예외를 새 타입으로 바꾼다.
+2. `backend/src/main/java/coin/coinzzickmock/common/error/`와 설계 문서를 정리해 `CoreException` 단일 타입 정책으로 맞춘다.
 
-3. feature별 계약과 서비스 패키지를 이동한다.
-   - account: account summary 조회 계약/구현 이동
-   - market: market 조회 경로 단순화
-   - order: preview/order 저장 계약과 정책 재배치
-   - position: position 조회/청산 계약 재배치
-   - reward: reward 조회/적립 service 추가
+3. 리뷰가 걸린 feature 코드를 정리한다.
+   - account: `memberEmail`을 도메인에 올리고 기본 이메일 보정 제거
+   - order: preview 계산 책임 정리, 상수화, 응답 값 계산 위치 정리
+   - reward: 포인트 tier 매직 넘버 제거
+   - provider: Bitget 응답 mapper 분리
 
-4. controller와 설정 배치를 새 구조에 맞춰 수정한다. 루트에는 `CoinZzickmockApplication`만 남기고, 설정은 owner의 `infrastructure/config`로 이동한다.
+4. controller와 persistence 보일러플레이트를 줄이고 엔티티 네이밍/공통 감사 필드를 정리한다.
 
 5. 아래 명령을 `backend/`에서 실행한다.
    `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew test --console=plain`
@@ -207,12 +225,14 @@
 
 - `backend/src/main/java/coin/coinzzickmock/feature/*` 아래에서 `application/usecase`, `application/port` 디렉터리가 제거되었다.
 - `backend/src/main/java/coin/coinzzickmock/bootstrap` 디렉터리가 제거되고, 루트 `CoinZzickmockApplication`과 owner별 `infrastructure/config`만 남았다.
+- `backend/src/main/java/coin/coinzzickmock/common/error` 아래에서 `BadRequestException`, `NotFoundException`이 제거되고 `CoreException`만 남았다.
+- `backend/src/main/java/coin/coinzzickmock/feature/*/infrastructure/persistence`의 JPA 엔티티가 `*JpaEntity`에서 `*Entity`로 정리되었다.
 - `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew test --console=plain`
-  `BUILD SUCCESSFUL in 5s`
+  `BUILD SUCCESSFUL in 6s`
 - `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew architectureLint --console=plain`
   `"status":"passed","violations":0`
 - `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check --console=plain`
-  `BUILD SUCCESSFUL in 5s`
+  `BUILD SUCCESSFUL`
 
 ## 인터페이스와 의존성
 
@@ -236,3 +256,4 @@
 2026-04-16 15:33+09:00 / 서비스, 저장소 계약, 예외, provider 구현체, 테스트, 검증 결과를 반영해 계획 문서를 완료 상태로 갱신했다.
 2026-04-16 16:18+09:00 / 사용자 요청에 따라 `bootstrap` 제거 방향을 반영하도록 계획을 다시 열고, owner별 config 재배치 작업을 추가했다.
 2026-04-16 16:21+09:00 / 루트 `CoinZzickmockApplication`, owner별 `infrastructure/config`, 아키텍처 린트 규칙, 설계 문서 갱신과 `architectureLint`/`check` 재검증 결과를 반영했다.
+2026-04-16 19:56+09:00 / PR #1 pending 리뷰 스레드를 반영해 예외 단일화, 엔티티 네이밍/공통 감사 필드, 주문/보상 정책, Bitget mapper 분리, Lombok 보일러플레이트 축소와 재검증 결과를 반영했다.

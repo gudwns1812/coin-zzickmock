@@ -356,8 +356,6 @@ DB를 참고하거나 수정하는 작업에서는 반드시 [docs/generated/db-
 common/error/
   ErrorCode.java
   CoreException.java
-  NotFoundException.java
-  ExternalServiceException.java
   ErrorResponse.java
   GlobalExceptionHandler.java
 ```
@@ -365,6 +363,7 @@ common/error/
 규칙:
 
 - 도메인/애플리케이션 실패는 구조화된 에러 코드로 표현한다.
+- `CoreException`은 기본 예외 타입 하나로 유지하고, `BadRequestException`, `NotFoundException`처럼 상태별 하위 클래스를 기계적으로 만들지 않는다.
 - 외부 연동 실패는 infrastructure 또는 application 경계에서 번역한다.
 - HTTP 응답 변환은 글로벌 핸들러 한 곳에서 수행한다.
 - `catch (Exception)`은 경계에서 번역할 때만 허용한다.
@@ -380,6 +379,7 @@ common/error/
 - `JpaOrderRepositoryAdapter`
 - `CurrentActor`
 - `MarketDataConnector`
+- `TradingAccountEntity`
 
 금지:
 
@@ -388,6 +388,12 @@ common/error/
 - `OrderManager`
 - `OrderHelper`
 - `CommonService`
+- `TradingAccountJpaEntity`
+
+추가 규칙:
+
+- 엔티티 이름에는 `Jpa`, `MyBatis`, `Redis` 같은 기술명을 넣지 않는다.
+- 기술 세부사항은 repository adapter, config, connector 이름에서만 드러낸다.
 - `Util`
 - `Processor`
 

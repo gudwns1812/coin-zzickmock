@@ -14,7 +14,7 @@ import java.util.Optional;
 public class JpaPositionRepository implements PositionRepository {
     private final OpenPositionSpringDataRepository openPositionSpringDataRepository;
     private final JPAQueryFactory jpaQueryFactory;
-    private final PathBuilder<OpenPositionJpaEntity> position = new PathBuilder<>(OpenPositionJpaEntity.class, "position");
+    private final PathBuilder<OpenPositionEntity> position = new PathBuilder<>(OpenPositionEntity.class, "position");
 
     public JpaPositionRepository(
             OpenPositionSpringDataRepository openPositionSpringDataRepository,
@@ -32,7 +32,7 @@ public class JpaPositionRepository implements PositionRepository {
                 .orderBy(position.getString("symbol").asc())
                 .fetch()
                 .stream()
-                .map(OpenPositionJpaEntity::toDomain)
+                .map(OpenPositionEntity::toDomain)
                 .toList();
     }
 
@@ -44,7 +44,7 @@ public class JpaPositionRepository implements PositionRepository {
             String positionSide,
             String marginMode
     ) {
-        OpenPositionJpaEntity entity = jpaQueryFactory.selectFrom(position)
+        OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
                 .where(
                         position.getString("memberId").eq(memberId),
                         position.getString("symbol").eq(symbol),
@@ -52,13 +52,13 @@ public class JpaPositionRepository implements PositionRepository {
                         position.getString("marginMode").eq(marginMode)
                 )
                 .fetchOne();
-        return Optional.ofNullable(entity).map(OpenPositionJpaEntity::toDomain);
+        return Optional.ofNullable(entity).map(OpenPositionEntity::toDomain);
     }
 
     @Override
     @Transactional
     public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
-        OpenPositionJpaEntity entity = jpaQueryFactory.selectFrom(position)
+        OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
                 .where(
                         position.getString("memberId").eq(memberId),
                         position.getString("symbol").eq(positionSnapshot.symbol()),
@@ -68,7 +68,7 @@ public class JpaPositionRepository implements PositionRepository {
                 .fetchOne();
 
         if (entity == null) {
-            entity = OpenPositionJpaEntity.from(memberId, positionSnapshot);
+            entity = OpenPositionEntity.from(memberId, positionSnapshot);
         } else {
             entity.apply(positionSnapshot);
         }

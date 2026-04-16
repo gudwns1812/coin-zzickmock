@@ -14,7 +14,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "futures_orders")
-public class FuturesOrderJpaEntity {
+public class FuturesOrderEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -62,11 +62,11 @@ public class FuturesOrderJpaEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected FuturesOrderJpaEntity() {
+    protected FuturesOrderEntity() {
     }
 
-    public static FuturesOrderJpaEntity from(String memberId, FuturesOrder futuresOrder) {
-        FuturesOrderJpaEntity entity = new FuturesOrderJpaEntity();
+    public static FuturesOrderEntity from(String memberId, FuturesOrder futuresOrder) {
+        FuturesOrderEntity entity = new FuturesOrderEntity();
         entity.orderId = futuresOrder.orderId();
         entity.memberId = memberId;
         entity.symbol = futuresOrder.symbol();

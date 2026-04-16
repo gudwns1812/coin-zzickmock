@@ -18,14 +18,14 @@ public class JpaOrderRepository implements OrderRepository {
     @Override
     @Transactional
     public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
-        return futuresOrderSpringDataRepository.save(FuturesOrderJpaEntity.from(memberId, futuresOrder)).toDomain();
+        return futuresOrderSpringDataRepository.save(FuturesOrderEntity.from(memberId, futuresOrder)).toDomain();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<FuturesOrder> findByMemberId(String memberId) {
         return futuresOrderSpringDataRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
-                .map(FuturesOrderJpaEntity::toDomain)
+                .map(FuturesOrderEntity::toDomain)
                 .toList();
     }
 }

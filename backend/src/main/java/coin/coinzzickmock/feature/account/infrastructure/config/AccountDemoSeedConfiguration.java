@@ -9,13 +9,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AccountDemoSeedConfiguration {
     private static final String DEMO_MEMBER_ID = "demo-member";
+    private static final String DEMO_MEMBER_EMAIL = "demo@coinzzickmock.dev";
     private static final String DEMO_MEMBER_NAME = "Demo Trader";
 
     @Bean
     ApplicationRunner demoAccountInitializer(AccountRepository accountRepository) {
         return args -> accountRepository.findByMemberId(DEMO_MEMBER_ID)
                 .orElseGet(() -> accountRepository.save(
-                        new TradingAccount(DEMO_MEMBER_ID, DEMO_MEMBER_NAME, 100000, 100000)
+                        new TradingAccount(DEMO_MEMBER_ID, DEMO_MEMBER_EMAIL, DEMO_MEMBER_NAME, 100000, 100000)
                 ));
     }
 }

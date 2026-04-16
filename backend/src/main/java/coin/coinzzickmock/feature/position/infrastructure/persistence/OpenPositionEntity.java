@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.position.infrastructure.persistence;
 
+import coin.coinzzickmock.common.persistence.AuditableEntity;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,11 +9,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
 @Entity
 @Table(
@@ -22,7 +20,7 @@ import java.time.Instant;
                 columnNames = {"member_id", "symbol", "position_side", "margin_mode"}
         )
 )
-public class OpenPositionJpaEntity {
+public class OpenPositionEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -57,19 +55,11 @@ public class OpenPositionJpaEntity {
     @Column(name = "unrealized_pnl", nullable = false, precision = 19, scale = 4)
     private BigDecimal unrealizedPnl;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
-    protected OpenPositionJpaEntity() {
+    protected OpenPositionEntity() {
     }
 
-    public static OpenPositionJpaEntity from(String memberId, PositionSnapshot positionSnapshot) {
-        OpenPositionJpaEntity entity = new OpenPositionJpaEntity();
+    public static OpenPositionEntity from(String memberId, PositionSnapshot positionSnapshot) {
+        OpenPositionEntity entity = new OpenPositionEntity();
         entity.memberId = memberId;
         entity.apply(positionSnapshot);
         return entity;

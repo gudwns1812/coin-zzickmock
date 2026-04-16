@@ -1,8 +1,7 @@
 package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.common.error.BadRequestException;
-import coin.coinzzickmock.common.error.NotFoundException;
+import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -11,6 +10,7 @@ import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
+import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.providers.Providers;
@@ -21,6 +21,7 @@ import java.util.UUID;
 
 @Service
 public class CreateOrderService {
+    private final OrderPreviewPolicy orderPreviewPolicy = new OrderPreviewPolicy();
     private final Providers providers;
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
@@ -40,31 +41,15 @@ public class CreateOrderService {
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
-        MarketSnapshot market = loadMarket(command.symbol());
-        double entryPrice = "LIMIT".equalsIgnoreCase(command.orderType()) && command.limitPrice() != null
-                ? command.limitPrice()
-                : market.lastPrice();
-        boolean executable = "MARKET".equalsIgnoreCase(command.orderType())
-                || ("LONG".equalsIgnoreCase(command.positionSide()) && market.lastPrice() <= entryPrice)
-                || ("SHORT".equalsIgnoreCase(command.positionSide()) && market.lastPrice() >= entryPrice);
-        String feeType = executable ? "TAKER" : "MAKER";
-        double feeRate = executable ? 0.0005 : 0.00015;
-        double estimatedFee = entryPrice * command.quantity() * feeRate;
-        double estimatedInitialMargin = entryPrice * command.quantity() / command.leverage();
-        double liquidationGap = entryPrice / command.leverage();
-        double estimatedLiquidationPrice = "LONG".equalsIgnoreCase(command.positionSide())
-                ? entryPrice - liquidationGap
-                : entryPrice + liquidationGap;
-        return new OrderPreview(feeType, estimatedFee, estimatedInitialMargin, estimatedLiquidationPrice);
+        return preview(command, loadMarket(command.symbol()));
     }
 
     @Transactional
     public CreateOrderResult execute(CreateOrderCommand command) {
-        OrderPreview preview = preview(command);
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());
+        OrderPreview preview = preview(command, marketSnapshot);
         String orderId = UUID.randomUUID().toString();
-        boolean executable = isExecutable(command, marketSnapshot.lastPrice());
-        String status = executable ? "FILLED" : "PENDING";
+        String status = preview.executable() ? "FILLED" : "PENDING";
 
         FuturesOrder futuresOrder = orderRepository.save(
                 command.memberId(),
@@ -84,7 +69,7 @@ public class CreateOrderService {
                 )
         );
 
-        if (executable) {
+        if (preview.executable()) {
             applyFilledOrder(command, marketSnapshot, preview);
         }
 
@@ -106,15 +91,16 @@ public class CreateOrderService {
             OrderPreview preview
     ) {
         TradingAccount account = accountRepository.findByMemberId(command.memberId())
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ACCOUNT_NOT_FOUND));
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         double requiredMargin = preview.estimatedInitialMargin() + preview.estimatedFee();
         if (account.availableMargin() < requiredMargin) {
-            throw new BadRequestException(ErrorCode.INSUFFICIENT_AVAILABLE_MARGIN);
+            throw new CoreException(ErrorCode.INSUFFICIENT_AVAILABLE_MARGIN);
         }
 
         accountRepository.save(new TradingAccount(
                 account.memberId(),
+                account.memberEmail(),
                 account.memberName(),
                 account.walletBalance() - preview.estimatedFee(),
                 account.availableMargin() - requiredMargin
@@ -160,22 +146,14 @@ public class CreateOrderService {
         ));
     }
 
-    private boolean isExecutable(CreateOrderCommand command, double lastPrice) {
-        if ("MARKET".equalsIgnoreCase(command.orderType())) {
-            return true;
-        }
-
-        double limitPrice = command.limitPrice() == null ? lastPrice : command.limitPrice();
-        if ("LONG".equalsIgnoreCase(command.positionSide())) {
-            return lastPrice <= limitPrice;
-        }
-        return lastPrice >= limitPrice;
+    private OrderPreview preview(CreateOrderCommand command, MarketSnapshot marketSnapshot) {
+        return orderPreviewPolicy.preview(command, marketSnapshot);
     }
 
     private MarketSnapshot loadMarket(String symbol) {
         MarketSnapshot snapshot = providers.connector().marketDataGateway().loadMarket(symbol);
         if (snapshot == null) {
-            throw new NotFoundException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
+            throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
         }
         return snapshot;
     }

@@ -25,11 +25,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.1'
     implementation 'org.flywaydb:flyway-core'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
     runtimeOnly 'org.flywaydb:flyway-mysql'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'com.h2database:h2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -84,6 +88,7 @@ tasks.register('architectureLint') {
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
                     'API_NO_PERSISTENCE_IMPORTS',
+                    'ENTITY_NAME_NO_TECH_SUFFIX',
                 ],
             ])
 
@@ -207,6 +212,17 @@ tasks.register('architectureLint') {
                 }
 
                 def layer = packageSegments.find { architectureLayers.contains(it) }
+
+                if (text.contains('@Entity') && sourceFile.name.endsWith('JpaEntity.java')) {
+                    logViolation(
+                        sourceFile,
+                        1,
+                        'ENTITY_NAME_NO_TECH_SUFFIX',
+                        'JPA 엔티티 이름에 `Jpa` 같은 기술 접미사를 넣지 않습니다.',
+                        '엔티티 클래스명은 `*Entity`로 두고, 기술 세부사항은 repository adapter나 config 이름에서만 드러내세요.',
+                        [packageName: packageName]
+                    )
+                }
 
                 if (layer == 'domain') {
                     lines.eachWithIndex { lineText, index ->

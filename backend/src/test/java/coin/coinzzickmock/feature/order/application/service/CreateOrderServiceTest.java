@@ -7,6 +7,7 @@ import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.providers.Providers;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class CreateOrderServiceTest {
     @Test
@@ -54,8 +56,39 @@ class CreateOrderServiceTest {
         assertEquals(98995, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
     }
 
+    @Test
+    void previewsMakerLimitOrderWithEntryPriceAndExecutionFlag() {
+        CreateOrderService service = new CreateOrderService(
+                new FakeProviders(),
+                new InMemoryOrderRepository(),
+                new InMemoryAccountRepository(),
+                new InMemoryPositionRepository()
+        );
+
+        OrderPreview preview = service.preview(new CreateOrderCommand(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                0.1,
+                99900.0
+        ));
+
+        assertEquals("MAKER", preview.feeType());
+        assertEquals(99900.0, preview.estimatedEntryPrice(), 0.0001);
+        assertFalse(preview.executable());
+    }
+
     private static class InMemoryAccountRepository implements AccountRepository {
-        private TradingAccount account = new TradingAccount("demo-member", "Demo", 100000, 100000);
+        private TradingAccount account = new TradingAccount(
+                "demo-member",
+                "demo@coinzzickmock.dev",
+                "Demo",
+                100000,
+                100000
+        );
 
         @Override
         public Optional<TradingAccount> findByMemberId(String memberId) {

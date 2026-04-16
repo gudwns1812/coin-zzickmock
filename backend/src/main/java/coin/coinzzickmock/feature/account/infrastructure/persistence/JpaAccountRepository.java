@@ -19,25 +19,18 @@ public class JpaAccountRepository implements AccountRepository {
     @Transactional(readOnly = true)
     public Optional<TradingAccount> findByMemberId(String memberId) {
         return tradingAccountSpringDataRepository.findById(memberId)
-                .map(TradingAccountJpaEntity::toDomain);
+                .map(TradingAccountEntity::toDomain);
     }
 
     @Override
     @Transactional
     public TradingAccount save(TradingAccount account) {
-        TradingAccountJpaEntity entity = tradingAccountSpringDataRepository.findById(account.memberId())
+        TradingAccountEntity entity = tradingAccountSpringDataRepository.findById(account.memberId())
                 .map(existing -> {
-                    existing.apply(existing.memberEmail(), account);
+                    existing.apply(account);
                     return existing;
                 })
-                .orElseGet(() -> TradingAccountJpaEntity.from(defaultEmail(account.memberId()), account));
+                .orElseGet(() -> TradingAccountEntity.from(account));
         return tradingAccountSpringDataRepository.save(entity).toDomain();
-    }
-
-    private String defaultEmail(String memberId) {
-        if ("demo-member".equals(memberId)) {
-            return "demo@coinzzickmock.dev";
-        }
-        return memberId + "@coinzzickmock.local";
     }
 }

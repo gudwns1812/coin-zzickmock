@@ -5,20 +5,17 @@ import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQue
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.application.service.GetAccountSummaryService;
 import coin.coinzzickmock.providers.Providers;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/futures/account")
+@RequiredArgsConstructor
 public class AccountController {
     private final GetAccountSummaryService getAccountSummaryService;
     private final Providers providers;
-
-    public AccountController(GetAccountSummaryService getAccountSummaryService, Providers providers) {
-        this.getAccountSummaryService = getAccountSummaryService;
-        this.providers = providers;
-    }
 
     @GetMapping("/me")
     public ApiResponse<AccountSummaryResponse> me() {

@@ -6,6 +6,7 @@ import coin.coinzzickmock.feature.position.application.result.PositionSnapshotRe
 import coin.coinzzickmock.feature.position.application.service.ClosePositionService;
 import coin.coinzzickmock.feature.position.application.service.GetOpenPositionsService;
 import coin.coinzzickmock.providers.Providers;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,20 +17,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/futures/positions")
+@RequiredArgsConstructor
 public class PositionController {
     private final GetOpenPositionsService getOpenPositionsService;
     private final ClosePositionService closePositionService;
     private final Providers providers;
-
-    public PositionController(
-            GetOpenPositionsService getOpenPositionsService,
-            ClosePositionService closePositionService,
-            Providers providers
-    ) {
-        this.getOpenPositionsService = getOpenPositionsService;
-        this.closePositionService = closePositionService;
-        this.providers = providers;
-    }
 
     @GetMapping("/me")
     public ApiResponse<List<PositionSummaryResponse>> me() {

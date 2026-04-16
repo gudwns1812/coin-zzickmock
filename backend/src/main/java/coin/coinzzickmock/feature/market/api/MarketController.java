@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,12 +14,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/futures/markets")
+@RequiredArgsConstructor
 public class MarketController {
     private final GetMarketSummaryService getMarketSummaryService;
-
-    public MarketController(GetMarketSummaryService getMarketSummaryService) {
-        this.getMarketSummaryService = getMarketSummaryService;
-    }
 
     @GetMapping
     public ApiResponse<List<MarketSummaryResponse>> list() {

@@ -1,19 +1,17 @@
 package coin.coinzzickmock.feature.account.infrastructure.persistence;
 
+import coin.coinzzickmock.common.persistence.AuditableEntity;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
 @Entity
 @Table(name = "trading_accounts")
-public class TradingAccountJpaEntity {
+public class TradingAccountEntity extends AuditableEntity {
     @Id
     @Column(name = "member_id", nullable = false, length = 64)
     private String memberId;
@@ -30,18 +28,10 @@ public class TradingAccountJpaEntity {
     @Column(name = "available_margin", nullable = false, precision = 19, scale = 4)
     private BigDecimal availableMargin;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
-    protected TradingAccountJpaEntity() {
+    protected TradingAccountEntity() {
     }
 
-    public TradingAccountJpaEntity(
+    public TradingAccountEntity(
             String memberId,
             String memberEmail,
             String memberName,
@@ -55,18 +45,18 @@ public class TradingAccountJpaEntity {
         this.availableMargin = availableMargin;
     }
 
-    public static TradingAccountJpaEntity from(String memberEmail, TradingAccount account) {
-        return new TradingAccountJpaEntity(
+    public static TradingAccountEntity from(TradingAccount account) {
+        return new TradingAccountEntity(
                 account.memberId(),
-                memberEmail,
+                account.memberEmail(),
                 account.memberName(),
                 decimal(account.walletBalance()),
                 decimal(account.availableMargin())
         );
     }
 
-    public void apply(String memberEmail, TradingAccount account) {
-        this.memberEmail = memberEmail;
+    public void apply(TradingAccount account) {
+        this.memberEmail = account.memberEmail();
         this.memberName = account.memberName();
         this.walletBalance = decimal(account.walletBalance());
         this.availableMargin = decimal(account.availableMargin());
@@ -75,6 +65,7 @@ public class TradingAccountJpaEntity {
     public TradingAccount toDomain() {
         return new TradingAccount(
                 memberId,
+                memberEmail,
                 memberName,
                 walletBalance.doubleValue(),
                 availableMargin.doubleValue()

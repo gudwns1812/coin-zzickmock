@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.common.error.NotFoundException;
+import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -45,7 +45,7 @@ public class ClosePositionService {
             double quantity
     ) {
         PositionSnapshot position = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.POSITION_NOT_FOUND));
+                .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
 
         double closeQuantity = Math.min(quantity, position.quantity());
         MarketSnapshot market = loadMarket(symbol);
@@ -54,10 +54,11 @@ public class ClosePositionService {
         double releasedMargin = (position.entryPrice() * closeQuantity) / position.leverage();
 
         TradingAccount account = accountRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ACCOUNT_NOT_FOUND));
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         accountRepository.save(new TradingAccount(
                 account.memberId(),
+                account.memberEmail(),
                 account.memberName(),
                 account.walletBalance() + realizedPnl - closeFee,
                 account.availableMargin() + releasedMargin + realizedPnl - closeFee
@@ -102,7 +103,7 @@ public class ClosePositionService {
     private MarketSnapshot loadMarket(String symbol) {
         MarketSnapshot snapshot = providers.connector().marketDataGateway().loadMarket(symbol);
         if (snapshot == null) {
-            throw new NotFoundException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
+            throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
         }
         return snapshot;
     }

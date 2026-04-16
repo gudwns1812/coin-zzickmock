@@ -6,6 +6,7 @@ import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.application.service.CreateOrderService;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.providers.Providers;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,26 +14,21 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/futures/orders")
+@RequiredArgsConstructor
 public class OrderController {
     private final CreateOrderService createOrderService;
     private final Providers providers;
 
-    public OrderController(CreateOrderService createOrderService, Providers providers) {
-        this.createOrderService = createOrderService;
-        this.providers = providers;
-    }
-
     @PostMapping("/preview")
     public ApiResponse<OrderPreviewResponse> preview(@RequestBody CreateOrderRequest request) {
         OrderPreview preview = createOrderService.preview(toCommand(request));
-        boolean executable = "TAKER".equalsIgnoreCase(preview.feeType()) || "MARKET".equalsIgnoreCase(request.orderType());
         return ApiResponse.success(new OrderPreviewResponse(
                 preview.feeType(),
                 preview.estimatedFee(),
                 preview.estimatedInitialMargin(),
                 preview.estimatedLiquidationPrice(),
-                request.limitPrice() != null ? request.limitPrice() : preview.estimatedInitialMargin() * request.leverage() / request.quantity(),
-                executable
+                preview.estimatedEntryPrice(),
+                preview.executable()
         ));
     }
 

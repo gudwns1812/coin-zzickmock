@@ -19,18 +19,18 @@ public class JpaRewardPointRepository implements RewardPointRepository {
     @Transactional(readOnly = true)
     public Optional<RewardPointWallet> findByMemberId(String memberId) {
         return rewardPointWalletSpringDataRepository.findById(memberId)
-                .map(RewardPointWalletJpaEntity::toDomain);
+                .map(RewardPointWalletEntity::toDomain);
     }
 
     @Override
     @Transactional
     public RewardPointWallet save(RewardPointWallet rewardPointWallet) {
-        RewardPointWalletJpaEntity entity = rewardPointWalletSpringDataRepository.findById(rewardPointWallet.memberId())
+        RewardPointWalletEntity entity = rewardPointWalletSpringDataRepository.findById(rewardPointWallet.memberId())
                 .map(existing -> {
                     existing.apply(rewardPointWallet);
                     return existing;
                 })
-                .orElseGet(() -> RewardPointWalletJpaEntity.from(rewardPointWallet));
+                .orElseGet(() -> RewardPointWalletEntity.from(rewardPointWallet));
         return rewardPointWalletSpringDataRepository.save(entity).toDomain();
     }
 }

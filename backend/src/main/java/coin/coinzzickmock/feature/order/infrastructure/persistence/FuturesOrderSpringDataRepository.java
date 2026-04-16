@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface FuturesOrderSpringDataRepository extends JpaRepository<FuturesOrderEntity, Long> {
     List<FuturesOrderEntity> findAllByMemberIdOrderByCreatedAtDesc(String memberId);
+
+    void deleteAllByMemberId(String memberId);
 }

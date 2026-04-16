@@ -107,8 +107,8 @@ const SHOP_ITEM_FALLBACKS: ShopItem[] = [
 ];
 
 const ACCOUNT_FALLBACK: FuturesAccountSummary = {
-  memberId: "demo-member",
-  memberName: "Demo Trader",
+  memberId: "test",
+  memberName: "demo-trader",
   walletBalance: 100_000,
   availableMargin: 100_000,
   rewardPoint: 0,
@@ -186,8 +186,14 @@ export async function getShopItems(): Promise<ShopItem[]> {
 
 async function readApi<T>(path: string): Promise<T | null> {
   try {
+    const cookieHeader = await getAccessTokenCookieHeader();
     const response = await fetch(`${FUTURES_API_BASE_URL}${path}`, {
       cache: "no-store",
+      headers: cookieHeader
+        ? {
+            Cookie: cookieHeader,
+          }
+        : undefined,
       signal: AbortSignal.timeout(2000),
     });
 
@@ -202,6 +208,21 @@ async function readApi<T>(path: string): Promise<T | null> {
     }
 
     return payload.data;
+  } catch {
+    return null;
+  }
+}
+
+async function getAccessTokenCookieHeader(): Promise<string | null> {
+  if (typeof window !== "undefined") {
+    return null;
+  }
+
+  try {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("accessToken")?.value;
+    return accessToken ? `accessToken=${accessToken}` : null;
   } catch {
     return null;
   }

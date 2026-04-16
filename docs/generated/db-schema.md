@@ -31,6 +31,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [backend/src/test/resources/application-test.yml](/Users/hj.park/projects/coin-zzickmock/backend/src/test/resources/application-test.yml)
 - JPA entity 기준:
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
+  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
@@ -38,6 +39,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [JpaPositionRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/JpaPositionRepository.java)
 - migration 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql)
+  [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -63,7 +65,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   운영 `MySQL 8.x`
   테스트 `H2 in-memory`
 - 주요 도메인:
-  계정, 보상 포인트, 선물 주문, 오픈 포지션
+  계정, 회원 자격 증명, 보상 포인트, 선물 주문, 오픈 포지션
 - 네이밍 규칙:
   테이블은 `snake_case`
   시간 컬럼은 `created_at`, `updated_at`
@@ -100,6 +102,20 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
 
+### `member_credentials`
+
+- 목적:
+  로그인 아이디 기준의 비밀번호 해시와 회원 프로필을 저장한다.
+- PK:
+  `member_id`
+- 주요 컬럼:
+  `password_hash`, `member_name`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `created_at`, `updated_at`
+- 관련 엔티티/모듈:
+  `feature.member`
+- 관련 migration 또는 schema 파일:
+  [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql),
+  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+
 ### `futures_orders`
 
 - 목적:
@@ -132,6 +148,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 - `reward_point_wallets.member_id -> trading_accounts.member_id`:
   계정당 하나의 포인트 지갑을 가진다.
+- `member_credentials.member_id -> trading_accounts.member_id`:
+  인증에 필요한 회원 자격 증명은 선물 계정과 같은 `member_id`를 공유한다.
 - `futures_orders.member_id -> trading_accounts.member_id`:
   주문 이력은 특정 계정에 속한다.
 - `open_positions.member_id -> trading_accounts.member_id`:
@@ -148,7 +166,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 2026-04-16:
   `V1__initial_schema.sql`로 초기 스키마 migration을 추가했다.
 - 2026-04-16:
+  `V2__add_member_credentials.sql`로 로그인/회원가입 동기화를 위한 `member_credentials` 테이블을 추가했다.
+- 2026-04-16:
   `trading_accounts`, `reward_point_wallets`, `futures_orders`, `open_positions` entity를 source of truth로 연결했다.
+- 2026-04-16:
+  `MemberCredentialEntity`를 source of truth에 추가하고, 로컬 회원 자격 증명 저장 구조를 문서화했다.
 - 2026-04-16:
   `JpaPositionRepository`에 OpenFeign 포크 `querydsl-jpa` 기반 조회를 추가했다.
 

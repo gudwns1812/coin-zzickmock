@@ -15,8 +15,9 @@
 coin-zzickmock/
 ├── frontend/                 # Next.js 프론트엔드
 ├── backend/                  # Spring Boot 백엔드
+├── DESIGN.md                 # 설계 문서 배치 기준
+├── FRONTEND.md               # 프론트 작업 기준 문서
 ├── BACKEND.md                # 백엔드 아키텍처 기준 문서
-├── Legacy.md                 # 리팩토링 분석 문서
 └── README.md
 ```
 
@@ -53,11 +54,23 @@ npm run lint
 ./gradlew clean test
 ```
 
+## 작업 기준
+
+이 프로젝트의 주요 작업 기준 문서는 아래와 같습니다.
+
+- 프론트 기준 문서: [FRONTEND.md](FRONTEND.md)
+- 백엔드 기준 문서: [BACKEND.md](BACKEND.md)
+- 설계 틀: [DESIGN.md](DESIGN.md)
+- 백엔드 상세 설계: [docs/design-docs/backend-design/README.md](docs/design-docs/backend-design/README.md)
+- UI 상세 설계: [docs/design-docs/ui-design/README.md](docs/design-docs/ui-design/README.md)
+
 ## 백엔드 아키텍처 기준
 
 이 프로젝트의 백엔드 작업은 `BACKEND.md`를 기준으로 진행합니다.
 
 - 기준 문서: [BACKEND.md](BACKEND.md)
+- 설계 틀: [DESIGN.md](DESIGN.md)
+- 상세 설계: [docs/design-docs/backend-design/README.md](docs/design-docs/backend-design/README.md)
 
 핵심 원칙:
 
@@ -70,8 +83,9 @@ npm run lint
 
 ## 참고 문서
 
-- 리팩토링 분석: [Legacy.md](Legacy.md)
 - 백엔드 아키텍처 기준: [BACKEND.md](BACKEND.md)
+- 프론트 작업 기준: [FRONTEND.md](FRONTEND.md)
+- 상세 설계 루트: [docs/design-docs/README.md](docs/design-docs/README.md)
 
 ## 현재 상태
 

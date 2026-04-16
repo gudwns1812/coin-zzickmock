@@ -1,6 +1,7 @@
 # 코인 선물 MVP 기반 구축 계획
 
-이 계획서는 [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)와 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다.
+이 계획서는 [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)
+와 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다.
 이 문서 하나만 읽어도 초보자가 코인 선물 모의투자 MVP의 기반 구현을 어디서부터 어떻게 시작해야 하는지 이해할 수 있게 작성한다.
 
 ## 목적 / 큰 그림
@@ -15,7 +16,8 @@
 
 - [x] (2026-04-16 12:05+09:00) 이 계획은 stale/superseded 상태로 종료됨
 - [x] (2026-04-16 09:44+09:00) 제품 설계 초안 작성 완료
-- [x] (2026-04-16 10:05+09:00) 사용자 요구사항 반영 완료: Bitget, BTCUSDT/ETHUSDT, 회원가입, `100000 USDT`, `50x`, maker/taker 수수료, 포인트/상점
+- [x] (2026-04-16 10:05+09:00) 사용자 요구사항 반영 완료: Bitget, BTCUSDT/ETHUSDT, 회원가입, `100000 USDT`, `50x`, maker/taker 수수료,
+  포인트/상점
 - [x] (2026-04-16 10:12+09:00) 화면 명세와 시뮬레이션 규칙 문서 분리 완료
 - [x] (2026-04-16 10:12+09:00) 사용자 승인 완료
 - [x] (2026-04-16 10:20+09:00) 프론트 라우트 전환 및 공통 타입 정리 완료
@@ -27,24 +29,27 @@
 - [x] (2026-04-16 10:53+09:00) 프론트 빌드 통과
 - [x] (2026-04-16 10:25+09:00) `./gradlew architectureLint` 통과
 - [x] (2026-04-16 10:25+09:00) `./gradlew test` 통과
-- [ ] 후속 리팩터링용 신규 계획 수립
 
 ## 놀라움과 발견
 
 - 관찰:
-  현재 백엔드는 [backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java)만 있는 사실상 빈 상태다.
+  현재
+  백엔드는 [backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java)
+  만 있는 사실상 빈 상태다.
   증거:
   `find backend/src/main/java -maxdepth 5 -type f | sort` 결과에 애플리케이션 엔트리포인트만 존재했다.
 
 - 관찰:
   프론트는 레이아웃 자산은 재사용 가능하지만, `stocks`, `portfolio`, `useRealTimeStock`처럼 주식 의미가 깊게 박혀 있다.
   증거:
-  [frontend/api/stocks.ts](/Users/hj.park/projects/coin-zzickmock/frontend/api/stocks.ts), [frontend/hooks/useRealTimeStock.ts](/Users/hj.park/projects/coin-zzickmock/frontend/hooks/useRealTimeStock.ts), [frontend/app/(main)/stock/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/page.tsx)를 읽어 확인했다.
+  [frontend/api/stocks.ts](/Users/hj.park/projects/coin-zzickmock/frontend/api/stocks.ts), [frontend/hooks/useRealTimeStock.ts](/Users/hj.park/projects/coin-zzickmock/frontend/hooks/useRealTimeStock.ts), [frontend/app/(main)/stock/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/page.tsx)
+  를 읽어 확인했다.
 
 - 관찰:
   현재 `utils/auth.ts`는 JWT를 decode만 하고 있어 서버 최종 검증 기준으로는 불충분하다.
   증거:
-  [frontend/utils/auth.ts](/Users/hj.park/projects/coin-zzickmock/frontend/utils/auth.ts)에 `jwtDecode`만 있고 verify는 주석 처리되어 있다.
+  [frontend/utils/auth.ts](/Users/hj.park/projects/coin-zzickmock/frontend/utils/auth.ts)에 `jwtDecode`만 있고 verify는 주석
+  처리되어 있다.
 
 - 관찰:
   `app/(main)/layout.tsx`에 있는 `ActiveStockRequestCoordinator`는 새 코인 선물 라우트와 무관한 주식 전용 교차 관심사였다.
@@ -64,7 +69,9 @@
 - 관찰:
   프론트는 서버 컴포넌트 fetch와 클라이언트 액션 rewrite를 분리하는 편이 안전하다.
   증거:
-  `frontend/lib/futures-api.ts`는 서버에서 `http://127.0.0.1:8080`을 직접 읽고 실패 시 시드 데이터로 fallback 하도록 만들었고, 클라이언트 주문/청산은 `frontend/next.config.ts`의 `/proxy-futures/*` rewrite를 통해 백엔드에 연결했다. 이 구조에서 `npm run build --workspace frontend`가 통과했다.
+  `frontend/lib/futures-api.ts`는 서버에서 `http://127.0.0.1:8080`을 직접 읽고 실패 시 시드 데이터로 fallback 하도록 만들었고, 클라이언트 주문/청산은
+  `frontend/next.config.ts`의 `/proxy-futures/*` rewrite를 통해 백엔드에 연결했다. 이 구조에서 `npm run build --workspace frontend`가
+  통과했다.
 
 ## 의사결정 기록
 
@@ -99,7 +106,8 @@
 - 결정:
   이 계획은 stale/superseded 상태로 종료하고 `completed`로 이동한다.
   근거:
-  상위 백엔드 기준 문서에서 `port/usecase` 인터페이스를 기본값으로 두지 않는 방향으로 설계 기준이 바뀌었고, 현재 계획 문서의 구조 설명이 그 이전 방향을 담고 있어 더 이상 구현 기준으로 바로 사용할 수 없게 되었다.
+  상위 백엔드 기준 문서에서 `port/usecase` 인터페이스를 기본값으로 두지 않는 방향으로 설계 기준이 바뀌었고, 현재 계획 문서의 구조 설명이 그 이전 방향을 담고 있어 더 이상 구현 기준으로 바로 사용할
+  수 없게 되었다.
   날짜/작성자:
   2026-04-16 / Codex + 사용자 지시
 
@@ -115,9 +123,12 @@
 - `frontend/lib/markets.ts`에 지원 심볼과 마켓 시드 데이터를 고정했다.
 - `frontend/lib/futures-api.ts`를 추가해 서버 렌더링에서 futures API를 읽고 실패 시 fallback 하도록 만들었다.
 - 기존 `portfolio` 화면을 실제 계정/포지션/포인트 데이터를 읽는 선물 계정 대시보드로 교체했다.
-- `frontend/components/futures/OrderEntryPanel.tsx`, `frontend/components/futures/ClosePositionButton.tsx`를 추가해 주문 미리보기, 주문 실행, 포지션 종료 액션을 연결했다.
+- `frontend/components/futures/OrderEntryPanel.tsx`, `frontend/components/futures/ClosePositionButton.tsx`를 추가해 주문 미리보기,
+  주문 실행, 포지션 종료 액션을 연결했다.
 - 백엔드에 `common/api`, `providers`, `feature/account|market|order|position|reward` 골격과 초기 계약 타입을 추가했다.
-- 백엔드에 `GET /api/futures/markets`, `GET /api/futures/markets/{symbol}`, `GET /api/futures/account/me`, `GET /api/futures/positions/me`, `POST /api/futures/orders/preview`, `POST /api/futures/orders`, `POST /api/futures/positions/close`, `GET /api/futures/rewards/me`, `GET /api/futures/shop/items`를 추가했다.
+- 백엔드에 `GET /api/futures/markets`, `GET /api/futures/markets/{symbol}`, `GET /api/futures/account/me`,
+  `GET /api/futures/positions/me`, `POST /api/futures/orders/preview`, `POST /api/futures/orders`,
+  `POST /api/futures/positions/close`, `GET /api/futures/rewards/me`, `GET /api/futures/shop/items`를 추가했다.
 - Bitget ticker fallback connector와 인메모리 account/order/position/reward 저장소를 추가했다.
 - reward 포인트 구간에 대한 첫 단위 테스트를 추가했다.
 - order 생성에 대한 첫 단위 테스트를 추가했다.
@@ -162,7 +173,9 @@
 ### 현재 백엔드 상태
 
 백엔드는 이제 최소 feature 골격이 생긴 상태다.
-목표 패키지 구조는 [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)의 `feature-first` 구조를 따르며, 현재 아래 패키지들이 생성되어 있다.
+목표 패키지
+구조는 [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
+의 `feature-first` 구조를 따르며, 현재 아래 패키지들이 생성되어 있다.
 
 예상 기능 패키지는 아래와 같다.
 
@@ -183,7 +196,8 @@
 
 ### 블록 1. 프론트 도메인 전환
 
-[frontend/app/(main)/stock](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock) 중심 구조를 `markets` 기준으로 옮기고, 주식 의미가 담긴 타입과 API 파일을 새 이름으로 분리한다.
+[frontend/app/(main)/stock](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock) 중심 구조를 `markets` 기준으로 옮기고,
+주식 의미가 담긴 타입과 API 파일을 새 이름으로 분리한다.
 이 단계에서는 UI를 완전히 새로 만드는 것이 아니라, 라우트와 데이터 모델 이름을 먼저 바로잡는다.
 
 완료 결과:
@@ -351,7 +365,8 @@ pay-to-win은 금지하고 cosmetic 보상으로만 시작한다.
 
 - 프론트는 신규 파일 병행 생성 전략을 유지해 회귀를 줄인다
 - 계산 엔진은 단위 테스트를 먼저 세운 뒤 수정한다
-- DB 스키마를 바꿀 때는 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 함께 갱신한다
+- DB 스키마를 바꿀 때는 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 함께
+  갱신한다
 
 ## 산출물과 메모
 
@@ -394,25 +409,25 @@ pay-to-win은 금지하고 cosmetic 보상으로만 시작한다.
 export type MarketSymbol = "BTCUSDT" | "ETHUSDT";
 
 export type MarketTicker = {
-  symbol: MarketSymbol;
-  lastPrice: number;
-  change24h: number;
-  fundingRate: number;
-  volume24h: number;
-  updatedAt: string;
+    symbol: MarketSymbol;
+    lastPrice: number;
+    change24h: number;
+    fundingRate: number;
+    volume24h: number;
+    updatedAt: string;
 };
 ```
 
 ```ts
 // frontend/type/trading/order.ts
 export type CreateOrderRequest = {
-  symbol: MarketSymbol;
-  positionSide: "LONG" | "SHORT";
-  orderType: "MARKET" | "LIMIT";
-  marginMode: "ISOLATED" | "CROSS";
-  leverage: number;
-  quantity: number;
-  limitPrice?: number;
+    symbol: MarketSymbol;
+    positionSide: "LONG" | "SHORT";
+    orderType: "MARKET" | "LIMIT";
+    marginMode: "ISOLATED" | "CROSS";
+    leverage: number;
+    quantity: number;
+    limitPrice?: number;
 };
 ```
 
@@ -420,7 +435,9 @@ export type CreateOrderRequest = {
 
 아래 예시는 당시 초안에서 잡았던 계약 타입 예시다.
 이제는 "반드시 인터페이스를 먼저 만든다"가 기준이 아니다.
-최신 기준은 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)와 [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)를 따른다.
+최신 기준은 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
+와 [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
+를 따른다.
 즉, 계층은 유지하되 `port`, `usecase` 인터페이스는 실제 경계가 있을 때만 도입한다.
 
 ```java
@@ -457,7 +474,9 @@ public interface GrantProfitPointUseCase {
   새 `markets` 라우트와 공통 셸 전환, 시드 마켓 타입 추가, 미들웨어 업데이트, 프론트 빌드 통과 상태를 문서에 기록했다.
 - 2026-04-16:
   백엔드 feature 골격 생성 결과를 반영했다.
-  `common/api`, `providers`, `feature/account|market|order|position|reward` 초기 골격과 reward 포인트 테스트를 추가하고, `architectureLint`와 `test` 통과 상태를 기록했다.
+  `common/api`, `providers`, `feature/account|market|order|position|reward` 초기 골격과 reward 포인트 테스트를 추가하고,
+  `architectureLint`와 `test` 통과 상태를 기록했다.
 - 2026-04-16:
   backend를 실제 futures API로 확장한 결과를 반영했다.
-  Bitget ticker fallback connector, 인메모리 account/order/position/reward 저장소, 주문 preview/create, 포지션 조회/종료, 보상/상점 조회 API와 order 단위 테스트를 추가했다.
+  Bitget ticker fallback connector, 인메모리 account/order/position/reward 저장소, 주문 preview/create, 포지션 조회/종료, 보상/상점 조회 API와
+  order 단위 테스트를 추가했다.

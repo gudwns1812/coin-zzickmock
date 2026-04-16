@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         source: "/proxy2/:path*",
         destination: "http://43.201.62.55:8080/api/:path*",
       },
+      {
+        // 코인 선물 백엔드
+        source: "/proxy-futures/:path*",
+        destination: "http://127.0.0.1:8080/api/futures/:path*",
+      },
     ];
   },
   images: {

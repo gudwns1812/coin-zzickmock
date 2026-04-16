@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getJwtToken } from "./utils/auth";
+import { isSupportedMarketSymbol } from "./lib/markets";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -16,17 +17,24 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/only-desktop", req.url));
   }
 
-  if (pathname.startsWith("/portfolio") && !token) {
-    return NextResponse.redirect(new URL("/stock", req.url));
+  if (pathname === "/stock" || pathname.startsWith("/stock/")) {
+    return NextResponse.redirect(new URL("/markets", req.url));
   }
 
-  if (pathname.startsWith("/stock/")) {
-    // /stock/ 다음의 code 추출
-    const code = pathname.split("/")[2];
+  if (
+    (pathname.startsWith("/portfolio") ||
+      pathname.startsWith("/watchlist") ||
+      pathname.startsWith("/shop")) &&
+    !token
+  ) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
 
-    // code가 6자리 숫자가 아니면 리다이렉트
-    if (!/^\d{6}$/.test(code || "")) {
-      return NextResponse.redirect(new URL("/stock", req.url));
+  if (pathname.startsWith("/markets/")) {
+    const symbol = pathname.split("/")[2];
+
+    if (!isSupportedMarketSymbol(symbol || "")) {
+      return NextResponse.redirect(new URL("/markets", req.url));
     }
   }
 
@@ -43,6 +51,6 @@ export const config = {
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      */
     "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
-    "/stock/:path*",
+    "/markets/:path*",
   ],
 };

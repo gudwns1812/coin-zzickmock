@@ -62,6 +62,7 @@ Spring Boot 기반 서비스다.
 - `docs/product-specs/`: 제품 요구사항과 기능 사양
 - `docs/references/`: 조사 내용과 외부 참고 자료
 - `docs/exec-plans/`: 구현 계획과 진행 기록
+- `docs/release-docs/`: 배포, 릴리즈, 롤백 운영 문서
 - `docs/generated/`: 생성 산출물
 
 코드를 어떻게 바꿀지보다 왜 바꾸는지를 확인하고 싶을 때 먼저 보는 곳이다.
@@ -105,6 +106,7 @@ Spring Boot 기반 서비스다.
 
 - 저장소 실행과 전체 맥락: [README.md](/Users/hj.park/projects/coin-zzickmock/README.md)
 - 설계 문서 구조와 배치 기준: [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)
+- 배포와 릴리즈 운영 기준: [RELEASE.md](/Users/hj.park/projects/coin-zzickmock/RELEASE.md)
 - 프론트 구조와 실제 진입점: [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
 - 백엔드 작업 기준: [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
 - 백엔드 상세 설계: [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)

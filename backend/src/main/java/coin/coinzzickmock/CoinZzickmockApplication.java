@@ -1,9 +1,9 @@
-package coin.coinzzickmock.bootstrap;
+package coin.coinzzickmock;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication(scanBasePackages = "coin.coinzzickmock")
+@SpringBootApplication
 public class CoinZzickmockApplication {
 
     public static void main(String[] args) {

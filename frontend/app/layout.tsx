@@ -18,12 +18,12 @@ const pretendard = localFont({
 
 export const metadata: Metadata = {
   title: {
-    template: "주식 찍먹 | %s",
-    default: "주식 찍먹",
+    template: "코인 선물 찍먹 | %s",
+    default: "코인 선물 찍먹",
   },
   description:
-    "주식 시세와 포트폴리오 흐름을 가볍게 확인할 수 있는 주식 플랫폼",
-  keywords: ["주식", "투자", "증권", "포트폴리오", "모의투자"],
+    "Bitget 기반 코인 선물 마켓과 포지션 흐름을 체험하는 모의투자 플랫폼",
+  keywords: ["코인", "선물", "모의투자", "비트겟", "레버리지"],
   icons: {
     icon: "/favicon.ico",
   },

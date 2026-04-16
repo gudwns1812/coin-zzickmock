@@ -33,7 +33,8 @@
 
 1. [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
 2. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
-3. 스키마 변경이 있으면 코드와 `db-schema.md`를 함께 갱신
+3. 스키마를 읽을 때는 항상 `db-schema.md`를 먼저 참고한다.
+4. 스키마를 바꿀 때는 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
 
 ### 백엔드 품질 게이트나 린트를 확인할 때
 
@@ -48,7 +49,16 @@
 - 백엔드는 `feature-first`로 자른다.
 - 레이어는 `api`, `application`, `domain`, `infrastructure`로 고정한다.
 - 인증, 커넥터, 텔레메트리, 기능 플래그는 `Providers` 뒤로 숨긴다.
-- DB를 바꾸면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)도 같이 갱신한다.
+- 계층을 나눈다고 `port`, `usecase` 인터페이스를 기본값처럼 만들지 않는다.
+- 인터페이스는 여러 구현이 실제로 필요하거나, 외부 경계를 격리하는 계약이 꼭 필요할 때만 만든다.
+- 구현체가 하나뿐인데 한 단계 위임만 하는 pass-through 인터페이스는 금지한다.
+- 운영 DB의 기본값은 `MySQL`로 둔다.
+- 테스트 DB의 기본값은 인메모리 `H2`로 둔다.
+- DB 마이그레이션 표준은 `Flyway`로 고정한다.
+- 영속성 기본 스택은 `Spring Data JPA`와 OpenFeign 포크 `QueryDSL`로 통일한다.
+- 복잡한 native query가 필요할 때만 `JdbcTemplate` 사용을 허용한다.
+- DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저 본다.
+- DB를 바꾸면 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을 추가하고, [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 같이 갱신한다.
 - 백엔드 변경은 `./gradlew architectureLint`와 `./gradlew check`를 기준으로 검증한다.
 
 ## Architecture Lint
@@ -67,7 +77,9 @@
 백엔드 작업을 끝냈다고 보기 위한 최소 조건은 아래와 같다.
 
 - 관련 상세 설계를 읽고 반영했다.
-- 필요한 경우 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 갱신했다.
+- 새 인터페이스를 추가했다면 왜 concrete class로 충분하지 않은지 설명할 수 있다.
+- DB를 읽는 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저 참고했다.
+- DB 변경이 있으면 새 `Flyway` migration 버전을 추가하고 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 갱신했다.
 - `./gradlew architectureLint`를 통과했다.
 - `./gradlew check`를 통과했다.
 - 품질 점수와 PR/CI 흐름은 [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md), [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따랐다.

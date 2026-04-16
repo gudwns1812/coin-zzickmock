@@ -24,16 +24,16 @@ const Header = async () => {
       <div className="w-full flex relative gap-5 justify-between items-center">
         <div className="font-bold text-lg-custom flex items-center gap-2">
           <Link
-            href="/stock"
+            href="/markets"
             className="size-[40px] rounded-main bg-main-blue text-white flex items-center justify-center"
-            aria-label="주식 찍먹 홈"
+            aria-label="코인 선물 찍먹 홈"
           >
             <TrendingUp size={20} />
           </Link>
           <div className="flex flex-col">
-            <span className="font-bold text-lg-custom">주식 찍먹</span>
+            <span className="font-bold text-lg-custom">코인 선물 찍먹</span>
             <span className="text-sm-custom text-main-dark-gray">
-              주가 흐름을 가볍게 보고 포트폴리오를 정리하는 공간
+              Bitget 기반 선물 마켓과 포지션 흐름을 연습하는 공간
             </span>
           </div>
         </div>

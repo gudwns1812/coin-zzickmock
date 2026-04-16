@@ -26,7 +26,7 @@ const NotFound = () => {
         존재하지 않는 페이지거나, 주소가 잘못되었을 수도 있어요.
       </p>
       <button
-        onClick={() => router.push("/stock")}
+        onClick={() => router.push("/markets")}
         className="px-6 py-3 bg-main-blue text-white rounded-xl shadow-md hover:bg-main-blue/80 transition-all duration-300"
       >
         홈으로 돌아가기

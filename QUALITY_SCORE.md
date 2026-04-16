@@ -31,12 +31,13 @@
 
 기본 검토 대상:
 
-- 사용자가 지정한 diff
-- 지정이 없으면 현재 working tree 변경분
+- 사용자가 명시적으로 지정한 diff, 파일, 경로, 커밋 범위만 검토한다.
+- 범위 지시가 없으면 임의로 현재 working tree 전체나 저장소 전체를 검토하지 않는다.
+- 범위가 없는데 리뷰가 필요하면 먼저 리뷰 대상을 좁혀서 확정한 뒤 수행한다.
 
 ## Review Panel
 
-리뷰는 `multi-angle-review` 방식으로 독립적으로 수행한다.
+리뷰는 반드시 `multi-angle-review` 방식으로 독립적으로 수행한다.
 각 각도는 서로의 결론을 보지 않은 상태에서 현재 스냅샷만 검토한다.
 
 필수 각도:
@@ -49,6 +50,8 @@
 
 강한 규칙:
 
+- 범위를 아끼기 위해 기본값으로 전체 저장소, 전체 워킹 트리, 대규모 문서 묶음을 리뷰하지 않는다.
+- 사용자가 전체 범위를 명시적으로 요청한 경우에만 전체 범위 리뷰를 수행한다.
 - 한 리뷰어의 결과를 다른 리뷰어 프롬프트에 넣지 않는다.
 - 수정 의도나 기대 답안을 리뷰어에게 미리 주지 않는다.
 - 합성은 모든 각도 리뷰가 끝난 뒤에만 한다.
@@ -77,7 +80,13 @@ Return:
 - review target
 - 관련 기준 문서
 - 실행한 테스트와 결과
+- `red -> green -> refactor` 진행 흔적
 - 알려진 제약사항
+
+강한 규칙:
+
+- `review target`은 반드시 사용자 지시사항으로 닫힌 범위여야 한다.
+- 범위가 넓거나 모호하면 전체를 그대로 리뷰하지 말고, 필요한 최소 파일/디프 단위로 줄여서 수행한다.
 
 최소 기준 문서 선택:
 
@@ -85,6 +94,13 @@ Return:
 - 백엔드 변경: [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
 - 보안 관련 변경: [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
 - 구조 변경: [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
+
+TDD 확인 기준:
+
+- `red` 단계에서 추가된 실패 테스트가 어떤 동작을 고정하는지 설명할 수 있어야 한다.
+- `green` 단계에서는 해당 테스트를 통과시키는 최소 구현이 확인되어야 한다.
+- `refactor` 단계에서는 테스트가 계속 초록 상태인지 확인되어야 한다.
+- 동작 변경인데도 새 테스트나 보강된 테스트가 없으면 `test-reviewer`가 주요 리스크로 본다.
 
 ## Scoring Model
 
@@ -134,6 +150,7 @@ Return:
 - unresolved `High` severity architecture finding이 1개 이상 있음
 - 핵심 테스트가 실패했음
 - 요구된 테스트를 아예 실행하지 못했고, 그 이유가 정당화되지 않음
+- 동작 변경인데도 이를 고정하는 테스트가 추가 또는 보강되지 않았고, 정당한 사유가 없음
 - 변경이 명세와 충돌하는데 해결되지 않았음
 
 즉, 숫자만 높다고 통과시키지 않는다.
@@ -172,7 +189,7 @@ Return:
 
 1. 구현 또는 수정
 2. 가능한 테스트 실행
-3. `multi-angle-review` 방식으로 독립 리뷰 수행
+3. 지정된 범위에 대해 `multi-angle-review` 방식으로 독립 리뷰 수행
 4. angle score와 finding을 합성
 5. final score 계산
 6. hard gate 확인

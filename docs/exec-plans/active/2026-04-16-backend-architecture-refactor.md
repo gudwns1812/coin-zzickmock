@@ -1,0 +1,215 @@
+# 백엔드 아키텍처 문서 정합화 리팩토링 계획
+
+이 계획서는 [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)와 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다. 이 문서는 살아 있는 문서이며, `진행 현황`, `놀라움과 발견`, `의사결정 기록`, `결과 및 회고` 섹션을 작업 내내 최신 상태로 유지한다.
+
+## 목적 / 큰 그림
+
+이 작업의 목적은 현재 `backend/`가 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)와 [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)가 요구하는 구조와 어긋나는 부분을 정리하는 것이다.
+
+완료 후에는 사용자가 기존 선물 API를 같은 엔드포인트로 계속 사용할 수 있으면서도, 백엔드 내부 구조가 아래 기준을 만족해야 한다.
+
+- `feature-first` 구조를 유지한다.
+- `application/usecase`, `application/port` 같은 기본값 추상화를 제거한다.
+- 저장소와 외부 경계 계약은 `application`이 소유하고, 구현은 `infrastructure`가 맡는다.
+- API는 저장소를 직접 호출하지 않고 application service만 사용한다.
+- 교차 관심사 접근은 `Providers`를 통해 유지한다.
+- 예외는 `common/error`의 구조화된 타입과 글로벌 핸들러로 응답된다.
+
+이 변경이 끝나면 `./gradlew architectureLint`와 `./gradlew check`가 통과해야 하고, 기존 선물 API의 핵심 유스케이스를 고정하는 테스트가 함께 통과해야 한다.
+
+## 진행 현황
+
+- [x] (2026-04-16 13:19+09:00) 문서 기준과 현재 backend 구조 차이 조사 완료
+- [x] (2026-04-16 13:23+09:00) 사용자 승인 수신: "그냥 바로 진행 해"를 이 계획 승인으로 간주
+- [x] (2026-04-16 13:27+09:00) active 실행 계획 문서 생성 완료
+- [x] (2026-04-16 15:18+09:00) 애플리케이션 계약과 서비스 패키지 구조를 문서 기준으로 정리
+- [x] (2026-04-16 15:19+09:00) API가 직접 저장소를 호출하는 흐름 제거
+- [x] (2026-04-16 15:20+09:00) 공통 예외와 글로벌 핸들러 도입
+- [x] (2026-04-16 15:30+09:00) 관련 테스트를 보강하고 새 구조에 맞게 갱신
+- [x] (2026-04-16 15:31+09:00) 빈 `application/usecase`, `application/port` 디렉터리 제거
+- [x] (2026-04-16 15:32+09:00) provider 구현체를 `providers/infrastructure`로 이동해 bootstrap 책임 축소
+- [x] (2026-04-16 15:32+09:00) `./gradlew architectureLint` 실행
+- [x] (2026-04-16 15:32+09:00) `./gradlew check` 실행
+- [x] (2026-04-16 15:33+09:00) 품질 게이트용 자체 리뷰 수행 및 결과 기록
+
+## 놀라움과 발견
+
+- 관찰:
+  현재 아키텍처 린트는 패키지 상위 구조와 일부 금지 import는 막지만, `application/usecase`, `application/port`, `infrastructure` 소유 계약 같은 문서 기준의 과잉 추상화는 아직 직접 막지 않는다.
+  증거:
+  `backend/build.gradle`의 `architectureLint` 구현을 읽었고, 실제로 `./gradlew architectureLint`가 현재 코드에서 통과했다.
+
+- 관찰:
+  `RewardController`는 다른 컨트롤러와 달리 application service를 거치지 않고 저장소를 직접 읽고 있다.
+  증거:
+  [backend/src/main/java/coin/coinzzickmock/feature/reward/api/RewardController.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/api/RewardController.java)가 `RewardPointRepository`를 직접 주입받고 있다.
+
+- 관찰:
+  `FuturesBootstrapConfiguration`은 provider 조립, 외부 connector 조립, feature bean 조립, demo seed까지 한 파일에서 모두 맡고 있다.
+  증거:
+  [backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java)에 위 책임이 함께 들어 있다.
+
+- 관찰:
+  `application/usecase`, `application/port` 파일을 지운 뒤에도 빈 디렉터리가 남아 있어 문서 정합성 관점에서는 한 번 더 정리해야 했다.
+  증거:
+  `find backend/src/main/java/coin/coinzzickmock/feature -path '*/application/usecase' -o -path '*/application/port'`를 실행해 빈 디렉터리를 확인한 뒤 `rmdir`로 제거했다.
+
+- 관찰:
+  주문 서비스 테스트는 기존의 가짜 `OrderPreviewPolicy`에 기대고 있었기 때문에, 정책을 서비스 내부로 옮기자 기대 증거금 값도 함께 바뀌었다.
+  증거:
+  [backend/src/test/java/coin/coinzzickmock/feature/order/application/service/CreateOrderServiceTest.java](/Users/hj.park/projects/coin-zzickmock/backend/src/test/java/coin/coinzzickmock/feature/order/application/service/CreateOrderServiceTest.java)의 기대 `availableMargin` 값을 `98990`에서 `98995`로 조정했다.
+
+## 의사결정 기록
+
+- 결정:
+  이번 리팩토링은 공개 API 경로와 응답 형식은 유지하고, 내부 구조만 정리한다.
+  근거:
+  사용자 요청은 "백엔드 아키텍처의 문서대로 현재 backend를 리팩토링"하는 것이므로, 기능 회귀 없이 구조 정합성을 우선 맞추는 것이 안전하다.
+  날짜/작성자:
+  2026-04-16 / Codex
+
+- 결정:
+  `*UseCase`, `*Port` 인터페이스는 모두 제거 대상으로 보지 않고, 문서 기준상 "실제 public contract가 필요한지"를 파일별로 다시 판단한다.
+  근거:
+  문서는 인터페이스 전면 금지가 아니라 "기계적 기본값"을 금지한다. 따라서 다중 구현이나 경계 표현이 실제로 필요한 경우는 유지할 수 있다.
+  날짜/작성자:
+  2026-04-16 / Codex
+
+- 결정:
+  구현 단계의 `red -> green -> refactor`는 현재 세션 제약상 sub-agent를 쓰지 않고 메인 에이전트가 순차 수행한다.
+  근거:
+  저장소 문서는 단계별 sub-agent를 권장하지만, 현재 상위 도구 정책상 사용자 명시 요청 없이 sub-agent를 생성할 수 없다. 대신 같은 순서를 로컬에서 강하게 지킨다.
+  날짜/작성자:
+  2026-04-16 / Codex
+
+- 결정:
+  provider 구현체는 익명 `@Bean`보다 `providers/infrastructure`의 concrete class로 내린다.
+  근거:
+  아키텍처 문서는 provider 구현체를 `Providers` 뒤로 숨긴 명시적 구현으로 다루는 방향을 제시한다. 구체 클래스로 내리면 bootstrap은 조립과 seed만 맡게 되고 역할이 더 선명해진다.
+  날짜/작성자:
+  2026-04-16 / Codex
+
+## 결과 및 회고
+
+이번 리팩토링으로 공개 API 경로는 유지한 채 내부 구조를 문서 기준에 더 가깝게 맞췄다.
+
+- `application/usecase`, `application/port` 기본 추상화를 제거했다.
+- 저장소 계약을 각 feature의 `application/repository`로 옮겼다.
+- 애플리케이션 서비스는 `application/service`로 모으고 concrete class를 직접 주입받게 바꿨다.
+- `RewardController`가 저장소를 직접 읽지 않도록 `GetRewardPointService`, `GetShopItemsService`를 추가했다.
+- `common/error` 아래에 구조화된 예외와 글로벌 핸들러를 추가했다.
+- provider 구현체를 `providers/infrastructure`로 이동해 `bootstrap/config`의 책임을 줄였다.
+
+남은 리스크는 크지 않지만 두 가지가 있다.
+
+1. `BitgetMarketDataGateway`는 외부 호출 실패 시 fallback을 위해 `catch (Exception)`을 유지한다. 경계에서의 예외 번역으로 볼 수는 있지만, 추후에는 `ExternalServiceException` 같은 명시적 타입으로 더 좁히는 편이 좋다.
+2. 이번 작업은 application/service와 repository 중심 검증에는 충분하지만, controller slice 테스트는 아직 없다. 이후 API 회귀 리스크를 더 낮추려면 controller 테스트를 추가하는 것이 좋다.
+
+## 맥락과 길잡이
+
+이번 작업에서 가장 먼저 읽어야 하는 코드는 아래와 같다.
+
+- [backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/account/application/GetAccountSummaryService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/application/GetAccountSummaryService.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/market/application/GetMarketSummaryService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/application/GetMarketSummaryService.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/order/application/CreateOrderService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/application/CreateOrderService.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/position/application/ClosePositionService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/application/ClosePositionService.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/reward/api/RewardController.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/api/RewardController.java)
+
+현재 구조에서 정리해야 하는 핵심 문제는 아래와 같다.
+
+1. `application/usecase`, `application/port` 패키지가 문서의 기본 골격과 어긋난다.
+2. `AccountRepository`, `OrderRepository`, `PositionRepository`, `RewardPointRepository` 계약이 `infrastructure` 패키지에 놓여 있어 계약 소유 위치가 어긋난다.
+3. `RewardController`가 application service가 아니라 저장소를 직접 사용한다.
+4. `BitgetMarketSnapshotReader`는 `LoadMarketSnapshotPort`라는 pass-through 계약만 구현하는 중간 계층이라 단순화 후보이다.
+5. `IllegalArgumentException`이 application 흐름 곳곳에서 발생해 공통 오류 모델이 없다.
+6. 부트스트랩 설정이 너무 많은 책임을 한 파일에서 맡고 있다.
+
+## 작업 계획
+
+먼저 공통 예외 모델을 추가한다. `backend/src/main/java/coin/coinzzickmock/common/error/` 아래에 `ErrorCode`, `CoreException`, `NotFoundException`, `BadRequestException`, `ErrorResponse`, `GlobalExceptionHandler`를 만든다. 기존 `IllegalArgumentException`을 그대로 노출하지 않고, 각 서비스에서 구조화된 예외를 던지도록 바꾼다.
+
+그 다음 feature별 application 구조를 정리한다. `application/usecase`와 `application/port`에 있는 타입을 제거하거나 `application/service`, `application/gateway`, `application/repository` 같은 실제 역할 이름으로 옮긴다. 저장소 계약은 `application`이 소유하게 만들고, JPA 구현체는 `infrastructure/persistence`에서 그 계약을 구현하게 바꾼다.
+
+이후 controller를 정리한다. 각 controller는 concrete application service를 주입받아 request DTO를 command/query로 바꾸고 response DTO로 매핑하는 역할만 맡는다. 특히 reward 조회는 `RewardController -> application service -> repository` 흐름으로 바꾼다.
+
+마지막으로 조립을 정리한다. `FuturesBootstrapConfiguration`을 provider 조립과 feature bean 조립으로 나누거나, 이미 Spring bean으로 직접 인식할 수 있는 클래스는 별도 `@Bean` 없이 생성되게 단순화한다. 외부 Bitget market 조회는 `Providers.connector().marketDataGateway()` 경유를 유지하되, 의미 없는 중간 추상화는 제거한다.
+
+## 구체적인 단계
+
+1. `backend/src/test/java`에 현재 구조가 고정해야 하는 핵심 동작 테스트를 먼저 추가하거나 보강한다.
+   목표는 다음 두 가지다.
+   - reward 조회가 application service를 통해도 동일 결과를 돌려주는지
+   - 주문/포지션 서비스가 새 계약 패키지 구조로 옮겨도 기존 계산을 유지하는지
+
+2. `backend/src/main/java/coin/coinzzickmock/common/error/`를 추가하고 서비스 예외를 새 타입으로 바꾼다.
+
+3. feature별 계약과 서비스 패키지를 이동한다.
+   - account: account summary 조회 계약/구현 이동
+   - market: market 조회 경로 단순화
+   - order: preview/order 저장 계약과 정책 재배치
+   - position: position 조회/청산 계약 재배치
+   - reward: reward 조회/적립 service 추가
+
+4. controller와 bootstrap 설정을 새 구조에 맞춰 수정한다.
+
+5. 아래 명령을 `backend/`에서 실행한다.
+   `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew test --console=plain`
+   `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew architectureLint --console=plain`
+   `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check --console=plain`
+
+## 검증과 수용 기준
+
+아래 조건을 모두 만족하면 이번 리팩토링을 완료로 본다.
+
+- `backend/src/main/java/coin/coinzzickmock/feature/*` 아래에 더 이상 `application/usecase`와 `application/port` 패키지가 남아 있지 않다.
+- API 레이어는 저장소 구현 또는 저장소 계약을 직접 주입받지 않는다.
+- 주문 생성, 포지션 청산, 계정 요약, reward 조회 관련 테스트가 통과한다.
+- `./gradlew architectureLint`와 `./gradlew check`가 통과한다.
+- 기존 API 엔드포인트 경로는 그대로 유지된다.
+
+## 반복 실행 가능성 및 복구
+
+이 작업은 패키지 이동과 import 수정이 많기 때문에 중간 실패가 나도 `git diff`로 변경 범위를 확인하면서 같은 순서로 재시도할 수 있다. DB migration은 이번 작업 범위에 포함하지 않으므로 스키마 파괴 위험은 없다.
+
+테스트 명령은 여러 번 반복 실행해도 안전하다. Gradle 캐시가 꼬이면 `GRADLE_USER_HOME=/tmp/gradle-home`를 유지한 채 다시 실행한다.
+
+## 산출물과 메모
+
+완료 후 이 섹션에 아래 증거를 짧게 남긴다.
+
+- 핵심 패키지 이동 결과
+- 테스트 통과 핵심 줄
+- architecture lint 요약 줄
+- check 통과 요약 줄
+
+증거:
+
+- `backend/src/main/java/coin/coinzzickmock/feature/*` 아래에서 `application/usecase`, `application/port` 디렉터리가 제거되었다.
+- `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew test --console=plain`
+  `BUILD SUCCESSFUL in 5s`
+- `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew architectureLint --console=plain`
+  `"status":"passed","violations":0`
+- `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check --console=plain`
+  `BUILD SUCCESSFUL in 5s`
+
+## 인터페이스와 의존성
+
+이번 작업에서 의도하는 핵심 의존성 방향은 아래와 같다.
+
+- `api` -> concrete `application/service`
+- `application/service` -> `application`이 소유한 repository/gateway 계약 + `Providers`
+- `infrastructure/persistence` -> 해당 feature의 `application` 계약 구현
+- `domain` -> 순수 도메인 타입만 유지
+
+작업이 끝나면 아래와 같은 안정적인 타입 이름이 존재해야 한다.
+
+- `coin.coinzzickmock.common.error.CoreException`
+- `coin.coinzzickmock.feature.account.application.service.GetAccountSummaryService`
+- `coin.coinzzickmock.feature.reward.application.service.GetRewardPointService`
+- `coin.coinzzickmock.feature.order.application.service.CreateOrderService`
+- `coin.coinzzickmock.feature.position.application.service.ClosePositionService`
+
+변경 메모:
+2026-04-16 13:27+09:00 / 사용자 승인 후 백엔드 아키텍처 문서 정합화 리팩토링 계획을 새 active 계획으로 작성했다.
+2026-04-16 15:33+09:00 / 서비스, 저장소 계약, 예외, provider 구현체, 테스트, 검증 결과를 반영해 계획 문서를 완료 상태로 갱신했다.

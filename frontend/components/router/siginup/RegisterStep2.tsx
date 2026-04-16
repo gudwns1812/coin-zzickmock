@@ -176,7 +176,7 @@ const RegisterStep2 = ({
 
       if (res.ok) {
         toast.success("회원가입이 완료되었습니다", { delay: 500 });
-        window.location.href = "/stock"; // 완전 새로고침으로 새로운 토큰 정보 반영
+        window.location.href = "/markets"; // 완전 새로고침으로 새로운 토큰 정보 반영
       } else {
         toast.error("로그인에 실패했습니다");
       }

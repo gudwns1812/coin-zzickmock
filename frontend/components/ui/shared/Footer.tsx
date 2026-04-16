@@ -13,16 +13,18 @@ const Footer = ({ className }: { className?: string }) => {
     >
       <div className="font-bold text-lg-custom flex items-center gap-2">
         <Link
-          href="/stock"
+          href="/markets"
           className="size-[40px] rounded-main bg-main-blue text-white flex items-center justify-center"
-          aria-label="주식 찍먹 홈"
+          aria-label="코인 선물 찍먹 홈"
         >
           <TrendingUp size={20} />
         </Link>
         <div className="flex flex-col">
-          <span className="font-bold text-lg-custom text-black">주식 찍먹</span>
+          <span className="font-bold text-lg-custom text-black">
+            코인 선물 찍먹
+          </span>
           <span className="text-sm-custom text-main-dark-gray">
-            가볍게 시작하는 주식 탐색과 포트폴리오 흐름
+            Bitget 기반 선물 체험과 포지션 흐름 정리
           </span>
         </div>
       </div>
@@ -32,21 +34,27 @@ const Footer = ({ className }: { className?: string }) => {
           href="/portfolio"
           className="hover:text-main-blue transition-colors font-semibold"
         >
-          포트폴리오
+          계정
         </Link>
         <Link
-          href="/stock"
+          href="/markets"
           className="hover:text-main-blue transition-colors font-semibold"
         >
-          증권
+          마켓
+        </Link>
+        <Link
+          href="/shop"
+          className="hover:text-main-blue transition-colors font-semibold"
+        >
+          상점
         </Link>
       </nav>
 
       <div className="text-sm-custom text-gray-700">
-        실시간 시세 확인, 종목 탐색, 관심종목 관리, 포트폴리오 흐름에 집중한
-        프론트엔드 워크스페이스
+        선물 마켓 탐색, 포지션 체험, 포인트 상점 흐름에 집중한 프론트엔드
+        워크스페이스
       </div>
-      <div className="text-xs-custom text-gray-400">© 2025 주식 찍먹</div>
+      <div className="text-xs-custom text-gray-400">© 2025 코인 선물 찍먹</div>
     </footer>
   );
 };

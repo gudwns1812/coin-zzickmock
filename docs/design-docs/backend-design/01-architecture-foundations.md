@@ -24,6 +24,8 @@
 - 애플리케이션은 유스케이스를 조합하지만 기술 세부사항을 모른다.
 - 인프라는 영속성, 외부 시스템, 프레임워크 연결을 담당한다.
 - 인증, 커넥터, 텔레메트리, 기능 플래그는 개별 기능 곳곳에서 직접 붙이지 않고 `Providers`를 통해서만 접근한다.
+- 계층 분리를 이유로 `port`/`usecase` 인터페이스를 기계적으로 늘리지 않는다.
+- 기본값은 concrete class다. 인터페이스는 실제 경계와 대체 구현이 있을 때만 도입한다.
 
 ## Fixed Layer Set
 
@@ -60,7 +62,7 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - command/query 모델
 - use case orchestration
 - domain 호출
-- repository/port 호출
+- 필요한 repository/gateway/provider 계약 호출
 - `Providers` 사용
 - 트랜잭션 경계 정의
 
@@ -112,7 +114,8 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 
 - `api` -> `application`
 - `application` -> `domain`
-- `application` -> feature 내부 port 또는 `providers`
+- `application` -> `providers`
+- `application` -> 필요할 때만 `application` 또는 `domain`이 소유한 계약
 - `infrastructure` -> `application`, `domain`, `providers`
 - `domain` -> 자신과 `common`만
 
@@ -122,6 +125,20 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - `domain` -> `infrastructure`
 - `application` -> 구체 SDK 클라이언트
 - `api` -> `infrastructure`
+
+여기서 말하는 "계약"은 무조건 인터페이스를 만들라는 뜻이 아니다.
+기본값은 concrete class 의존이다.
+다만 아래 조건 중 하나라도 충족하면 `application` 또는 `domain`이 소유하는 인터페이스를 둘 수 있다.
+
+- 운영 구현이 둘 이상이거나 곧 둘 이상이 될 것이 명확할 때
+- 외부 시스템 경계를 격리해야 하고, 그 계약이 애플리케이션 언어로 표현될 때
+- 테스트를 위해서가 아니라, 런타임 책임 분리가 실제로 필요할 때
+
+반대로 아래는 금지한다.
+
+- 구현체가 하나뿐인데 메서드 전달만 하는 `*Port`
+- 컨트롤러 하나만 쓰는데 형식적으로 만든 `*UseCase` 인터페이스
+- 이미 `Providers`나 gateway가 있는데 그 위에 다시 한 겹 씌우는 중복 추상화
 
 ## Package Shape
 
@@ -149,9 +166,8 @@ backend/src/main/java/coin/coinzzickmock/
       application/
         command/
         query/
-        usecase/
         result/
-        port/
+        service/
       domain/
         model/
         service/
@@ -173,6 +189,7 @@ backend/src/main/java/coin/coinzzickmock/
 - 기능 코드는 반드시 `feature/<feature-name>/` 아래에 둔다.
 - `feature` 바깥에 새 업무용 패키지를 만들지 않는다.
 - `support`, `core`, `extern`, `storage`처럼 기술/성격 기준의 광역 패키지는 새로 만들지 않는다.
+- `application/usecase`, `application/port`는 기본 골격이 아니다. 실제로 필요한 경우에만 추가한다.
 
 ## Providers
 
@@ -256,20 +273,20 @@ feature/order/application/
     PlaceOrderCommand.java
   result/
     PlaceOrderResult.java
-  port/
-    LoadAccountPort.java
-    SaveOrderPort.java
-  usecase/
-    PlaceOrderUseCase.java
+  service/
     PlaceOrderService.java
 ```
 
 강한 규칙:
 
-- 하나의 클래스가 여러 유스케이스를 포괄하지 않는다.
+- 하나의 application service는 하나의 유스케이스 또는 강하게 응집된 흐름만 맡는다.
 - `FooService` 하나에 여러 unrelated 메서드를 몰아넣지 않는다.
 - 쓰기 작업은 command, 읽기 작업은 query 또는 read model을 분리한다.
 - 트랜잭션은 유스케이스 단위로 잡는다.
+- 기본 주입 대상은 concrete `*Service`다.
+- `*UseCase` 인터페이스는 public contract가 실제로 필요한 경우에만 만든다.
+- `*Port`는 외부 경계를 표현하는 계약이 정말 필요할 때만 만든다.
+- 구현이 하나뿐이고 호출 전달만 하는 인터페이스는 만들지 않는다.
 
 ## Domain Rules
 
@@ -300,16 +317,32 @@ feature/order/application/
 - 외부 연동: `feature/<feature>/infrastructure/connector`
 - 매핑: `feature/<feature>/infrastructure/mapper`
 
+기본 선택:
+
+- 운영 DB는 `MySQL`을 기준으로 설계한다.
+- 테스트 DB는 인메모리 `H2`를 기본값으로 사용한다.
+- DB 마이그레이션은 `Flyway`를 표준으로 사용한다.
+- 저장소와 엔티티 기반 영속성 구현은 `Spring Data JPA`를 기본으로 한다.
+- 동적 조건 조합과 타입 세이프 조회는 OpenFeign 포크 `QueryDSL`을 기본 선택지로 사용한다.
+- JPA/QueryDSL로 유지하기 어려운 복잡한 native query에 한해 `JdbcTemplate` 사용을 허용한다.
+
 규칙:
 
 - JPA 엔티티는 도메인 모델과 동일 객체로 취급하지 않는다.
 - 영속성 모델과 도메인 모델 사이의 변환 책임을 명시한다.
 - 외부 API 응답 DTO를 application/domain으로 직접 전파하지 않는다.
+- 단순 조회/저장은 JPA repository 또는 QueryDSL adapter에서 우선 해결한다.
+- JPA repository, gateway, connector 위에 이유 없는 중간 인터페이스를 하나 더 만들지 않는다.
+- 인터페이스가 꼭 필요하면 계약은 `application` 또는 `domain`이 소유하고, 구현은 `infrastructure`에 둔다.
+- `JdbcTemplate`은 복잡한 집계, 윈도 함수, DB 전용 최적화처럼 JPA/QueryDSL 추상화보다 SQL 자체가 더 명확한 경우에만 제한적으로 사용한다.
+- `JdbcTemplate`을 쓰더라도 SQL은 `infrastructure/persistence`에만 두고, application/domain에는 노출하지 않는다.
+- 스키마 변경의 원문은 `Flyway` migration으로 남기고, `db-schema.md`는 그 결과를 통합 요약하는 문서로 유지한다.
+- 테스트는 운영과 다른 DB 엔진을 쓰더라도 MySQL 동작과 의미가 어긋나지 않게 작성한다.
 
 DB를 참고하거나 수정하는 작업에서는 반드시 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 함께 본다.
 
 - 스키마를 읽는 작업: 먼저 `db-schema.md`를 확인하고 현재 테이블/컬럼/관계를 파악한다.
-- 스키마를 바꾸는 작업: 코드 변경과 함께 `db-schema.md`도 최신 상태로 갱신한다.
+- 스키마를 바꾸는 작업: 먼저 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을 추가하고, 코드 변경과 함께 `db-schema.md`도 최신 상태로 갱신한다.
 - 엔티티, repository, migration, SQL을 바꿨는데 `db-schema.md`가 그대로면 작업이 덜 끝난 것으로 본다.
 
 ## Exception Rule
@@ -341,19 +374,24 @@ common/error/
 
 권장:
 
-- `PlaceOrderUseCase`
-- `LoadPortfolioPort`
+- `PlaceOrderService`
+- `TradingAccountRepository`
 - `JpaOrderRepositoryAdapter`
 - `CurrentActor`
 - `MarketDataConnector`
 
 금지:
 
+- `LoadPortfolioPort`
+- `GetMarketSummaryUseCase`
 - `OrderManager`
 - `OrderHelper`
 - `CommonService`
 - `Util`
 - `Processor`
+
+단, 위 금지 예시는 이름 자체보다 "쓸모 없는 한 겹 추상화"를 금지한다는 뜻이다.
+실제 다중 구현 계약이라면 인터페이스를 쓸 수 있지만, 그 경우에도 역할 이름이 먼저 드러나야 한다.
 
 불리언은 반드시 술어형으로 작성한다.
 
@@ -373,20 +411,24 @@ Spring은 조립 도구이지 아키텍처가 아니다.
 - `@Entity`, `@Embeddable`은 infrastructure persistence 쪽에 둔다.
 - `@Transactional`은 application 유스케이스 경계에서 사용한다.
 - `domain`에는 Spring annotation을 두지 않는다.
+- `@RestController`가 application service 대신 형식적인 `*UseCase` 인터페이스만 바라보도록 강제하지 않는다.
 
 ## Test Rule
 
 테스트도 레이어 경계를 반영해야 한다.
 
 - domain: 빠른 단위 테스트
-- application: 유스케이스 테스트, provider/port fake 사용
+- application: 유스케이스 테스트, provider/필요한 계약 fake 사용
 - infrastructure: repository/connector 통합 테스트
 - api: controller slice 또는 통합 테스트
 
 중요:
 
 - application 테스트는 `Providers` fake로 인증/플래그/텔레메트리 조건을 통제할 수 있어야 한다.
+- 테스트 더블이 필요하다는 이유만으로 production 인터페이스를 먼저 만들지 않는다.
 - 외부 시스템 통합 테스트는 실제 SDK 호출보다 adapter 계약 검증에 집중한다.
+- DB가 필요한 테스트는 기본적으로 인메모리 `H2`를 사용한다.
+- 테스트용 DDL/쿼리는 가능하면 MySQL과 의미 차이가 나지 않게 유지하고, 차이가 생기면 그 이유를 테스트 코드나 설정에서 드러낸다.
 
 ## Architecture Lint Contract
 

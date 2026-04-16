@@ -76,7 +76,7 @@ const SignUpPage = () => {
       <Modal
         isOpen={isOpen}
         onClose={() => {
-          router.push("/stock");
+          router.push("/markets");
         }}
         hasBackdropBlur={false}
         isClickOutsideClose={false}
@@ -88,12 +88,12 @@ const SignUpPage = () => {
             </div>
             <div className="text-center flex flex-col gap-main">
               <p className="text-lg font-bold text-main-dark-gray">
-                가볍게 시작하는 주식 탐색
+                가볍게 시작하는 코인 선물 체험
               </p>
               <p className="text-sm text-main-dark-gray break-keep flex flex-col">
-                종목 검색과 포트폴리오 관리를 위한
+                Bitget 기반 선물 마켓과 포지션 흐름을
                 <br />
-                주식 플랫폼
+                연습하는 모의투자 플랫폼
               </p>
             </div>
           </div>

@@ -26,7 +26,7 @@ const Error = () => {
           다시 시도하기
         </button>
         <button
-          onClick={() => router.push("/stock")}
+          onClick={() => router.push("/markets")}
           className="px-6 py-3 bg-gray-300 text-gray-800 rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
         >
           홈으로

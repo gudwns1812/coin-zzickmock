@@ -146,9 +146,7 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 
 ```text
 backend/src/main/java/coin/coinzzickmock/
-  bootstrap/
-    CoinZzickmockApplication.java
-    config/
+  CoinZzickmockApplication.java
   common/
     api/
     error/
@@ -160,6 +158,7 @@ backend/src/main/java/coin/coinzzickmock/
     telemetry/
     featureflag/
     infrastructure/
+      config/
   feature/
     market/
       api/
@@ -173,6 +172,7 @@ backend/src/main/java/coin/coinzzickmock/
         service/
         policy/
       infrastructure/
+        config/
         persistence/
         connector/
         mapper/
@@ -185,7 +185,8 @@ backend/src/main/java/coin/coinzzickmock/
 
 강한 규칙:
 
-- 최상위는 `bootstrap`, `common`, `providers`, `feature`만 사용한다.
+- 루트 패키지 바로 아래에는 `*Application` 진입점만 둔다.
+- 루트 패키지의 최상위 하위 패키지는 `common`, `providers`, `feature`만 사용한다.
 - 기능 코드는 반드시 `feature/<feature-name>/` 아래에 둔다.
 - `feature` 바깥에 새 업무용 패키지를 만들지 않는다.
 - `support`, `core`, `extern`, `storage`처럼 기술/성격 기준의 광역 패키지는 새로 만들지 않는다.
@@ -407,7 +408,8 @@ Spring은 조립 도구이지 아키텍처가 아니다.
 규칙:
 
 - `@RestController`는 `api`에만 둔다.
-- `@Configuration`은 `bootstrap/config` 또는 infrastructure config에 둔다.
+- `@Configuration`은 owner가 드러나는 `feature/.../infrastructure/config` 또는 `providers/infrastructure/config`에 둔다.
+- 앱 시작 시 필요한 seed나 초기화도 전역 bucket이 아니라 소유 feature의 `infrastructure/config`에서 선언한다.
 - `@Entity`, `@Embeddable`은 infrastructure persistence 쪽에 둔다.
 - `@Transactional`은 application 유스케이스 경계에서 사용한다.
 - `domain`에는 Spring annotation을 두지 않는다.
@@ -440,7 +442,7 @@ Spring은 조립 도구이지 아키텍처가 아니다.
 
 이 린터는 일반 스타일 린터가 아니라 구조 린터다.
 
-- 최상위 패키지는 `bootstrap`, `common`, `providers`, `feature`만 허용
+- 루트 패키지에는 `*Application`만 허용하고, 최상위 하위 패키지는 `common`, `providers`, `feature`만 허용
 - `support`, `core`, `extern`, `storage` 같은 레거시 광역 패키지 금지
 - `feature.<name>.<layer>` 구조 강제
 - `domain` 레이어의 Spring/JPA 의존 금지

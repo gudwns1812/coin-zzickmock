@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.position.infrastructure.persistence;
 
-import coin.coinzzickmock.bootstrap.CoinZzickmockApplication;
+import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import org.junit.jupiter.api.Test;

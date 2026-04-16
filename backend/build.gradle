@@ -39,8 +39,8 @@ tasks.named('test') {
 }
 
 def architectureRootPackage = 'coin.coinzzickmock'
-def architectureAllowedTopLevel = ['bootstrap', 'common', 'providers', 'feature'] as Set
-def architectureForbiddenTopLevel = ['support', 'core', 'extern', 'storage'] as Set
+def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
+def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
 def architectureLayers = ['api', 'application', 'domain', 'infrastructure'] as Set
 def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
 
@@ -148,14 +148,16 @@ tasks.register('architectureLint') {
                     : packageName.substring(architectureRootPackage.length() + 1).tokenize('.')
 
                 if (packageSegments.isEmpty()) {
-                    logViolation(
-                        sourceFile,
-                        packageLine,
-                        'TOP_LEVEL_PACKAGE_ALLOWED',
-                        '루트 패키지 바로 아래에 업무 클래스를 두지 않습니다.',
-                        '파일을 `bootstrap`, `common`, `providers`, `feature` 중 하나의 하위 패키지로 옮기세요.',
-                        [packageName: packageName]
-                    )
+                    if (!sourceFile.name.endsWith('Application.java')) {
+                        logViolation(
+                            sourceFile,
+                            packageLine,
+                            'TOP_LEVEL_PACKAGE_ALLOWED',
+                            '루트 패키지 바로 아래에는 Spring Boot `*Application` 진입점만 둘 수 있습니다.',
+                            '나머지 클래스는 `common`, `providers`, `feature` 중 하나의 하위 패키지로 옮기세요.',
+                            [packageName: packageName]
+                        )
+                    }
                     return
                 }
 
@@ -177,7 +179,7 @@ tasks.register('architectureLint') {
                         packageLine,
                         'FORBIDDEN_LEGACY_TOP_LEVEL',
                         "레거시 최상위 패키지 `${topLevel}`는 금지됩니다.",
-                        '`feature`, `providers`, `common`, `bootstrap` 구조로 재배치하세요.',
+                        '루트 `*Application`과 `feature`, `providers`, `common` 구조로 재배치하세요.',
                         [packageName: packageName, topLevel: topLevel]
                     )
                 }

@@ -32,7 +32,7 @@
 ## 놀라움과 발견
 
 - 관찰:
-  현재 백엔드는 [backend/src/main/java/coin/coinzzickmock/bootstrap/CoinZzickmockApplication.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/bootstrap/CoinZzickmockApplication.java)만 있는 사실상 빈 상태다.
+  현재 백엔드는 [backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java)만 있는 사실상 빈 상태다.
   증거:
   `find backend/src/main/java -maxdepth 5 -type f | sort` 결과에 애플리케이션 엔트리포인트만 존재했다.
 

@@ -31,6 +31,8 @@
 - [x] (2026-04-16 15:32+09:00) `./gradlew architectureLint` 실행
 - [x] (2026-04-16 15:32+09:00) `./gradlew check` 실행
 - [x] (2026-04-16 15:33+09:00) 품질 게이트용 자체 리뷰 수행 및 결과 기록
+- [x] (2026-04-16 16:18+09:00) 사용자 요청에 따라 `bootstrap` 제거 방향으로 active 계획 갱신
+- [x] (2026-04-16 16:21+09:00) `bootstrap` 제거를 반영한 문서, 린트, 패키지 구조 수정 및 재검증
 
 ## 놀라움과 발견
 
@@ -47,7 +49,12 @@
 - 관찰:
   `FuturesBootstrapConfiguration`은 provider 조립, 외부 connector 조립, feature bean 조립, demo seed까지 한 파일에서 모두 맡고 있다.
   증거:
-  [backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java)에 위 책임이 함께 들어 있다.
+  작업 시작 시점의 `coin.coinzzickmock.bootstrap.config.FuturesBootstrapConfiguration`에는 `RestClient` bean과 demo account initializer가 함께 선언되어 있었다.
+
+- 관찰:
+  `bootstrap`은 계층이라기보다 전역 조립 bucket처럼 동작해서 owner가 다른 설정이 한곳에 섞이기 쉽다.
+  증거:
+  기존 `FuturesBootstrapConfiguration`은 Bitget connector bean과 demo account seed를 같은 파일에 선언하고 있었고, 두 설정의 소유자는 각각 `providers`와 `feature/account`다.
 
 - 관찰:
   `application/usecase`, `application/port` 파일을 지운 뒤에도 빈 디렉터리가 남아 있어 문서 정합성 관점에서는 한 번 더 정리해야 했다.
@@ -89,6 +96,13 @@
   날짜/작성자:
   2026-04-16 / Codex
 
+- 결정:
+  `bootstrap` 패키지는 유지하지 않고, `CoinZzickmockApplication`은 루트 패키지로 올리며 설정은 owner의 `infrastructure/config`로 재배치한다.
+  근거:
+  강한 계층을 적용할 때 전역 bucket보다 소유 패키지가 드러나는 배치가 경계를 더 명확하게 만든다. Bitget connector는 `providers`, demo seed는 `feature/account`, Querydsl 설정은 현재 사용처인 `feature/position`에 귀속하는 편이 구조 의도를 잘 드러낸다.
+  날짜/작성자:
+  2026-04-16 / Codex
+
 ## 결과 및 회고
 
 이번 리팩토링으로 공개 API 경로는 유지한 채 내부 구조를 문서 기준에 더 가깝게 맞췄다.
@@ -99,6 +113,9 @@
 - `RewardController`가 저장소를 직접 읽지 않도록 `GetRewardPointService`, `GetShopItemsService`를 추가했다.
 - `common/error` 아래에 구조화된 예외와 글로벌 핸들러를 추가했다.
 - provider 구현체를 `providers/infrastructure`로 이동해 `bootstrap/config`의 책임을 줄였다.
+- `bootstrap` 패키지를 제거하고 `CoinZzickmockApplication`을 루트 패키지로 이동했다.
+- Bitget, Querydsl, demo account seed 설정을 각각 owner의 `infrastructure/config`로 나눴다.
+- 문서와 아키텍처 린트도 같은 기준으로 갱신해 루트 `*Application`과 owner별 config 배치를 자동 검증하게 만들었다.
 
 남은 리스크는 크지 않지만 두 가지가 있다.
 
@@ -109,11 +126,14 @@
 
 이번 작업에서 가장 먼저 읽어야 하는 코드는 아래와 같다.
 
-- [backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/bootstrap/config/FuturesBootstrapConfiguration.java)
-- [backend/src/main/java/coin/coinzzickmock/feature/account/application/GetAccountSummaryService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/application/GetAccountSummaryService.java)
-- [backend/src/main/java/coin/coinzzickmock/feature/market/application/GetMarketSummaryService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/application/GetMarketSummaryService.java)
-- [backend/src/main/java/coin/coinzzickmock/feature/order/application/CreateOrderService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/application/CreateOrderService.java)
-- [backend/src/main/java/coin/coinzzickmock/feature/position/application/ClosePositionService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/application/ClosePositionService.java)
+- [backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/CoinZzickmockApplication.java)
+- [backend/src/main/java/coin/coinzzickmock/providers/infrastructure/config/BitgetConnectorConfiguration.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/providers/infrastructure/config/BitgetConnectorConfiguration.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/config/AccountDemoSeedConfiguration.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/config/AccountDemoSeedConfiguration.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/config/PositionQuerydslConfiguration.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/config/PositionQuerydslConfiguration.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/account/application/service/GetAccountSummaryService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/application/service/GetAccountSummaryService.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/market/application/service/GetMarketSummaryService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/application/service/GetMarketSummaryService.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/order/application/service/CreateOrderService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/application/service/CreateOrderService.java)
+- [backend/src/main/java/coin/coinzzickmock/feature/position/application/service/ClosePositionService.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/application/service/ClosePositionService.java)
 - [backend/src/main/java/coin/coinzzickmock/feature/reward/api/RewardController.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/api/RewardController.java)
 
 현재 구조에서 정리해야 하는 핵심 문제는 아래와 같다.
@@ -123,7 +143,7 @@
 3. `RewardController`가 application service가 아니라 저장소를 직접 사용한다.
 4. `BitgetMarketSnapshotReader`는 `LoadMarketSnapshotPort`라는 pass-through 계약만 구현하는 중간 계층이라 단순화 후보이다.
 5. `IllegalArgumentException`이 application 흐름 곳곳에서 발생해 공통 오류 모델이 없다.
-6. 부트스트랩 설정이 너무 많은 책임을 한 파일에서 맡고 있다.
+6. `bootstrap` 패키지가 전역 bucket처럼 동작해 설정 owner 경계를 흐린다.
 
 ## 작업 계획
 
@@ -133,7 +153,7 @@
 
 이후 controller를 정리한다. 각 controller는 concrete application service를 주입받아 request DTO를 command/query로 바꾸고 response DTO로 매핑하는 역할만 맡는다. 특히 reward 조회는 `RewardController -> application service -> repository` 흐름으로 바꾼다.
 
-마지막으로 조립을 정리한다. `FuturesBootstrapConfiguration`을 provider 조립과 feature bean 조립으로 나누거나, 이미 Spring bean으로 직접 인식할 수 있는 클래스는 별도 `@Bean` 없이 생성되게 단순화한다. 외부 Bitget market 조회는 `Providers.connector().marketDataGateway()` 경유를 유지하되, 의미 없는 중간 추상화는 제거한다.
+마지막으로 조립을 정리한다. `bootstrap` 패키지는 제거하고 `CoinZzickmockApplication`을 루트 패키지로 이동한다. Bitget connector, Querydsl, demo account seed 설정은 각각 `providers` 또는 해당 feature의 `infrastructure/config`로 재배치해 owner가 파일 위치에서 바로 드러나게 만든다.
 
 ## 구체적인 단계
 
@@ -151,7 +171,7 @@
    - position: position 조회/청산 계약 재배치
    - reward: reward 조회/적립 service 추가
 
-4. controller와 bootstrap 설정을 새 구조에 맞춰 수정한다.
+4. controller와 설정 배치를 새 구조에 맞춰 수정한다. 루트에는 `CoinZzickmockApplication`만 남기고, 설정은 owner의 `infrastructure/config`로 이동한다.
 
 5. 아래 명령을 `backend/`에서 실행한다.
    `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew test --console=plain`
@@ -186,6 +206,7 @@
 증거:
 
 - `backend/src/main/java/coin/coinzzickmock/feature/*` 아래에서 `application/usecase`, `application/port` 디렉터리가 제거되었다.
+- `backend/src/main/java/coin/coinzzickmock/bootstrap` 디렉터리가 제거되고, 루트 `CoinZzickmockApplication`과 owner별 `infrastructure/config`만 남았다.
 - `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew test --console=plain`
   `BUILD SUCCESSFUL in 5s`
 - `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew architectureLint --console=plain`
@@ -213,3 +234,5 @@
 변경 메모:
 2026-04-16 13:27+09:00 / 사용자 승인 후 백엔드 아키텍처 문서 정합화 리팩토링 계획을 새 active 계획으로 작성했다.
 2026-04-16 15:33+09:00 / 서비스, 저장소 계약, 예외, provider 구현체, 테스트, 검증 결과를 반영해 계획 문서를 완료 상태로 갱신했다.
+2026-04-16 16:18+09:00 / 사용자 요청에 따라 `bootstrap` 제거 방향을 반영하도록 계획을 다시 열고, owner별 config 재배치 작업을 추가했다.
+2026-04-16 16:21+09:00 / 루트 `CoinZzickmockApplication`, owner별 `infrastructure/config`, 아키텍처 린트 규칙, 설계 문서 갱신과 `architectureLint`/`check` 재검증 결과를 반영했다.

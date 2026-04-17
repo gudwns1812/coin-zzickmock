@@ -4,6 +4,7 @@ import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,18 +12,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public class JpaPositionRepository implements PositionRepository {
-    private final OpenPositionSpringDataRepository openPositionSpringDataRepository;
+@RequiredArgsConstructor
+public class PositionPersistenceRepository implements PositionRepository {
+    private final OpenPositionEntityRepository openPositionEntityRepository;
     private final JPAQueryFactory jpaQueryFactory;
     private final PathBuilder<OpenPositionEntity> position = new PathBuilder<>(OpenPositionEntity.class, "position");
-
-    public JpaPositionRepository(
-            OpenPositionSpringDataRepository openPositionSpringDataRepository,
-            JPAQueryFactory jpaQueryFactory
-    ) {
-        this.openPositionSpringDataRepository = openPositionSpringDataRepository;
-        this.jpaQueryFactory = jpaQueryFactory;
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -73,7 +67,7 @@ public class JpaPositionRepository implements PositionRepository {
             entity.apply(positionSnapshot);
         }
 
-        return openPositionSpringDataRepository.save(entity).toDomain();
+        return openPositionEntityRepository.save(entity).toDomain();
     }
 
     @Override

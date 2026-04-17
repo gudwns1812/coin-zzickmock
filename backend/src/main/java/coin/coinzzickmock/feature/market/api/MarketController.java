@@ -2,8 +2,13 @@ package coin.coinzzickmock.feature.market.api;
 
 import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
+import coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeFeed;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,16 +17,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-
 @RestController
 @RequestMapping("/api/futures/markets")
 @RequiredArgsConstructor
 public class MarketController {
     private final GetMarketSummaryService getMarketSummaryService;
+    private final MarketRealtimeFeed marketRealtimeFeed;
 
     @GetMapping
     public ApiResponse<List<MarketSummaryResponse>> list() {
@@ -46,15 +47,15 @@ public class MarketController {
         Consumer<MarketSummaryResult> listener = result -> sendEvent(symbol, emitter, listenerReference, result);
         listenerReference.set(listener);
 
-        emitter.onCompletion(() -> getMarketSummaryService.unsubscribe(symbol, listenerReference.get()));
+        emitter.onCompletion(() -> marketRealtimeFeed.unsubscribe(symbol, listenerReference.get()));
         emitter.onTimeout(() -> {
-            getMarketSummaryService.unsubscribe(symbol, listenerReference.get());
+            marketRealtimeFeed.unsubscribe(symbol, listenerReference.get());
             emitter.complete();
         });
-        emitter.onError(error -> getMarketSummaryService.unsubscribe(symbol, listenerReference.get()));
+        emitter.onError(error -> marketRealtimeFeed.unsubscribe(symbol, listenerReference.get()));
 
         if (sendEvent(symbol, emitter, listenerReference, currentMarket)) {
-            getMarketSummaryService.subscribe(symbol, listener);
+            marketRealtimeFeed.subscribe(symbol, listener);
         }
 
         return emitter;
@@ -86,7 +87,7 @@ public class MarketController {
             emitter.send(toResponse(result));
             return true;
         } catch (IOException exception) {
-            getMarketSummaryService.unsubscribe(symbol, listenerReference.get());
+            marketRealtimeFeed.unsubscribe(symbol, listenerReference.get());
             emitter.complete();
             return false;
         }

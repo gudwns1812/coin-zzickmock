@@ -5,26 +5,16 @@ import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class DefaultProviders implements Providers {
     private final AuthProvider authProvider;
     private final ConnectorProvider connectorProvider;
     private final TelemetryProvider telemetryProvider;
     private final FeatureFlagProvider featureFlagProvider;
-
-    public DefaultProviders(
-            AuthProvider authProvider,
-            ConnectorProvider connectorProvider,
-            TelemetryProvider telemetryProvider,
-            FeatureFlagProvider featureFlagProvider
-    ) {
-        this.authProvider = authProvider;
-        this.connectorProvider = connectorProvider;
-        this.telemetryProvider = telemetryProvider;
-        this.featureFlagProvider = featureFlagProvider;
-    }
 
     @Override
     public AuthProvider auth() {

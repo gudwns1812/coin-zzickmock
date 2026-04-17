@@ -36,7 +36,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
 - Query layer 기준:
-  [JpaPositionRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/JpaPositionRepository.java)
+  [PositionPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionPersistenceRepository.java)
 - migration 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql)
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql)
@@ -230,7 +230,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 2026-04-16:
   `MemberCredentialEntity`를 source of truth에 추가하고, 로컬 회원 자격 증명 저장 구조를 문서화했다.
 - 2026-04-16:
-  `JpaPositionRepository`에 OpenFeign 포크 `querydsl-jpa` 기반 조회를 추가했다.
+  `PositionPersistenceRepository`에 OpenFeign 포크 `querydsl-jpa` 기반 조회를 추가했다.
 
 ## Update Rule
 

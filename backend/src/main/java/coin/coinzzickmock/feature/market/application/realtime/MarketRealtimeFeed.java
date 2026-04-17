@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.application.service;
+package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
@@ -6,26 +6,27 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import jakarta.annotation.PostConstruct;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
-@Service
-public class MarketRealtimeService {
+@Component
+@RequiredArgsConstructor
+public class MarketRealtimeFeed {
+
     private final Providers providers;
+    private final MarketHistoryRecorder marketHistoryRecorder;
     private final ConcurrentMap<String, MarketSummaryResult> latestMarkets = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, CopyOnWriteArrayList<Consumer<MarketSummaryResult>>> subscribers = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, CopyOnWriteArrayList<Consumer<MarketSummaryResult>>> subscribers =
+            new ConcurrentHashMap<>();
     private volatile List<String> supportedSymbols = List.of("BTCUSDT", "ETHUSDT");
-
-    public MarketRealtimeService(Providers providers) {
-        this.providers = providers;
-    }
 
     @PostConstruct
     void initializeCache() {
@@ -34,7 +35,12 @@ public class MarketRealtimeService {
 
     @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:3000}")
     public void refreshSupportedMarkets() {
-        List<MarketSummaryResult> refreshedMarkets = providers.connector().marketDataGateway().loadSupportedMarkets().stream()
+        refreshSupportedMarkets(Instant.now());
+    }
+
+    void refreshSupportedMarkets(Instant observedAt) {
+        List<MarketSummaryResult> refreshedMarkets = providers.connector().marketDataGateway().loadSupportedMarkets()
+                .stream()
                 .filter(Objects::nonNull)
                 .map(this::toResult)
                 .toList();
@@ -48,6 +54,7 @@ public class MarketRealtimeService {
                 .toList();
 
         refreshedMarkets.forEach(this::cacheAndPublish);
+        persistHistory(refreshedMarkets, observedAt);
     }
 
     public List<MarketSummaryResult> getSupportedMarkets() {
@@ -102,6 +109,10 @@ public class MarketRealtimeService {
         }
 
         symbolSubscribers.forEach(listener -> listener.accept(result));
+    }
+
+    private void persistHistory(List<MarketSummaryResult> refreshedMarkets, Instant observedAt) {
+        marketHistoryRecorder.recordSnapshots(refreshedMarkets, observedAt);
     }
 
     private MarketSummaryResult toResult(MarketSnapshot snapshot) {

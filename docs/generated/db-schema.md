@@ -40,6 +40,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - migration 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql)
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql)
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -65,7 +66,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   운영 `MySQL 8.x`
   테스트 `H2 in-memory`
 - 주요 도메인:
-  계정, 회원 자격 증명, 보상 포인트, 선물 주문, 오픈 포지션
+  계정, 회원 자격 증명, 보상 포인트, 선물 주문, 오픈 포지션, 시장 심볼, 1분봉 원본, 1시간봉 롤업
 - 네이밍 규칙:
   테이블은 `snake_case`
   시간 컬럼은 `created_at`, `updated_at`
@@ -144,6 +145,53 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
 
+### `market_symbols`
+
+- 목적:
+  선물 차트와 시세 수집이 참조하는 거래 심볼 기준 정보를 저장한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `symbol`, `display_name`, `base_asset`, `quote_asset`, `price_scale`, `quantity_scale`, `price_step`, `quantity_step`, `max_leverage`, `active`, `created_at`, `updated_at`
+- 관련 엔티티/모듈:
+  현재는 전용 JPA entity가 없고 `feature.market`의 향후 영속성 기준 테이블로 예약되어 있다.
+- 관련 migration 또는 schema 파일:
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
+- 초기 시드:
+  `BTCUSDT`, `ETHUSDT`
+
+### `market_candles_1m`
+
+- 목적:
+  차트와 롤업의 기준 원본이 되는 1분봉 시계열 데이터를 저장한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `symbol_id`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `trade_count`, `created_at`, `updated_at`
+- 관련 엔티티/모듈:
+  현재는 전용 JPA entity가 없고 `feature.market`의 향후 시계열 영속성 기준 테이블로 예약되어 있다.
+- 관련 migration 또는 schema 파일:
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
+- 인덱스:
+  `uk_market_candles_1m_symbol_open_time`로 심볼별 시각 중복을 막고,
+  `idx_market_candles_1m_open_time_symbol`로 시간 구간 기준 롤업 조회를 빠르게 한다.
+
+### `market_candles_1h`
+
+- 목적:
+  1분봉 원본에서 만들어진 1시간봉 롤업 데이터를 저장해 차트 조회 비용을 줄인다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `symbol_id`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `trade_count`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`
+- 관련 엔티티/모듈:
+  현재는 전용 JPA entity가 없고 `feature.market`의 향후 롤업 영속성 기준 테이블로 예약되어 있다.
+- 관련 migration 또는 schema 파일:
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
+- 인덱스:
+  `uk_market_candles_1h_symbol_open_time`로 심볼별 시각 중복을 막고,
+  `idx_market_candles_1h_open_time_symbol`로 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
+
 ## Relationships
 
 - `reward_point_wallets.member_id -> trading_accounts.member_id`:
@@ -156,6 +204,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   오픈 포지션은 특정 계정에 속한다.
 - `open_positions(member_id, symbol, position_side, margin_mode)`:
   한 계정에서 동일 심볼/방향/마진 모드 조합은 하나의 집계 포지션만 가진다.
+- `market_candles_1m.symbol_id -> market_symbols.id`:
+  1분봉은 반드시 등록된 거래 심볼에 속한다.
+- `market_candles_1h.symbol_id -> market_symbols.id`:
+  1시간봉 롤업도 반드시 등록된 거래 심볼에 속한다.
+- `market_candles_1m(symbol_id, open_time)`:
+  동일 심볼에서 같은 시작 시각의 1분봉은 하나만 존재한다.
+- `market_candles_1h(symbol_id, open_time)`:
+  동일 심볼에서 같은 시작 시각의 1시간봉은 하나만 존재한다.
 
 ## Change Log
 
@@ -167,6 +223,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V1__initial_schema.sql`로 초기 스키마 migration을 추가했다.
 - 2026-04-16:
   `V2__add_member_credentials.sql`로 로그인/회원가입 동기화를 위한 `member_credentials` 테이블을 추가했다.
+- 2026-04-16:
+  `V3__add_market_history_schema.sql`로 `market_symbols`, `market_candles_1m`, `market_candles_1h`와 시간축 인덱스를 추가했다.
 - 2026-04-16:
   `trading_accounts`, `reward_point_wallets`, `futures_orders`, `open_positions` entity를 source of truth로 연결했다.
 - 2026-04-16:
@@ -187,7 +245,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 - 스키마 변경은 먼저 `Flyway` migration에 반영하고, 이 문서는 그 결과를 요약한다.
 - `Flyway` migration은 `backend/src/main/resources/db/migration` 아래에 새 버전 파일로 추가한다.
-- 버전은 기존 최신 버전보다 큰 새 번호를 사용한다. 예: `V1__initial_schema.sql` 다음 변경은 `V2__add_open_positions_index.sql`
+- 버전은 기존 최신 버전보다 큰 새 번호를 사용한다. 예: `V3__add_market_history_schema.sql` 다음 변경은 `V4__add_market_history_rollup_job_state.sql`
 - 모르는 내용은 지어내지 않는다.
 - 확인 가능한 사실만 적는다.
 - 실제 원문 경로를 함께 남긴다.

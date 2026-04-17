@@ -4,6 +4,7 @@
 실제 계획으로 사용할 때는 제목과 각 섹션 내용을 현재 작업에 맞게 채운다.
 
 이 계획서는 [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)와 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다.
+사용자가 별도 예외를 주지 않았다면, 이 계획서에 적는 예상 PR 제목과 실제 PR 본문도 모두 한국어로 작성한다. 코드, 명령어, 경로 같은 식별자만 원문 표기를 유지한다.
 
 ## 목적 / 큰 그림
 
@@ -64,6 +65,7 @@
 
 ## 산출물과 메모
 
+- 예상 PR 제목:
 - PR 링크:
 - 관련 로그:
 - 남은 TODO:

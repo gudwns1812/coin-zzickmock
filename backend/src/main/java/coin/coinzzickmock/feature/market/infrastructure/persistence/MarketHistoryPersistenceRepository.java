@@ -45,13 +45,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Transactional
     public void saveMinuteCandle(MarketHistoryCandle candle) {
         MarketCandle1mEntity entity = marketCandle1mEntityRepository
-                .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
-                        candle.symbolId(),
-                        candle.openTime(),
-                        candle.closeTime()
-                )
-                .stream()
-                .findFirst()
+                .findBySymbolIdAndOpenTime(candle.symbolId(), candle.openTime())
                 .map(existing -> {
                     existing.apply(candle);
                     return existing;
@@ -65,13 +59,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Transactional
     public void saveHourlyCandle(HourlyMarketCandle candle) {
         MarketCandle1hEntity entity = marketCandle1hEntityRepository
-                .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
-                        candle.symbolId(),
-                        candle.openTime(),
-                        candle.closeTime()
-                )
-                .stream()
-                .findFirst()
+                .findBySymbolIdAndOpenTime(candle.symbolId(), candle.openTime())
                 .map(existing -> {
                     existing.apply(candle);
                     return existing;

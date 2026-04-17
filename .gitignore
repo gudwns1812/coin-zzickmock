@@ -58,3 +58,5 @@ backend/spy.log
 
 # compiled artifacts
 *.class
+
+scipts/*

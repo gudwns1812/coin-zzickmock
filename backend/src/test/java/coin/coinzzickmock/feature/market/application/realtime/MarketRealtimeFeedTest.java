@@ -34,7 +34,7 @@ class MarketRealtimeFeedTest {
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new FakeProviders(marketDataGateway),
                 new MarketHistoryRecorder(new InMemoryMarketHistoryRepository()),
-                newLocalCache()
+                newSnapshotStore()
         );
 
         feed.refreshSupportedMarkets();
@@ -55,7 +55,7 @@ class MarketRealtimeFeedTest {
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new FakeProviders(marketDataGateway),
                 new MarketHistoryRecorder(new InMemoryMarketHistoryRepository()),
-                newLocalCache()
+                newSnapshotStore()
         );
         List<MarketSummaryResult> events = new CopyOnWriteArrayList<>();
 
@@ -84,7 +84,7 @@ class MarketRealtimeFeedTest {
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new FakeProviders(marketDataGateway),
                 new MarketHistoryRecorder(marketHistoryRepository),
-                newLocalCache()
+                newSnapshotStore()
         );
 
         feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:15Z"));
@@ -128,8 +128,8 @@ class MarketRealtimeFeedTest {
         return new MarketSnapshot(symbol, symbol + " Perpetual", lastPrice, markPrice, indexPrice, fundingRate, change24h);
     }
 
-    private static MarketRealtimeLocalCache newLocalCache() {
-        return new MarketRealtimeLocalCache(new ConcurrentMapCacheManager(
+    private static MarketSnapshotStore newSnapshotStore() {
+        return new MarketSnapshotStore(new ConcurrentMapCacheManager(
                 CoinCacheNames.MARKET_SNAPSHOT_LOCAL_CACHE,
                 CoinCacheNames.MARKET_SUPPORTED_SYMBOLS_LOCAL_CACHE
         ));

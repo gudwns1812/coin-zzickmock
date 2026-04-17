@@ -59,7 +59,7 @@
 
 ## 결과 및 회고
 
-- `MarketRealtimeFeed` 는 더 이상 최신 시세와 지원 심볼을 클래스 내부 `ConcurrentHashMap`/`volatile` 필드에 직접 들고 있지 않고, `MarketRealtimeLocalCache` 를 통해 Spring Cache local `CacheManager` 에 기록한다.
+- `MarketRealtimeFeed` 는 더 이상 최신 시세와 지원 심볼을 클래스 내부 `ConcurrentHashMap`/`volatile` 필드에 직접 들고 있지 않고, `MarketSnapshotStore` 를 통해 Spring Cache local `CacheManager` 에 기록한다.
 - backend 전역에는 `localCacheManager` 와 조건부 `distributedCacheManager` 가 생겼다. local cache 는 기본 활성이고, Redis distributed cache 는 `coin.cache.redis.enabled=true` 일 때만 빈이 만들어진다.
 - `spring-boot-starter-cache`, `spring-boot-starter-data-redis`, `@EnableCaching`, 기본 `coin.cache.redis.*` 설정을 추가해 이후 분산 캐시가 필요한 기능이 같은 Spring Cache 추상화 위에서 Redis를 표준 구현으로 선택할 수 있게 했다.
 - `MarketRealtimeFeedCacheTest`, `CacheConfigurationTest` 로 local Spring cache 기록과 Redis cache manager 생성을 회귀 테스트로 고정했다.

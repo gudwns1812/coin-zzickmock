@@ -23,7 +23,7 @@ public class MarketRealtimeFeed {
 
     private final Providers providers;
     private final MarketHistoryRecorder marketHistoryRecorder;
-    private final MarketRealtimeLocalCache marketRealtimeLocalCache;
+    private final MarketSnapshotStore marketSnapshotStore;
     private final ConcurrentMap<String, CopyOnWriteArrayList<Consumer<MarketSummaryResult>>> subscribers =
             new ConcurrentHashMap<>();
 
@@ -48,21 +48,21 @@ public class MarketRealtimeFeed {
             return;
         }
 
-        marketRealtimeLocalCache.putSupportedMarkets(refreshedMarkets);
+        marketSnapshotStore.putSupportedMarkets(refreshedMarkets);
         refreshedMarkets.forEach(this::publish);
         persistHistory(refreshedMarkets, observedAt);
     }
 
     public List<MarketSummaryResult> getSupportedMarkets() {
-        if (!marketRealtimeLocalCache.hasSupportedMarkets()) {
+        if (!marketSnapshotStore.hasSupportedMarkets()) {
             refreshSupportedMarkets();
         }
 
-        return marketRealtimeLocalCache.getSupportedMarkets();
+        return marketSnapshotStore.getSupportedMarkets();
     }
 
     public MarketSummaryResult getMarket(String symbol) {
-        MarketSummaryResult cached = marketRealtimeLocalCache.getMarket(symbol).orElse(null);
+        MarketSummaryResult cached = marketSnapshotStore.getMarket(symbol).orElse(null);
         if (cached != null) {
             return cached;
         }
@@ -73,7 +73,7 @@ public class MarketRealtimeFeed {
         }
 
         MarketSummaryResult result = toResult(loaded);
-        marketRealtimeLocalCache.putMarket(result);
+        marketSnapshotStore.putMarket(result);
         return result;
     }
 

@@ -6,6 +6,7 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import jakarta.annotation.PostConstruct;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,13 +23,15 @@ public class MarketRealtimeFeed {
     private static final Logger log = LoggerFactory.getLogger(MarketRealtimeFeed.class);
 
     private final Providers providers;
+    private final MarketHistoryRecorder marketHistoryRecorder;
     private final ConcurrentMap<String, MarketSummaryResult> latestMarkets = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, CopyOnWriteArrayList<Consumer<MarketSummaryResult>>> subscribers =
             new ConcurrentHashMap<>();
     private volatile List<String> supportedSymbols = List.of("BTCUSDT", "ETHUSDT");
 
-    public MarketRealtimeFeed(Providers providers) {
+    public MarketRealtimeFeed(Providers providers, MarketHistoryRecorder marketHistoryRecorder) {
         this.providers = providers;
+        this.marketHistoryRecorder = marketHistoryRecorder;
     }
 
     @PostConstruct
@@ -38,6 +41,10 @@ public class MarketRealtimeFeed {
 
     @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:3000}")
     public void refreshSupportedMarkets() {
+        refreshSupportedMarkets(Instant.now());
+    }
+
+    void refreshSupportedMarkets(Instant observedAt) {
         List<MarketSummaryResult> refreshedMarkets = providers.connector().marketDataGateway().loadSupportedMarkets()
                 .stream()
                 .filter(Objects::nonNull)
@@ -53,6 +60,7 @@ public class MarketRealtimeFeed {
                 .toList();
 
         refreshedMarkets.forEach(this::cacheAndPublish);
+        persistHistory(refreshedMarkets, observedAt);
     }
 
     public List<MarketSummaryResult> getSupportedMarkets() {
@@ -108,6 +116,14 @@ public class MarketRealtimeFeed {
         }
 
         symbolSubscribers.forEach(listener -> listener.accept(result));
+    }
+
+    private void persistHistory(List<MarketSummaryResult> refreshedMarkets, Instant observedAt) {
+        try {
+            marketHistoryRecorder.recordSnapshots(refreshedMarkets, observedAt);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to persist market history from latest ticker snapshots", exception);
+        }
     }
 
     private MarketSummaryResult toResult(MarketSnapshot snapshot) {

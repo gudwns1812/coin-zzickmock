@@ -8,12 +8,12 @@ import type {
 } from "@/lib/futures-api";
 import { formatUsd, type MarketSymbol } from "@/lib/markets";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
   symbol: MarketSymbol;
-  defaultPrice: number;
+  currentPrice: number;
 };
 
 type Side = "LONG" | "SHORT";
@@ -26,17 +26,24 @@ type ClientApiResponse<T> = {
   message: string | null;
 };
 
-export default function OrderEntryPanel({ symbol, defaultPrice }: Props) {
+export default function OrderEntryPanel({ symbol, currentPrice }: Props) {
   const router = useRouter();
   const [positionSide, setPositionSide] = useState<Side>("LONG");
   const [orderType, setOrderType] = useState<OrderType>("MARKET");
   const [marginMode, setMarginMode] = useState<MarginMode>("ISOLATED");
   const [leverage, setLeverage] = useState(10);
   const [quantity, setQuantity] = useState("0.01");
-  const [limitPrice, setLimitPrice] = useState(defaultPrice.toString());
+  const [limitPrice, setLimitPrice] = useState(currentPrice.toString());
+  const [isLimitPriceDirty, setIsLimitPriceDirty] = useState(false);
   const [preview, setPreview] = useState<OrderPreviewResponse | null>(null);
   const [isPreviewPending, setIsPreviewPending] = useState(false);
   const [isSubmitPending, setIsSubmitPending] = useState(false);
+
+  useEffect(() => {
+    if (!isLimitPriceDirty) {
+      setLimitPrice(currentPrice.toString());
+    }
+  }, [currentPrice, isLimitPriceDirty]);
 
   const orderPayload = buildOrderPayload({
     symbol,
@@ -202,7 +209,10 @@ export default function OrderEntryPanel({ symbol, defaultPrice }: Props) {
             step="0.1"
             value={limitPrice}
             disabled={orderType === "MARKET"}
-            onChange={(event) => setLimitPrice(event.target.value)}
+            onChange={(event) => {
+              setLimitPrice(event.target.value);
+              setIsLimitPriceDirty(true);
+            }}
           />
         </FieldGroup>
       </div>
@@ -245,7 +255,7 @@ export default function OrderEntryPanel({ symbol, defaultPrice }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-main">
-          <PreviewField label="현재 기준가" value={formatUsd(defaultPrice)} />
+          <PreviewField label="현재 기준가" value={formatUsd(currentPrice)} />
           <PreviewField
             label="수수료"
             value={orderType === "MARKET" ? "TAKER 0.05%" : "MAKER/TAKER 판정"}

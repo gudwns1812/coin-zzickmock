@@ -142,7 +142,9 @@
 - [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
   참고 자료 디렉터리의 입구 문서.
 - [docs/references/bitget](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget)
-  Bitget API 참고자료 모음. 상품 메타데이터, 펀딩비, 연결/운영 가이드는 이 폴더 안에서 찾는다.
+  Bitget API 참고자료 모음. 상품 메타데이터, 펀딩비, REST/WebSocket 연결 가이드는 이 폴더 안에서 찾는다.
+- [docs/references/bitget/websocket](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/websocket)
+  Bitget 공개 WebSocket 채널 참고자료 묶음. 캔들, 체결, 티커 스트림 문서는 이 폴더 안에서 찾는다.
 
 ## Task-based Navigation
 
@@ -185,7 +187,8 @@
 
 1. [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
 2. [docs/references/bitget](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget)
-3. 작업 성격에 맞는 세부 문서는 Bitget 폴더 안에서 찾는다.
+3. WebSocket 채널 스펙이 필요하면 [docs/references/bitget/websocket](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/websocket)
+4. 작업 성격에 맞는 세부 문서는 Bitget 폴더 안에서 찾는다.
 
 ### 종료 조건이나 리뷰 점수 기준이 필요할 때
 

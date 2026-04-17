@@ -40,9 +40,13 @@ public class MarketHistoryRecorder {
             return;
         }
 
+        recordMinuteCandle(symbolId, snapshot.lastPrice(), observedAt);
+        recordHourlyCandle(symbolId, observedAt);
+    }
+
+    private void recordMinuteCandle(long symbolId, double lastPrice, Instant observedAt) {
         Instant minuteOpenTime = truncate(observedAt, ChronoUnit.MINUTES);
         Instant minuteCloseTime = minuteOpenTime.plus(1, ChronoUnit.MINUTES);
-        double lastPrice = snapshot.lastPrice();
 
         MarketHistoryCandle currentMinuteCandle = marketHistoryRepository
                 .findMinuteCandles(symbolId, minuteOpenTime, minuteCloseTime)
@@ -52,9 +56,12 @@ public class MarketHistoryRecorder {
                 .orElseGet(() -> firstMinute(symbolId, minuteOpenTime, minuteCloseTime, lastPrice));
 
         marketHistoryRepository.saveMinuteCandle(currentMinuteCandle);
+    }
 
+    private void recordHourlyCandle(long symbolId, Instant observedAt) {
         Instant hourlyOpenTime = truncate(observedAt, ChronoUnit.HOURS);
         Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
+
         List<MarketHistoryCandle> hourlyCandles = marketHistoryRepository.findMinuteCandles(
                 symbolId,
                 hourlyOpenTime,
@@ -65,7 +72,8 @@ public class MarketHistoryRecorder {
             return;
         }
 
-        marketHistoryRepository.saveHourlyCandle(rollupHourly(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles));
+        HourlyMarketCandle hourlyCandle = rollupHourly(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
+        marketHistoryRepository.saveHourlyCandle(hourlyCandle);
     }
 
     private MarketHistoryCandle firstMinute(long symbolId, Instant openTime, Instant closeTime, double price) {
@@ -100,38 +108,35 @@ public class MarketHistoryRecorder {
 
     private HourlyMarketCandle rollupHourly(
             long symbolId,
-            Instant hourlyOpenTime,
-            Instant hourlyCloseTime,
-            List<MarketHistoryCandle> hourlyCandles
+            Instant openTime,
+            Instant closeTime,
+            List<MarketHistoryCandle> minuteCandles
     ) {
-        List<MarketHistoryCandle> sortedCandles = hourlyCandles.stream()
+        List<MarketHistoryCandle> sorted = minuteCandles.stream()
                 .sorted(Comparator.comparing(MarketHistoryCandle::openTime))
                 .toList();
-        MarketHistoryCandle first = sortedCandles.get(0);
-        MarketHistoryCandle last = sortedCandles.get(sortedCandles.size() - 1);
 
-        double highPrice = sortedCandles.stream()
-                .mapToDouble(MarketHistoryCandle::highPrice)
-                .max()
-                .orElse(first.highPrice());
-        double lowPrice = sortedCandles.stream()
-                .mapToDouble(MarketHistoryCandle::lowPrice)
-                .min()
-                .orElse(first.lowPrice());
-        double volume = sortedCandles.stream()
-                .mapToDouble(MarketHistoryCandle::volume)
-                .sum();
-        double quoteVolume = sortedCandles.stream()
-                .mapToDouble(MarketHistoryCandle::quoteVolume)
-                .sum();
-        int tradeCount = sortedCandles.stream()
-                .mapToInt(MarketHistoryCandle::tradeCount)
-                .sum();
+        MarketHistoryCandle first = sorted.get(0);
+        MarketHistoryCandle last = sorted.get(sorted.size() - 1);
+
+        double highPrice = first.highPrice();
+        double lowPrice = first.lowPrice();
+        double volume = 0.0;
+        double quoteVolume = 0.0;
+        int tradeCount = 0;
+
+        for (MarketHistoryCandle candle : sorted) {
+            highPrice = Math.max(highPrice, candle.highPrice());
+            lowPrice = Math.min(lowPrice, candle.lowPrice());
+            volume += candle.volume();
+            quoteVolume += candle.quoteVolume();
+            tradeCount += candle.tradeCount();
+        }
 
         return new HourlyMarketCandle(
                 symbolId,
-                hourlyOpenTime,
-                hourlyCloseTime,
+                openTime,
+                closeTime,
                 first.openPrice(),
                 highPrice,
                 lowPrice,

@@ -22,7 +22,7 @@
 - [x] (2026-04-17 21:08+09:00) `refactor` 단계 완료: cache name/property 상수, 테스트 helper, 설정 기본값 정리
 - [x] (2026-04-17 21:12+09:00) 검증 완료: 관련 테스트, `./gradlew architectureLint`, `./gradlew check` 통과
 - [x] (2026-04-17 21:14+09:00) 품질 점수 확인 완료: 변경 범위 수동 5각도 점검에서 blocker 없음, final score 93 기록
-- [ ] PR 생성
+- [x] (2026-04-17 21:22+09:00) PR 생성 완료: [#14 로컬 캐시는 Spring Cache로, 분산 캐시는 Redis로 정리한다](https://github.com/gudwns1812/coin-zzickmock/pull/14)
 
 ## 놀라움과 발견
 
@@ -63,8 +63,10 @@
 - backend 전역에는 `localCacheManager` 와 조건부 `distributedCacheManager` 가 생겼다. local cache 는 기본 활성이고, Redis distributed cache 는 `coin.cache.redis.enabled=true` 일 때만 빈이 만들어진다.
 - `spring-boot-starter-cache`, `spring-boot-starter-data-redis`, `@EnableCaching`, 기본 `coin.cache.redis.*` 설정을 추가해 이후 분산 캐시가 필요한 기능이 같은 Spring Cache 추상화 위에서 Redis를 표준 구현으로 선택할 수 있게 했다.
 - `MarketRealtimeFeedCacheTest`, `CacheConfigurationTest` 로 local Spring cache 기록과 Redis cache manager 생성을 회귀 테스트로 고정했다.
+- 루트 `README.md`, `BACKEND.md`, `docs/design-docs/backend-design/01-architecture-foundations.md` 에 "로컬 캐시는 Spring Cache, 분산 캐시는 Redis" 기준을 남겨 이후 기능이 같은 방향으로 구현되도록 맞췄다.
 - 실행 검증은 `./gradlew test --tests coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeFeedTest --tests coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeFeedCacheTest --tests coin.coinzzickmock.providers.infrastructure.config.CacheConfigurationTest --console=plain`, `./gradlew architectureLint --console=plain`, `./gradlew check --console=plain` 으로 완료했다.
 - 변경 범위 수동 5각도 점검에서는 readability 92 / performance 91 / security 94 / test quality 93 / architecture 95 로 판단했고, unresolved finding 이 없어 final score 93 으로 기록한다.
+- PR은 [#14 로컬 캐시는 Spring Cache로, 분산 캐시는 Redis로 정리한다](https://github.com/gudwns1812/coin-zzickmock/pull/14) 로 생성했다.
 
 ## 맥락과 길잡이
 

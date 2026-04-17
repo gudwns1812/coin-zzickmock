@@ -12,11 +12,12 @@ type ApiResponse<T> = {
   message: string | null;
 };
 
-type MarketApiResponse = {
+export type MarketApiResponse = {
   symbol: string;
   displayName: string;
   lastPrice: number;
   markPrice: number;
+  indexPrice: number;
   fundingRate: number;
   change24h: number;
 };
@@ -239,6 +240,7 @@ function mergeMarketSnapshot(
     displayName: apiMarket.displayName,
     lastPrice: apiMarket.lastPrice,
     markPrice: apiMarket.markPrice,
+    indexPrice: apiMarket.indexPrice,
     fundingRate: apiMarket.fundingRate,
     change24h: apiMarket.change24h,
   };

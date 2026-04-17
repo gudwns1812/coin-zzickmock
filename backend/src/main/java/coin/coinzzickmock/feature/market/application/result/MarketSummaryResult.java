@@ -5,6 +5,7 @@ public record MarketSummaryResult(
         String displayName,
         double lastPrice,
         double markPrice,
+        double indexPrice,
         double fundingRate,
         double change24h
 ) {

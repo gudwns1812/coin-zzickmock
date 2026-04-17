@@ -257,3 +257,4 @@
 2026-04-16 16:18+09:00 / 사용자 요청에 따라 `bootstrap` 제거 방향을 반영하도록 계획을 다시 열고, owner별 config 재배치 작업을 추가했다.
 2026-04-16 16:21+09:00 / 루트 `CoinZzickmockApplication`, owner별 `infrastructure/config`, 아키텍처 린트 규칙, 설계 문서 갱신과 `architectureLint`/`check` 재검증 결과를 반영했다.
 2026-04-16 19:56+09:00 / PR #1 pending 리뷰 스레드를 반영해 예외 단일화, 엔티티 네이밍/공통 감사 필드, 주문/보상 정책, Bitget mapper 분리, Lombok 보일러플레이트 축소와 재검증 결과를 반영했다.
+2026-04-16 20:58+09:00 / `진행 현황` 기준으로 남은 구현 항목이 없음을 다시 확인했고, `active`에서 `completed`로 정리할 수 있도록 완료 상태 메모를 남겼다.

@@ -164,9 +164,9 @@ const RegisterStep2 = ({
     if (res.ok) {
       const res = await fetch(`/proxy/auth/login`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          credentials: "include",
         },
         body: JSON.stringify({
           account: userInfo.id,

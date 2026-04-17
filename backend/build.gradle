@@ -23,13 +23,17 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.security:spring-security-crypto'
     implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.1'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
     implementation 'org.flywaydb:flyway-core'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
     runtimeOnly 'org.flywaydb:flyway-mysql'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testCompileOnly 'org.projectlombok:lombok'

@@ -18,7 +18,7 @@ class JpaPositionRepositoryTest {
 
     @Test
     void savesAndLoadsOpenPositionThroughH2() {
-        positionRepository.save("demo-member", new PositionSnapshot(
+        positionRepository.save("test", new PositionSnapshot(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -30,10 +30,10 @@ class JpaPositionRepositoryTest {
                 37.5
         ));
 
-        PositionSnapshot loaded = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot loaded = positionRepository.findOpenPosition("test", "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
 
         assertEquals(0.15, loaded.quantity(), 0.000001);
-        assertEquals(1, positionRepository.findOpenPositions("demo-member").size());
+        assertEquals(1, positionRepository.findOpenPositions("test").size());
     }
 }

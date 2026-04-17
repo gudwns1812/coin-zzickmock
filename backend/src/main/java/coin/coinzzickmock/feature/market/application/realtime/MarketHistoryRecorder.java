@@ -11,18 +11,16 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 public class MarketHistoryRecorder {
     private static final ZoneOffset HISTORY_ZONE = ZoneOffset.UTC;
 
     private final MarketHistoryRepository marketHistoryRepository;
-
-    public MarketHistoryRecorder(MarketHistoryRepository marketHistoryRepository) {
-        this.marketHistoryRepository = marketHistoryRepository;
-    }
 
     @Transactional
     public void recordSnapshots(List<MarketSummaryResult> snapshots, Instant observedAt) {

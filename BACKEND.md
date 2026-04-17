@@ -55,11 +55,15 @@
 - `application/service`는 API가 호출하는 유스케이스 진입점만 둔다.
 - `application/service`가 다른 `application/service`를 직접 주입하거나 호출하는 것은 금지한다.
 - 여러 유스케이스가 함께 쓰는 런타임/처리 로직은 `application`의 목적별 하위 패키지에 비-Service 협력 객체로 분리한다.
+- Spring이 관리하는 협력 객체는 concrete class라도 클래스 내부에서 직접 `new`하지 않고 빈으로 조립한다.
+- `domain`은 Spring annotation을 모르므로, domain policy 같은 객체를 빈으로 쓸 때는 `infrastructure/config`에서 등록한다.
 - 운영 DB의 기본값은 `MySQL`로 둔다.
 - 테스트 DB의 기본값은 인메모리 `H2`로 둔다.
 - DB 마이그레이션 표준은 `Flyway`로 고정한다.
 - 영속성 기본 스택은 `Spring Data JPA`와 OpenFeign 포크 `QueryDSL`로 통일한다.
 - 복잡한 native query가 필요할 때만 `JdbcTemplate` 사용을 허용한다.
+- 클래스 이름에는 `Jpa`, `SpringData`, `MyBatis`, `Redis` 같은 기술명을 넣지 않고 역할 이름을 먼저 드러낸다.
+- 스프링이 관리하는 클래스가 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
 - DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저 본다.
 - DB를 바꾸면 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을 추가하고, [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 같이 갱신한다.
 - 백엔드 변경은 `./gradlew architectureLint`와 `./gradlew check`를 기준으로 검증한다.

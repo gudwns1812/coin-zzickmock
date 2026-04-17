@@ -5,17 +5,15 @@ import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepos
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import coin.coinzzickmock.feature.reward.domain.RewardPointPolicy;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 public class RewardPointGrantProcessor {
-    private final RewardPointPolicy rewardPointPolicy = new RewardPointPolicy();
+    private final RewardPointPolicy rewardPointPolicy;
     private final RewardPointRepository rewardPointRepository;
-
-    public RewardPointGrantProcessor(RewardPointRepository rewardPointRepository) {
-        this.rewardPointRepository = rewardPointRepository;
-    }
 
     @Transactional
     public RewardPointResult grant(GrantProfitPointCommand command) {

@@ -12,6 +12,7 @@ import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.member.infrastructure.security.JwtAccessTokenManager;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/futures/auth")
+@RequiredArgsConstructor
 public class AuthController {
     private final RegisterMemberService registerMemberService;
     private final AuthenticateMemberService authenticateMemberService;
@@ -31,24 +33,6 @@ public class AuthController {
     private final WithdrawMemberService withdrawMemberService;
     private final JwtAccessTokenManager jwtAccessTokenManager;
     private final Providers providers;
-
-    public AuthController(
-            RegisterMemberService registerMemberService,
-            AuthenticateMemberService authenticateMemberService,
-            CheckMemberAvailabilityService checkMemberAvailabilityService,
-            GetMemberCredentialService getMemberCredentialService,
-            WithdrawMemberService withdrawMemberService,
-            JwtAccessTokenManager jwtAccessTokenManager,
-            Providers providers
-    ) {
-        this.registerMemberService = registerMemberService;
-        this.authenticateMemberService = authenticateMemberService;
-        this.checkMemberAvailabilityService = checkMemberAvailabilityService;
-        this.getMemberCredentialService = getMemberCredentialService;
-        this.withdrawMemberService = withdrawMemberService;
-        this.jwtAccessTokenManager = jwtAccessTokenManager;
-        this.providers = providers;
-    }
 
     @PostMapping("/register")
     public ApiResponse<AuthUserResponse> register(@RequestBody RegisterMemberRequest request) {

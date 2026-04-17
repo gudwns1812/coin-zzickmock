@@ -28,14 +28,14 @@ import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 
 @SpringBootTest(
-        classes = {CoinZzickmockApplication.class, JpaMarketHistoryRepositoryTest.MarketHistoryRepositoryTestConfiguration.class},
+        classes = {CoinZzickmockApplication.class, MarketHistoryPersistenceRepositoryTest.MarketHistoryRepositoryTestConfiguration.class},
         properties = {
                 "spring.main.allow-bean-definition-overriding=true",
                 "spring.task.scheduling.enabled=false"
         }
 )
 @ActiveProfiles("test")
-class JpaMarketHistoryRepositoryTest {
+class MarketHistoryPersistenceRepositoryTest {
     @Autowired
     private MarketHistoryRepository marketHistoryRepository;
 

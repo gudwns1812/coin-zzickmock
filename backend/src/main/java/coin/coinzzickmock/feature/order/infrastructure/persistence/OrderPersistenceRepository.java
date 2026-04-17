@@ -1,30 +1,28 @@
 package coin.coinzzickmock.feature.order.infrastructure.persistence;
 
-import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Repository
-public class JpaOrderRepository implements OrderRepository {
-    private final FuturesOrderSpringDataRepository futuresOrderSpringDataRepository;
-
-    public JpaOrderRepository(FuturesOrderSpringDataRepository futuresOrderSpringDataRepository) {
-        this.futuresOrderSpringDataRepository = futuresOrderSpringDataRepository;
-    }
+@RequiredArgsConstructor
+public class OrderPersistenceRepository implements OrderRepository {
+    private final FuturesOrderEntityRepository futuresOrderEntityRepository;
 
     @Override
     @Transactional
     public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
-        return futuresOrderSpringDataRepository.save(FuturesOrderEntity.from(memberId, futuresOrder)).toDomain();
+        return futuresOrderEntityRepository.save(FuturesOrderEntity.from(memberId, futuresOrder)).toDomain();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<FuturesOrder> findByMemberId(String memberId) {
-        return futuresOrderSpringDataRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
+        return futuresOrderEntityRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
                 .map(FuturesOrderEntity::toDomain)
                 .toList();
     }

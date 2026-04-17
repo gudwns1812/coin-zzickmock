@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface MarketCandle1mSpringDataRepository extends JpaRepository<MarketCandle1mEntity, Long> {
+public interface MarketCandle1mEntityRepository extends JpaRepository<MarketCandle1mEntity, Long> {
     Optional<MarketCandle1mEntity> findBySymbolIdAndOpenTime(Long symbolId, Instant openTime);
 
     List<MarketCandle1mEntity> findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(

@@ -14,32 +14,20 @@ import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.providers.Providers;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class CreateOrderService {
     private final OrderPreviewPolicy orderPreviewPolicy;
     private final Providers providers;
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
-
-    public CreateOrderService(
-            OrderPreviewPolicy orderPreviewPolicy,
-            Providers providers,
-            OrderRepository orderRepository,
-            AccountRepository accountRepository,
-            PositionRepository positionRepository
-    ) {
-        this.orderPreviewPolicy = orderPreviewPolicy;
-        this.providers = providers;
-        this.orderRepository = orderRepository;
-        this.accountRepository = accountRepository;
-        this.positionRepository = positionRepository;
-    }
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {

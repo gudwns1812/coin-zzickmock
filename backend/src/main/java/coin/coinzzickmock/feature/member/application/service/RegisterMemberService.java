@@ -7,10 +7,12 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class RegisterMemberService {
     private static final double INITIAL_WALLET_BALANCE = 100_000d;
     private static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
@@ -18,16 +20,6 @@ public class RegisterMemberService {
     private final MemberCredentialRepository memberCredentialRepository;
     private final AccountRepository accountRepository;
     private final MemberPasswordHasher memberPasswordHasher;
-
-    public RegisterMemberService(
-            MemberCredentialRepository memberCredentialRepository,
-            AccountRepository accountRepository,
-            MemberPasswordHasher memberPasswordHasher
-    ) {
-        this.memberCredentialRepository = memberCredentialRepository;
-        this.accountRepository = accountRepository;
-        this.memberPasswordHasher = memberPasswordHasher;
-    }
 
     @Transactional
     public void register(

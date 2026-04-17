@@ -12,10 +12,12 @@ import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCom
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import coin.coinzzickmock.providers.Providers;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ClosePositionService {
     private static final double TAKER_FEE_RATE = 0.0005;
 
@@ -23,18 +25,6 @@ public class ClosePositionService {
     private final AccountRepository accountRepository;
     private final Providers providers;
     private final RewardPointGrantProcessor rewardPointGrantProcessor;
-
-    public ClosePositionService(
-            PositionRepository positionRepository,
-            AccountRepository accountRepository,
-            Providers providers,
-            RewardPointGrantProcessor rewardPointGrantProcessor
-    ) {
-        this.positionRepository = positionRepository;
-        this.accountRepository = accountRepository;
-        this.providers = providers;
-        this.rewardPointGrantProcessor = rewardPointGrantProcessor;
-    }
 
     @Transactional
     public ClosePositionResult close(

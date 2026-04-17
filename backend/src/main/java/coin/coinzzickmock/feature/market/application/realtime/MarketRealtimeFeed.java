@@ -13,14 +13,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class MarketRealtimeFeed {
-    private static final Logger log = LoggerFactory.getLogger(MarketRealtimeFeed.class);
 
     private final Providers providers;
     private final MarketHistoryRecorder marketHistoryRecorder;
@@ -28,11 +27,6 @@ public class MarketRealtimeFeed {
     private final ConcurrentMap<String, CopyOnWriteArrayList<Consumer<MarketSummaryResult>>> subscribers =
             new ConcurrentHashMap<>();
     private volatile List<String> supportedSymbols = List.of("BTCUSDT", "ETHUSDT");
-
-    public MarketRealtimeFeed(Providers providers, MarketHistoryRecorder marketHistoryRecorder) {
-        this.providers = providers;
-        this.marketHistoryRecorder = marketHistoryRecorder;
-    }
 
     @PostConstruct
     void initializeCache() {
@@ -107,7 +101,6 @@ public class MarketRealtimeFeed {
     }
 
     private void cacheAndPublish(MarketSummaryResult result) {
-        log.debug("Publishing market data: symbol={}, lastPrice={}", result.symbol(), result.lastPrice());
         latestMarkets.put(result.symbol(), result);
 
         CopyOnWriteArrayList<Consumer<MarketSummaryResult>> symbolSubscribers = subscribers.get(result.symbol());
@@ -119,11 +112,7 @@ public class MarketRealtimeFeed {
     }
 
     private void persistHistory(List<MarketSummaryResult> refreshedMarkets, Instant observedAt) {
-        try {
-            marketHistoryRecorder.recordSnapshots(refreshedMarkets, observedAt);
-        } catch (RuntimeException exception) {
-            log.warn("Failed to persist market history from latest ticker snapshots", exception);
-        }
+        marketHistoryRecorder.recordSnapshots(refreshedMarkets, observedAt);
     }
 
     private MarketSummaryResult toResult(MarketSnapshot snapshot) {

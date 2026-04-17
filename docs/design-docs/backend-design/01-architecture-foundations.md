@@ -159,6 +159,13 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - `new`를 써도 되는 경우는 값 객체, 엔티티, 결과 DTO, 컬렉션 같은 "한 유스케이스 안에서 즉시 소비되는 짧은 수명 객체"를 만들 때다.
 - `new`를 피해야 하는 경우는 정책 객체, 암호화기, 파서, 재사용 계산기처럼 장기 협력 객체를 Spring 관리 클래스 내부에서 붙들 때다.
 
+예시:
+
+- 허용: `new TradingAccount(...)`, `new RewardPointWallet(...)`
+- 허용: `new ConcurrentHashMap<>()` 같은 내부 자료구조
+- 금지: `@Service` 안에서 `private final RewardPointPolicy policy = new RewardPointPolicy();`
+- 금지: `@Component` 안에서 `private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();`
+
 ## Package Shape
 
 현재 패키지 루트는 `coin.coinzzickmock`이므로, 목표 구조는 아래를 기본값으로 한다.
@@ -409,7 +416,7 @@ common/error/
 
 - `PlaceOrderService`
 - `TradingAccountRepository`
-- `JpaOrderRepositoryAdapter`
+- `OrderPersistenceRepository`
 - `CurrentActor`
 - `MarketDataConnector`
 - `TradingAccountEntity`
@@ -425,8 +432,8 @@ common/error/
 
 추가 규칙:
 
-- 엔티티 이름에는 `Jpa`, `MyBatis`, `Redis` 같은 기술명을 넣지 않는다.
-- 기술 세부사항은 repository adapter, config, connector 이름에서만 드러낸다.
+- 엔티티, repository 구현, Spring Data 인터페이스 이름에는 `Jpa`, `SpringData`, `MyBatis`, `Redis` 같은 기술명을 넣지 않는다.
+- 기술 세부사항은 패키지 경로, annotation, `JpaRepository` 같은 프레임워크 타입으로만 드러내고 클래스명에는 넣지 않는다.
 - `Util`
 - `Processor`
 
@@ -453,6 +460,8 @@ Spring은 조립 도구이지 아키텍처가 아니다.
 - `@Transactional`은 application 유스케이스 경계에서 사용한다.
 - `domain`에는 Spring annotation을 두지 않는다.
 - `@RestController`가 application service 대신 형식적인 `*UseCase` 인터페이스만 바라보도록 강제하지 않는다.
+- 스프링이 관리하는 클래스에서 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
+- 생성자 안에서 값 검증, 정규화, 파생 필드 계산 같은 추가 로직이 있을 때만 수동 생성자를 남긴다.
 
 ## Test Rule
 

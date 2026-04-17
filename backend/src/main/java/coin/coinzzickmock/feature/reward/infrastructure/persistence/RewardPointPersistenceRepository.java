@@ -2,35 +2,33 @@ package coin.coinzzickmock.feature.reward.infrastructure.persistence;
 
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
 @Repository
-public class JpaRewardPointRepository implements RewardPointRepository {
-    private final RewardPointWalletSpringDataRepository rewardPointWalletSpringDataRepository;
-
-    public JpaRewardPointRepository(RewardPointWalletSpringDataRepository rewardPointWalletSpringDataRepository) {
-        this.rewardPointWalletSpringDataRepository = rewardPointWalletSpringDataRepository;
-    }
+@RequiredArgsConstructor
+public class RewardPointPersistenceRepository implements RewardPointRepository {
+    private final RewardPointWalletEntityRepository rewardPointWalletEntityRepository;
 
     @Override
     @Transactional(readOnly = true)
     public Optional<RewardPointWallet> findByMemberId(String memberId) {
-        return rewardPointWalletSpringDataRepository.findById(memberId)
+        return rewardPointWalletEntityRepository.findById(memberId)
                 .map(RewardPointWalletEntity::toDomain);
     }
 
     @Override
     @Transactional
     public RewardPointWallet save(RewardPointWallet rewardPointWallet) {
-        RewardPointWalletEntity entity = rewardPointWalletSpringDataRepository.findById(rewardPointWallet.memberId())
+        RewardPointWalletEntity entity = rewardPointWalletEntityRepository.findById(rewardPointWallet.memberId())
                 .map(existing -> {
                     existing.apply(rewardPointWallet);
                     return existing;
                 })
                 .orElseGet(() -> RewardPointWalletEntity.from(rewardPointWallet));
-        return rewardPointWalletSpringDataRepository.save(entity).toDomain();
+        return rewardPointWalletEntityRepository.save(entity).toDomain();
     }
 }

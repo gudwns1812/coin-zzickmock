@@ -6,15 +6,13 @@ import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
 import coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeFeed;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class GetMarketSummaryService {
     private final MarketRealtimeFeed marketRealtimeFeed;
-
-    public GetMarketSummaryService(MarketRealtimeFeed marketRealtimeFeed) {
-        this.marketRealtimeFeed = marketRealtimeFeed;
-    }
 
     public List<MarketSummaryResult> getSupportedMarkets() {
         return marketRealtimeFeed.getSupportedMarkets();

@@ -4,9 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.providers.Providers;
+import coin.coinzzickmock.providers.auth.Actor;
+import coin.coinzzickmock.providers.auth.AuthProvider;
+import coin.coinzzickmock.providers.connector.ConnectorProvider;
+import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
+import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,23 +26,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.auth.Actor;
-import coin.coinzzickmock.providers.auth.AuthProvider;
-import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
-import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
-import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 
 @SpringBootTest(
-        classes = {CoinZzickmockApplication.class, JpaMarketHistoryRepositoryTest.MarketHistoryRepositoryTestConfiguration.class},
+        classes = {CoinZzickmockApplication.class,
+                MarketHistoryPersistenceRepositoryTest.MarketHistoryRepositoryTestConfiguration.class},
         properties = {
+                "spring.datasource.url=jdbc:h2:mem:market_history_test;MODE=MySQL;DB_CLOSE_DELAY=-1",
                 "spring.main.allow-bean-definition-overriding=true",
                 "spring.task.scheduling.enabled=false"
         }
 )
 @ActiveProfiles("test")
-class JpaMarketHistoryRepositoryTest {
+class MarketHistoryPersistenceRepositoryTest {
     @Autowired
     private MarketHistoryRepository marketHistoryRepository;
 
@@ -50,13 +52,16 @@ class JpaMarketHistoryRepositoryTest {
 
     @Test
     void upsertsMinuteAndHourlyCandlesThroughH2() {
+        Long symbolId = jdbcTemplate.queryForObject(
+                "SELECT id FROM market_symbols WHERE symbol = 'BTCUSDT'", Long.class);
+
         Instant minuteOpenTime = Instant.parse("2026-04-17T06:00:00Z");
         Instant minuteCloseTime = Instant.parse("2026-04-17T06:01:00Z");
         Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
         Instant hourCloseTime = Instant.parse("2026-04-17T07:00:00Z");
 
         marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
-                1L,
+                symbolId,
                 minuteOpenTime,
                 minuteCloseTime,
                 101000,
@@ -68,7 +73,7 @@ class JpaMarketHistoryRepositoryTest {
                 0
         ));
         marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
-                1L,
+                symbolId,
                 minuteOpenTime,
                 minuteCloseTime,
                 101000,
@@ -81,7 +86,7 @@ class JpaMarketHistoryRepositoryTest {
         ));
 
         marketHistoryRepository.saveHourlyCandle(new HourlyMarketCandle(
-                1L,
+                symbolId,
                 hourOpenTime,
                 hourCloseTime,
                 101000,
@@ -96,13 +101,13 @@ class JpaMarketHistoryRepositoryTest {
         ));
 
         MarketHistoryCandle storedMinute = marketHistoryRepository.findMinuteCandles(
-                1L,
+                symbolId,
                 minuteOpenTime,
                 minuteCloseTime
         ).get(0);
 
-        assertEquals(1, count("market_candles_1m"));
-        assertEquals(1, count("market_candles_1h"));
+        assertEquals(1, count("market_candles_1m"), "Expected 1 minute candle but found " + count("market_candles_1m"));
+        assertEquals(1, count("market_candles_1h"), "Expected 1 hourly candle but found " + count("market_candles_1h"));
         assertEquals(102500, storedMinute.highPrice(), 0.0001);
         assertEquals(102500, storedMinute.closePrice(), 0.0001);
     }

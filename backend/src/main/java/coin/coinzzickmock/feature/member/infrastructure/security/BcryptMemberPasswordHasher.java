@@ -1,16 +1,14 @@
 package coin.coinzzickmock.feature.member.infrastructure.security;
 
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class BcryptMemberPasswordHasher implements MemberPasswordHasher {
     private final BCryptPasswordEncoder passwordEncoder;
-
-    public BcryptMemberPasswordHasher(BCryptPasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Override
     public String hash(String rawPassword) {

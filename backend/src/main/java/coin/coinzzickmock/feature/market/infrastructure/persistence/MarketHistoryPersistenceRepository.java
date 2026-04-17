@@ -7,30 +7,22 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-public class JpaMarketHistoryRepository implements MarketHistoryRepository {
-    private final MarketSymbolSpringDataRepository marketSymbolSpringDataRepository;
-    private final MarketCandle1mSpringDataRepository marketCandle1mSpringDataRepository;
-    private final MarketCandle1hSpringDataRepository marketCandle1hSpringDataRepository;
-
-    public JpaMarketHistoryRepository(
-            MarketSymbolSpringDataRepository marketSymbolSpringDataRepository,
-            MarketCandle1mSpringDataRepository marketCandle1mSpringDataRepository,
-            MarketCandle1hSpringDataRepository marketCandle1hSpringDataRepository
-    ) {
-        this.marketSymbolSpringDataRepository = marketSymbolSpringDataRepository;
-        this.marketCandle1mSpringDataRepository = marketCandle1mSpringDataRepository;
-        this.marketCandle1hSpringDataRepository = marketCandle1hSpringDataRepository;
-    }
+@RequiredArgsConstructor
+public class MarketHistoryPersistenceRepository implements MarketHistoryRepository {
+    private final MarketSymbolEntityRepository marketSymbolEntityRepository;
+    private final MarketCandle1mEntityRepository marketCandle1mEntityRepository;
+    private final MarketCandle1hEntityRepository marketCandle1hEntityRepository;
 
     @Override
     @Transactional(readOnly = true)
     public Map<String, Long> findSymbolIdsBySymbols(List<String> symbols) {
         Map<String, Long> symbolIds = new LinkedHashMap<>();
-        marketSymbolSpringDataRepository.findAllBySymbolIn(symbols)
+        marketSymbolEntityRepository.findAllBySymbolIn(symbols)
                 .forEach(entity -> symbolIds.put(entity.symbol(), entity.id()));
         return symbolIds;
     }
@@ -38,9 +30,9 @@ public class JpaMarketHistoryRepository implements MarketHistoryRepository {
     @Override
     @Transactional(readOnly = true)
     public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
-        return marketCandle1mSpringDataRepository
+        return marketCandle1mEntityRepository
                 .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
-                        symbolId,
+                        Long.valueOf(symbolId),
                         fromInclusive,
                         toExclusive
                 )
@@ -52,40 +44,28 @@ public class JpaMarketHistoryRepository implements MarketHistoryRepository {
     @Override
     @Transactional
     public void saveMinuteCandle(MarketHistoryCandle candle) {
-        MarketCandle1mEntity entity = marketCandle1mSpringDataRepository
-                .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
-                        candle.symbolId(),
-                        candle.openTime(),
-                        candle.closeTime()
-                )
-                .stream()
-                .findFirst()
+        MarketCandle1mEntity entity = marketCandle1mEntityRepository
+                .findBySymbolIdAndOpenTime(candle.symbolId(), candle.openTime())
                 .map(existing -> {
                     existing.apply(candle);
                     return existing;
                 })
                 .orElseGet(() -> MarketCandle1mEntity.from(candle));
 
-        marketCandle1mSpringDataRepository.save(entity);
+        marketCandle1mEntityRepository.save(entity);
     }
 
     @Override
     @Transactional
     public void saveHourlyCandle(HourlyMarketCandle candle) {
-        MarketCandle1hEntity entity = marketCandle1hSpringDataRepository
-                .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
-                        candle.symbolId(),
-                        candle.openTime(),
-                        candle.closeTime()
-                )
-                .stream()
-                .findFirst()
+        MarketCandle1hEntity entity = marketCandle1hEntityRepository
+                .findBySymbolIdAndOpenTime(candle.symbolId(), candle.openTime())
                 .map(existing -> {
                     existing.apply(candle);
                     return existing;
                 })
                 .orElseGet(() -> MarketCandle1hEntity.from(candle));
 
-        marketCandle1hSpringDataRepository.save(entity);
+        marketCandle1hEntityRepository.save(entity);
     }
 }

@@ -19,4 +19,4 @@
 ### Backend Design
 
 - [backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-  백엔드 아키텍처와 구조 설계 문서 묶음.
+  백엔드 아키텍처와 구조 설계를 책임별 번호 문서로 나눈 상세 설계 묶음.

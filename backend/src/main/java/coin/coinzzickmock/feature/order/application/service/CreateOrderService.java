@@ -21,18 +21,20 @@ import java.util.UUID;
 
 @Service
 public class CreateOrderService {
-    private final OrderPreviewPolicy orderPreviewPolicy = new OrderPreviewPolicy();
+    private final OrderPreviewPolicy orderPreviewPolicy;
     private final Providers providers;
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
 
     public CreateOrderService(
+            OrderPreviewPolicy orderPreviewPolicy,
             Providers providers,
             OrderRepository orderRepository,
             AccountRepository accountRepository,
             PositionRepository positionRepository
     ) {
+        this.orderPreviewPolicy = orderPreviewPolicy;
         this.providers = providers;
         this.orderRepository = orderRepository;
         this.accountRepository = accountRepository;

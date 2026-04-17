@@ -6,7 +6,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class BcryptMemberPasswordHasher implements MemberPasswordHasher {
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    public BcryptMemberPasswordHasher(BCryptPasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public String hash(String rawPassword) {

@@ -10,10 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class RewardPointGrantProcessor {
-    private final RewardPointPolicy rewardPointPolicy = new RewardPointPolicy();
+    private final RewardPointPolicy rewardPointPolicy;
     private final RewardPointRepository rewardPointRepository;
 
-    public RewardPointGrantProcessor(RewardPointRepository rewardPointRepository) {
+    public RewardPointGrantProcessor(
+            RewardPointPolicy rewardPointPolicy,
+            RewardPointRepository rewardPointRepository
+    ) {
+        this.rewardPointPolicy = rewardPointPolicy;
         this.rewardPointRepository = rewardPointRepository;
     }
 

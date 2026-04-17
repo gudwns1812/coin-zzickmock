@@ -65,6 +65,8 @@
 
 - [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
   백엔드 작업 기준과 상세 설계 입구 문서.
+- [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+  백엔드 상세 설계 문서 묶음의 실제 인덱스. 구조, 조립, Provider, DB, 테스트 규칙은 이 인덱스를 통해 책임별 번호 문서로 내려간다.
 - [backend/HELP.md](/Users/hj.park/projects/coin-zzickmock/backend/HELP.md)
   현재는 Spring Initializr 기본 문서에 가깝다. 아키텍처 기준 문서로는 사용하지 않는다.
 
@@ -105,7 +107,7 @@
 - [docs/design-docs/ui-design](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design)
   UI 디자인 세부 문서 묶음. 시각 원칙, 레이아웃, 데이터 표시, 입력, 접근성 기준은 이 폴더 안에서 찾는다.
 - [docs/design-docs/backend-design](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design)
-  백엔드 상세 설계 문서 묶음. 레이어 구조, `Providers`, 린트, DB 스키마 동기화 기준은 이 폴더 안에서 찾는다.
+  백엔드 상세 설계 문서 묶음. 레이어 구조, `Providers`, 린트, DB 스키마 동기화 기준은 이 폴더 안의 책임별 번호 문서에서 찾는다.
 
 ### 실행 계획
 
@@ -167,8 +169,9 @@
 
 1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
 2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-3. [docs/design-docs/backend-design](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design)
-4. 보안이 걸리면 [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
+3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+4. 필요한 책임 문서 (`01-`부터 `05-`까지)로 내려간다.
+5. 보안이 걸리면 [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
 
 ### 백엔드에서 DB를 읽거나 수정할 때
 
@@ -241,3 +244,4 @@
 - 구현 규칙의 상세 원문은 각 문서에 두고, 이 파일에는 요약만 둔다.
 - 하위 폴더 문서는 가능한 한 폴더나 `README` 단위로 묶고, 정말 먼저 읽어야 하는 예외만 개별 파일로 연결한다.
 - 링크가 깨지면 가장 먼저 이 파일부터 갱신한다.
+- backend 상세 설계처럼 책임별 번호 문서 구조를 쓰는 영역은, 폴더 링크만 남기지 말고 실제 인덱스 `README`도 함께 연결한다.

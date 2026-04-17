@@ -93,6 +93,12 @@
 
 문서가 길어지면 `01-`, `02-` 식으로 쪼개고, 디렉터리 안에 `README.md`를 둔다.
 
+강한 규칙:
+
+- 한 상세 설계 문서는 하나의 1차 책임만 맡는다.
+- 구조, Provider, DB, 테스트, 린트처럼 읽는 목적이 다른 규칙을 한 파일에 계속 누적하지 않는다.
+- 기존 번호 문서의 책임에 맞지 않는 규칙이 생기면 새 번호 문서를 추가한다.
+
 ## Current Repository Policy
 
 현재 저장소에서는 아래처럼 해석한다.
@@ -103,6 +109,7 @@
 - `docs/design-docs/ui-design/`: UI 상세 설계 원문
 
 즉, 백엔드 설계 원문이 길어질수록 `BACKEND.md`를 더 키우는 대신 `docs/design-docs/backend-design/`으로 내린다.
+또한 `docs/design-docs/backend-design/`과 같은 상세 설계 디렉터리는 `README.md`를 중심으로 책임별 번호 문서를 안내해야 하며, 다시 단일 거대 원문 파일 구조로 돌아가지 않는다.
 
 ## Maintenance Rule
 
@@ -110,3 +117,4 @@
 - 상세 설계를 추가하거나 크게 바꾸면 `docs/design-docs/README.md`도 같이 갱신한다.
 - `BACKEND.md`, `FRONTEND.md` 같은 기준 문서는 상세 설계의 존재를 반드시 링크한다.
 - 설계와 사실 산출물이 함께 변하면 `docs/generated/` 문서도 같이 갱신한다.
+- 상세 설계 규칙을 수정할 때는 해당 디렉터리 `README.md`와 관련 루트 입구 문서의 링크 흐름이 여전히 맞는지 같이 확인한다.

@@ -1,4 +1,9 @@
-import { formatPercent, formatUsd, type MarketSnapshot } from "@/lib/markets";
+import {
+  formatPercent,
+  formatUsd,
+  type MarketSnapshot,
+  type MarketSymbol,
+} from "@/lib/markets";
 import Link from "next/link";
 
 const PRIMARY_ACTIONS = [
@@ -30,9 +35,13 @@ const PRIMARY_ACTIONS = [
 
 type MarketsLandingProps = {
   markets: [MarketSnapshot, MarketSnapshot];
+  priceFlashBySymbol?: Partial<Record<MarketSymbol, "rise" | "fall">>;
 };
 
-export default function MarketsLanding({ markets }: MarketsLandingProps) {
+export default function MarketsLanding({
+  markets,
+  priceFlashBySymbol,
+}: MarketsLandingProps) {
   const [btcMarket, ethMarket] = markets;
 
   return (
@@ -59,8 +68,14 @@ export default function MarketsLanding({ markets }: MarketsLandingProps) {
           </p>
 
           <div className="mt-8 grid grid-cols-2 gap-main">
-            <HeroSymbolStrip market={btcMarket} />
-            <HeroSymbolStrip market={ethMarket} />
+            <HeroSymbolStrip
+              market={btcMarket}
+              priceFlashTone={priceFlashBySymbol?.[btcMarket.symbol]}
+            />
+            <HeroSymbolStrip
+              market={ethMarket}
+              priceFlashTone={priceFlashBySymbol?.[ethMarket.symbol]}
+            />
           </div>
 
           <div className="mt-8 flex items-center gap-main">
@@ -130,8 +145,16 @@ export default function MarketsLanding({ markets }: MarketsLandingProps) {
       </section>
 
       <section className="grid grid-cols-2 gap-main-2">
-        <MarketSummaryCard market={btcMarket} tone="rise" />
-        <MarketSummaryCard market={ethMarket} tone="cool" />
+        <MarketSummaryCard
+          market={btcMarket}
+          tone="rise"
+          priceFlashTone={priceFlashBySymbol?.[btcMarket.symbol]}
+        />
+        <MarketSummaryCard
+          market={ethMarket}
+          tone="cool"
+          priceFlashTone={priceFlashBySymbol?.[ethMarket.symbol]}
+        />
       </section>
 
       <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
@@ -183,12 +206,26 @@ export default function MarketsLanding({ markets }: MarketsLandingProps) {
   );
 }
 
-function HeroSymbolStrip({ market }: { market: MarketSnapshot }) {
+function HeroSymbolStrip({
+  market,
+  priceFlashTone,
+}: {
+  market: MarketSnapshot;
+  priceFlashTone?: "rise" | "fall";
+}) {
   const changeClassName =
     market.change24h >= 0 ? "text-[#ffd7dc]" : "text-[#d7ebff]";
+  const flashClassName =
+    priceFlashTone === "rise"
+      ? "border-cyan-200/70 bg-[linear-gradient(135deg,_rgba(56,189,248,0.26),_rgba(255,255,255,0.16))]"
+      : priceFlashTone === "fall"
+        ? "border-rose-200/80 bg-[linear-gradient(135deg,_rgba(251,113,133,0.28),_rgba(255,255,255,0.14))]"
+        : "border-white/15 bg-white/10";
 
   return (
-    <div className="rounded-main border border-white/15 bg-white/10 px-main py-4 backdrop-blur-[2px]">
+    <div
+      className={`rounded-main border px-main py-4 backdrop-blur-[2px] transition-colors duration-700 ${flashClassName}`}
+    >
       <div className="flex items-start justify-between gap-main">
         <div>
           <p className="text-xs-custom uppercase tracking-[0.22em] text-white/68">
@@ -251,9 +288,11 @@ function SpotlightMetric({
 function MarketSummaryCard({
   market,
   tone,
+  priceFlashTone,
 }: {
   market: MarketSnapshot;
   tone: "rise" | "cool";
+  priceFlashTone?: "rise" | "fall";
 }) {
   const toneClassName =
     tone === "rise"
@@ -269,9 +308,17 @@ function MarketSummaryCard({
           button: "bg-main-blue hover:bg-main-blue/90",
           accent: "text-main-blue",
         };
+  const flashClassName =
+    priceFlashTone === "rise"
+      ? "border-[#8dd8ff] bg-[linear-gradient(180deg,_rgba(56,189,248,0.18),_rgba(255,255,255,1))]"
+      : priceFlashTone === "fall"
+        ? "border-[#ffbec8] bg-[linear-gradient(180deg,_rgba(251,113,133,0.18),_rgba(255,255,255,1))]"
+        : toneClassName.panel;
 
   return (
-    <article className={`rounded-main border p-main-2 shadow-sm ${toneClassName.panel}`}>
+    <article
+      className={`rounded-main border p-main-2 shadow-sm transition-colors duration-700 ${flashClassName}`}
+    >
       <div className="flex items-start justify-between gap-main">
         <div>
           <p className="text-xs-custom uppercase tracking-[0.22em] text-main-dark-gray/50">

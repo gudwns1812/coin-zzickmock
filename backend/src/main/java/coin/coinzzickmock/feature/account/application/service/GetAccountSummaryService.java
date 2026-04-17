@@ -8,21 +8,15 @@ import coin.coinzzickmock.feature.account.application.result.AccountSummaryResul
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class GetAccountSummaryService {
     private final AccountRepository accountRepository;
     private final RewardPointRepository rewardPointRepository;
-
-    public GetAccountSummaryService(
-            AccountRepository accountRepository,
-            RewardPointRepository rewardPointRepository
-    ) {
-        this.accountRepository = accountRepository;
-        this.rewardPointRepository = rewardPointRepository;
-    }
 
     @Transactional(readOnly = true)
     public AccountSummaryResult execute(GetAccountSummaryQuery query) {

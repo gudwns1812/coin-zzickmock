@@ -9,6 +9,7 @@ import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -16,17 +17,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.Arrays;
 
 @Component
+@RequiredArgsConstructor
 public class JwtCookieAuthProvider implements AuthProvider {
     private final JwtAccessTokenManager jwtAccessTokenManager;
     private final MemberCredentialRepository memberCredentialRepository;
-
-    public JwtCookieAuthProvider(
-            JwtAccessTokenManager jwtAccessTokenManager,
-            MemberCredentialRepository memberCredentialRepository
-    ) {
-        this.jwtAccessTokenManager = jwtAccessTokenManager;
-        this.memberCredentialRepository = memberCredentialRepository;
-    }
 
     @Override
     public Actor currentActor() {

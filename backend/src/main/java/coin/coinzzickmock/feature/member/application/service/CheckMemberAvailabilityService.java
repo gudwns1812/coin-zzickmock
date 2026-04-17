@@ -3,16 +3,14 @@ package coin.coinzzickmock.feature.member.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CheckMemberAvailabilityService {
     private final MemberCredentialRepository memberCredentialRepository;
-
-    public CheckMemberAvailabilityService(MemberCredentialRepository memberCredentialRepository) {
-        this.memberCredentialRepository = memberCredentialRepository;
-    }
 
     @Transactional(readOnly = true)
     public boolean isAvailable(String memberId) {

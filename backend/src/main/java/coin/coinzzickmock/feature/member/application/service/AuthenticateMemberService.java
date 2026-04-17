@@ -5,21 +5,15 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class AuthenticateMemberService {
     private final MemberCredentialRepository memberCredentialRepository;
     private final MemberPasswordHasher memberPasswordHasher;
-
-    public AuthenticateMemberService(
-            MemberCredentialRepository memberCredentialRepository,
-            MemberPasswordHasher memberPasswordHasher
-    ) {
-        this.memberCredentialRepository = memberCredentialRepository;
-        this.memberPasswordHasher = memberPasswordHasher;
-    }
 
     @Transactional(readOnly = true)
     public MemberCredential authenticate(String memberId, String rawPassword) {

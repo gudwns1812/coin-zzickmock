@@ -26,6 +26,7 @@
 - 인증, 커넥터, 텔레메트리, 기능 플래그는 개별 기능 곳곳에서 직접 붙이지 않고 `Providers`를 통해서만 접근한다.
 - 계층 분리를 이유로 `port`/`usecase` 인터페이스를 기계적으로 늘리지 않는다.
 - 기본값은 concrete class다. 인터페이스는 실제 경계와 대체 구현이 있을 때만 도입한다.
+- Spring이 관리하는 장기 협력 객체는 concrete class라도 각 클래스 안에서 직접 `new`하지 않고 빈 조립으로 연결한다.
 
 ## Fixed Layer Set
 
@@ -65,6 +66,8 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - 필요한 repository/gateway/provider 계약 호출
 - `Providers` 사용
 - 트랜잭션 경계 정의
+- `application/service`는 유스케이스 진입점만 담당
+- 여러 유스케이스가 함께 쓰는 공유 런타임/처리 로직은 `application`의 목적별 하위 패키지로 분리
 
 금지:
 
@@ -72,6 +75,7 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - JPA 엔티티 세부 구현에 잠김
 - Spring Security 세부 API 직접 사용
 - 외부 SDK 직접 사용
+- `application/service`가 다른 `application/service`를 직접 주입하거나 호출
 
 ### `domain`
 
@@ -125,6 +129,7 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - `domain` -> `infrastructure`
 - `application` -> 구체 SDK 클라이언트
 - `api` -> `infrastructure`
+- `application/service` -> 다른 `application/service`
 
 여기서 말하는 "계약"은 무조건 인터페이스를 만들라는 뜻이 아니다.
 기본값은 concrete class 의존이다.
@@ -139,6 +144,27 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - 구현체가 하나뿐인데 메서드 전달만 하는 `*Port`
 - 컨트롤러 하나만 쓰는데 형식적으로 만든 `*UseCase` 인터페이스
 - 이미 `Providers`나 gateway가 있는데 그 위에 다시 한 겹 씌우는 중복 추상화
+- Spring `@Service`, `@Component`, `@Configuration` 안에서 정책 객체나 암호화기 같은 협력 객체를 필드 초기화로 직접 `new`하는 패턴
+
+## Bean Wiring Boundary
+
+이 저장소에서 "기본값은 concrete class"는 "아무 데서나 직접 생성해도 된다"는 뜻이 아니다.
+이 말의 목적은 인터페이스 남발을 막는 것이고, 조립 책임까지 각 유스케이스 클래스에 흩뿌리라는 뜻은 아니다.
+
+강한 규칙:
+
+- Spring이 관리하는 협력 객체는 concrete class라도 생성자 주입으로 연결한다.
+- 같은 객체를 여러 유스케이스나 인프라 어댑터가 재사용할 수 있다면, 해당 객체의 생성 책임은 `infrastructure/config` 또는 provider configuration으로 모은다.
+- `domain`은 Spring annotation을 모르므로 `domain policy`, `domain service`, 계산기 객체를 빈으로 쓰고 싶다면 도메인 클래스에는 annotation을 붙이지 않고 `feature/<name>/infrastructure/config`에서 `@Bean`으로 등록한다.
+- `new`를 써도 되는 경우는 값 객체, 엔티티, 결과 DTO, 컬렉션 같은 "한 유스케이스 안에서 즉시 소비되는 짧은 수명 객체"를 만들 때다.
+- `new`를 피해야 하는 경우는 정책 객체, 암호화기, 파서, 재사용 계산기처럼 장기 협력 객체를 Spring 관리 클래스 내부에서 붙들 때다.
+
+예시:
+
+- 허용: `new TradingAccount(...)`, `new RewardPointWallet(...)`
+- 허용: `new ConcurrentHashMap<>()` 같은 내부 자료구조
+- 금지: `@Service` 안에서 `private final RewardPointPolicy policy = new RewardPointPolicy();`
+- 금지: `@Component` 안에서 `private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();`
 
 ## Package Shape
 
@@ -165,6 +191,7 @@ backend/src/main/java/coin/coinzzickmock/
       application/
         command/
         query/
+        realtime/
         result/
         service/
       domain/
@@ -179,6 +206,7 @@ backend/src/main/java/coin/coinzzickmock/
     member/
       api/
       application/
+        grant/
       domain/
       infrastructure/
 ```
@@ -207,6 +235,18 @@ public interface Providers {
 
 `Providers`는 교차 관심사의 유일한 진입점이다.
 애플리케이션 유스케이스와 인프라 어댑터는 필요한 경우 이 인터페이스를 통해 기능을 사용한다.
+
+### Application Service Boundary
+
+`feature/<name>/application/service`는 컨트롤러나 다른 진입점이 호출하는 유스케이스 클래스만 둔다.
+여러 유스케이스가 같이 쓰는 실시간 캐시, 적립 처리기, 조합기 같은 객체는 `application/<purpose>` 하위 패키지의 비-Service 협력 객체로 둔다.
+이렇게 나누면 `service`는 "무슨 일을 시작하는가"를, 목적형 협력 객체는 "그 일을 어떤 메커니즘으로 지원하는가"를 드러낸다.
+
+강한 규칙:
+
+- `application/service`는 다른 `application/service`를 직접 참조하지 않는다.
+- 공유 로직이 필요하면 먼저 `domain`으로 올릴 수 있는지 본다.
+- `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 하위 패키지로 분리한다.
 
 ### Why Providers Exists
 
@@ -376,7 +416,7 @@ common/error/
 
 - `PlaceOrderService`
 - `TradingAccountRepository`
-- `JpaOrderRepositoryAdapter`
+- `OrderPersistenceRepository`
 - `CurrentActor`
 - `MarketDataConnector`
 - `TradingAccountEntity`
@@ -392,8 +432,8 @@ common/error/
 
 추가 규칙:
 
-- 엔티티 이름에는 `Jpa`, `MyBatis`, `Redis` 같은 기술명을 넣지 않는다.
-- 기술 세부사항은 repository adapter, config, connector 이름에서만 드러낸다.
+- 엔티티, repository 구현, Spring Data 인터페이스 이름에는 `Jpa`, `SpringData`, `MyBatis`, `Redis` 같은 기술명을 넣지 않는다.
+- 기술 세부사항은 패키지 경로, annotation, `JpaRepository` 같은 프레임워크 타입으로만 드러내고 클래스명에는 넣지 않는다.
 - `Util`
 - `Processor`
 
@@ -420,6 +460,8 @@ Spring은 조립 도구이지 아키텍처가 아니다.
 - `@Transactional`은 application 유스케이스 경계에서 사용한다.
 - `domain`에는 Spring annotation을 두지 않는다.
 - `@RestController`가 application service 대신 형식적인 `*UseCase` 인터페이스만 바라보도록 강제하지 않는다.
+- 스프링이 관리하는 클래스에서 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
+- 생성자 안에서 값 검증, 정규화, 파생 필드 계산 같은 추가 로직이 있을 때만 수동 생성자를 남긴다.
 
 ## Test Rule
 

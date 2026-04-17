@@ -91,8 +91,10 @@ tasks.register('architectureLint') {
                     'FEATURE_LAYER_REQUIRED',
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
+                    'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
                     'API_NO_PERSISTENCE_IMPORTS',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
+                    'PERSISTENCE_NAME_NO_TECH_TERM',
                 ],
             ])
 
@@ -223,8 +225,20 @@ tasks.register('architectureLint') {
                         1,
                         'ENTITY_NAME_NO_TECH_SUFFIX',
                         'JPA 엔티티 이름에 `Jpa` 같은 기술 접미사를 넣지 않습니다.',
-                        '엔티티 클래스명은 `*Entity`로 두고, 기술 세부사항은 repository adapter나 config 이름에서만 드러내세요.',
+                        '엔티티 클래스명은 `*Entity`로 두고, 기술 세부사항은 패키지 경로와 프레임워크 타입으로만 드러내세요.',
                         [packageName: packageName]
+                    )
+                }
+
+                if (packageName.contains('.infrastructure.persistence') &&
+                        (sourceFile.name.contains('Jpa') || sourceFile.name.contains('SpringData'))) {
+                    logViolation(
+                        sourceFile,
+                        1,
+                        'PERSISTENCE_NAME_NO_TECH_TERM',
+                        'persistence 클래스 이름에 `Jpa`, `SpringData` 같은 기술명을 넣지 않습니다.',
+                        '패키지 경로와 `JpaRepository` 같은 타입으로 기술 세부사항을 드러내고, 클래스명은 역할 중심으로 바꾸세요.',
+                        [packageName: packageName, fileName: sourceFile.name]
                     )
                 }
 
@@ -277,6 +291,41 @@ tasks.register('architectureLint') {
                                 'HTTP 진입점은 `api` 레이어로 이동하세요.',
                                 [packageName: packageName, code: trimmed]
                             )
+                        }
+                    }
+
+                    def isApplicationService = relativePath.contains('/application/service/')
+                            && sourceFile.name.endsWith('Service.java')
+                    if (isApplicationService) {
+                        def currentServiceName = sourceFile.name.replace('.java', '')
+                        def applicationServiceNames = sourceFiles
+                                .findAll { candidate ->
+                                    def candidateRelativePath = project.relativePath(candidate).replace('\\', '/')
+                                    candidateRelativePath.contains('/application/service/')
+                                            && candidate.name.endsWith('Service.java')
+                                }
+                                .collect { candidate -> candidate.name.replace('.java', '') }
+                                .findAll { candidateName -> candidateName != currentServiceName }
+
+                        applicationServiceNames.each { otherServiceName ->
+                            def matchLine = lines.findIndexOf { lineText ->
+                                def trimmed = lineText.trim()
+                                !(trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) &&
+                                        java.util.regex.Pattern
+                                                .compile("\\b" + java.util.regex.Pattern.quote(otherServiceName) + "\\b")
+                                                .matcher(lineText)
+                                                .find()
+                            }
+                            if (matchLine >= 0) {
+                                logViolation(
+                                    sourceFile,
+                                    matchLine + 1,
+                                    'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
+                                    "application/service 유스케이스는 다른 service `${otherServiceName}`를 직접 참조하면 안 됩니다.",
+                                    '공유 로직은 `application`의 목적별 비-Service 협력 객체나 `domain` 정책/서비스로 옮기고, 유스케이스 service는 자기 흐름만 조합하세요.',
+                                    [packageName: packageName, dependency: otherServiceName]
+                                )
+                            }
                         }
                     }
                 }

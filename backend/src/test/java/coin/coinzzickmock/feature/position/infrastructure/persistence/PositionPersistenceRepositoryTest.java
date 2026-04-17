@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
-class JpaPositionRepositoryTest {
+class PositionPersistenceRepositoryTest {
     @Autowired
     private PositionRepository positionRepository;
 

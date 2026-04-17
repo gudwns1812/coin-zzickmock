@@ -23,6 +23,8 @@
   회원가입, 마켓, 심볼 상세, 포트폴리오, 상점까지 MVP 화면을 더 작은 블록으로 나눈 화면 명세.
 - [coin-futures-simulation-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-simulation-rules.md)
   주문 체결, 수수료, 손익, 마진, 펀딩비, 포인트 적립 규칙을 고정하는 계산 명세.
+- [coin-futures-candle-timeframe-spec.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-candle-timeframe-spec.md)
+  과거 가격 차트가 지원해야 하는 기간 목록과, 현재 DB의 `1m`/`1h` 저장 구조에서 어떤 기간을 어떻게 파생해야 하는지 정리한 명세.
 
 ## Recommended Files
 

@@ -23,10 +23,9 @@ public class MarketRealtimeFeed {
 
     private final Providers providers;
     private final MarketHistoryRecorder marketHistoryRecorder;
-    private final ConcurrentMap<String, MarketSummaryResult> latestMarkets = new ConcurrentHashMap<>();
+    private final MarketSnapshotStore marketSnapshotStore;
     private final ConcurrentMap<String, CopyOnWriteArrayList<Consumer<MarketSummaryResult>>> subscribers =
             new ConcurrentHashMap<>();
-    private volatile List<String> supportedSymbols = List.of("BTCUSDT", "ETHUSDT");
 
     @PostConstruct
     void initializeCache() {
@@ -49,27 +48,21 @@ public class MarketRealtimeFeed {
             return;
         }
 
-        supportedSymbols = refreshedMarkets.stream()
-                .map(MarketSummaryResult::symbol)
-                .toList();
-
-        refreshedMarkets.forEach(this::cacheAndPublish);
+        marketSnapshotStore.putSupportedMarkets(refreshedMarkets);
+        refreshedMarkets.forEach(this::publish);
         persistHistory(refreshedMarkets, observedAt);
     }
 
     public List<MarketSummaryResult> getSupportedMarkets() {
-        if (latestMarkets.isEmpty()) {
+        if (!marketSnapshotStore.hasSupportedMarkets()) {
             refreshSupportedMarkets();
         }
 
-        return supportedSymbols.stream()
-                .map(latestMarkets::get)
-                .filter(Objects::nonNull)
-                .toList();
+        return marketSnapshotStore.getSupportedMarkets();
     }
 
     public MarketSummaryResult getMarket(String symbol) {
-        MarketSummaryResult cached = latestMarkets.get(symbol);
+        MarketSummaryResult cached = marketSnapshotStore.getMarket(symbol).orElse(null);
         if (cached != null) {
             return cached;
         }
@@ -80,7 +73,7 @@ public class MarketRealtimeFeed {
         }
 
         MarketSummaryResult result = toResult(loaded);
-        latestMarkets.put(symbol, result);
+        marketSnapshotStore.putMarket(result);
         return result;
     }
 
@@ -100,9 +93,7 @@ public class MarketRealtimeFeed {
         }
     }
 
-    private void cacheAndPublish(MarketSummaryResult result) {
-        latestMarkets.put(result.symbol(), result);
-
+    private void publish(MarketSummaryResult result) {
         CopyOnWriteArrayList<Consumer<MarketSummaryResult>> symbolSubscribers = subscribers.get(result.symbol());
         if (symbolSubscribers == null) {
             return;

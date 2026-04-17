@@ -78,6 +78,8 @@ npm run lint
 - 기능은 `feature-first`로 자른다
 - 레이어는 `api`, `application`, `domain`, `infrastructure`로 고정한다
 - 교차 관심사(인증, 커넥터, 텔레메트리, 기능 플래그)는 `Providers`를 통해서만 접근한다
+- 로컬 캐시는 `ConcurrentHashMap` 같은 ad-hoc 구조 대신 Spring Cache 뒤로 숨긴다
+- 분산 캐시는 Redis를 표준 구현으로 사용하고, 기능 코드는 Redis client 세부사항보다 Spring Cache 경계를 먼저 의존한다
 - 예외는 `CoreException`과 `ErrorType`으로 통일
 - 응답은 `ApiResponse`로 통일
 - 리팩토링 시 기능 변경 없이 회귀 테스트 통과를 기준으로 검증

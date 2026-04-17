@@ -7,8 +7,9 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import java.time.Instant;
 import coin.coinzzickmock.providers.Providers;
+import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
+import java.time.Instant;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
 class MarketRealtimeFeedTest {
     @Test
@@ -31,7 +33,8 @@ class MarketRealtimeFeedTest {
         ));
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(new InMemoryMarketHistoryRepository())
+                new MarketHistoryRecorder(new InMemoryMarketHistoryRepository()),
+                newSnapshotStore()
         );
 
         feed.refreshSupportedMarkets();
@@ -51,7 +54,8 @@ class MarketRealtimeFeedTest {
         ));
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(new InMemoryMarketHistoryRepository())
+                new MarketHistoryRecorder(new InMemoryMarketHistoryRepository()),
+                newSnapshotStore()
         );
         List<MarketSummaryResult> events = new CopyOnWriteArrayList<>();
 
@@ -79,7 +83,8 @@ class MarketRealtimeFeedTest {
         InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(marketHistoryRepository)
+                new MarketHistoryRecorder(marketHistoryRepository),
+                newSnapshotStore()
         );
 
         feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:15Z"));
@@ -121,6 +126,13 @@ class MarketRealtimeFeedTest {
             double change24h
     ) {
         return new MarketSnapshot(symbol, symbol + " Perpetual", lastPrice, markPrice, indexPrice, fundingRate, change24h);
+    }
+
+    private static MarketSnapshotStore newSnapshotStore() {
+        return new MarketSnapshotStore(new ConcurrentMapCacheManager(
+                CoinCacheNames.MARKET_SNAPSHOT_LOCAL_CACHE,
+                CoinCacheNames.MARKET_SUPPORTED_SYMBOLS_LOCAL_CACHE
+        ));
     }
 
     private static class FakeMarketDataGateway implements MarketDataGateway {

@@ -248,6 +248,18 @@ public interface Providers {
 - 공유 로직이 필요하면 먼저 `domain`으로 올릴 수 있는지 본다.
 - `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 하위 패키지로 분리한다.
 
+### Cache Boundary
+
+캐시는 "값을 잠깐 들고 있다가 다시 쓰는 메커니즘"이므로, 유스케이스 코드 안에 `ConcurrentHashMap` 같은 ad-hoc 저장소를 직접 박아 넣기보다 Spring이 관리하는 경계 뒤에 둔다.
+
+강한 규칙:
+
+- 단일 인스턴스 안에서만 필요한 로컬 캐시는 Spring Cache를 기본값으로 사용한다.
+- 여러 인스턴스가 값을 공유해야 하는 분산 캐시는 Redis를 표준 구현으로 사용한다.
+- 기능 코드와 `application` 협력 객체는 가능하면 Redis client 세부사항보다 Spring Cache 경계를 먼저 의존한다.
+- SSE subscriber 목록, 요청 중간 계산값처럼 "연결 수명 관리" 자체가 목적이고 캐시 정책이 아닌 구조는 별도 메모리 상태로 둘 수 있다.
+- 캐시 이름, TTL, key prefix 같은 운영 정책은 `infrastructure/config` 또는 설정 프로퍼티로 모으고, 기능 클래스 안에 하드코딩하지 않는다.
+
 ### Why Providers Exists
 
 - 인증 방식을 바꿔도 유스케이스 시그니처를 흔들지 않기 위해

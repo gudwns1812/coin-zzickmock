@@ -14,8 +14,9 @@
 - [x] 2026-04-17 15:45+09:00 문서 원문과 아키텍처 린트 규칙을 사용자 의도에 맞게 갱신했다.
 - [x] 2026-04-17 15:50+09:00 `Jpa*`, `*SpringDataRepository` 이름을 역할 중심 이름으로 바꾸고 참조를 정리했다.
 - [x] 2026-04-17 15:52+09:00 단순 생성자 주입 보일러플레이트를 Lombok `@RequiredArgsConstructor`로 바꿨다.
-- [ ] 품질 리뷰와 PR 준비 단계를 마친다.
+- [x] 2026-04-17 16:05+09:00 변경 범위를 직접 리뷰하고 `git diff --cached --check`로 포맷/공백 문제 없음을 확인했다.
 - [x] 2026-04-17 15:55+09:00 `./gradlew architectureLint`, `./gradlew check`를 통과했다.
+- [x] 2026-04-17 16:08+09:00 브랜치 `backend-naming-lombok-alignment`를 푸시하고 PR #12를 생성했다.
 
 ## 놀라움과 발견
 
@@ -44,7 +45,9 @@
 
 ## 결과 및 회고
 
-아직 작성 전이다. 구현과 검증이 끝나면 무엇이 바뀌었고 남은 간극이 무엇인지 적는다.
+문서, 린트, 코드 이름, Lombok 생성자 규칙을 한 번에 맞췄다. persistence 구현체와 Spring Data 인터페이스에서 `Jpa`, `SpringData` 같은 기술명을 제거했고, 관련 테스트 이름과 문서 링크도 함께 갱신했다. 스프링 관리 클래스의 단순 생성자 주입은 `@RequiredArgsConstructor`로 정리해 생성자 보일러플레이트를 줄였다.
+
+검증 단계에서는 `MarketHistoryPersistenceRepository`의 upsert 조회를 `findBy...`로 좁히면 기존 테스트가 깨진다는 점을 확인했고, 원래의 범위 조회 방식으로 되돌려 동작 회귀 없이 마무리했다. 최종적으로 `./gradlew architectureLint`, `./gradlew check`를 통과했고 PR #12까지 생성했다.
 
 ## 맥락과 길잡이
 

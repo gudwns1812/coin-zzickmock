@@ -1,4 +1,6 @@
-package coin.coinzzickmock.feature.market.application.service;
+package coin.coinzzickmock.feature.market.application.realtime;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -9,30 +11,27 @@ import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-class MarketRealtimeServiceTest {
+class MarketRealtimeFeedTest {
     @Test
     void returnsLatestSupportedMarketSnapshotsFromCache() {
         FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2),
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
         ));
-        MarketRealtimeService service = new MarketRealtimeService(new FakeProviders(marketDataGateway));
+        MarketRealtimeFeed feed = new MarketRealtimeFeed(new FakeProviders(marketDataGateway));
 
-        service.refreshSupportedMarkets();
+        feed.refreshSupportedMarkets();
 
-        List<MarketSummaryResult> markets = service.getSupportedMarkets();
+        List<MarketSummaryResult> markets = feed.getSupportedMarkets();
 
         assertEquals(2, markets.size());
-        assertEquals(101000, service.getMarket("BTCUSDT").lastPrice(), 0.0001);
-        assertEquals(100900, service.getMarket("BTCUSDT").indexPrice(), 0.0001);
+        assertEquals(101000, feed.getMarket("BTCUSDT").lastPrice(), 0.0001);
+        assertEquals(100900, feed.getMarket("BTCUSDT").indexPrice(), 0.0001);
     }
 
     @Test
@@ -41,18 +40,18 @@ class MarketRealtimeServiceTest {
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2),
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
         ));
-        MarketRealtimeService service = new MarketRealtimeService(new FakeProviders(marketDataGateway));
+        MarketRealtimeFeed feed = new MarketRealtimeFeed(new FakeProviders(marketDataGateway));
         List<MarketSummaryResult> events = new CopyOnWriteArrayList<>();
 
-        service.refreshSupportedMarkets();
-        service.subscribe("BTCUSDT", events::add);
+        feed.refreshSupportedMarkets();
+        feed.subscribe("BTCUSDT", events::add);
 
         marketDataGateway.replaceSnapshots(List.of(
                 snapshot("BTCUSDT", 102500, 102450, 102400, 0.00012, 4.0),
                 snapshot("ETHUSDT", 3320, 3312, 3308, 0.00009, 2.4)
         ));
 
-        service.refreshSupportedMarkets();
+        feed.refreshSupportedMarkets();
 
         assertEquals(1, events.size());
         assertEquals(102500, events.get(0).lastPrice(), 0.0001);

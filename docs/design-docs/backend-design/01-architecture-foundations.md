@@ -65,6 +65,8 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - 필요한 repository/gateway/provider 계약 호출
 - `Providers` 사용
 - 트랜잭션 경계 정의
+- `application/service`는 유스케이스 진입점만 담당
+- 여러 유스케이스가 함께 쓰는 공유 런타임/처리 로직은 `application`의 목적별 하위 패키지로 분리
 
 금지:
 
@@ -72,6 +74,7 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - JPA 엔티티 세부 구현에 잠김
 - Spring Security 세부 API 직접 사용
 - 외부 SDK 직접 사용
+- `application/service`가 다른 `application/service`를 직접 주입하거나 호출
 
 ### `domain`
 
@@ -125,6 +128,7 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - `domain` -> `infrastructure`
 - `application` -> 구체 SDK 클라이언트
 - `api` -> `infrastructure`
+- `application/service` -> 다른 `application/service`
 
 여기서 말하는 "계약"은 무조건 인터페이스를 만들라는 뜻이 아니다.
 기본값은 concrete class 의존이다.
@@ -165,6 +169,7 @@ backend/src/main/java/coin/coinzzickmock/
       application/
         command/
         query/
+        realtime/
         result/
         service/
       domain/
@@ -179,6 +184,7 @@ backend/src/main/java/coin/coinzzickmock/
     member/
       api/
       application/
+        grant/
       domain/
       infrastructure/
 ```
@@ -207,6 +213,18 @@ public interface Providers {
 
 `Providers`는 교차 관심사의 유일한 진입점이다.
 애플리케이션 유스케이스와 인프라 어댑터는 필요한 경우 이 인터페이스를 통해 기능을 사용한다.
+
+### Application Service Boundary
+
+`feature/<name>/application/service`는 컨트롤러나 다른 진입점이 호출하는 유스케이스 클래스만 둔다.
+여러 유스케이스가 같이 쓰는 실시간 캐시, 적립 처리기, 조합기 같은 객체는 `application/<purpose>` 하위 패키지의 비-Service 협력 객체로 둔다.
+이렇게 나누면 `service`는 "무슨 일을 시작하는가"를, 목적형 협력 객체는 "그 일을 어떤 메커니즘으로 지원하는가"를 드러낸다.
+
+강한 규칙:
+
+- `application/service`는 다른 `application/service`를 직접 참조하지 않는다.
+- 공유 로직이 필요하면 먼저 `domain`으로 올릴 수 있는지 본다.
+- `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 하위 패키지로 분리한다.
 
 ### Why Providers Exists
 

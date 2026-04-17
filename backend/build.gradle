@@ -91,6 +91,7 @@ tasks.register('architectureLint') {
                     'FEATURE_LAYER_REQUIRED',
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
+                    'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
                     'API_NO_PERSISTENCE_IMPORTS',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                 ],
@@ -277,6 +278,41 @@ tasks.register('architectureLint') {
                                 'HTTP 진입점은 `api` 레이어로 이동하세요.',
                                 [packageName: packageName, code: trimmed]
                             )
+                        }
+                    }
+
+                    def isApplicationService = relativePath.contains('/application/service/')
+                            && sourceFile.name.endsWith('Service.java')
+                    if (isApplicationService) {
+                        def currentServiceName = sourceFile.name.replace('.java', '')
+                        def applicationServiceNames = sourceFiles
+                                .findAll { candidate ->
+                                    def candidateRelativePath = project.relativePath(candidate).replace('\\', '/')
+                                    candidateRelativePath.contains('/application/service/')
+                                            && candidate.name.endsWith('Service.java')
+                                }
+                                .collect { candidate -> candidate.name.replace('.java', '') }
+                                .findAll { candidateName -> candidateName != currentServiceName }
+
+                        applicationServiceNames.each { otherServiceName ->
+                            def matchLine = lines.findIndexOf { lineText ->
+                                def trimmed = lineText.trim()
+                                !(trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) &&
+                                        java.util.regex.Pattern
+                                                .compile("\\b" + java.util.regex.Pattern.quote(otherServiceName) + "\\b")
+                                                .matcher(lineText)
+                                                .find()
+                            }
+                            if (matchLine >= 0) {
+                                logViolation(
+                                    sourceFile,
+                                    matchLine + 1,
+                                    'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
+                                    "application/service 유스케이스는 다른 service `${otherServiceName}`를 직접 참조하면 안 됩니다.",
+                                    '공유 로직은 `application`의 목적별 비-Service 협력 객체나 `domain` 정책/서비스로 옮기고, 유스케이스 service는 자기 흐름만 조합하세요.',
+                                    [packageName: packageName, dependency: otherServiceName]
+                                )
+                            }
                         }
                     }
                 }

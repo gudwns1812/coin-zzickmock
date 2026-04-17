@@ -8,8 +8,8 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.feature.reward.application.service.GrantProfitPointService;
 import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
+import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import coin.coinzzickmock.providers.Providers;
 import org.springframework.stereotype.Service;
@@ -22,18 +22,18 @@ public class ClosePositionService {
     private final PositionRepository positionRepository;
     private final AccountRepository accountRepository;
     private final Providers providers;
-    private final GrantProfitPointService grantProfitPointService;
+    private final RewardPointGrantProcessor rewardPointGrantProcessor;
 
     public ClosePositionService(
             PositionRepository positionRepository,
             AccountRepository accountRepository,
             Providers providers,
-            GrantProfitPointService grantProfitPointService
+            RewardPointGrantProcessor rewardPointGrantProcessor
     ) {
         this.positionRepository = positionRepository;
         this.accountRepository = accountRepository;
         this.providers = providers;
-        this.grantProfitPointService = grantProfitPointService;
+        this.rewardPointGrantProcessor = rewardPointGrantProcessor;
     }
 
     @Transactional
@@ -81,7 +81,7 @@ public class ClosePositionService {
             ));
         }
 
-        RewardPointResult rewardPointResult = grantProfitPointService.grant(
+        RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(
                 new GrantProfitPointCommand(memberId, Math.max(realizedPnl - closeFee, 0))
         );
 

@@ -5,8 +5,6 @@ import SentryProvider from "../components/router/SentryProvider";
 import "./globals.css";
 import "driver.js/dist/driver.css";
 import QueryClientProvider from "../components/router/QueryClientProvider";
-import InvestSurveyProvider from "@/components/router/InvestSurveyProvider";
-import { getJwtToken } from "@/utils/auth";
 import { MSWProvider } from "./MSWProvider";
 
 const pretendard = localFont({
@@ -34,8 +32,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const token = await getJwtToken();
-
   return (
     <html lang="kr">
       <body className={`${pretendard.variable} antialiased`}>
@@ -49,9 +45,7 @@ export default async function RootLayout({
               closeOnClick
             />
             <SentryProvider>
-              <InvestSurveyProvider token={token}>
-                {children}
-              </InvestSurveyProvider>
+              {children}
             </SentryProvider>
           </MSWProvider>
         </QueryClientProvider>

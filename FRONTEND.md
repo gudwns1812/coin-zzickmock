@@ -34,11 +34,12 @@
 
 1. [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
 2. 이 문서의 Non-negotiables
-3. UI 의미 체계가 바뀌면 [docs/design-docs/ui-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/README.md)
+3. UI 의미 체계가
+   바뀌면 [docs/design-docs/ui-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/README.md)
 
 ### 프론트 검증 기준을 확인할 때
 
-1. [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md)
+1. 이 문서의 `Runtime Verification`
 2. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
 3. 필요하면 [docs/design-docs/ui-design/05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
 
@@ -89,7 +90,9 @@
 
 - 새 기능을 넣으면서 `src/` 구조를 부분적으로 도입하지 않는다.
 - `features/` 구조로 바꾸고 싶다면 기능 단위를 통째로 옮기는 별도 작업으로 진행한다.
-- 공용 승격 여부는 [docs/design-docs/ui-design/06-component-boundaries.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/06-component-boundaries.md)를 따른다.
+- 공용 승격
+  여부는 [docs/design-docs/ui-design/06-component-boundaries.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/06-component-boundaries.md)
+  를 따른다.
 
 ## Data And State Guardrails
 
@@ -103,11 +106,15 @@
 프론트의 시각적 상세 설계 원문은 `FRONTEND.md`가 아니라 `docs/design-docs/ui-design/`이다.
 
 - 시각 언어와 토큰: [01-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/01-foundations.md)
-- 레이아웃과 표면: [02-layouts-and-surfaces.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/02-layouts-and-surfaces.md)
+- 레이아웃과
+  표면: [02-layouts-and-surfaces.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/02-layouts-and-surfaces.md)
 - 데이터 표시: [03-data-display.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/03-data-display.md)
-- 입력과 모달: [04-inputs-and-overlays.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/04-inputs-and-overlays.md)
-- 모션과 접근성: [05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
-- 컴포넌트 경계: [06-component-boundaries.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/06-component-boundaries.md)
+- 입력과
+  모달: [04-inputs-and-overlays.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/04-inputs-and-overlays.md)
+- 모션과
+  접근성: [05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
+- 컴포넌트
+  경계: [06-component-boundaries.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/06-component-boundaries.md)
 
 즉, UI 기준이 길어질수록 이 파일을 키우는 대신 `docs/design-docs/ui-design/`을 갱신한다.
 
@@ -115,12 +122,21 @@
 
 프론트 변경은 정적 코드 확인만으로 끝내지 않는다.
 상호작용, 레이아웃, 시각 피드백이 바뀌는 경우에는 런타임에서 실제 UI 반응을 확인한다.
+프론트엔드의 검증 기준은 `QUALITY_SCORE.md` 같은 점수 문서가 아니라, 사용자가 실제 화면에서 의도한 흐름을 문제없이 수행할 수 있는지다.
 
 기본 원칙:
 
 - 개발 서버가 있으면 브라우저에서 실제 화면을 연다.
 - 클릭, 입력, 탭 전환, 모달 열기/닫기, 검색 같은 핵심 상호작용을 실제로 검증한다.
 - 콘솔 에러와 실패한 네트워크 요청이 없는지 함께 확인한다.
+- 변경한 기능의 시작 조건, 사용자 액션, 기대 결과를 최소 한 번은 실제 화면에서 끝까지 따라가 본다.
+
+프론트 검증에서 우선하는 질문:
+
+- 화면이 실제로 열리는가
+- 사용자가 클릭/입력/이동한 결과가 의도대로 반영되는가
+- 로딩, 빈 상태, 오류 상태가 깨지지 않는가
+- 콘솔 에러나 실패한 네트워크 요청 없이 흐름이 끝나는가
 
 생략 가능한 경우:
 
@@ -137,5 +153,6 @@
 - 관련 codemap과 UI 설계 문서를 읽고 반영했다.
 - 상태, fetch, 공용 컴포넌트 배치가 기존 기준과 충돌하지 않는다.
 - 필요한 경우 타입체크와 빌드를 통과했다.
-- UI 영향이 있는 변경이면 런타임 검증을 수행했거나, 생략 이유를 남겼다.
-- 품질 점수와 PR/CI 흐름은 [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md), [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따랐다.
+- UI 영향이 있는 변경이면 실제 화면에서 핵심 사용자 흐름을 검증했거나, 생략 이유를 남겼다.
+- 프론트 작업의 완료 판단은 점수 문서가 아니라 실제 UI가 의도대로 작동하는지로 한다.
+- PR/CI 같은 작업 운영 흐름은 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다.

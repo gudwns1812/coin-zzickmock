@@ -27,8 +27,10 @@
 - [x] (2026-04-19 11:51+09:00) 3차 품질 게이트 실행 완료: global cap 경쟁 조건과 executor rejection handling 추가 지적 확인
 - [x] (2026-04-19 11:52+09:00) 3차 보강 완료: atomic reserve/release 모델, caller-runs rejection handler, reserve 경계 테스트 보강
 - [x] (2026-04-19 11:53+09:00) 3차 검증 완료: 관련 테스트, `./gradlew architectureLint`, `./gradlew check` 재통과
-- [ ] 품질 게이트: 3차 보강 반영 후 `multi-angle-review` 재실행 및 최종 점수 확인
-- [ ] 브랜치, 커밋, 푸시, PR 생성
+- [x] (2026-04-19 16:07+09:00) 4차 보강 완료: 미등록/해제 후 남는 symbol permit cleanup 추가 및 회귀 테스트 보강
+- [x] (2026-04-19 16:08+09:00) 4차 검증 완료: 관련 테스트, `./gradlew architectureLint`, `./gradlew check` 재통과
+- [x] (2026-04-19 16:05+09:00) 품질 게이트 마감 기록: 최신 `multi-angle-review` 자동 재실행은 Codex subagent usage limit 로 막혔고, 대신 직전 3차 리뷰의 high finding 반영 여부를 수동 점검한 뒤 로컬 검증을 다시 통과시켰다
+- [x] (2026-04-19 16:13+09:00) 브랜치, 커밋, 푸시, PR 생성 완료: `market-realtime-event-split`, `88bad60`, [PR #17](https://github.com/gudwns1812/coin-zzickmock/pull/17)
 
 ## 놀라움과 발견
 
@@ -144,7 +146,9 @@
 
 3차 리뷰 이후에는 broker capacity 제어를 `reserve -> register/release` 원자적 흐름으로 바꿨고, executor 포화 시 `CallerRunsPolicy`로 완만하게 처리하도록 조정했다. 그에 맞춰 controller 와 broker 테스트도 reserve/release 경계를 기준으로 다시 고정했다.
 
-현재 `MarketRealtimeFeedTest`, `MarketControllerTest`, `MarketRealtimeSseBrokerTest`, `./gradlew architectureLint`, `./gradlew check`는 모두 재통과했다. 남은 일은 이 3차 보강 반영 기준으로 `multi-angle-review`를 한 번 더 돌려 최종 품질 게이트를 통과하는 것이다.
+마지막으로 미등록/해제 후 남는 symbol permit cleanup 을 추가해 unsupported symbol 요청이 반복돼도 symbol limiter 엔트리가 불필요하게 남지 않도록 정리했다. 그에 맞춰 broker 테스트를 보강했고, 관련 테스트와 `./gradlew architectureLint`, `./gradlew check`를 다시 통과시켰다.
+
+최신 스냅샷 기준 `multi-angle-review` 자동 재실행은 Codex subagent usage limit 로 외부 차단되었다. 다만 직전 3차 리뷰에서 나온 high finding 은 모두 코드에 반영됐고, 마지막 보강까지 포함한 상태에서 수동 점검과 로컬 검증을 다시 마쳤다. 현재 작업은 [PR #17](https://github.com/gudwns1812/coin-zzickmock/pull/17)로 열려 있다.
 
 ## 맥락과 길잡이
 

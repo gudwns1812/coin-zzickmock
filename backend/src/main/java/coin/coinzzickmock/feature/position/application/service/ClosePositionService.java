@@ -2,11 +2,12 @@ package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
@@ -37,57 +38,33 @@ public class ClosePositionService {
         PositionSnapshot position = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
                 .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
 
-        double closeQuantity = Math.min(quantity, position.quantity());
         MarketSnapshot market = loadMarket(symbol);
-        double realizedPnl = realizedPnl(position, market.markPrice(), closeQuantity);
-        double closeFee = market.lastPrice() * closeQuantity * TAKER_FEE_RATE;
-        double releasedMargin = (position.entryPrice() * closeQuantity) / position.leverage();
+        PositionCloseOutcome closeOutcome = position.close(quantity, market.markPrice(), market.lastPrice(), TAKER_FEE_RATE);
 
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-
-        accountRepository.save(new TradingAccount(
-                account.memberId(),
-                account.memberEmail(),
-                account.memberName(),
-                account.walletBalance() + realizedPnl - closeFee,
-                account.availableMargin() + releasedMargin + realizedPnl - closeFee
+        accountRepository.save(account.settlePositionClose(
+                closeOutcome.realizedPnl(),
+                closeOutcome.closeFee(),
+                closeOutcome.releasedMargin()
         ));
 
-        double remainingQuantity = position.quantity() - closeQuantity;
-        if (remainingQuantity <= 0) {
+        if (closeOutcome.remainingPosition() == null) {
             positionRepository.delete(memberId, symbol, positionSide, marginMode);
         } else {
-            positionRepository.save(memberId, new PositionSnapshot(
-                    position.symbol(),
-                    position.positionSide(),
-                    position.marginMode(),
-                    position.leverage(),
-                    remainingQuantity,
-                    position.entryPrice(),
-                    market.markPrice(),
-                    position.liquidationPrice(),
-                    realizedPnl(position, market.markPrice(), remainingQuantity)
-            ));
+            positionRepository.save(memberId, closeOutcome.remainingPosition());
         }
 
         RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(
-                new GrantProfitPointCommand(memberId, Math.max(realizedPnl - closeFee, 0))
+                new GrantProfitPointCommand(memberId, Math.max(closeOutcome.netRealizedPnl(), 0))
         );
 
         return new ClosePositionResult(
                 symbol,
-                closeQuantity,
-                realizedPnl - closeFee,
+                closeOutcome.closedQuantity(),
+                closeOutcome.netRealizedPnl(),
                 rewardPointResult.rewardPoint()
         );
-    }
-
-    private double realizedPnl(PositionSnapshot position, double markPrice, double quantity) {
-        if ("LONG".equalsIgnoreCase(position.positionSide())) {
-            return (markPrice - position.entryPrice()) * quantity;
-        }
-        return (position.entryPrice() - markPrice) * quantity;
     }
 
     private MarketSnapshot loadMarket(String symbol) {

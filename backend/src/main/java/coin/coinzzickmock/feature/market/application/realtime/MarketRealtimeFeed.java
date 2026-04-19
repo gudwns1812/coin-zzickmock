@@ -9,11 +9,8 @@ import jakarta.annotation.PostConstruct;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -24,15 +21,14 @@ public class MarketRealtimeFeed {
     private final Providers providers;
     private final MarketHistoryRecorder marketHistoryRecorder;
     private final MarketSnapshotStore marketSnapshotStore;
-    private final ConcurrentMap<String, CopyOnWriteArrayList<Consumer<MarketSummaryResult>>> subscribers =
-            new ConcurrentHashMap<>();
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @PostConstruct
     void initializeCache() {
         refreshSupportedMarkets();
     }
 
-    @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:3000}")
+    @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:1000}")
     public void refreshSupportedMarkets() {
         refreshSupportedMarkets(Instant.now());
     }
@@ -49,7 +45,7 @@ public class MarketRealtimeFeed {
         }
 
         marketSnapshotStore.putSupportedMarkets(refreshedMarkets);
-        refreshedMarkets.forEach(this::publish);
+        publishUpdatedMarkets(refreshedMarkets);
         persistHistory(refreshedMarkets, observedAt);
     }
 
@@ -67,39 +63,15 @@ public class MarketRealtimeFeed {
             return cached;
         }
 
-        MarketSnapshot loaded = providers.connector().marketDataGateway().loadMarket(symbol);
-        if (loaded == null) {
-            throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
-        }
-
-        MarketSummaryResult result = toResult(loaded);
-        marketSnapshotStore.putMarket(result);
-        return result;
+        return getSupportedMarkets().stream()
+                .filter(result -> result.symbol().equals(symbol))
+                .findFirst()
+                .orElseThrow(() -> new CoreException(ErrorCode.MARKET_NOT_FOUND));
     }
 
-    public void subscribe(String symbol, Consumer<MarketSummaryResult> listener) {
-        subscribers.computeIfAbsent(symbol, key -> new CopyOnWriteArrayList<>()).add(listener);
-    }
-
-    public void unsubscribe(String symbol, Consumer<MarketSummaryResult> listener) {
-        CopyOnWriteArrayList<Consumer<MarketSummaryResult>> symbolSubscribers = subscribers.get(symbol);
-        if (symbolSubscribers == null) {
-            return;
-        }
-
-        symbolSubscribers.remove(listener);
-        if (symbolSubscribers.isEmpty()) {
-            subscribers.remove(symbol, symbolSubscribers);
-        }
-    }
-
-    private void publish(MarketSummaryResult result) {
-        CopyOnWriteArrayList<Consumer<MarketSummaryResult>> symbolSubscribers = subscribers.get(result.symbol());
-        if (symbolSubscribers == null) {
-            return;
-        }
-
-        symbolSubscribers.forEach(listener -> listener.accept(result));
+    private void publishUpdatedMarkets(List<MarketSummaryResult> refreshedMarkets) {
+        refreshedMarkets.forEach(
+                result -> applicationEventPublisher.publishEvent(new MarketSummaryUpdatedEvent(result)));
     }
 
     private void persistHistory(List<MarketSummaryResult> refreshedMarkets, Instant observedAt) {

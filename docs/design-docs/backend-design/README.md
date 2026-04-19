@@ -37,11 +37,14 @@
 - [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
   dependency rule, `Providers`, application service 경계, 공유 메커니즘 분리, 캐시 경계, 유스케이스 형태.
 
-- [04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
-  domain 규칙, 영속성/외부 연동 기준, 예외 모델, 네이밍 규칙.
+- [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+  도메인 모델, 정책, 상태 전이, 값 검증, domain/application 경계 판단의 원문 문서.
 
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
   테스트 레이어 기준과 `architectureLint` 계약, 로그 조회 방법.
+
+- [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+  영속성, 외부 연동, 예외 번역, 기술 중심 네이밍 규칙.
 
 ## Task Guide
 
@@ -57,9 +60,13 @@
 2. [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 3. 필요하면 [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
 
+### 도메인 모델, 정책, 상태 전이 규칙을 볼 때
+
+1. [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+
 ### DB, repository, QueryDSL, 외부 연동 규칙을 볼 때
 
-1. [04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
+1. [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
 2. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
 
 ### 테스트 전략이나 아키텍처 린트 규칙을 확인할 때

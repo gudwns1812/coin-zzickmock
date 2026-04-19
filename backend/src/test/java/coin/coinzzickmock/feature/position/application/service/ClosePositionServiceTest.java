@@ -1,16 +1,16 @@
-package coin.coinzzickmock.feature.order.application.service;
+package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
-import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
-import coin.coinzzickmock.feature.order.domain.FuturesOrder;
-import coin.coinzzickmock.feature.order.domain.OrderPreview;
-import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
+import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
+import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import coin.coinzzickmock.feature.reward.domain.RewardPointPolicy;
+import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
@@ -25,115 +25,60 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
-class CreateOrderServiceTest {
+class ClosePositionServiceTest {
     @Test
-    void createsFilledMarketOrderAndUpdatesPosition() {
-        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
-        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
-        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new FakeProviders(),
-                orderRepository,
-                accountRepository,
-                positionRepository
+    void partiallyClosesPositionAndUpdatesAccountAndRewardPoint() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
+                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
-
-        CreateOrderResult result = service.execute(new CreateOrderCommand(
-                "demo-member",
-                "BTCUSDT",
-                "LONG",
-                "MARKET",
-                "ISOLATED",
-                10,
-                0.1,
-                null
-        ));
-
-        assertEquals("FILLED", result.status());
-        assertEquals(1, positionRepository.findOpenPositions("demo-member").size());
-        assertEquals(98995, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
-    }
-
-    @Test
-    void recalculatesLiquidationPriceFromWeightedEntryPriceWhenIncreasingExistingPosition() {
-        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
-        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
         positionRepository.save("demo-member", new PositionSnapshot(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
                 10,
-                0.1,
+                0.2,
                 100000,
                 100000,
                 90000.0,
                 0
         ));
 
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new FakeProviders(110000, 110000),
-                orderRepository,
+        ClosePositionService service = new ClosePositionService(
+                positionRepository,
                 accountRepository,
-                positionRepository
+                new FakeProviders(110000, 110000),
+                new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository)
         );
 
-        service.execute(new CreateOrderCommand(
-                "demo-member",
-                "BTCUSDT",
-                "LONG",
-                "MARKET",
-                "ISOLATED",
-                10,
-                0.1,
-                null
-        ));
+        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1);
 
-        PositionSnapshot updated = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        assertEquals(0.1, result.closedQuantity(), 0.0001);
+        assertEquals(994.5, result.realizedPnl(), 0.0001);
+        assertEquals(20, result.grantedPoint(), 0.0001);
+
+        TradingAccount updatedAccount = accountRepository.findByMemberId("demo-member").orElseThrow();
+        assertEquals(100994.5, updatedAccount.walletBalance(), 0.0001);
+        assertEquals(96994.5, updatedAccount.availableMargin(), 0.0001);
+
+        PositionSnapshot remaining = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
-        assertEquals(105000.0, updated.entryPrice(), 0.0001);
-        assertEquals(94500.0, updated.liquidationPrice(), 0.0001);
-    }
+        assertEquals(0.1, remaining.quantity(), 0.0001);
+        assertEquals(1000.0, remaining.unrealizedPnl(), 0.0001);
+        assertEquals(90000.0, remaining.liquidationPrice(), 0.0001);
 
-    @Test
-    void previewsMakerLimitOrderWithEntryPriceAndExecutionFlag() {
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new FakeProviders(),
-                new InMemoryOrderRepository(),
-                new InMemoryAccountRepository(),
-                new InMemoryPositionRepository()
-        );
-
-        OrderPreview preview = service.preview(new CreateOrderCommand(
-                "demo-member",
-                "BTCUSDT",
-                "LONG",
-                "LIMIT",
-                "ISOLATED",
-                10,
-                0.1,
-                99900.0
-        ));
-
-        assertEquals("MAKER", preview.feeType());
-        assertEquals(99900.0, preview.estimatedEntryPrice(), 0.0001);
-        assertFalse(preview.executable());
+        RewardPointWallet wallet = rewardPointRepository.findByMemberId("demo-member").orElseThrow();
+        assertEquals(20, wallet.rewardPoint(), 0.0001);
     }
 
     private static class InMemoryAccountRepository implements AccountRepository {
-        private TradingAccount account = new TradingAccount(
-                "demo-member",
-                "demo@coinzzickmock.dev",
-                "Demo",
-                100000,
-                100000
-        );
+        private TradingAccount account;
+
+        private InMemoryAccountRepository(TradingAccount account) {
+            this.account = account;
+        }
 
         @Override
         public Optional<TradingAccount> findByMemberId(String memberId) {
@@ -152,46 +97,51 @@ class CreateOrderServiceTest {
 
         @Override
         public List<PositionSnapshot> findOpenPositions(String memberId) {
-            return positions;
+            return List.copyOf(positions);
         }
 
         @Override
         public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide, String marginMode) {
-            return positions.stream().findFirst();
+            return positions.stream()
+                    .filter(position -> position.symbol().equals(symbol))
+                    .filter(position -> position.positionSide().equals(positionSide))
+                    .filter(position -> position.marginMode().equals(marginMode))
+                    .findFirst();
         }
 
         @Override
         public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
-            positions.clear();
+            delete(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode());
             positions.add(positionSnapshot);
             return positionSnapshot;
         }
 
         @Override
         public void delete(String memberId, String symbol, String positionSide, String marginMode) {
-            positions.clear();
+            positions.removeIf(position -> position.symbol().equals(symbol)
+                    && position.positionSide().equals(positionSide)
+                    && position.marginMode().equals(marginMode));
         }
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryRewardPointRepository implements RewardPointRepository {
+        private RewardPointWallet wallet = new RewardPointWallet("demo-member", 0);
+
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
-            return futuresOrder;
+        public Optional<RewardPointWallet> findByMemberId(String memberId) {
+            return wallet.memberId().equals(memberId) ? Optional.of(wallet) : Optional.empty();
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
-            return List.of();
+        public RewardPointWallet save(RewardPointWallet rewardPointWallet) {
+            this.wallet = rewardPointWallet;
+            return rewardPointWallet;
         }
     }
 
     private static class FakeProviders implements Providers {
         private final double lastPrice;
         private final double markPrice;
-
-        private FakeProviders() {
-            this(100000, 100000);
-        }
 
         private FakeProviders(double lastPrice, double markPrice) {
             this.lastPrice = lastPrice;

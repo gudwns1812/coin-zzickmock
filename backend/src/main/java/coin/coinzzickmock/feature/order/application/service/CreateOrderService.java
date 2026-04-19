@@ -2,8 +2,8 @@ package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
@@ -82,19 +82,7 @@ public class CreateOrderService {
     ) {
         TradingAccount account = accountRepository.findByMemberId(command.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-
-        double requiredMargin = preview.estimatedInitialMargin() + preview.estimatedFee();
-        if (account.availableMargin() < requiredMargin) {
-            throw new CoreException(ErrorCode.INSUFFICIENT_AVAILABLE_MARGIN);
-        }
-
-        accountRepository.save(new TradingAccount(
-                account.memberId(),
-                account.memberEmail(),
-                account.memberName(),
-                account.walletBalance() - preview.estimatedFee(),
-                account.availableMargin() - requiredMargin
-        ));
+        accountRepository.save(account.reserveForFilledOrder(preview.estimatedFee(), preview.estimatedInitialMargin()));
 
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 command.memberId(),
@@ -104,36 +92,22 @@ public class CreateOrderService {
         ).orElse(null);
 
         if (existing == null) {
-            positionRepository.save(command.memberId(), new PositionSnapshot(
+            positionRepository.save(command.memberId(), PositionSnapshot.open(
                     command.symbol(),
                     command.positionSide(),
                     command.marginMode(),
                     command.leverage(),
                     command.quantity(),
                     marketSnapshot.lastPrice(),
-                    marketSnapshot.markPrice(),
-                    preview.estimatedLiquidationPrice(),
-                    0
+                    marketSnapshot.markPrice()
             ));
             return;
         }
 
-        double totalQuantity = existing.quantity() + command.quantity();
-        double weightedEntryPrice =
-                ((existing.entryPrice() * existing.quantity()) + (marketSnapshot.lastPrice() * command.quantity()))
-                        / totalQuantity;
-
-        positionRepository.save(command.memberId(), new PositionSnapshot(
-                existing.symbol(),
-                existing.positionSide(),
-                existing.marginMode(),
-                command.leverage(),
-                totalQuantity,
-                weightedEntryPrice,
-                marketSnapshot.markPrice(),
-                preview.estimatedLiquidationPrice(),
-                0
-        ));
+        positionRepository.save(
+                command.memberId(),
+                existing.increase(command.leverage(), command.quantity(), marketSnapshot.lastPrice(), marketSnapshot.markPrice())
+        );
     }
 
     private OrderPreview preview(CreateOrderCommand command, MarketSnapshot marketSnapshot) {

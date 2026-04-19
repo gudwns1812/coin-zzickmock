@@ -20,8 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-@Service
 @RequiredArgsConstructor
+@Service
 public class CreateOrderService {
     private final OrderPreviewPolicy orderPreviewPolicy;
     private final Providers providers;

@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-@Component
 @RequiredArgsConstructor
+@Component
 public class RewardPointGrantProcessor {
     private final RewardPointPolicy rewardPointPolicy;
     private final RewardPointRepository rewardPointRepository;

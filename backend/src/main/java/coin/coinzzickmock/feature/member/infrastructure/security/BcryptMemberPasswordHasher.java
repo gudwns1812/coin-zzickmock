@@ -5,8 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-@Component
 @RequiredArgsConstructor
+@Component
 public class BcryptMemberPasswordHasher implements MemberPasswordHasher {
     private final BCryptPasswordEncoder passwordEncoder;
 

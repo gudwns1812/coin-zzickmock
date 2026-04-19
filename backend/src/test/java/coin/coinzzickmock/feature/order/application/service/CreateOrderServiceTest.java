@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
+import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.providers.Providers;
@@ -34,6 +35,7 @@ class CreateOrderServiceTest {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
 
         CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
                 new FakeProviders(),
                 orderRepository,
                 accountRepository,
@@ -59,6 +61,7 @@ class CreateOrderServiceTest {
     @Test
     void previewsMakerLimitOrderWithEntryPriceAndExecutionFlag() {
         CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
                 new FakeProviders(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),

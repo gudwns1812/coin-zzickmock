@@ -123,7 +123,7 @@ public interface Providers {
 강한 규칙:
 
 - `application/service`는 다른 `application/service`를 직접 참조하지 않는다.
-- 공유 로직이 필요하면 먼저 `domain`으로 올릴 수 있는지 본다.
+- 공유 로직이 필요하면 먼저 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md) 기준으로 `domain` 후보인지 본다.
 - `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 하위 패키지로 분리한다.
 - `application/service`는 "무슨 일을 시작하는가"를, 목적형 협력 객체는 "그 일을 어떤 메커니즘으로 지원하는가"를 드러내야 한다.
 
@@ -168,5 +168,6 @@ feature/order/application/
 ## Related Documents
 
 - [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
-- [04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
+- [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+- [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)

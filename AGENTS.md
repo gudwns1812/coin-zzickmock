@@ -70,6 +70,8 @@
   백엔드 작업 기준과 상세 설계 입구 문서.
 - [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
   백엔드 상세 설계 문서 묶음의 실제 인덱스. 구조, 조립, Provider, DB, 테스트 규칙은 이 인덱스를 통해 책임별 번호 문서로 내려간다.
+- [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+  도메인 모델, 정책, 상태 전이 작업에서 가장 먼저 읽는 원문 문서.
 - [backend/HELP.md](/Users/hj.park/projects/coin-zzickmock/backend/HELP.md)
   현재는 Spring Initializr 기본 문서에 가깝다. 아키텍처 기준 문서로는 사용하지 않는다.
 
@@ -173,16 +175,25 @@
 1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
 2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
 3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-4. 필요한 책임 문서 (`01-`부터 `05-`까지)로 내려간다.
+4. 필요한 책임 문서 (`01-`부터 `06-`까지)로 내려간다.
 5. 보안이 걸리면 [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
+
+### 백엔드에서 도메인 모델, 정책, 상태 전이를 다룰 때
+
+1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
+2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
+3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+4. [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+5. 애플리케이션 경계가 걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 
 ### 백엔드에서 DB를 읽거나 수정할 때
 
 1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
 2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-3. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
-4. 스키마를 읽을 때는 `db-schema.md`를 먼저 참고
-5. 스키마 변경이 있으면 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 만들고 코드와 문서를 함께 갱신
+3. [docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+4. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
+5. 스키마를 읽을 때는 `db-schema.md`를 먼저 참고
+6. 스키마 변경이 있으면 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 만들고 코드와 문서를 함께 갱신
 
 ### 인증, 인가, 민감 정보, 외부 연동 보안을 다룰 때
 

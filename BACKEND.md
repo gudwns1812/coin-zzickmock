@@ -12,8 +12,9 @@
 - [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
 - [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
 - [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-- [docs/design-docs/backend-design/04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
+- [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 - [docs/design-docs/backend-design/05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
+- [docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
 
 ## What This File Does
 
@@ -36,10 +37,17 @@
 5. [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
 6. 보안이 걸리면 [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
 
+### 도메인 모델이나 정책, 상태 전이를 설계할 때
+
+1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+2. [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+3. 애플리케이션 경계가 걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
+4. bean 조립이 걸리면 [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
+
 ### DB를 읽거나 수정할 때
 
 1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-2. [docs/design-docs/backend-design/04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
+2. [docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
 3. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
 4. 스키마를 읽을 때는 항상 `db-schema.md`를 먼저 참고한다.
 5. 스키마를 바꿀 때는 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
@@ -64,10 +72,10 @@
 - `application/service`는 API가 호출하는 유스케이스 진입점만 둔다.
 - `application/service`가 다른 `application/service`를 직접 주입하거나 호출하는 것은 금지한다.
 - 여러 유스케이스가 함께 쓰는 런타임/처리 로직은 `application`의 목적별 하위 패키지에 비-Service 협력 객체로 분리한다.
+- 도메인 모델, 정책, 상태 전이 규칙의 원문은 [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)에만 둔다.
 - Spring이 관리하는 협력 객체는 concrete class라도 클래스 내부에서 직접 `new`하지 않고 빈으로 조립한다.
 - 로컬 메모리 캐시는 클래스 내부 `ConcurrentHashMap` 같은 ad-hoc 상태보다 Spring Cache를 기본값으로 사용한다.
 - 여러 인스턴스가 같은 캐시를 공유해야 하는 분산 캐시는 Redis를 표준 구현으로 사용하고, 기능 코드는 Redis client 대신 Spring Cache 경계를 우선 의존한다.
-- `domain`은 Spring annotation을 모르므로, domain policy 같은 객체를 빈으로 쓸 때는 `infrastructure/config`에서 등록한다.
 - 운영 DB의 기본값은 `MySQL`로 둔다.
 - 테스트 DB의 기본값은 인메모리 `H2`로 둔다.
 - DB 마이그레이션 표준은 `Flyway`로 고정한다.

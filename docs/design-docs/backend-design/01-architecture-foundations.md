@@ -128,39 +128,18 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 
 1. [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 
-### 도메인, DB, 예외, 네이밍 규칙이 필요할 때
+### 도메인 모델, 정책, 상태 전이 규칙이 필요할 때
 
-1. [04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
+1. [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+
+### DB, 예외, 기술 중심 네이밍 규칙이 필요할 때
+
+1. [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
 2. DB 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
 
 ### 테스트 구조와 `architectureLint` 규칙이 필요할 때
 
 1. [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
-
-- 구현체가 하나뿐인데 메서드 전달만 하는 `*Port`
-- 컨트롤러 하나만 쓰는데 형식적으로 만든 `*UseCase` 인터페이스
-- 이미 `Providers`나 gateway가 있는데 그 위에 다시 한 겹 씌우는 중복 추상화
-- Spring `@Service`, `@Component`, `@Configuration` 안에서 정책 객체나 암호화기 같은 협력 객체를 필드 초기화로 직접 `new`하는 패턴
-
-## Bean Wiring Boundary
-
-이 저장소에서 "기본값은 concrete class"는 "아무 데서나 직접 생성해도 된다"는 뜻이 아니다.
-이 말의 목적은 인터페이스 남발을 막는 것이고, 조립 책임까지 각 유스케이스 클래스에 흩뿌리라는 뜻은 아니다.
-
-강한 규칙:
-
-- Spring이 관리하는 협력 객체는 concrete class라도 생성자 주입으로 연결한다.
-- 같은 객체를 여러 유스케이스나 인프라 어댑터가 재사용할 수 있다면, 해당 객체의 생성 책임은 `infrastructure/config` 또는 provider configuration으로 모은다.
-- `domain`은 Spring annotation을 모르므로 `domain policy`, `domain service`, 계산기 객체를 빈으로 쓰고 싶다면 도메인 클래스에는 annotation을 붙이지 않고 `feature/<name>/infrastructure/config`에서 `@Bean`으로 등록한다.
-- `new`를 써도 되는 경우는 값 객체, 엔티티, 결과 DTO, 컬렉션 같은 "한 유스케이스 안에서 즉시 소비되는 짧은 수명 객체"를 만들 때다.
-- `new`를 피해야 하는 경우는 정책 객체, 암호화기, 파서, 재사용 계산기처럼 장기 협력 객체를 Spring 관리 클래스 내부에서 붙들 때다.
-
-예시:
-
-- 허용: `new TradingAccount(...)`, `new RewardPointWallet(...)`
-- 허용: `new ConcurrentHashMap<>()` 같은 내부 자료구조
-- 금지: `@Service` 안에서 `private final RewardPointPolicy policy = new RewardPointPolicy();`
-- 금지: `@Component` 안에서 `private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();`
 
 ## Document Boundary Rule
 
@@ -177,5 +156,6 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - [README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
 - [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
 - [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-- [04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
+- [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
+- [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)

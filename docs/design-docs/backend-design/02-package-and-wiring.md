@@ -9,6 +9,7 @@
 
 - [README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
 - [01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
+- domain 조립 판단이 필요하면 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 
 ## Package Shape
 
@@ -89,7 +90,7 @@ backend/src/main/java/coin/coinzzickmock/
 
 - Spring이 관리하는 협력 객체는 concrete class라도 생성자 주입으로 연결한다.
 - 같은 객체를 여러 유스케이스나 인프라 어댑터가 재사용할 수 있다면, 생성 책임은 `infrastructure/config` 또는 provider configuration으로 모은다.
-- `domain`은 Spring annotation을 모르므로 `domain policy`, `domain service`, 계산기 객체를 빈으로 쓰고 싶다면 도메인 클래스에는 annotation을 붙이지 않고 `feature/<name>/infrastructure/config`에서 `@Bean`으로 등록한다.
+- domain 조립의 상세 기준은 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)를 따른다.
 - `new`를 써도 되는 경우는 값 객체, 엔티티, 결과 DTO, 컬렉션처럼 한 유스케이스 안에서 즉시 소비되는 짧은 수명 객체다.
 - `new`를 피해야 하는 경우는 정책 객체, 암호화기, 파서, 재사용 계산기처럼 장기 협력 객체를 Spring 관리 클래스 내부에서 붙드는 경우다.
 
@@ -120,5 +121,5 @@ annotation 위치와 configuration 소유권을 명확히 드러내야 한다.
 ## Related Documents
 
 - [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-- [04-persistence-and-domain-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-persistence-and-domain-rules.md)
+- [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)

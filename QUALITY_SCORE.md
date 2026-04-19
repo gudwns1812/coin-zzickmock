@@ -5,7 +5,7 @@
 이 문서는 에이전트 루프의 검증 단계와 리뷰 단계를 위한 품질 게이트 기준서다.
 목표는 두 가지다.
 
-- `multi-angle-review` 방식의 독립 리뷰를 점수화해서 종료 조건으로 쓴다.
+- 실제 `multi-angle-review` 실행 결과를 점수화해서 종료 조건으로 쓴다.
 - 점수가 임계값 미만이면 같은 작업 루프를 다시 돌며 수정하게 만든다.
 
 이 문서는 구현 규칙 자체를 대체하지 않는다.
@@ -26,7 +26,7 @@
 - 코드 수정 직후
 - 리팩터링 직후
 - 큰 문서 기준을 새로 만들거나 바꾼 직후
-- PR 전 self-review
+- PR 전 품질 게이트 리뷰
 - 에이전트가 "끝난 것 같은데 정말 끝났는지" 판단해야 할 때
 
 기본 검토 대상:
@@ -39,6 +39,7 @@
 
 리뷰는 반드시 `multi-angle-review` 방식으로 독립적으로 수행한다.
 각 각도는 서로의 결론을 보지 않은 상태에서 현재 스냅샷만 검토한다.
+여기서 말하는 `multi-angle-review`는 실제 skill 실행을 뜻하며, 수동 self-review를 5개 관점으로 나눠 적는 것으로 대체할 수 없다.
 
 필수 각도:
 
@@ -52,18 +53,45 @@
 
 - 범위를 아끼기 위해 기본값으로 전체 저장소, 전체 워킹 트리, 대규모 문서 묶음을 리뷰하지 않는다.
 - 사용자가 전체 범위를 명시적으로 요청한 경우에만 전체 범위 리뷰를 수행한다.
+- 실제 `multi-angle-review` skill을 실행해 fresh reviewer subagent 5개를 분리해서 돌린 결과만 공식 품질 점수 계산에 사용한다.
+- 수동 5각도 self-review, 메인 에이전트 단독 추정 점수, reviewer 없이 적은 final score는 공식 pass 판정 근거로 사용할 수 없다.
 - 한 리뷰어의 결과를 다른 리뷰어 프롬프트에 넣지 않는다.
 - 수정 의도나 기대 답안을 리뷰어에게 미리 주지 않는다.
 - 합성은 모든 각도 리뷰가 끝난 뒤에만 한다.
+- 현재 세션이나 도구 제약 때문에 실제 `multi-angle-review`를 실행할 수 없다면, 점수 산정 단계는 blocker 상태로 보고하고 pass/final score 기록을 보류한다.
 
-## Recommended Reviewer Prompt
+## Reviewer Prompt Contract
 
-각 reviewer에는 아래 형태의 짧은 프롬프트를 권장한다.
+각 reviewer에는 짧더라도 아래 입력 계약을 반드시 지켜서 프롬프트를 만든다.
+
+반드시 포함할 입력:
+
+- reviewer angle 이름
+- review target
+- review target과 직접 관련된 저장소 기준 문서
+- 실행한 테스트와 결과
+- `red -> green -> refactor` 진행 흔적
+- 알려진 제약사항
+
+절대 넣지 말아야 할 입력:
+
+- 다른 reviewer의 finding이나 score
+- 메인 에이전트가 기대하는 답
+- 이미 정한 수정 방향
+- "이번에는 웬만하면 통과시켜 달라" 같은 유도 문구
+
+권장 프롬프트 형태:
 
 ```text
 Review the current target using the `<angle>` angle.
 Inspect only the current snapshot and do not rely on prior reviews.
 Follow the repository guidance relevant to this target.
+Use only these raw inputs:
+- review target: <diff/files/path/commit range>
+- repository guidance: <relevant docs only>
+- executed tests: <commands and outcomes>
+- tdd trace: <red/green/refactor evidence>
+- known constraints: <short list>
 Return:
 - findings ordered by severity
 - concrete evidence with file references
@@ -71,7 +99,7 @@ Return:
 - one angle score from 0 to 100 using QUALITY_SCORE.md
 ```
 
-합성 단계에서는 reviewer별 점수와 finding을 모은 뒤, 이 문서의 penalty와 hard gate를 적용한다.
+합성 단계에서는 실제 reviewer별 점수와 finding을 모은 뒤, 이 문서의 penalty와 hard gate를 적용한다.
 
 ## Review Inputs
 
@@ -87,6 +115,10 @@ Return:
 
 - `review target`은 반드시 사용자 지시사항으로 닫힌 범위여야 한다.
 - 범위가 넓거나 모호하면 전체를 그대로 리뷰하지 말고, 필요한 최소 파일/디프 단위로 줄여서 수행한다.
+- reviewer에게 넘기는 입력은 raw artifact 위주로만 구성한다. 요약을 넣더라도 메인 에이전트의 해석이나 결론을 섞지 않는다.
+- raw artifact를 준다는 이유로 비밀정보를 그대로 넘기면 안 된다. secret, token, password, cookie, 인증 헤더, 개인식별정보, 민감 환경변수 값은 reviewer 입력 전에 마스킹하거나 요약으로 치환한다.
+- 민감정보 자체가 리스크 판단의 핵심이라면 값 전체를 복제하지 말고, "어떤 종류의 민감값이 어느 파일/로그에 있었다"는 형태의 위치와 종류만 전달한다.
+- 테스트를 실행하지 못했다면 reviewer 입력에 그 사유를 명시하고, 합성 단계에서 hard gate 여부를 따로 판정한다.
 
 최소 기준 문서 선택:
 
@@ -189,7 +221,7 @@ TDD 확인 기준:
 
 1. 구현 또는 수정
 2. 가능한 테스트 실행
-3. 지정된 범위에 대해 `multi-angle-review` 방식으로 독립 리뷰 수행
+3. 지정된 범위에 대해 실제 `multi-angle-review` skill을 실행해 독립 리뷰 수행
 4. angle score와 finding을 합성
 5. final score 계산
 6. hard gate 확인
@@ -244,6 +276,7 @@ final_score = 87.4 - 10 - 3 - 3 = 71.4
 
 - review target
 - scope summary
+- `multi-angle-review` 실행 사실과 사용한 review input 요약
 - angle score 5개
 - merged findings
 - unresolved findings
@@ -251,11 +284,17 @@ final_score = 87.4 - 10 - 3 - 3 = 71.4
 - final score
 - pass / fix-and-re-run / major-rework 판정
 
+강한 규칙:
+
+- `review input summary`, `executed tests`, `residual risks`에는 민감값 원문을 남기지 않는다. 필요하면 마스킹된 형태나 종류/위치 요약만 남긴다.
+
 권장 출력 형식:
 
 ```text
 Review Target: <diff or files>
 Scope: <short summary>
+Review Execution: multi-angle-review ran with isolated reviewer agents
+Review Inputs: <target/docs/tests/tdd/constraints summary>
 
 Angle Scores
 - Readability: 88
@@ -266,6 +305,9 @@ Angle Scores
 
 Merged Findings
 - High | Security | ...
+- Medium | Test | ...
+
+Unresolved Findings
 - Medium | Test | ...
 
 Executed Tests
@@ -357,15 +399,10 @@ Decision: Fix And Re-run
 
 ## Special Rules For Documentation-only Changes
 
-문서만 바뀐 작업이라고 품질 루프를 생략하지 않는다.
-다만 아래처럼 해석을 조정한다.
+단순 문서 작업(README, 가이드 등)은 `CI_WORKFLOW.md`의 예외 규정에 따라 품질 루프를 생략할 수 있다. 다만, 프로젝트의 핵심 설계나 보안 기준을 정의하는 **중요 기준 문서**를 새로 만들거나 대폭 수정하는 경우에는 여전히 이 품질 루프를 통과할 것을 권장한다.
 
-- 테스트 점수는 "실행 테스트"보다 "검증 가능성"과 "오해 방지력"을 더 본다.
-- architecture, readability 비중 판단이 더 중요해진다.
-- 문서가 실제 작업 루프를 더 안전하게 만드는지 본다.
-
-문서 작업의 pass 최소 조건:
-
+품질 루프를 적용하는 문서 작업의 경우 아래처럼 해석을 조정한다.
+...
 - 탐색 경로가 명확함
 - 원문과 인덱스 역할이 섞이지 않음
 - 종료 조건과 재시도 조건이 모호하지 않음
@@ -376,6 +413,7 @@ Decision: Fix And Re-run
 
 - review 없이 종료하지 않는다
 - score 없이 "괜찮아 보인다"로 종료하지 않는다
+- 실제 `multi-angle-review` 실행 없이 공식 final score를 기록하지 않는다
 - hard gate 위반 상태에서 점수만으로 종료하지 않는다
 - threshold 미달이면 수정 후 다시 review한다
 

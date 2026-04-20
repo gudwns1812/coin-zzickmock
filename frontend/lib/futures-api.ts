@@ -1,6 +1,7 @@
 import {
   MARKET_SNAPSHOT_LIST,
   MARKET_SNAPSHOTS,
+  SUPPORTED_MARKET_SYMBOLS,
   type MarketSnapshot,
   type MarketSymbol,
   isSupportedMarketSymbol,
@@ -20,6 +21,14 @@ export type MarketApiResponse = {
   indexPrice: number;
   fundingRate: number;
   change24h: number;
+  volume24h?: number;
+  marketCap?: number;
+  dominance?: number;
+};
+
+export type FuturesMarketsResult = {
+  markets: MarketSnapshot[];
+  isFallback: boolean;
 };
 
 export type FuturesAccountSummary = {
@@ -127,13 +136,21 @@ export function isSupportedFuturesSymbol(
 }
 
 export async function getFuturesMarkets(): Promise<MarketSnapshot[]> {
+  const result = await getFuturesMarketsResult();
+  return result.markets;
+}
+
+export async function getFuturesMarketsResult(): Promise<FuturesMarketsResult> {
   const response = await readApi<MarketApiResponse[]>("/api/futures/markets");
 
   if (!response) {
-    return MARKET_SNAPSHOT_LIST;
+    return {
+      markets: MARKET_SNAPSHOT_LIST,
+      isFallback: true,
+    };
   }
 
-  return response
+  const supportedMarkets = response
     .flatMap((market) => {
       if (!isSupportedMarketSymbol(market.symbol)) {
         return [];
@@ -146,6 +163,18 @@ export async function getFuturesMarkets(): Promise<MarketSnapshot[]> {
         MARKET_SNAPSHOT_LIST.findIndex((market) => market.symbol === left.symbol) -
         MARKET_SNAPSHOT_LIST.findIndex((market) => market.symbol === right.symbol)
     );
+
+  if (supportedMarkets.length !== SUPPORTED_MARKET_SYMBOLS.length) {
+    return {
+      markets: MARKET_SNAPSHOT_LIST,
+      isFallback: true,
+    };
+  }
+
+  return {
+    markets: supportedMarkets,
+    isFallback: false,
+  };
 }
 
 export async function getFuturesMarket(
@@ -234,6 +263,22 @@ function mergeMarketSnapshot(
   apiMarket: MarketApiResponse
 ): MarketSnapshot {
   const fallback = MARKET_SNAPSHOTS[symbol];
+  const hasExtendedMetrics =
+    typeof apiMarket.volume24h === "number" &&
+    typeof apiMarket.marketCap === "number" &&
+    typeof apiMarket.dominance === "number";
+  const volume24h =
+    typeof apiMarket.volume24h === "number"
+      ? apiMarket.volume24h
+      : fallback.volume24h;
+  const marketCap =
+    typeof apiMarket.marketCap === "number"
+      ? apiMarket.marketCap
+      : fallback.marketCap;
+  const dominance =
+    typeof apiMarket.dominance === "number"
+      ? apiMarket.dominance
+      : fallback.dominance;
 
   return {
     ...fallback,
@@ -243,5 +288,9 @@ function mergeMarketSnapshot(
     indexPrice: apiMarket.indexPrice,
     fundingRate: apiMarket.fundingRate,
     change24h: apiMarket.change24h,
+    volume24h,
+    marketCap,
+    dominance,
+    hasExtendedMetrics,
   };
 }

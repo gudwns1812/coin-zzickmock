@@ -1,449 +1,381 @@
+"use client";
+
 import {
   formatPercent,
   formatUsd,
+  MARKET_RANKING_FALLBACKS,
+  type MarketRankingEntry,
   type MarketSnapshot,
   type MarketSymbol,
 } from "@/lib/markets";
+import {
+  Trophy,
+  TrendingUp,
+  WalletCards,
+} from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-const PRIMARY_ACTIONS = [
-  {
-    title: "트레이드하러 가기",
-    description: "주문 화면으로 바로 이동해 진입가, 레버리지, 마진 모드를 연습합니다.",
-    href: "/markets/BTCUSDT",
-    accentClassName:
-      "from-main-blue to-cyan-400 text-white border-transparent shadow-color",
-    label: "BTCUSDT 주문 열기",
-  },
-  {
-    title: "관심 심볼 모아보기",
-    description: "두 심볼의 변화율과 펀딩비를 한 번에 비교하면서 흐름을 읽습니다.",
-    href: "/watchlist",
-    accentClassName:
-      "from-white to-white text-main-dark-gray border-main-light-gray",
-    label: "Watchlist 보기",
-  },
-  {
-    title: "포인트 상점 둘러보기",
-    description: "실현 손익으로 모은 포인트를 배지와 테마 아이템으로 바꿉니다.",
-    href: "/shop",
-    accentClassName:
-      "from-[#f3f7ff] to-[#eef4ff] text-main-dark-gray border-[#cfe0ff]",
-    label: "상점 이동",
-  },
-] as const;
+export type DashboardSummaryCard = {
+  title: string;
+  value: string;
+  support: string;
+  icon: "wallet" | "trophy" | "trend";
+  tone: "accent" | "positive" | "negative";
+};
+
+export type PriceFlashRenderState = {
+  tone: "rise" | "fall";
+  intensity: number;
+};
+
+type MarketSortKey = "default" | "price" | "change24h" | "volume24h";
+
+const SORT_BUTTONS: Array<{
+  key: MarketSortKey;
+  label: string;
+}> = [
+  { key: "default", label: "기본순" },
+  { key: "price", label: "가격순" },
+  { key: "change24h", label: "변동률순" },
+  { key: "volume24h", label: "거래량순" },
+];
+
+const MARKET_SORT_VALUE: Record<
+  Exclude<MarketSortKey, "default">,
+  (market: MarketSnapshot) => number
+> = {
+  price: (market) => market.lastPrice,
+  change24h: (market) => market.change24h,
+  volume24h: (market) => (market.hasExtendedMetrics ? market.volume24h : -1),
+};
 
 type MarketsLandingProps = {
+  isMarketDataDegraded: boolean;
   markets: [MarketSnapshot, MarketSnapshot];
-  priceFlashBySymbol?: Partial<Record<MarketSymbol, "rise" | "fall">>;
+  summaryCards: DashboardSummaryCard[];
+  lastUpdatedLabel: string;
+  rankingEntries?: MarketRankingEntry[];
+  priceFlashBySymbol?: Partial<Record<MarketSymbol, PriceFlashRenderState>>;
 };
 
 export default function MarketsLanding({
+  isMarketDataDegraded,
   markets,
+  summaryCards,
+  lastUpdatedLabel,
+  rankingEntries = MARKET_RANKING_FALLBACKS,
   priceFlashBySymbol,
 }: MarketsLandingProps) {
-  const [btcMarket, ethMarket] = markets;
+  const [sortKey, setSortKey] = useState<MarketSortKey>("default");
+  const sortedMarkets = [...markets].sort((left, right) => {
+    if (sortKey === "default") {
+      return 0;
+    }
+
+    return MARKET_SORT_VALUE[sortKey](right) - MARKET_SORT_VALUE[sortKey](left);
+  });
 
   return (
-    <div className="px-main-2 pb-24 pt-4 flex flex-col gap-8">
-      <section className="grid grid-cols-[1.45fr_0.95fr] gap-main-2">
-        <div className="rounded-main bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.18),_transparent_32%),linear-gradient(135deg,_#1d4fd7_0%,_#3485fa_55%,_#7d6cff_100%)] p-main-2 text-white shadow-color">
-          <div className="flex items-center gap-3">
-            <span className="rounded-full border border-white/20 bg-white/12 px-3 py-1 text-xs-custom uppercase tracking-[0.24em] text-white/80">
-              Coin Futures Mock
-            </span>
-            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs-custom text-white/75">
-              Desktop Market Overview
-            </span>
-          </div>
-
-          <h1 className="mt-6 max-w-[620px] text-4xl-custom font-bold leading-[1.15]">
-            BTCUSDT와 ETHUSDT 흐름을 한 화면에서 보고 바로 트레이드로
-            들어가는 메인 보드
+    <div className="px-main-2 pb-24 pt-4 flex flex-col gap-6">
+      <section className="flex items-end justify-between gap-main">
+        <div>
+          <h1 className="text-3xl-custom font-bold text-main-dark-gray">
+            메인 대시보드
           </h1>
-          <p className="mt-4 max-w-[620px] text-sm-custom leading-6 text-white/82 break-keep">
-            지금 움직이는 두 심볼만 앞에 두었습니다. 가격, 24시간 변화율,
-            펀딩비, 거래량을 빠르게 훑고 원하는 주문 화면으로 바로 이동할 수
-            있습니다.
+          <p className="mt-2 text-sm-custom text-main-dark-gray/60">
+            포트폴리오 및 시장 현황
           </p>
-
-          <div className="mt-8 grid grid-cols-2 gap-main">
-            <HeroSymbolStrip
-              market={btcMarket}
-              priceFlashTone={priceFlashBySymbol?.[btcMarket.symbol]}
-            />
-            <HeroSymbolStrip
-              market={ethMarket}
-              priceFlashTone={priceFlashBySymbol?.[ethMarket.symbol]}
-            />
-          </div>
-
-          <div className="mt-8 flex items-center gap-main">
-            <Link
-              href="/markets/BTCUSDT"
-              className="rounded-main bg-white px-main py-3 text-sm-custom font-semibold text-main-blue transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              BTCUSDT 트레이드하러 가기
-            </Link>
-            <Link
-              href="/markets/ETHUSDT"
-              className="rounded-main border border-white/30 bg-white/8 px-main py-3 text-sm-custom font-semibold text-white transition-colors hover:bg-white/14"
-            >
-              ETHUSDT 열기
-            </Link>
-          </div>
         </div>
-
-        <div className="grid grid-rows-[1fr_auto] gap-main-2">
-          <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
-            <p className="text-sm-custom text-main-dark-gray/55">오늘의 포커스</p>
-            <h2 className="mt-2 text-2xl-custom font-bold text-main-dark-gray">
-              빠르게 읽고 바로 행동하는 메인 화면
-            </h2>
-            <p className="mt-3 text-sm-custom leading-6 text-main-dark-gray/72 break-keep">
-              빈 화면 대신 지금 필요한 진입점만 남겼습니다. 상승폭이 큰 심볼,
-              비교용 심볼, 다음 액션을 같은 시선 흐름 안에서 볼 수 있습니다.
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-main">
-              <SpotlightMetric
-                label="가장 큰 움직임"
-                value={formatPercent(btcMarket.change24h)}
-                tone="rise"
-              />
-              <SpotlightMetric
-                label="비교용 심볼"
-                value={ethMarket.symbol}
-                tone="calm"
-              />
-              <SpotlightMetric
-                label="24h 거래량"
-                value={formatUsd(btcMarket.volume24h)}
-                tone="calm"
-              />
-              <SpotlightMetric
-                label="평균 펀딩비"
-                value={formatPercent(
-                  ((btcMarket.fundingRate + ethMarket.fundingRate) / 2) * 100
-                )}
-                tone="rise"
-              />
-            </div>
-          </section>
-
-          <section className="rounded-main border border-[#d7e5ff] bg-[linear-gradient(180deg,_rgba(52,133,250,0.08),_rgba(255,255,255,0.96))] p-main-2 shadow-sm">
-            <p className="text-xs-custom uppercase tracking-[0.22em] text-main-blue/70">
-              Quick Actions
-            </p>
-            <div className="mt-4 flex flex-col gap-3">
-              {PRIMARY_ACTIONS.map((action) => (
-                <ActionTile key={action.href} {...action} />
-              ))}
-            </div>
-          </section>
-        </div>
+        <p className="text-xs-custom text-main-dark-gray/50">
+          Last update: {lastUpdatedLabel}
+        </p>
       </section>
 
-      <section className="grid grid-cols-2 gap-main-2">
-        <MarketSummaryCard
-          market={btcMarket}
-          tone="rise"
-          priceFlashTone={priceFlashBySymbol?.[btcMarket.symbol]}
-        />
-        <MarketSummaryCard
-          market={ethMarket}
-          tone="cool"
-          priceFlashTone={priceFlashBySymbol?.[ethMarket.symbol]}
-        />
+      <section className="grid grid-cols-3 gap-main-2">
+        {summaryCards.map((card) => (
+          <SummaryMetricCard key={card.title} card={card} />
+        ))}
       </section>
 
-      <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
-        <div className="flex items-start justify-between gap-main">
+      <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
+        <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-5">
           <div>
-            <p className="text-sm-custom text-main-dark-gray/55">바로 이동</p>
-            <h2 className="mt-2 text-2xl-custom font-bold text-main-dark-gray">
-              비어 있는 자리 대신 다음 행동을 남겼습니다
+            <h2 className="text-xl-custom font-semibold text-main-dark-gray">
+              코인 시세
             </h2>
-            <p className="mt-3 max-w-[760px] text-sm-custom leading-6 text-main-dark-gray/72 break-keep">
-              메인 화면은 이제 계정 현황을 설명하는 곳이 아니라, 두 심볼을
-              읽고 주문 화면으로 넘어가는 진입점입니다. 보고 싶은 흐름에 맞춰
-              바로 이동하세요.
+            <p className="mt-2 text-sm-custom text-main-dark-gray/62 break-keep">
+              가격, 24시간 변동, 거래량, 펀딩비, 시가총액과 점유율을 한 번에
+              비교할 수 있습니다.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-main bg-main-light-gray/30 p-1">
+            {SORT_BUTTONS.map((button) => {
+              const isActive = sortKey === button.key;
+
+              return (
+                <button
+                  key={button.key}
+                  type="button"
+                  onClick={() => setSortKey(button.key)}
+                  className={`rounded-main px-3 py-2 text-xs-custom font-semibold transition-all duration-200 ${
+                    isActive
+                      ? "bg-main-blue text-white shadow-md"
+                      : "text-main-dark-gray/60 hover:bg-main-blue/10 hover:text-main-blue"
+                  }`}
+                >
+                  {button.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {isMarketDataDegraded ? (
+          <div className="border-b border-main-light-gray/40 bg-[#fff6eb]/80 px-main-2 py-4 text-sm-custom text-[#9a5a00]">
+            외부 시세 수집에 실패했습니다. 현재 시장 데이터는 복구 중이며, 필드는
+            `-`로 표시됩니다.
+          </div>
+        ) : null}
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-fixed">
+            <thead className="bg-main-blue/[0.02]">
+              <tr className="text-left text-xs-custom text-main-dark-gray/60">
+                <th className="px-main py-4 font-medium">코인</th>
+                <th className="px-main py-4 font-medium">가격</th>
+                <th className="px-main py-4 font-medium">24h 변동</th>
+                <th className="px-main py-4 font-medium">Mark Price</th>
+                <th className="px-main py-4 font-medium">Funding Rate</th>
+                <th className="px-main py-4 font-medium">Index Price</th>
+                <th className="px-main py-4 font-medium">시장 메모</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedMarkets.map((market) => (
+                <MarketTableRow
+                  isMarketDataDegraded={isMarketDataDegraded}
+                  key={market.symbol}
+                  market={market}
+                  priceFlash={priceFlashBySymbol?.[market.symbol]}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
+        <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-5">
+          <div>
+            <h2 className="text-xl-custom font-semibold text-main-dark-gray">
+              수익률 랭킹
+            </h2>
+            <p className="mt-2 text-sm-custom text-main-dark-gray/62 break-keep">
+              서비스 내 상위 트레이더 흐름을 빠르게 살펴보고 현재 계정 화면으로
+              이어질 수 있습니다.
             </p>
           </div>
           <Link
             href="/portfolio"
-            className="rounded-main border border-main-light-gray px-main py-3 text-sm-custom font-semibold text-main-dark-gray transition-colors hover:border-main-blue hover:text-main-blue"
+            className="rounded-main border border-main-light-gray bg-white/50 px-main py-3 text-sm-custom font-semibold text-main-dark-gray transition-all hover:border-main-blue hover:text-main-blue hover:bg-white"
           >
             포트폴리오 확인
           </Link>
         </div>
 
-        <div className="mt-6 grid grid-cols-3 gap-main">
-          <ShortcutCard
-            eyebrow="Trade"
-            title="BTCUSDT 주문 화면"
-            description="가장 빠르게 진입 연습을 시작할 수 있는 메인 주문 탭입니다."
-            href="/markets/BTCUSDT"
-            label="주문 열기"
-          />
-          <ShortcutCard
-            eyebrow="Compare"
-            title="ETHUSDT 비교 보기"
-            description="BTC와 다른 흐름을 비교하며 마진 모드와 변동성을 읽습니다."
-            href="/markets/ETHUSDT"
-            label="ETH 열기"
-          />
-          <ShortcutCard
-            eyebrow="Browse"
-            title="관심 심볼 요약"
-            description="두 심볼을 간단한 리스트 형태로 다시 훑고 싶을 때 이동합니다."
-            href="/watchlist"
-            label="목록 보기"
-          />
-        </div>
+        {rankingEntries.length === 0 ? (
+          <div className="px-main-2 py-8 text-sm-custom text-main-dark-gray/62">
+            데이터 집계 중
+          </div>
+        ) : (
+          <div className="divide-y divide-main-light-gray/30">
+            {rankingEntries.map((entry) => (
+              <RankingRow key={entry.rank} entry={entry} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
-function HeroSymbolStrip({
-  market,
-  priceFlashTone,
-}: {
-  market: MarketSnapshot;
-  priceFlashTone?: "rise" | "fall";
-}) {
-  const changeClassName =
-    market.change24h >= 0 ? "text-[#ffd7dc]" : "text-[#d7ebff]";
-  const flashClassName =
-    priceFlashTone === "rise"
-      ? "border-cyan-200/70 bg-[linear-gradient(135deg,_rgba(56,189,248,0.26),_rgba(255,255,255,0.16))]"
-      : priceFlashTone === "fall"
-        ? "border-rose-200/80 bg-[linear-gradient(135deg,_rgba(251,113,133,0.28),_rgba(255,255,255,0.14))]"
-        : "border-white/15 bg-white/10";
-
-  return (
-    <div
-      className={`rounded-main border px-main py-4 backdrop-blur-[2px] transition-colors duration-700 ${flashClassName}`}
-    >
-      <div className="flex items-start justify-between gap-main">
-        <div>
-          <p className="text-xs-custom uppercase tracking-[0.22em] text-white/68">
-            {market.symbol}
-          </p>
-          <h2 className="mt-2 text-xl-custom font-semibold text-white">
-            {formatUsd(market.lastPrice)}
-          </h2>
-        </div>
-        <span
-          className={`rounded-full border border-white/14 bg-white/10 px-3 py-1 text-xs-custom font-semibold ${changeClassName}`}
-        >
-          24h {formatPercent(market.change24h)}
-        </span>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-3 text-xs-custom text-white/74">
-        <HeroMetric label="Mark" value={formatUsd(market.markPrice)} />
-        <HeroMetric
-          label="Funding"
-          value={formatPercent(market.fundingRate * 100)}
-        />
-        <HeroMetric label="Volume" value={formatUsd(market.volume24h)} />
-      </div>
-    </div>
-  );
-}
-
-function HeroMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-main bg-white/8 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-white/55">{label}</p>
-      <p className="mt-2 text-sm-custom font-medium text-white">{value}</p>
-    </div>
-  );
-}
-
-function SpotlightMetric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "rise" | "calm";
-}) {
+function SummaryMetricCard({ card }: { card: DashboardSummaryCard }) {
   const toneClassName =
-    tone === "rise"
-      ? "bg-[#fff5f6] text-main-red border-[#ffd9de]"
-      : "bg-[#f5f9ff] text-main-blue border-[#d7e5ff]";
-
-  return (
-    <div className={`rounded-main border px-main py-3 ${toneClassName}`}>
-      <p className="text-xs-custom">{label}</p>
-      <p className="mt-2 text-lg-custom font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function MarketSummaryCard({
-  market,
-  tone,
-  priceFlashTone,
-}: {
-  market: MarketSnapshot;
-  tone: "rise" | "cool";
-  priceFlashTone?: "rise" | "fall";
-}) {
-  const toneClassName =
-    tone === "rise"
+    card.tone === "accent"
       ? {
-          panel: "border-[#ffdce2] bg-[linear-gradient(180deg,_rgba(240,66,81,0.08),_rgba(255,255,255,1))]",
-          badge: "bg-main-red/10 text-main-red",
-          button: "bg-main-red hover:bg-main-red/90",
-          accent: "text-main-red",
+          panel: "border-white/50 bg-main-blue/[0.04]",
+          icon: "bg-main-blue/15 text-main-blue shadow-sm",
+          value: "text-main-dark-gray",
+          support: "text-main-dark-gray/55",
         }
-      : {
-          panel: "border-[#dce7ff] bg-[linear-gradient(180deg,_rgba(52,133,250,0.08),_rgba(255,255,255,1))]",
-          badge: "bg-main-blue/10 text-main-blue",
-          button: "bg-main-blue hover:bg-main-blue/90",
-          accent: "text-main-blue",
-        };
-  const flashClassName =
-    priceFlashTone === "rise"
-      ? "border-[#8dd8ff] bg-[linear-gradient(180deg,_rgba(56,189,248,0.18),_rgba(255,255,255,1))]"
-      : priceFlashTone === "fall"
-        ? "border-[#ffbec8] bg-[linear-gradient(180deg,_rgba(251,113,133,0.18),_rgba(255,255,255,1))]"
-        : toneClassName.panel;
+      : card.tone === "positive"
+        ? {
+            panel: "border-white/50 bg-[#21a453]/[0.04]",
+            icon: "bg-[#21a453]/15 text-[#21a453] shadow-sm",
+            value: "text-[#16a34a]",
+            support: "text-[#16a34a]/80",
+          }
+        : {
+            panel: "border-white/50 bg-main-red/[0.04]",
+            icon: "bg-main-red/15 text-main-red shadow-sm",
+            value: "text-main-red",
+            support: "text-main-red/80",
+          };
 
   return (
     <article
-      className={`rounded-main border p-main-2 shadow-sm transition-colors duration-700 ${flashClassName}`}
+      className={`rounded-main border backdrop-blur-md px-main-2 py-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${toneClassName.panel}`}
     >
-      <div className="flex items-start justify-between gap-main">
-        <div>
-          <p className="text-xs-custom uppercase tracking-[0.22em] text-main-dark-gray/50">
-            {market.symbol}
-          </p>
-          <h2 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
-            {market.displayName}
-          </h2>
-          <p className="mt-3 max-w-[520px] text-sm-custom leading-6 text-main-dark-gray/72 break-keep">
-            {market.description}
-          </p>
-        </div>
-        <span className={`rounded-full px-3 py-1 text-xs-custom font-semibold ${toneClassName.badge}`}>
-          {market.openInterestLabel}
-        </span>
-      </div>
-
-      <div className="mt-8 grid grid-cols-4 gap-main">
-        <MarketMetric label="최신 체결가" value={formatUsd(market.lastPrice)} />
-        <MarketMetric
-          label="24h 변화율"
-          value={formatPercent(market.change24h)}
-          valueClassName={toneClassName.accent}
-        />
-        <MarketMetric label="Mark Price" value={formatUsd(market.markPrice)} />
-        <MarketMetric
-          label="Funding"
-          value={formatPercent(market.fundingRate * 100)}
-        />
-      </div>
-
-      <div className="mt-6 flex items-center justify-between gap-main border-t border-main-light-gray/80 pt-5">
-        <div className="flex flex-wrap gap-main text-sm-custom text-main-dark-gray/62">
-          <span>Index {formatUsd(market.indexPrice)}</span>
-          <span>24h 거래량 {formatUsd(market.volume24h)}</span>
-        </div>
-        <Link
-          href={`/markets/${market.symbol}`}
-          className={`rounded-main px-main py-3 text-sm-custom font-semibold text-white transition-colors ${toneClassName.button}`}
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-11 w-11 items-center justify-center rounded-main transition-transform hover:scale-110 ${toneClassName.icon}`}
         >
-          {market.symbol} 상세 보기
-        </Link>
+          <SummaryIcon icon={card.icon} />
+        </div>
+        <div>
+          <p className="text-xs-custom text-main-dark-gray/60">{card.title}</p>
+          <p className={`mt-3 text-3xl-custom font-bold ${toneClassName.value}`}>
+            {card.value}
+          </p>
+          <p className={`mt-2 text-xs-custom ${toneClassName.support}`}>
+            {card.support}
+          </p>
+        </div>
       </div>
     </article>
   );
 }
 
-function MarketMetric({
-  label,
-  value,
-  valueClassName,
+function SummaryIcon({ icon }: { icon: DashboardSummaryCard["icon"] }) {
+  if (icon === "wallet") return <WalletCards className="h-5 w-5" strokeWidth={2.2} />;
+  if (icon === "trophy") return <Trophy className="h-5 w-5" strokeWidth={2.2} />;
+  return <TrendingUp className="h-5 w-5" strokeWidth={2.2} />;
+}
+
+function MarketTableRow({
+  isMarketDataDegraded,
+  market,
+  priceFlash,
 }: {
-  label: string;
-  value: string;
-  valueClassName?: string;
+  isMarketDataDegraded: boolean;
+  market: MarketSnapshot;
+  priceFlash?: PriceFlashRenderState;
 }) {
+  const changeClassName = market.change24h >= 0 ? "text-main-red" : "text-main-blue";
+  const fundingClassName = market.fundingRate >= 0 ? "text-main-red" : "text-main-blue";
+  const flashTone = priceFlash?.tone;
+  const flashIntensity = priceFlash?.intensity ?? 0;
+  const overlayClassName =
+    flashTone === "rise"
+      ? "bg-[linear-gradient(135deg,_rgba(34,197,94,0.24),_rgba(134,239,172,0.12))]"
+      : "bg-[linear-gradient(135deg,_rgba(239,68,68,0.2),_rgba(252,165,165,0.12))]";
+  const borderColor =
+    flashTone === "rise"
+      ? `rgba(34, 197, 94, ${0.1 + flashIntensity * 0.35})`
+      : flashTone === "fall"
+        ? `rgba(239, 68, 68, ${0.08 + flashIntensity * 0.38})`
+        : "rgba(148, 163, 184, 0.18)";
+
   return (
-    <div className="rounded-main border border-main-light-gray/85 bg-white/75 px-main py-3">
-      <p className="text-xs-custom text-main-dark-gray/58">{label}</p>
-      <p
-        className={`mt-2 text-lg-custom font-semibold text-main-dark-gray ${
-          valueClassName ?? ""
-        }`}
-      >
-        {value}
+    <tr className="group border-b border-main-light-gray/30 text-sm-custom text-main-dark-gray transition-colors duration-200 hover:bg-main-blue/5 last:border-0">
+      <td className="px-main py-4">
+        <Link
+          href={`/markets/${market.symbol}`}
+          className="flex items-center gap-3 rounded-main transition-all group-hover:translate-x-1"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#4c8df7] to-[#2563eb] text-sm-custom font-bold text-white shadow-sm">
+            {market.symbol.slice(0, 1)}
+          </div>
+          <div>
+            <p className="font-semibold text-main-dark-gray">
+              {market.symbol.replace("USDT", "")}
+            </p>
+            <p className="mt-1 text-xs-custom text-main-dark-gray/55">
+              {market.assetName}
+            </p>
+          </div>
+        </Link>
+      </td>
+      <td className="px-main py-4">
+        <div
+          className="relative overflow-hidden rounded-main border bg-white/65 px-3 py-3 backdrop-blur-sm"
+          style={{
+            borderColor,
+            boxShadow:
+              flashIntensity > 0
+                ? `0 0 ${10 + flashIntensity * 10}px rgba(15, 23, 42, ${flashIntensity * 0.05})`
+                : undefined,
+          }}
+        >
+          {flashIntensity > 0 ? (
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-0 ${overlayClassName}`}
+              style={{ opacity: Math.min(flashIntensity * 0.72, 0.72) }}
+            />
+          ) : null}
+          <p className="relative z-10 font-semibold text-main-dark-gray">
+            {isMarketDataDegraded ? "-" : formatUsd(market.lastPrice)}
+          </p>
+        </div>
+      </td>
+      <td className={`px-main py-4 font-semibold ${changeClassName}`}>
+        {isMarketDataDegraded ? "-" : formatPercent(market.change24h)}
+      </td>
+      <td className="px-main py-4 text-main-dark-gray/70">
+        {isMarketDataDegraded ? "-" : formatUsd(market.markPrice)}
+      </td>
+      <td className={`px-main py-4 font-semibold ${fundingClassName}`}>
+        {isMarketDataDegraded ? "-" : formatPercent(market.fundingRate * 100)}
+      </td>
+      <td className="px-main py-4 text-main-dark-gray/70">
+        {isMarketDataDegraded ? "-" : formatUsd(market.indexPrice)}
+      </td>
+      <td className="px-main py-4 text-main-blue/80 font-semibold">
+        {market.openInterestLabel}
+      </td>
+    </tr>
+  );
+}
+
+function RankingRow({ entry }: { entry: MarketRankingEntry }) {
+  return (
+    <div className="grid grid-cols-[120px_1fr_220px_180px] items-center gap-main px-main-2 py-5 transition-colors duration-200 hover:bg-main-blue/5">
+      <div className="flex items-center gap-3">
+        <RankBadge rank={entry.rank} />
+        <span className="text-sm-custom font-semibold text-main-dark-gray/80">
+          {entry.rank}위
+        </span>
+      </div>
+      <p className="text-sm-custom font-semibold text-main-dark-gray">
+        {entry.nickname}
+      </p>
+      <p className="text-sm-custom font-semibold text-main-dark-gray">
+        {formatUsd(entry.totalAsset)}
+      </p>
+      <p className="text-sm-custom font-bold text-[#16a34a]">
+        {formatPercent(entry.profitRate)}
       </p>
     </div>
   );
 }
 
-function ActionTile({
-  title,
-  description,
-  href,
-  accentClassName,
-  label,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  accentClassName: string;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-main border bg-gradient-to-r px-main py-4 transition-transform duration-200 hover:-translate-y-0.5 ${accentClassName}`}
-    >
-      <p className="text-sm-custom font-semibold">{title}</p>
-      <p className="mt-2 text-sm-custom leading-6 opacity-80">{description}</p>
-      <p className="mt-4 text-xs-custom uppercase tracking-[0.2em] opacity-75">
-        {label}
-      </p>
-    </Link>
-  );
-}
+function RankBadge({ rank }: { rank: number }) {
+  const toneClassName =
+    rank === 1
+      ? "bg-gradient-to-br from-[#ffd700] to-[#f79d00] text-white shadow-md"
+      : rank === 2
+        ? "bg-gradient-to-br from-[#e2e8f0] to-[#94a3b8] text-white shadow-sm"
+        : rank === 3
+          ? "bg-gradient-to-br from-[#fbc2eb] to-[#a6c1ee] text-white shadow-sm"
+          : "bg-main-light-gray/50 text-main-dark-gray/70";
 
-function ShortcutCard({
-  eyebrow,
-  title,
-  description,
-  href,
-  label,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  href: string;
-  label: string;
-}) {
   return (
-    <Link
-      href={href}
-      className="rounded-main border border-main-light-gray bg-[linear-gradient(180deg,_rgba(245,249,255,0.7),_rgba(255,255,255,1))] px-main py-4 transition-colors hover:border-main-blue/40"
+    <span
+      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs-custom font-bold ${toneClassName}`}
     >
-      <p className="text-xs-custom uppercase tracking-[0.2em] text-main-blue/70">
-        {eyebrow}
-      </p>
-      <h3 className="mt-3 text-lg-custom font-semibold text-main-dark-gray">
-        {title}
-      </h3>
-      <p className="mt-3 text-sm-custom leading-6 text-main-dark-gray/70 break-keep">
-        {description}
-      </p>
-      <p className="mt-5 text-sm-custom font-semibold text-main-blue">{label}</p>
-    </Link>
+      {rank}
+    </span>
   );
 }

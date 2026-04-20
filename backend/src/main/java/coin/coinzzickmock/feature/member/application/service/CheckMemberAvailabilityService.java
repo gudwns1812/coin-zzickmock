@@ -1,8 +1,7 @@
 package coin.coinzzickmock.feature.member.application.service;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
+import coin.coinzzickmock.feature.member.domain.MemberIdentityRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +13,6 @@ public class CheckMemberAvailabilityService {
 
     @Transactional(readOnly = true)
     public boolean isAvailable(String memberId) {
-        if (memberId == null || memberId.trim().isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "아이디는 필수입니다.");
-        }
-        return !memberCredentialRepository.existsByMemberId(memberId.trim());
+        return !memberCredentialRepository.existsByMemberId(MemberIdentityRules.normalizeMemberId(memberId));
     }
 }

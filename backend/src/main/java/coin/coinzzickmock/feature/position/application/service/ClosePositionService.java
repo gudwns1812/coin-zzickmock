@@ -56,7 +56,7 @@ public class ClosePositionService {
         }
 
         RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(
-                new GrantProfitPointCommand(memberId, Math.max(closeOutcome.netRealizedPnl(), 0))
+                new GrantProfitPointCommand(memberId, closeOutcome.netRealizedPnl())
         );
 
         return new ClosePositionResult(

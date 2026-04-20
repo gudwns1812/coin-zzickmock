@@ -8,7 +8,8 @@
 작업을 시작할 때 아래 순서로 판단한다.
 
 0. 작업 성격에 따라 워크플로우를 결정한다.
-    - **코드 수정 작업:** 구현, 수정, 리팩터링, 테스트 추가 등이 포함되면 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)의 **Stage 1~5**를 반드시 준수한다.
+    - **코드 수정 작업:** 구현, 수정, 리팩터링, 테스트 추가 등이 포함되면 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
+      의 **Stage 1~5**를 반드시 준수한다.
     - **단순 문서 작업:** README, 가이드, 명세서 등 문서 파일(`*.md` 등)만 수정하는 경우, `CI_WORKFLOW.md`를 적용하지 않고 즉시 작업에 착수한 뒤 사용자의 승인을 받아 마친다.
 1. 작업 범위가 루트 구조 판단인지, 프론트엔드인지, 백엔드인지, 보안인지 확인한다.
 2. 이 문서에서 해당하는 기준 문서를 찾는다.
@@ -24,8 +25,10 @@
 
 강한 규칙:
 
-- **코드 수정 포함 작업:** 구현, 버그 수정, 리팩터링, 테스트 추가, 리뷰, PR 준비, merge 준비 요청은 모두 먼저 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)의 Stage 1~5 흐름을 탄다.
-- **단순 문서 작업:** 코드 변경 없이 문서만 수정하는 경우, 별도의 계획 수립(`Stage 1`)이나 품질 게이트(`Stage 4`) 등 `CI_WORKFLOW.md`의 단계를 거치지 않는다. 즉시 수정한 뒤 사용자에게 보고하고 승인을 얻으면 작업을 종료한다.
+- **코드 수정 포함 작업:** 구현, 버그 수정, 리팩터링, 테스트 추가, 리뷰, PR 준비, merge 준비 요청은 모두
+  먼저 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)의 Stage 1~5 흐름을 탄다.
+- **단순 문서 작업:** 코드 변경 없이 문서만 수정하는 경우, 별도의 계획 수립(`Stage 1`)이나 품질 게이트(`Stage 4`) 등 `CI_WORKFLOW.md`의 단계를 거치지 않는다. 즉시 수정한 뒤
+  사용자에게 보고하고 승인을 얻으면 작업을 종료한다.
 - 프론트엔드, 백엔드, 보안 문서는 `CI_WORKFLOW.md`를 지난 다음에 읽는 세부 기준 문서다.
 - 코드 작업에서 계획 없는 바로 구현, 리뷰 없는 종료, 품질 게이트 없는 마감은 허용하지 않는다.
 - 품질 게이트를 통과한 작업은 특별한 중단 지시가 없으면 PR 생성 단계까지 이어서 수행해야 한다.
@@ -88,7 +91,8 @@
 ### 작업 운영 플로우
 
 - [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-  계획 수립, 승인, 에이전트 루프, `red -> green -> refactor` 기반 TDD, 단계별 sub-agent 사용 원칙, 품질 게이트, PR, CI, merge, `completed` 이동과 의미 있는 브랜치/PR 이름 규칙, 그리고 작업 마무리 응답을 매우 짧게 유지하는 원칙까지 포함한 저장소 운영 플로우 기준 문서.
+  계획 수립, 승인, 에이전트 루프, `red -> green -> refactor` 기반 TDD, 단계별 sub-agent 사용 원칙, 품질 게이트, PR, CI, merge, `completed` 이동과 의미
+  있는 브랜치/PR 이름 규칙, 그리고 작업 마무리 응답을 매우 짧게 유지하는 원칙까지 포함한 저장소 운영 플로우 기준 문서.
 
 ### 배포와 릴리즈 기준
 
@@ -184,7 +188,8 @@
 2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
 3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
 4. [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-5. 애플리케이션 경계가 걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
+5. 애플리케이션 경계가
+   걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 
 ### 백엔드에서 DB를 읽거나 수정할 때
 
@@ -206,7 +211,8 @@
 
 1. [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
 2. [docs/references/bitget](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget)
-3. WebSocket 채널 스펙이 필요하면 [docs/references/bitget/websocket](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/websocket)
+3. WebSocket 채널 스펙이
+   필요하면 [docs/references/bitget/websocket](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/websocket)
 4. 작업 성격에 맞는 세부 문서는 Bitget 폴더 안에서 찾는다.
 
 ### 종료 조건이나 리뷰 점수 기준이 필요할 때
@@ -233,7 +239,8 @@
 1. [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)
 2. [docs/exec-plans/active](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/active)
 3. [docs/exec-plans/completed](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/completed)
-4. 최근 종료 또는 대체된 맥락은 [docs/exec-plans/completed/2026-04-16-coin-futures-mvp-foundation.md](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/completed/2026-04-16-coin-futures-mvp-foundation.md)
+4. 최근 종료 또는 대체된
+   맥락은 [docs/exec-plans/completed/2026-04-16-coin-futures-mvp-foundation.md](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/completed/2026-04-16-coin-futures-mvp-foundation.md)
 
 ### 디자인 기준이나 UI 세부 원칙이 필요할 때
 

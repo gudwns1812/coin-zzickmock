@@ -1,14 +1,14 @@
-# 주문/포지션/계좌 도메인 1차 리팩토링
+# 백엔드 도메인 로직 단계별 리팩토링
 
 이 계획서는 [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)와 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다.
 이 계획서는 살아 있는 문서입니다. `진행 현황`, `놀라움과 발견`, `의사결정 기록`, `결과 및 회고` 섹션은 작업이 진행되는 내내 최신 상태로 유지해야 합니다.
 
 ## 목적 / 큰 그림
 
-현재 주문 체결과 포지션 청산의 핵심 계산이 `application/service`에 직접 들어 있어, 도메인 규칙이 서비스 오케스트레이션과 섞여 있다.
-이 작업의 목적은 주문 체결 후 계좌 차감, 포지션 신규/증가, 포지션 청산 후 손익/수수료/잔여 수량 계산처럼 제품 개념을 바꾸는 규칙을 `domain`으로 끌어올려, 서비스가 "무슨 일을 시작하는가" 중심으로 읽히게 만드는 것이다.
+현재 주문 체결과 포지션 청산뿐 아니라 회원가입/로그인 정규화와 마켓 히스토리 캔들 병합/집계 같은 핵심 계산도 `application`에 직접 들어 있어, 도메인 규칙이 서비스 오케스트레이션과 섞여 있다.
+이 작업의 목적은 주문/포지션/계좌, 회원, 리워드, 마켓 히스토리 영역의 비즈니스 상태 전이와 계산을 `domain`으로 끌어올려, 서비스가 "무슨 일을 시작하는가" 중심으로 읽히게 만드는 것이다.
 
-이 변경이 끝나면 사용자는 이전과 같은 API 결과를 받지만, 내부 구현은 `CreateOrderService`와 `ClosePositionService`가 계산기 역할을 덜 맡고 도메인 메서드와 정책을 조합하는 구조로 바뀐다.
+이 변경이 끝나면 사용자는 이전과 같은 API 결과를 받지만, 내부 구현은 각 application service가 계산기 역할을 덜 맡고 도메인 메서드와 정책을 조합하는 구조로 바뀐다.
 이 효과는 관련 단위 테스트를 먼저 실패시키고 다시 통과시키는 `red -> green -> refactor` 루프와, 최종 `./gradlew architectureLint`, `./gradlew check` 통과로 확인한다.
 
 ## 진행 현황
@@ -21,6 +21,12 @@
 - [x] (2026-04-19 17:43+09:00) `refactor` 단계 1차 완료: `CreateOrderService`, `ClosePositionService`를 시세 로드 후 domain 호출 중심 오케스트레이션으로 단순화
 - [x] (2026-04-19 17:44+09:00) 회귀 테스트 보강 완료: `ClosePositionServiceTest` 추가로 부분 청산 후 계좌/포지션/포인트 갱신 시나리오 고정
 - [x] (2026-04-19 17:45+09:00) 검증 완료: `CreateOrderServiceTest`, `ClosePositionServiceTest`, `./gradlew architectureLint`, `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check` 통과
+- [x] (2026-04-19 18:12+09:00) 2차 `red` 단계 완료: `MemberCredentialTest`, `MarketHistoryCandleTest`로 회원 정규화/비밀번호 규칙과 분봉 병합/시간봉 집계의 domain 메서드 부재를 컴파일 실패로 고정
+- [x] (2026-04-19 18:18+09:00) 2차 `green` 단계 완료: `MemberCredential`, `TradingAccount`, `RewardPointWallet`, `MarketHistoryCandle`, `HourlyMarketCandle`에 정규화/초기 생성/적립/캔들 병합 규칙 추가
+- [x] (2026-04-19 18:20+09:00) 2차 `refactor` 단계 완료: 회원 서비스, 리워드 서비스, `MarketHistoryRecorder`를 domain 호출 중심으로 단순화
+- [x] (2026-04-19 18:26+09:00) 3차 `red` 단계 완료: `FuturesOrderTest`, `RewardShopCatalogTest`, `MemberCredentialTest` 확장으로 주문 상태 결정, 상점 카탈로그, 인증 입력 규칙의 domain 이동 필요성을 컴파일 실패로 고정
+- [x] (2026-04-19 18:30+09:00) 3차 `green/refactor` 단계 완료: `FuturesOrder.place`, `RewardShopCatalog`, `RewardShopItem`, `MemberCredential.requirePasswordInput/requireSameMember` 도입 및 `AuthController`, `CreateOrderService`, `WithdrawMemberService`, `GetShopItemsService`, `GetRewardPointService` 정리
+- [x] (2026-04-19 18:31+09:00) 최종 검증 완료: 주요 회귀 테스트, `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew architectureLint --console=plain`, `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check --console=plain` 통과
 - [ ] 품질 게이트: `multi-angle-review` 실행 및 점수 기록
 - [ ] branch, commit, push, PR 생성
 
@@ -51,6 +57,26 @@
   증거:
   기본 실행은 `/Users/hj.park/.gradle/...gradle-8.14.3-bin.zip.lck (Operation not permitted)`로 실패했고, `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check --console=plain`은 성공했다.
 
+- 관찰:
+  `RegisterMemberService`, `AuthenticateMemberService`, `CheckMemberAvailabilityService`는 같은 문자열 정규화와 필수값 검증을 반복하고 있다.
+  증거:
+  각 서비스가 `trim()`, `isBlank()`, 길이 검증을 직접 수행한다.
+
+- 관찰:
+  `MarketHistoryRecorder`는 분봉 최초 생성, 분봉 병합, 시간봉 rollup 계산을 모두 직접 수행해 domain 캔들 타입이 데이터 컨테이너에 머물러 있다.
+  증거:
+  [backend/src/main/java/coin/coinzzickmock/feature/market/application/realtime/MarketHistoryRecorder.java](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/application/realtime/MarketHistoryRecorder.java)
+
+- 관찰:
+  `CreateOrderService`에는 마지막으로 주문 상태 `"FILLED"`/`"PENDING"` 결정 규칙이 남아 있었고, `GetShopItemsService`에는 리워드 상점 품목 정의가 하드코딩되어 있었다.
+  증거:
+  각각 `FuturesOrder.place(...)`, `RewardShopCatalog.defaultItems()` 도입 전 서비스 코드에서 직접 문자열/목록을 만들고 있었다.
+
+- 관찰:
+  2차, 3차 리팩토링 후 application/service와 realtime 레이어를 다시 훑어보면 남은 분기 대부분은 입력 검증, cache guard, 외부 조회 실패 처리처럼 오케스트레이션 성격이다.
+  증거:
+  `backend/src/main/java/coin/coinzzickmock/feature/*/application/service/*.java`, `backend/src/main/java/coin/coinzzickmock/feature/market/application/realtime/*.java` 재검토 결과, 손익/증거금/포인트/정규화/캔들 계산은 domain으로 이동했다.
+
 ## 의사결정 기록
 
 - 결정:
@@ -74,11 +100,25 @@
   날짜/작성자:
   2026-04-19 / Codex
 
+- 결정:
+  남은 절차지향 로직은 범위가 큰 aggregate 재설계 대신, `member`, `reward`, `market-history` 순서로 묶어 단계별로 domain 메서드/정적 팩터리/값 객체에 옮긴다.
+  근거:
+  한 번에 전체 재설계를 하면 저장소와 API까지 흔들 수 있으므로, 현재 계약을 유지한 채 반복 계산과 정규화부터 걷어내는 편이 안전하다.
+  날짜/작성자:
+  2026-04-19 / Codex
+
+- 결정:
+  남아 있던 소규모 규칙도 service 상수로 남기지 않고, 주문 상태 결정은 `FuturesOrder`, 리워드 상점 품목은 `RewardShopCatalog`, 탈퇴 본인확인은 `MemberCredential`로 흡수한다.
+  근거:
+  규칙 크기는 작아도 서비스가 문자열/목록/권한 비교를 직접 가지면 다시 절차형 코드가 퍼지기 쉽다. 현재 구조에서는 정적 팩터리와 값 객체로 옮기는 편이 가장 작은 변경으로 일관성을 지킬 수 있다.
+  날짜/작성자:
+  2026-04-19 / Codex
+
 ## 결과 및 회고
 
-현재 1차 리팩토링 범위에서는 주문 체결 후 계좌 차감, 포지션 평균 진입가/청산가 재계산, 포지션 청산 후 손익/수수료/잔여 포지션 계산을 domain으로 옮겼다.
-서비스는 시세 조회, 저장소 조회/저장, reward 처리처럼 유스케이스 오케스트레이션 중심으로 줄었다.
-남은 일은 품질 게이트와 PR 생성뿐이다.
+현재까지 주문 체결 후 계좌 차감, 포지션 평균 진입가/청산가 재계산, 포지션 청산 후 손익/수수료/잔여 포지션 계산, 회원 정규화/비밀번호 입력/탈퇴 본인확인, 리워드 포인트 월렛 상태 전이와 상점 카탈로그, 분봉 병합/시간봉 집계까지 domain으로 옮겼다.
+application/service와 realtime 레이어 재점검 결과 남아 있는 분기는 외부 조회, 요청 검증, cache guard 같은 오케스트레이션 성격이며, 핵심 도메인 계산은 이번 범위에서 정리됐다.
+남은 종료 조건은 품질 게이트의 `multi-angle-review`와 branch/commit/push/PR 단계다.
 
 ## 맥락과 길잡이
 

@@ -5,11 +5,16 @@ import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public interface MarketHistoryRepository {
     Map<String, Long> findSymbolIdsBySymbols(List<String> symbols);
 
+    Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime);
+
     List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive);
+
+    Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime);
 
     void saveMinuteCandle(MarketHistoryCandle candle);
 

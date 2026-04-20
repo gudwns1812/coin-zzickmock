@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,13 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime) {
+        return marketCandle1mEntityRepository.findBySymbolIdAndOpenTime(symbolId, openTime)
+                .map(MarketCandle1mEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
         return marketCandle1mEntityRepository
                 .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
@@ -39,6 +47,13 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                 .stream()
                 .map(MarketCandle1mEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime) {
+        return marketCandle1hEntityRepository.findBySymbolIdAndOpenTime(symbolId, openTime)
+                .map(MarketCandle1hEntity::toDomain);
     }
 
     @Override

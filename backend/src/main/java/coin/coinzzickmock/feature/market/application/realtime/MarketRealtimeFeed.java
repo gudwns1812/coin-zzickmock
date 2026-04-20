@@ -20,12 +20,13 @@ public class MarketRealtimeFeed {
 
     private final Providers providers;
     private final MarketHistoryRecorder marketHistoryRecorder;
+    private final MarketHistoryStartupBackfill marketHistoryStartupBackfill;
     private final MarketSnapshotStore marketSnapshotStore;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @PostConstruct
     void initializeCache() {
-        refreshSupportedMarkets();
+        initializeCache(Instant.now());
     }
 
     @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:1000}")
@@ -33,13 +34,24 @@ public class MarketRealtimeFeed {
         refreshSupportedMarkets(Instant.now());
     }
 
-    void refreshSupportedMarkets(Instant observedAt) {
-        List<MarketSummaryResult> refreshedMarkets = providers.connector().marketDataGateway().loadSupportedMarkets()
-                .stream()
-                .filter(Objects::nonNull)
-                .map(this::toResult)
-                .toList();
+    void initializeCache(Instant observedAt) {
+        List<MarketSummaryResult> refreshedMarkets = loadSupportedMarkets();
+        if (refreshedMarkets.isEmpty()) {
+            return;
+        }
 
+        marketHistoryStartupBackfill.backfillMissingMinuteHistory(
+                refreshedMarkets,
+                observedAt,
+                providers.connector().marketDataGateway()
+        );
+        marketSnapshotStore.putSupportedMarkets(refreshedMarkets);
+        publishUpdatedMarkets(refreshedMarkets);
+        persistHistory(refreshedMarkets, observedAt);
+    }
+
+    void refreshSupportedMarkets(Instant observedAt) {
+        List<MarketSummaryResult> refreshedMarkets = loadSupportedMarkets();
         if (refreshedMarkets.isEmpty()) {
             return;
         }
@@ -47,6 +59,14 @@ public class MarketRealtimeFeed {
         marketSnapshotStore.putSupportedMarkets(refreshedMarkets);
         publishUpdatedMarkets(refreshedMarkets);
         persistHistory(refreshedMarkets, observedAt);
+    }
+
+    private List<MarketSummaryResult> loadSupportedMarkets() {
+        return providers.connector().marketDataGateway().loadSupportedMarkets()
+                .stream()
+                .filter(Objects::nonNull)
+                .map(this::toResult)
+                .toList();
     }
 
     public List<MarketSummaryResult> getSupportedMarkets() {

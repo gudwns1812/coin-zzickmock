@@ -9,12 +9,14 @@ import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRep
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
@@ -50,10 +52,9 @@ class MarketRealtimeFeedTest {
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
         ));
         RecordingApplicationEventPublisher applicationEventPublisher = new RecordingApplicationEventPublisher();
-        MarketRealtimeFeed feed = new MarketRealtimeFeed(
-                new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(new InMemoryMarketHistoryRepository()),
-                newSnapshotStore(),
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                new InMemoryMarketHistoryRepository(),
                 applicationEventPublisher
         );
 
@@ -75,10 +76,9 @@ class MarketRealtimeFeedTest {
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
         ));
         RecordingApplicationEventPublisher applicationEventPublisher = new RecordingApplicationEventPublisher();
-        MarketRealtimeFeed feed = new MarketRealtimeFeed(
-                new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(new InMemoryMarketHistoryRepository()),
-                newSnapshotStore(),
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                new InMemoryMarketHistoryRepository(),
                 applicationEventPublisher
         );
 
@@ -109,10 +109,9 @@ class MarketRealtimeFeedTest {
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
         ));
         InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
-        MarketRealtimeFeed feed = new MarketRealtimeFeed(
-                new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(marketHistoryRepository),
-                newSnapshotStore(),
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                marketHistoryRepository,
                 new RecordingApplicationEventPublisher()
         );
 
@@ -152,10 +151,9 @@ class MarketRealtimeFeedTest {
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
         ));
         InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
-        MarketRealtimeFeed feed = new MarketRealtimeFeed(
-                new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(marketHistoryRepository),
-                newSnapshotStore(),
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                marketHistoryRepository,
                 new RecordingApplicationEventPublisher()
         );
 
@@ -177,10 +175,9 @@ class MarketRealtimeFeedTest {
         FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of());
         InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
         RecordingApplicationEventPublisher applicationEventPublisher = new RecordingApplicationEventPublisher();
-        MarketRealtimeFeed feed = new MarketRealtimeFeed(
-                new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(marketHistoryRepository),
-                newSnapshotStore(),
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                marketHistoryRepository,
                 applicationEventPublisher
         );
 
@@ -196,10 +193,9 @@ class MarketRealtimeFeedTest {
         CountingMarketDataGateway marketDataGateway = new CountingMarketDataGateway(List.of(
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
         ));
-        MarketRealtimeFeed feed = new MarketRealtimeFeed(
-                new FakeProviders(marketDataGateway),
-                new MarketHistoryRecorder(new InMemoryMarketHistoryRepository()),
-                newSnapshotStore(),
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                new InMemoryMarketHistoryRepository(),
                 new RecordingApplicationEventPublisher()
         );
 
@@ -207,6 +203,65 @@ class MarketRealtimeFeedTest {
 
         assertEquals(ErrorCode.MARKET_NOT_FOUND, thrown.errorCode());
         assertEquals(0, marketDataGateway.loadMarketCalls());
+    }
+
+    @Test
+    void initializeCacheBackfillsMissingMinuteCandlesFromLatestPersistedMinute() {
+        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
+                snapshot("BTCUSDT", 103000, 102950, 102900, 0.00013, 4.4)
+        ));
+        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
+                minuteCandle("2026-04-17T06:01:00Z", 101200, 101500, 101100, 101400, 12.0, 120000.0),
+                minuteCandle("2026-04-17T06:02:00Z", 101400, 102000, 101300, 101900, 14.0, 140000.0)
+        ));
+        InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
+        marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
+                1L,
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z"),
+                101000,
+                101000,
+                101000,
+                101000,
+                0.0,
+                0.0
+        ));
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                marketHistoryRepository,
+                new RecordingApplicationEventPublisher()
+        );
+
+        feed.initializeCache(Instant.parse("2026-04-17T06:03:20Z"));
+
+        assertEquals(1, marketDataGateway.minuteHistoryCalls());
+        assertEquals(4, marketHistoryRepository.minuteCandleCount());
+        assertEquals(101400, marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:01:00Z").closePrice(), 0.0001);
+        assertEquals(101900, marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:02:00Z").closePrice(), 0.0001);
+        assertEquals(103000, marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:03:00Z").closePrice(), 0.0001);
+        assertEquals(1, marketHistoryRepository.hourlyCandleCount());
+        assertEquals(103000, marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z").closePrice(), 0.0001);
+    }
+
+    @Test
+    void initializeCacheSkipsBackfillWhenNoPersistedMinuteExists() {
+        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
+                snapshot("BTCUSDT", 103000, 102950, 102900, 0.00013, 4.4)
+        ));
+        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
+                minuteCandle("2026-04-17T06:01:00Z", 101200, 101500, 101100, 101400, 12.0, 120000.0)
+        ));
+        InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                marketHistoryRepository,
+                new RecordingApplicationEventPublisher()
+        );
+
+        feed.initializeCache(Instant.parse("2026-04-17T06:03:20Z"));
+
+        assertEquals(0, marketDataGateway.minuteHistoryCalls());
+        assertEquals(1, marketHistoryRepository.minuteCandleCount());
     }
 
     private static MarketSnapshot snapshot(
@@ -220,6 +275,43 @@ class MarketRealtimeFeedTest {
         return new MarketSnapshot(symbol, symbol + " Perpetual", lastPrice, markPrice, indexPrice, fundingRate, change24h);
     }
 
+    private static MarketMinuteCandleSnapshot minuteCandle(
+            String openTime,
+            double openPrice,
+            double highPrice,
+            double lowPrice,
+            double closePrice,
+            double volume,
+            double quoteVolume
+    ) {
+        Instant candleOpenTime = Instant.parse(openTime);
+        return new MarketMinuteCandleSnapshot(
+                candleOpenTime,
+                candleOpenTime.plus(1, ChronoUnit.MINUTES),
+                openPrice,
+                highPrice,
+                lowPrice,
+                closePrice,
+                volume,
+                quoteVolume
+        );
+    }
+
+    private static MarketRealtimeFeed newFeed(
+            FakeMarketDataGateway marketDataGateway,
+            InMemoryMarketHistoryRepository marketHistoryRepository,
+            ApplicationEventPublisher applicationEventPublisher
+    ) {
+        MarketHistoryRecorder marketHistoryRecorder = new MarketHistoryRecorder(marketHistoryRepository);
+        return new MarketRealtimeFeed(
+                new FakeProviders(marketDataGateway),
+                marketHistoryRecorder,
+                new MarketHistoryStartupBackfill(marketHistoryRepository, marketHistoryRecorder),
+                newSnapshotStore(),
+                applicationEventPublisher
+        );
+    }
+
     private static MarketSnapshotStore newSnapshotStore() {
         return new MarketSnapshotStore(new ConcurrentMapCacheManager(
                 CoinCacheNames.MARKET_SNAPSHOT_LOCAL_CACHE,
@@ -229,6 +321,8 @@ class MarketRealtimeFeedTest {
 
     private static class FakeMarketDataGateway implements MarketDataGateway {
         private List<MarketSnapshot> supportedMarkets;
+        private final Map<String, List<MarketMinuteCandleSnapshot>> minuteCandles = new LinkedHashMap<>();
+        private int minuteHistoryCalls;
 
         private FakeMarketDataGateway(List<MarketSnapshot> supportedMarkets) {
             this.supportedMarkets = new ArrayList<>(supportedMarkets);
@@ -247,8 +341,25 @@ class MarketRealtimeFeedTest {
                     .orElse(null);
         }
 
+        @Override
+        public List<MarketMinuteCandleSnapshot> loadMinuteCandles(String symbol, Instant fromInclusive, Instant toExclusive) {
+            minuteHistoryCalls++;
+            return minuteCandles.getOrDefault(symbol, List.of()).stream()
+                    .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                    .filter(candle -> candle.openTime().isBefore(toExclusive))
+                    .toList();
+        }
+
         private void replaceSnapshots(List<MarketSnapshot> snapshots) {
             this.supportedMarkets = new ArrayList<>(snapshots);
+        }
+
+        private void replaceMinuteCandles(String symbol, List<MarketMinuteCandleSnapshot> candles) {
+            minuteCandles.put(symbol, new ArrayList<>(candles));
+        }
+
+        private int minuteHistoryCalls() {
+            return minuteHistoryCalls;
         }
     }
 
@@ -335,6 +446,14 @@ class MarketRealtimeFeedTest {
         @Override
         public Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime) {
             return Optional.ofNullable(minuteCandles.get(key(symbolId, openTime)));
+        }
+
+        @Override
+        public Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId) {
+            return minuteCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .map(MarketHistoryCandle::openTime)
+                    .max(Instant::compareTo);
         }
 
         @Override

@@ -72,7 +72,7 @@ public class AuthController {
         return withAccessToken(ApiResponse.success(new AuthUserResponse(
                 memberProfile.memberId(),
                 memberProfile.memberName()
-        )), memberProfile.memberId());
+        )), memberProfile.memberId(), memberProfile.memberName(), memberProfile.memberEmail());
     }
 
     @PostMapping("/logout")
@@ -89,7 +89,7 @@ public class AuthController {
         return withAccessToken(ApiResponse.success(new AuthUserResponse(
                 memberProfile.memberId(),
                 memberProfile.memberName()
-        )), memberProfile.memberId());
+        )), memberProfile.memberId(), memberProfile.memberName(), memberProfile.memberEmail());
     }
 
     @DeleteMapping("/withdraw")
@@ -103,11 +103,13 @@ public class AuthController {
 
     private ResponseEntity<ApiResponse<AuthUserResponse>> withAccessToken(
             ApiResponse<AuthUserResponse> body,
-            String memberId
+            String memberId,
+            String memberName,
+            String email
     ) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.buildAccessTokenCookie(
-                        jwtAccessTokenManager.issue(memberId)
+                        jwtAccessTokenManager.issue(memberId, memberName, email)
                 ).toString())
                 .body(body);
     }

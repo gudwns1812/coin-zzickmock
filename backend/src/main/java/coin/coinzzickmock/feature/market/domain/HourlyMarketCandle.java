@@ -13,7 +13,6 @@ public record HourlyMarketCandle(
         double closePrice,
         double volume,
         double quoteVolume,
-        int tradeCount,
         Instant sourceMinuteOpenTime,
         Instant sourceMinuteCloseTime
 ) {
@@ -33,7 +32,6 @@ public record HourlyMarketCandle(
                 minuteCandle.closePrice(),
                 minuteCandle.volume(),
                 minuteCandle.quoteVolume(),
-                minuteCandle.tradeCount(),
                 minuteCandle.openTime(),
                 minuteCandle.closeTime()
         );
@@ -56,7 +54,6 @@ public record HourlyMarketCandle(
         double lowPrice = first.lowPrice();
         double volume = 0.0;
         double quoteVolume = 0.0;
-        int tradeCount = 0;
 
         for (MarketHistoryCandle candle : minuteCandles) {
             if (candle.openTime().isBefore(first.openTime())) {
@@ -69,7 +66,6 @@ public record HourlyMarketCandle(
             lowPrice = Math.min(lowPrice, candle.lowPrice());
             volume += candle.volume();
             quoteVolume += candle.quoteVolume();
-            tradeCount += candle.tradeCount();
         }
 
         return new HourlyMarketCandle(
@@ -82,7 +78,6 @@ public record HourlyMarketCandle(
                 last.closePrice(),
                 volume,
                 quoteVolume,
-                tradeCount,
                 first.openTime(),
                 last.closeTime()
         );
@@ -91,7 +86,6 @@ public record HourlyMarketCandle(
     public HourlyMarketCandle reviseMinute(MarketHistoryCandle previousMinute, MarketHistoryCandle currentMinute) {
         double previousVolume = previousMinute == null ? 0.0 : previousMinute.volume();
         double previousQuoteVolume = previousMinute == null ? 0.0 : previousMinute.quoteVolume();
-        int previousTradeCount = previousMinute == null ? 0 : previousMinute.tradeCount();
 
         boolean updatesEarliestMinute = currentMinute.openTime().isBefore(sourceMinuteOpenTime);
         boolean updatesLatestMinute = !currentMinute.closeTime().isBefore(sourceMinuteCloseTime);
@@ -106,7 +100,6 @@ public record HourlyMarketCandle(
                 updatesLatestMinute ? currentMinute.closePrice() : closePrice,
                 volume - previousVolume + currentMinute.volume(),
                 quoteVolume - previousQuoteVolume + currentMinute.quoteVolume(),
-                tradeCount - previousTradeCount + currentMinute.tradeCount(),
                 updatesEarliestMinute ? currentMinute.openTime() : sourceMinuteOpenTime,
                 updatesLatestMinute ? currentMinute.closeTime() : sourceMinuteCloseTime
         );

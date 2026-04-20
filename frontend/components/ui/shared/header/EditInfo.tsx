@@ -12,7 +12,7 @@ const EditInfo = ({ token }: { token: JwtToken }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenAddressModal, setIsOpenAddressModal] = useState(false);
   const [info, setInfo] = useState<UserInfo>(() => {
-    const phoneNumber = token.phoneNumber.split("-");
+    const phoneNumber = (token.phoneNumber || "010-0000-0000").split("-");
     return {
       name: token.memberName,
       phone: {
@@ -22,9 +22,9 @@ const EditInfo = ({ token }: { token: JwtToken }) => {
       },
       email: token.email,
       address: {
-        zipcode: token.zipCode,
-        address: token.Address,
-        detail: token.AddressDetail,
+        zipcode: token.zipCode || "",
+        address: token.Address || "",
+        detail: token.AddressDetail || "",
       },
     };
   });

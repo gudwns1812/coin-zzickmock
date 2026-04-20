@@ -11,10 +11,12 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,6 +46,12 @@ class MarketHistorySchemaMigrationTest {
                 .contains(List.of("OPEN_TIME", "SYMBOL_ID"));
     }
 
+    @Test
+    void removesTradeCountColumnsFromMarketHistoryTables() throws SQLException {
+        assertThat(columnsOf("MARKET_CANDLES_1M")).doesNotContain("TRADE_COUNT");
+        assertThat(columnsOf("MARKET_CANDLES_1H")).doesNotContain("TRADE_COUNT");
+    }
+
     private boolean tableExists(String tableName) throws SQLException {
         try (var connection = dataSource.getConnection();
              ResultSet tables = connection.getMetaData().getTables(null, null, tableName, new String[]{"TABLE"})) {
@@ -55,6 +63,17 @@ class MarketHistorySchemaMigrationTest {
         try (var connection = dataSource.getConnection();
              ResultSet indexes = connection.getMetaData().getIndexInfo(null, null, tableName, false, false)) {
             return readIndexes(indexes);
+        }
+    }
+
+    private Set<String> columnsOf(String tableName) throws SQLException {
+        try (var connection = dataSource.getConnection();
+             ResultSet columns = connection.getMetaData().getColumns(null, null, tableName, null)) {
+            Set<String> result = new HashSet<>();
+            while (columns.next()) {
+                result.add(columns.getString("COLUMN_NAME").toUpperCase(Locale.ROOT));
+            }
+            return result;
         }
     }
 

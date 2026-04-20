@@ -38,7 +38,7 @@ public class JwtAccessTokenManager {
         this.secureCookie = secureCookie;
     }
 
-    public String issue(String memberId) {
+    public String issue(String memberId, String memberName, String email) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(accessTokenExpirationSeconds);
 
@@ -47,6 +47,8 @@ public class JwtAccessTokenManager {
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .claim("memberId", memberId)
+                .claim("memberName", memberName)
+                .claim("email", email)
                 .signWith(secretKey)
                 .compact();
     }
@@ -64,7 +66,9 @@ public class JwtAccessTokenManager {
             }
 
             return new JwtSessionClaims(
-                    claims.get("memberId", String.class)
+                    claims.get("memberId", String.class),
+                    claims.get("memberName", String.class),
+                    claims.get("email", String.class)
             );
         } catch (JwtException | IllegalArgumentException exception) {
             throw new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");

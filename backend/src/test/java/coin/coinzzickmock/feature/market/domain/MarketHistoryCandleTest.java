@@ -36,8 +36,8 @@ class MarketHistoryCandleTest {
                 Instant.parse("2026-04-17T06:00:00Z"),
                 Instant.parse("2026-04-17T07:00:00Z"),
                 List.of(
-                        new MarketHistoryCandle(1L, firstOpen, firstClose, 101000, 102000, 100500, 101500, 1.2, 120000, 2),
-                        new MarketHistoryCandle(1L, secondOpen, secondClose, 101500, 103000, 101000, 102700, 0.8, 80000, 1)
+                        new MarketHistoryCandle(1L, firstOpen, firstClose, 101000, 102000, 100500, 101500, 1.2, 120000),
+                        new MarketHistoryCandle(1L, secondOpen, secondClose, 101500, 103000, 101000, 102700, 0.8, 80000)
                 )
         );
 
@@ -47,7 +47,6 @@ class MarketHistoryCandleTest {
         assertEquals(102700, hourly.closePrice(), 0.0001);
         assertEquals(2.0, hourly.volume(), 0.0001);
         assertEquals(200000, hourly.quoteVolume(), 0.0001);
-        assertEquals(3, hourly.tradeCount());
     }
 
     @Test
@@ -62,8 +61,8 @@ class MarketHistoryCandleTest {
                 Instant.parse("2026-04-17T06:00:00Z"),
                 Instant.parse("2026-04-17T07:00:00Z"),
                 List.of(
-                        new MarketHistoryCandle(1L, secondOpen, secondClose, 101500, 103000, 101000, 102700, 0.8, 80000, 1),
-                        new MarketHistoryCandle(1L, firstOpen, firstClose, 101000, 102000, 100500, 101500, 1.2, 120000, 2)
+                        new MarketHistoryCandle(1L, secondOpen, secondClose, 101500, 103000, 101000, 102700, 0.8, 80000),
+                        new MarketHistoryCandle(1L, firstOpen, firstClose, 101000, 102000, 100500, 101500, 1.2, 120000)
                 )
         );
 

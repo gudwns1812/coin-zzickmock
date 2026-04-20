@@ -4,10 +4,12 @@ import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRep
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,25 @@ public class MarketHistoryRecorder {
         );
 
         snapshots.forEach(snapshot -> recordSnapshot(symbolIds.get(snapshot.symbol()), snapshot, observedAt));
+    }
+
+    @Transactional
+    public void recordHistoricalMinuteCandles(long symbolId, List<MarketMinuteCandleSnapshot> minuteCandles) {
+        if (minuteCandles == null || minuteCandles.isEmpty()) {
+            return;
+        }
+
+        List<MarketHistoryCandle> historicalCandles = minuteCandles.stream()
+                .sorted(Comparator.comparing(MarketMinuteCandleSnapshot::openTime))
+                .map(candle -> candle.toHistoryCandle(symbolId))
+                .toList();
+
+        historicalCandles.forEach(marketHistoryRepository::saveMinuteCandle);
+        historicalCandles.stream()
+                .map(MarketHistoryCandle::openTime)
+                .map(openTime -> truncate(openTime, ChronoUnit.HOURS))
+                .distinct()
+                .forEach(hourlyOpenTime -> rebuildHourlyCandle(symbolId, hourlyOpenTime));
     }
 
     void recordSnapshot(Long symbolId, MarketSummaryResult snapshot, Instant observedAt) {
@@ -92,6 +113,22 @@ public class MarketHistoryRecorder {
         }
 
         return HourlyMarketCandle.rollup(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
+    }
+
+    private void rebuildHourlyCandle(long symbolId, Instant hourlyOpenTime) {
+        Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
+        List<MarketHistoryCandle> hourlyCandles = marketHistoryRepository.findMinuteCandles(
+                symbolId,
+                hourlyOpenTime,
+                hourlyCloseTime
+        );
+        if (hourlyCandles.isEmpty()) {
+            return;
+        }
+
+        marketHistoryRepository.saveHourlyCandle(
+                HourlyMarketCandle.rollup(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles)
+        );
     }
 
     private Instant truncate(Instant instant, ChronoUnit unit) {

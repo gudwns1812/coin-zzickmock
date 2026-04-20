@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -143,6 +144,32 @@ class MarketRealtimeFeedTest {
         assertEquals(102500, firstHour.highPrice(), 0.0001);
         assertEquals(100500, firstHour.lowPrice(), 0.0001);
         assertEquals(100500, firstHour.closePrice(), 0.0001);
+    }
+
+    @Test
+    void updatesHourlyAggregateWhenLaterTickArrivesInSameMinute() {
+        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
+                snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
+        ));
+        InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
+        MarketRealtimeFeed feed = new MarketRealtimeFeed(
+                new FakeProviders(marketDataGateway),
+                new MarketHistoryRecorder(marketHistoryRepository),
+                newSnapshotStore(),
+                new RecordingApplicationEventPublisher()
+        );
+
+        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:15Z"));
+
+        marketDataGateway.replaceSnapshots(List.of(
+                snapshot("BTCUSDT", 102500, 102450, 102400, 0.00012, 4.0)
+        ));
+        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:45Z"));
+
+        HourlyMarketCandle firstHour = marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z");
+
+        assertEquals(102500, firstHour.highPrice(), 0.0001);
+        assertEquals(102500, firstHour.closePrice(), 0.0001);
     }
 
     @Test
@@ -306,6 +333,11 @@ class MarketRealtimeFeedTest {
         }
 
         @Override
+        public Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime) {
+            return Optional.ofNullable(minuteCandles.get(key(symbolId, openTime)));
+        }
+
+        @Override
         public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
             return minuteCandles.values().stream()
                     .filter(candle -> candle.symbolId() == symbolId)
@@ -313,6 +345,11 @@ class MarketRealtimeFeedTest {
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
                     .sorted(java.util.Comparator.comparing(MarketHistoryCandle::openTime))
                     .toList();
+        }
+
+        @Override
+        public Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime) {
+            return Optional.ofNullable(hourlyCandles.get(key(symbolId, openTime)));
         }
 
         @Override

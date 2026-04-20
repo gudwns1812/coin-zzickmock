@@ -8,7 +8,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -40,28 +39,48 @@ public class MarketHistoryRecorder {
             return;
         }
 
-        recordMinuteCandle(symbolId, snapshot.lastPrice(), observedAt);
-        recordHourlyCandle(symbolId, observedAt);
+        MinuteCandleRevision minuteRevision = recordMinuteCandle(symbolId, snapshot.lastPrice(), observedAt);
+        recordHourlyCandle(symbolId, observedAt, minuteRevision);
     }
 
-    private void recordMinuteCandle(long symbolId, double lastPrice, Instant observedAt) {
+    private MinuteCandleRevision recordMinuteCandle(long symbolId, double lastPrice, Instant observedAt) {
         Instant minuteOpenTime = truncate(observedAt, ChronoUnit.MINUTES);
         Instant minuteCloseTime = minuteOpenTime.plus(1, ChronoUnit.MINUTES);
 
-        MarketHistoryCandle currentMinuteCandle = marketHistoryRepository
-                .findMinuteCandles(symbolId, minuteOpenTime, minuteCloseTime)
-                .stream()
-                .findFirst()
-                .map(existing -> mergeMinute(existing, lastPrice))
-                .orElseGet(() -> firstMinute(symbolId, minuteOpenTime, minuteCloseTime, lastPrice));
+        MarketHistoryCandle existingMinuteCandle = marketHistoryRepository
+                .findMinuteCandle(symbolId, minuteOpenTime)
+                .orElse(null);
+
+        MarketHistoryCandle currentMinuteCandle = existingMinuteCandle == null
+                ? MarketHistoryCandle.first(symbolId, minuteOpenTime, minuteCloseTime, lastPrice)
+                : existingMinuteCandle.mergeLatestPrice(lastPrice);
 
         marketHistoryRepository.saveMinuteCandle(currentMinuteCandle);
+        return new MinuteCandleRevision(existingMinuteCandle, currentMinuteCandle);
     }
 
-    private void recordHourlyCandle(long symbolId, Instant observedAt) {
+    private void recordHourlyCandle(long symbolId, Instant observedAt, MinuteCandleRevision minuteRevision) {
         Instant hourlyOpenTime = truncate(observedAt, ChronoUnit.HOURS);
         Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
+        MarketHistoryCandle currentMinuteCandle = minuteRevision.current();
 
+        HourlyMarketCandle hourlyCandle = marketHistoryRepository.findHourlyCandle(symbolId, hourlyOpenTime)
+                .map(existingHourlyCandle -> existingHourlyCandle.reviseMinute(minuteRevision.previous(), currentMinuteCandle))
+                .orElseGet(() -> buildHourlyCandle(symbolId, hourlyOpenTime, hourlyCloseTime, currentMinuteCandle));
+
+        if (hourlyCandle == null) {
+            return;
+        }
+
+        marketHistoryRepository.saveHourlyCandle(hourlyCandle);
+    }
+
+    private HourlyMarketCandle buildHourlyCandle(
+            long symbolId,
+            Instant hourlyOpenTime,
+            Instant hourlyCloseTime,
+            MarketHistoryCandle currentMinuteCandle
+    ) {
         List<MarketHistoryCandle> hourlyCandles = marketHistoryRepository.findMinuteCandles(
                 symbolId,
                 hourlyOpenTime,
@@ -69,89 +88,21 @@ public class MarketHistoryRecorder {
         );
 
         if (hourlyCandles.isEmpty()) {
-            return;
+            return HourlyMarketCandle.first(symbolId, hourlyOpenTime, hourlyCloseTime, currentMinuteCandle);
         }
 
-        HourlyMarketCandle hourlyCandle = rollupHourly(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
-        marketHistoryRepository.saveHourlyCandle(hourlyCandle);
-    }
-
-    private MarketHistoryCandle firstMinute(long symbolId, Instant openTime, Instant closeTime, double price) {
-        return new MarketHistoryCandle(
-                symbolId,
-                openTime,
-                closeTime,
-                price,
-                price,
-                price,
-                price,
-                0.0,
-                0.0,
-                0
-        );
-    }
-
-    private MarketHistoryCandle mergeMinute(MarketHistoryCandle existing, double latestPrice) {
-        return new MarketHistoryCandle(
-                existing.symbolId(),
-                existing.openTime(),
-                existing.closeTime(),
-                existing.openPrice(),
-                Math.max(existing.highPrice(), latestPrice),
-                Math.min(existing.lowPrice(), latestPrice),
-                latestPrice,
-                existing.volume(),
-                existing.quoteVolume(),
-                existing.tradeCount()
-        );
-    }
-
-    private HourlyMarketCandle rollupHourly(
-            long symbolId,
-            Instant openTime,
-            Instant closeTime,
-            List<MarketHistoryCandle> minuteCandles
-    ) {
-        List<MarketHistoryCandle> sorted = minuteCandles.stream()
-                .sorted(Comparator.comparing(MarketHistoryCandle::openTime))
-                .toList();
-
-        MarketHistoryCandle first = sorted.get(0);
-        MarketHistoryCandle last = sorted.get(sorted.size() - 1);
-
-        double highPrice = first.highPrice();
-        double lowPrice = first.lowPrice();
-        double volume = 0.0;
-        double quoteVolume = 0.0;
-        int tradeCount = 0;
-
-        for (MarketHistoryCandle candle : sorted) {
-            highPrice = Math.max(highPrice, candle.highPrice());
-            lowPrice = Math.min(lowPrice, candle.lowPrice());
-            volume += candle.volume();
-            quoteVolume += candle.quoteVolume();
-            tradeCount += candle.tradeCount();
-        }
-
-        return new HourlyMarketCandle(
-                symbolId,
-                openTime,
-                closeTime,
-                first.openPrice(),
-                highPrice,
-                lowPrice,
-                last.closePrice(),
-                volume,
-                quoteVolume,
-                tradeCount,
-                first.openTime(),
-                last.closeTime()
-        );
+        return HourlyMarketCandle.rollup(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
     }
 
     private Instant truncate(Instant instant, ChronoUnit unit) {
         return ZonedDateTime.ofInstant(instant, HISTORY_ZONE)
                 .truncatedTo(unit)
                 .toInstant();
+    }
+
+    private record MinuteCandleRevision(
+            MarketHistoryCandle previous,
+            MarketHistoryCandle current
+    ) {
     }
 }

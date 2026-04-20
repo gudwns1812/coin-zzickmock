@@ -73,6 +73,51 @@ class ClosePositionServiceTest {
         assertEquals(20, wallet.rewardPoint(), 0.0001);
     }
 
+    @Test
+    void lossCloseDoesNotGrantPointsAndSettlesAccountWithLoss() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
+                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+        );
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
+        positionRepository.save("demo-member", new PositionSnapshot(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.2,
+                100000,
+                100000,
+                90000.0,
+                0
+        ));
+
+        ClosePositionService service = new ClosePositionService(
+                positionRepository,
+                accountRepository,
+                new FakeProviders(90000, 90000),
+                new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository)
+        );
+
+        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1);
+
+        assertEquals(0.1, result.closedQuantity(), 0.0001);
+        assertEquals(-1004.5, result.realizedPnl(), 0.0001);
+        assertEquals(0, result.grantedPoint(), 0.0001);
+
+        TradingAccount updatedAccount = accountRepository.findByMemberId("demo-member").orElseThrow();
+        assertEquals(98995.5, updatedAccount.walletBalance(), 0.0001);
+        assertEquals(94995.5, updatedAccount.availableMargin(), 0.0001);
+
+        PositionSnapshot remaining = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow();
+        assertEquals(0.1, remaining.quantity(), 0.0001);
+        assertEquals(-1000.0, remaining.unrealizedPnl(), 0.0001);
+
+        RewardPointWallet wallet = rewardPointRepository.findByMemberId("demo-member").orElseThrow();
+        assertEquals(0, wallet.rewardPoint(), 0.0001);
+    }
+
     private static class InMemoryAccountRepository implements AccountRepository {
         private TradingAccount account;
 

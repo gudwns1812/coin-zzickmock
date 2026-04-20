@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 @Transactional
 class AuthControllerTest {
     @Autowired
@@ -86,6 +88,96 @@ class AuthControllerTest {
     }
 
     @Test
+    void registerCreatesDefaultTradingAccountState() throws Exception {
+        mockMvc.perform(post("/api/futures/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "account-seed-user",
+                                  "password": "hello@1234",
+                                  "name": "account-seed-user",
+                                  "phoneNumber": "010-5555-6666",
+                                  "email": "account-seed-user@coinzzickmock.dev",
+                                  "fgOffset": "unused",
+                                  "address": {
+                                    "zipcode": "04524",
+                                    "address": "서울 중구 세종대로 110",
+                                    "addressDetail": "12층"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "account-seed-user",
+                                  "password": "hello@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(get("/api/futures/account/me").cookie(accessTokenCookie(loginResult)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value("account-seed-user"))
+                .andExpect(jsonPath("$.data.walletBalance").value(100000.0))
+                .andExpect(jsonPath("$.data.availableMargin").value(100000.0));
+    }
+
+    @Test
+    void registerAndLoginNormalizeTrimmedIdentityFields() throws Exception {
+        mockMvc.perform(post("/api/futures/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": " trimmed-user ",
+                                  "password": "hello@1234",
+                                  "name": " trimmed-name ",
+                                  "phoneNumber": "010-5555-6666",
+                                  "email": "trimmed-user@coinzzickmock.dev",
+                                  "fgOffset": "unused",
+                                  "address": {
+                                    "zipcode": "04524",
+                                    "address": "서울 중구 세종대로 110",
+                                    "addressDetail": " 12층 "
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value("trimmed-user"))
+                .andExpect(jsonPath("$.data.memberName").value("trimmed-name"));
+
+        mockMvc.perform(post("/api/futures/auth/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": " trimmed-user "
+                                }
+                                """))
+                .andExpect(status().isConflict());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": " trimmed-user ",
+                                  "password": "hello@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value("trimmed-user"))
+                .andExpect(jsonPath("$.data.memberName").value("trimmed-name"))
+                .andReturn();
+
+        mockMvc.perform(get("/api/futures/auth/refresh").cookie(accessTokenCookie(loginResult)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value("trimmed-user"))
+                .andExpect(jsonPath("$.data.memberName").value("trimmed-name"));
+    }
+
+    @Test
     void withdrawnMemberCannotLoginAgain() throws Exception {
         mockMvc.perform(post("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -137,6 +229,102 @@ class AuthControllerTest {
                                 }
                                 """))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void withdrawnMemberRefreshWithOldTokenFails() throws Exception {
+        mockMvc.perform(post("/api/futures/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "refresh-withdraw-user",
+                                  "password": "withdraw@1234",
+                                  "name": "refresh-withdraw-user",
+                                  "phoneNumber": "010-7777-8888",
+                                  "email": "refresh-withdraw-user@coinzzickmock.dev",
+                                  "fgOffset": "unused",
+                                  "address": {
+                                    "zipcode": "06236",
+                                    "address": "서울 강남구 논현로 507",
+                                    "addressDetail": "7층"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "refresh-withdraw-user",
+                                  "password": "withdraw@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie staleAccessToken = accessTokenCookie(loginResult);
+
+        mockMvc.perform(delete("/api/futures/auth/withdraw")
+                        .cookie(staleAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memberId": "refresh-withdraw-user"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/futures/auth/refresh").cookie(staleAccessToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void withdrawRejectsAnotherMembersId() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "test@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(delete("/api/futures/auth/withdraw")
+                        .cookie(accessTokenCookie(loginResult))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memberId": "other-user"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void withdrawRejectsBlankMemberId() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "test@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(delete("/api/futures/auth/withdraw")
+                        .cookie(accessTokenCookie(loginResult))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memberId": "   "
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     private Cookie accessTokenCookie(MvcResult loginResult) {

@@ -80,6 +80,23 @@ public class MarketCandle1hEntity extends AuditableEntity {
         this.sourceMinuteCloseTime = candle.sourceMinuteCloseTime();
     }
 
+    public HourlyMarketCandle toDomain() {
+        return new HourlyMarketCandle(
+                symbolId,
+                openTime,
+                closeTime,
+                openPrice.doubleValue(),
+                highPrice.doubleValue(),
+                lowPrice.doubleValue(),
+                closePrice.doubleValue(),
+                volume.doubleValue(),
+                quoteVolume == null ? 0.0 : quoteVolume.doubleValue(),
+                tradeCount == null ? 0 : tradeCount,
+                sourceMinuteOpenTime,
+                sourceMinuteCloseTime
+        );
+    }
+
     private static BigDecimal decimal(double value) {
         return BigDecimal.valueOf(value);
     }

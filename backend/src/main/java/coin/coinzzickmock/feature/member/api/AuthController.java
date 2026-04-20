@@ -3,12 +3,12 @@ package coin.coinzzickmock.feature.member.api;
 import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
 import coin.coinzzickmock.feature.member.application.service.AuthenticateMemberService;
 import coin.coinzzickmock.feature.member.application.service.CheckMemberAvailabilityService;
-import coin.coinzzickmock.feature.member.application.service.GetMemberCredentialService;
+import coin.coinzzickmock.feature.member.application.service.GetMemberProfileService;
 import coin.coinzzickmock.feature.member.application.service.RegisterMemberService;
 import coin.coinzzickmock.feature.member.application.service.WithdrawMemberService;
-import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.member.infrastructure.security.JwtAccessTokenManager;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
@@ -29,7 +29,7 @@ public class AuthController {
     private final RegisterMemberService registerMemberService;
     private final AuthenticateMemberService authenticateMemberService;
     private final CheckMemberAvailabilityService checkMemberAvailabilityService;
-    private final GetMemberCredentialService getMemberCredentialService;
+    private final GetMemberProfileService getMemberProfileService;
     private final WithdrawMemberService withdrawMemberService;
     private final JwtAccessTokenManager jwtAccessTokenManager;
     private final Providers providers;
@@ -40,7 +40,7 @@ public class AuthController {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "주소 정보는 필수입니다.");
         }
 
-        registerMemberService.register(
+        MemberProfileResult memberProfile = registerMemberService.register(
                 request.account(),
                 request.password(),
                 request.name(),
@@ -51,7 +51,10 @@ public class AuthController {
                 request.address().addressDetail()
         );
 
-        return ApiResponse.success(new AuthUserResponse(request.account().trim(), request.name().trim()));
+        return ApiResponse.success(new AuthUserResponse(
+                memberProfile.memberId(),
+                memberProfile.memberName()
+        ));
     }
 
     @PostMapping("/duplicate")
@@ -65,11 +68,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthUserResponse>> login(@RequestBody LoginRequest request) {
-        MemberCredential memberCredential = authenticateMemberService.authenticate(request.account(), request.password());
+        MemberProfileResult memberProfile = authenticateMemberService.authenticate(request.account(), request.password());
         return withAccessToken(ApiResponse.success(new AuthUserResponse(
-                memberCredential.memberId(),
-                memberCredential.memberName()
-        )), memberCredential);
+                memberProfile.memberId(),
+                memberProfile.memberName()
+        )), memberProfile.memberId());
     }
 
     @PostMapping("/logout")
@@ -82,21 +85,17 @@ public class AuthController {
     @GetMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthUserResponse>> refresh() {
         Actor actor = providers.auth().currentActor();
-        MemberCredential memberCredential = getMemberCredentialService.get(actor.memberId());
+        MemberProfileResult memberProfile = getMemberProfileService.get(actor.memberId());
         return withAccessToken(ApiResponse.success(new AuthUserResponse(
-                memberCredential.memberId(),
-                memberCredential.memberName()
-        )), memberCredential);
+                memberProfile.memberId(),
+                memberProfile.memberName()
+        )), memberProfile.memberId());
     }
 
     @DeleteMapping("/withdraw")
     public ResponseEntity<ApiResponse<Void>> withdraw(@RequestBody WithdrawMemberRequest request) {
         Actor actor = providers.auth().currentActor();
-        if (request.memberId() == null || !actor.memberId().equals(request.memberId().trim())) {
-            throw new CoreException(ErrorCode.FORBIDDEN, "본인 계정만 탈퇴할 수 있습니다.");
-        }
-
-        withdrawMemberService.withdraw(actor.memberId());
+        withdrawMemberService.withdraw(actor.memberId(), request.memberId());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.expireAccessTokenCookie().toString())
                 .body(ApiResponse.success(null));
@@ -104,11 +103,11 @@ public class AuthController {
 
     private ResponseEntity<ApiResponse<AuthUserResponse>> withAccessToken(
             ApiResponse<AuthUserResponse> body,
-            MemberCredential memberCredential
+            String memberId
     ) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.buildAccessTokenCookie(
-                        jwtAccessTokenManager.issue(memberCredential)
+                        jwtAccessTokenManager.issue(memberId)
                 ).toString())
                 .body(body);
     }

@@ -23,7 +23,7 @@ public class GetAccountSummaryService {
         TradingAccount account = accountRepository.findByMemberId(query.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         RewardPointWallet rewardPointWallet = rewardPointRepository.findByMemberId(query.memberId())
-                .orElse(new RewardPointWallet(query.memberId(), 0));
+                .orElse(RewardPointWallet.empty(query.memberId()));
 
         return new AccountSummaryResult(
                 account.memberId(),

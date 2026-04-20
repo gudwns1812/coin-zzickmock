@@ -39,11 +39,10 @@ public class CreateOrderService {
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());
         OrderPreview preview = preview(command, marketSnapshot);
         String orderId = UUID.randomUUID().toString();
-        String status = preview.executable() ? "FILLED" : "PENDING";
 
         FuturesOrder futuresOrder = orderRepository.save(
                 command.memberId(),
-                new FuturesOrder(
+                FuturesOrder.place(
                         orderId,
                         command.symbol(),
                         command.positionSide(),
@@ -52,7 +51,7 @@ public class CreateOrderService {
                         command.leverage(),
                         command.quantity(),
                         command.limitPrice(),
-                        status,
+                        preview.executable(),
                         preview.feeType(),
                         preview.estimatedFee(),
                         marketSnapshot.lastPrice()

@@ -10,6 +10,19 @@ public record TradingAccount(
         double walletBalance,
         double availableMargin
 ) {
+    private static final double INITIAL_WALLET_BALANCE = 100_000d;
+    private static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
+
+    public static TradingAccount openDefault(String memberId, String memberEmail, String memberName) {
+        return new TradingAccount(
+                memberId,
+                memberEmail,
+                memberName,
+                INITIAL_WALLET_BALANCE,
+                INITIAL_AVAILABLE_MARGIN
+        );
+    }
+
     public TradingAccount reserveForFilledOrder(double estimatedFee, double estimatedInitialMargin) {
         double requiredMargin = estimatedInitialMargin + estimatedFee;
         if (availableMargin < requiredMargin) {

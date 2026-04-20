@@ -8,8 +8,10 @@ import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 @Configuration
+@Profile("test")
 public class MemberDemoSeedConfiguration {
     private static final String DEMO_MEMBER_ID = "test";
     private static final String DEMO_PASSWORD = "test@1234";
@@ -19,9 +21,6 @@ public class MemberDemoSeedConfiguration {
     private static final String DEMO_ZIP_CODE = "06018";
     private static final String DEMO_ADDRESS = "서울 강남구 테헤란로 123";
     private static final String DEMO_ADDRESS_DETAIL = "101호";
-    private static final double INITIAL_WALLET_BALANCE = 100_000d;
-    private static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
-
     @Bean
     ApplicationRunner demoMemberInitializer(
             AccountRepository accountRepository,
@@ -30,17 +29,15 @@ public class MemberDemoSeedConfiguration {
     ) {
         return args -> {
             if (accountRepository.findByMemberId(DEMO_MEMBER_ID).isEmpty()) {
-                accountRepository.save(new TradingAccount(
+                accountRepository.save(TradingAccount.openDefault(
                         DEMO_MEMBER_ID,
                         DEMO_MEMBER_EMAIL,
-                        DEMO_MEMBER_NAME,
-                        INITIAL_WALLET_BALANCE,
-                        INITIAL_AVAILABLE_MARGIN
+                        DEMO_MEMBER_NAME
                 ));
             }
 
             if (memberCredentialRepository.findByMemberId(DEMO_MEMBER_ID).isEmpty()) {
-                memberCredentialRepository.save(new MemberCredential(
+                memberCredentialRepository.save(MemberCredential.register(
                         DEMO_MEMBER_ID,
                         memberPasswordHasher.hash(DEMO_PASSWORD),
                         DEMO_MEMBER_NAME,

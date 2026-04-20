@@ -15,7 +15,7 @@ public class GetRewardPointService {
     @Transactional(readOnly = true)
     public RewardPointResult get(String memberId) {
         RewardPointWallet wallet = rewardPointRepository.findByMemberId(memberId)
-                .orElse(new RewardPointWallet(memberId, 0));
+                .orElse(RewardPointWallet.empty(memberId));
         return new RewardPointResult(wallet.rewardPoint(), "POINT_WALLET");
     }
 }

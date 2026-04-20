@@ -4,7 +4,9 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
+import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
+import coin.coinzzickmock.feature.member.domain.MemberIdentityRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,26 +18,17 @@ public class AuthenticateMemberService {
     private final MemberPasswordHasher memberPasswordHasher;
 
     @Transactional(readOnly = true)
-    public MemberCredential authenticate(String memberId, String rawPassword) {
-        String normalizedMemberId = normalizeRequired(memberId, "아이디");
-        if (rawPassword == null || rawPassword.isBlank()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "비밀번호는 필수입니다.");
-        }
+    public MemberProfileResult authenticate(String memberId, String rawPassword) {
+        String normalizedMemberId = MemberIdentityRules.normalizeMemberId(memberId);
+        String requiredPassword = MemberIdentityRules.requirePasswordInput(rawPassword);
 
         MemberCredential memberCredential = memberCredentialRepository.findByMemberId(normalizedMemberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_CREDENTIALS));
 
-        if (!memberPasswordHasher.matches(rawPassword, memberCredential.passwordHash())) {
+        if (!memberPasswordHasher.matches(requiredPassword, memberCredential.passwordHash())) {
             throw new CoreException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        return memberCredential;
-    }
-
-    private String normalizeRequired(String value, String fieldName) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, fieldName + "은(는) 필수입니다.");
-        }
-        return value.trim();
+        return MemberProfileResult.from(memberCredential);
     }
 }

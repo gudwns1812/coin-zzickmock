@@ -10,6 +10,10 @@ import java.util.Optional;
 public interface MarketHistoryRepository {
     Map<String, Long> findSymbolIdsBySymbols(List<String> symbols);
 
+    default Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId) {
+        return Optional.empty();
+    }
+
     Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime);
 
     List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive);

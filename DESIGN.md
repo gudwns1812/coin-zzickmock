@@ -64,7 +64,7 @@
 
 - `BACKEND.md`는 백엔드 작업 기준과 입구 문서
 - `CI_WORKFLOW.md`는 작업 운영 플로우 기준
-- `QUALITY_SCORE.md`는 리뷰 종료 기준
+- 리뷰 종료 기준은 루트 문서가 아니라 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)의 review 관련 스킬 계약에 둔다
 
 ### `docs/design-docs/`에 두는 것
 

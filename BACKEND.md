@@ -54,8 +54,8 @@
 
 ### 백엔드 품질 게이트나 린트를 확인할 때
 
-1. [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md)
-2. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
+1. [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)
+2. `AGENTS.md`에 등록된 review 관련 스킬(`code-review`, `security-review` 등)
 3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
 4. [docs/design-docs/backend-design/05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
 
@@ -111,4 +111,4 @@
 - DB 변경이 있으면 새 `Flyway` migration 버전을 추가하고 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 갱신했다.
 - `./gradlew architectureLint`를 통과했다.
 - `./gradlew check`를 통과했다.
-- 품질 점수와 PR/CI 흐름은 [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md), [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따랐다.
+- 리뷰 게이트와 PR/CI 흐름은 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)와 이 저장소의 review 관련 스킬, 그리고 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md) 기준을 따른다.

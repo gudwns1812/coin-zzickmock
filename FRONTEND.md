@@ -41,7 +41,8 @@
 
 1. 이 문서의 `Runtime Verification`
 2. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-3. 필요하면 [docs/design-docs/ui-design/05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
+3.
+필요하면 [docs/design-docs/ui-design/05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
 
 ## Current Reality
 
@@ -122,7 +123,7 @@
 
 프론트 변경은 정적 코드 확인만으로 끝내지 않는다.
 상호작용, 레이아웃, 시각 피드백이 바뀌는 경우에는 런타임에서 실제 UI 반응을 확인한다.
-프론트엔드의 검증 기준은 `QUALITY_SCORE.md` 같은 점수 문서가 아니라, 사용자가 실제 화면에서 의도한 흐름을 문제없이 수행할 수 있는지다.
+프론트엔드의 검증 기준은 점수 문서가 아니라, 사용자가 실제 화면에서 의도한 흐름을 문제없이 수행할 수 있는지와 필요한 경우 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md) 기준의 review 스킬 검토를 통과하는지다.
 
 기본 원칙:
 
@@ -155,4 +156,3 @@
 - 필요한 경우 타입체크와 빌드를 통과했다.
 - UI 영향이 있는 변경이면 실제 화면에서 핵심 사용자 흐름을 검증했거나, 생략 이유를 남겼다.
 - 프론트 작업의 완료 판단은 점수 문서가 아니라 실제 UI가 의도대로 작동하는지로 한다.
-- PR/CI 같은 작업 운영 흐름은 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다.

@@ -45,9 +45,6 @@ public class MarketCandle1hEntity extends AuditableEntity {
     @Column(name = "quote_volume", precision = 19, scale = 4)
     private BigDecimal quoteVolume;
 
-    @Column(name = "trade_count")
-    private Integer tradeCount;
-
     @Column(name = "source_minute_open_time", nullable = false)
     private Instant sourceMinuteOpenTime;
 
@@ -75,7 +72,6 @@ public class MarketCandle1hEntity extends AuditableEntity {
         this.closePrice = decimal(candle.closePrice());
         this.volume = decimal(candle.volume());
         this.quoteVolume = decimal(candle.quoteVolume());
-        this.tradeCount = candle.tradeCount();
         this.sourceMinuteOpenTime = candle.sourceMinuteOpenTime();
         this.sourceMinuteCloseTime = candle.sourceMinuteCloseTime();
     }
@@ -91,7 +87,6 @@ public class MarketCandle1hEntity extends AuditableEntity {
                 closePrice.doubleValue(),
                 volume.doubleValue(),
                 quoteVolume == null ? 0.0 : quoteVolume.doubleValue(),
-                tradeCount == null ? 0 : tradeCount,
                 sourceMinuteOpenTime,
                 sourceMinuteCloseTime
         );

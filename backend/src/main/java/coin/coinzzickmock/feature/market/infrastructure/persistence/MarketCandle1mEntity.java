@@ -45,9 +45,6 @@ public class MarketCandle1mEntity extends AuditableEntity {
     @Column(name = "quote_volume", precision = 19, scale = 4)
     private BigDecimal quoteVolume;
 
-    @Column(name = "trade_count")
-    private Integer tradeCount;
-
     protected MarketCandle1mEntity() {
     }
 
@@ -69,7 +66,6 @@ public class MarketCandle1mEntity extends AuditableEntity {
         this.closePrice = decimal(candle.closePrice());
         this.volume = decimal(candle.volume());
         this.quoteVolume = decimal(candle.quoteVolume());
-        this.tradeCount = candle.tradeCount();
     }
 
     public MarketHistoryCandle toDomain() {
@@ -82,8 +78,7 @@ public class MarketCandle1mEntity extends AuditableEntity {
                 lowPrice.doubleValue(),
                 closePrice.doubleValue(),
                 volume.doubleValue(),
-                quoteVolume == null ? 0.0 : quoteVolume.doubleValue(),
-                tradeCount == null ? 0 : tradeCount
+                quoteVolume == null ? 0.0 : quoteVolume.doubleValue()
         );
     }
 

@@ -72,7 +72,7 @@
 ### 테스트 전략이나 아키텍처 린트 규칙을 확인할 때
 
 1. [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
-2. [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md)
+2. [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)
 
 ## Maintenance Rule
 

@@ -83,14 +83,15 @@ const UserInfo = ({
             <span>{token.memberName}</span>
 
             <span>휴대폰</span>
-            <span>{token.phoneNumber}</span>
+            <span>{token.phoneNumber || "-"}</span>
 
             <span>이메일</span>
             <span>{token.email}</span>
 
             <span>집주소</span>
             <span>
-              {token.zipCode} {token.Address} {token.AddressDetail}
+              {token.zipCode || ""} {token.Address || ""} {token.AddressDetail || ""}
+              {!(token.zipCode || token.Address || token.AddressDetail) && "-"}
             </span>
           </div>
 

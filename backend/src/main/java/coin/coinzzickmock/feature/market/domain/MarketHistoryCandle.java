@@ -11,8 +11,7 @@ public record MarketHistoryCandle(
         double lowPrice,
         double closePrice,
         double volume,
-        double quoteVolume,
-        int tradeCount
+        double quoteVolume
 ) {
     public static MarketHistoryCandle first(long symbolId, Instant openTime, Instant closeTime, double price) {
         return new MarketHistoryCandle(
@@ -24,8 +23,7 @@ public record MarketHistoryCandle(
                 price,
                 price,
                 0.0,
-                0.0,
-                0
+                0.0
         );
     }
 
@@ -39,8 +37,7 @@ public record MarketHistoryCandle(
                 Math.min(lowPrice, latestPrice),
                 latestPrice,
                 volume,
-                quoteVolume,
-                tradeCount
+                quoteVolume
         );
     }
 }

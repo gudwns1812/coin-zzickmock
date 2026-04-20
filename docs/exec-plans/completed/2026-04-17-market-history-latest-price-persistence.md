@@ -16,7 +16,7 @@
 - [x] (2026-04-17 15:36+09:00) `green` 단계 완료: 시장 히스토리 영속 계층과 최신가 가공 저장 구현
 - [x] (2026-04-17 15:36+09:00) `refactor` 단계 완료: 시간 버킷/롤업 로직 분리와 in-memory 테스트 보강
 - [x] (2026-04-17 15:37+09:00) 검증 완료: `./gradlew architectureLint`, `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check`
-- [ ] 품질 게이트 확인 및 PR 단계 진행
+- [ ] review gate 확인 및 PR 단계 진행
 
 ## 놀라움과 발견
 
@@ -63,7 +63,7 @@
 - `MarketRealtimeFeed`가 최신 ticker refresh 이후 `MarketHistoryRecorder`를 호출해 `1m`, `1h` 캔들을 함께 upsert하도록 바뀌었다.
 - `feature.market.infrastructure.persistence`에 심볼/분봉/시간봉 JPA 영속 계층을 추가해 기존 스키마를 실제로 사용하기 시작했다.
 - `MarketRealtimeFeedTest`, `MarketRealtimeFeedPersistenceTest`, `JpaMarketHistoryRepositoryTest`를 통해 메모리 집계와 H2 영속 경로를 함께 검증했다.
-- 아직 실제 거래량 candle 소스는 없으므로 `volume`, `quoteVolume`, `tradeCount`는 모두 `0`으로 저장된다. 추후 Bitget candle 커넥터를 붙이면 이 부분을 실제 값으로 확장해야 한다.
+- 이 문서 작성 시점에는 `tradeCount`를 `0`으로 저장했지만, 이후 스키마와 제품 스펙에서 `trade_count` 자체를 제거했다. 최신 기준은 `docs/product-specs/coin-futures-candle-timeframe-spec.md`와 `docs/generated/db-schema.md`를 따른다.
 
 ## 맥락과 길잡이
 

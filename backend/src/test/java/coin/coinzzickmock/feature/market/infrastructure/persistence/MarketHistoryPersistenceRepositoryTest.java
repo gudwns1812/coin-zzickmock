@@ -6,6 +6,7 @@ import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
@@ -69,8 +70,7 @@ class MarketHistoryPersistenceRepositoryTest {
                 101000,
                 101000,
                 0.0,
-                0.0,
-                0
+                0.0
         ));
         marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
                 symbolId,
@@ -81,8 +81,7 @@ class MarketHistoryPersistenceRepositoryTest {
                 101000,
                 102500,
                 0.0,
-                0.0,
-                0
+                0.0
         ));
 
         marketHistoryRepository.saveHourlyCandle(new HourlyMarketCandle(
@@ -95,7 +94,6 @@ class MarketHistoryPersistenceRepositoryTest {
                 102500,
                 0.0,
                 0.0,
-                0,
                 minuteOpenTime,
                 minuteCloseTime
         ));
@@ -110,6 +108,39 @@ class MarketHistoryPersistenceRepositoryTest {
         assertEquals(1, count("market_candles_1h"), "Expected 1 hourly candle but found " + count("market_candles_1h"));
         assertEquals(102500, storedMinute.highPrice(), 0.0001);
         assertEquals(102500, storedMinute.closePrice(), 0.0001);
+    }
+
+    @Test
+    void returnsLatestPersistedMinuteOpenTime() {
+        Long symbolId = jdbcTemplate.queryForObject(
+                "SELECT id FROM market_symbols WHERE symbol = 'BTCUSDT'", Long.class);
+
+        marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
+                symbolId,
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z"),
+                101000,
+                101200,
+                100900,
+                101100,
+                0.0,
+                0.0
+        ));
+        marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
+                symbolId,
+                Instant.parse("2026-04-17T06:02:00Z"),
+                Instant.parse("2026-04-17T06:03:00Z"),
+                101100,
+                101500,
+                101000,
+                101400,
+                0.0,
+                0.0
+        ));
+
+        Instant latestOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId).orElseThrow();
+
+        assertEquals(Instant.parse("2026-04-17T06:02:00Z"), latestOpenTime);
     }
 
     private int count(String tableName) {
@@ -188,6 +219,11 @@ class MarketHistoryPersistenceRepositoryTest {
                     .filter(snapshot -> snapshot.symbol().equals(symbol))
                     .findFirst()
                     .orElse(null);
+        }
+
+        @Override
+        public List<MarketMinuteCandleSnapshot> loadMinuteCandles(String symbol, Instant fromInclusive, Instant toExclusive) {
+            return List.of();
         }
 
         void replaceSnapshots(List<MarketSnapshot> snapshots) {

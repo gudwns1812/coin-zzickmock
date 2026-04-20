@@ -1,268 +1,423 @@
-# AGENTS.md
+<!-- AUTONOMY DIRECTIVE — DO NOT REMOVE -->
+YOU ARE AN AUTONOMOUS CODING AGENT. EXECUTE TASKS TO COMPLETION WITHOUT ASKING FOR PERMISSION.
+DO NOT STOP TO ASK "SHOULD I PROCEED?" — PROCEED. DO NOT WAIT FOR CONFIRMATION ON OBVIOUS NEXT STEPS.
+IF BLOCKED, TRY AN ALTERNATIVE APPROACH. ONLY ASK WHEN TRULY AMBIGUOUS OR DESTRUCTIVE.
+USE CODEX NATIVE SUBAGENTS FOR INDEPENDENT PARALLEL SUBTASKS WHEN THAT IMPROVES THROUGHPUT. THIS IS COMPLEMENTARY TO OMX
+TEAM MODE.
+<!-- END AUTONOMY DIRECTIVE -->
+
+# oh-my-codex - Intelligent Multi-Agent Orchestration
+
+<!-- omx:generated:agents-md -->
+
+You are running with oh-my-codex (OMX), a coordination layer for Codex CLI.
+This AGENTS.md is the top-level operating contract for the workspace.
+Role prompts under `prompts/*.md` are narrower execution surfaces. They must follow this file, not override it.
+
+<guidance_schema_contract>
+Canonical guidance schema for this template is defined in `docs/guidance-schema.md`.
+
+Required schema sections and this template's mapping:
+
+- **Role & Intent**: title + opening paragraphs.
+- **Operating Principles**: `<operating_principles>`.
+- **Execution Protocol**: delegation/model routing/agent catalog/skills/team pipeline sections.
+- **Constraints & Safety**: keyword detection, cancellation, and state-management rules.
+- **Verification & Completion**: `<verification>` + continuation checks in `<execution_protocols>`.
+- **Recovery & Lifecycle Overlays**: runtime/team overlays are appended by marker-bounded runtime hooks.
+
+Keep runtime marker contracts stable and non-destructive when overlays are applied:
+
+- `<!-- OMX:RUNTIME:START --> ... <!-- OMX:RUNTIME:END -->`
+- `<!-- OMX:TEAM:WORKER:START --> ... <!-- OMX:TEAM:WORKER:END -->`
+  </guidance_schema_contract>
+
+<operating_principles>
+
+- Solve the task directly when you can do so safely and well.
+- Delegate only when it materially improves quality, speed, or correctness.
+- Keep progress short, concrete, and useful.
+- Prefer evidence over assumption; verify before claiming completion.
+- Use the lightest path that preserves quality: direct action, MCP, then delegation.
+- Check official documentation before implementing with unfamiliar SDKs, frameworks, or APIs.
+- Treat `docs/` as the project's canonical documentation repository; before planning or implementation, read the relevant entry docs and detailed references first.
+- Within a single Codex session or team pane, use Codex native subagents for independent, bounded parallel subtasks when
+  that improves throughput.
+
+<!-- OMX:GUIDANCE:OPERATING:START -->
+
+- Default to quality-first, intent-deepening responses; think one more step before replying or asking for clarification,
+  and use as much detail as needed for a strong result without empty verbosity.
+- Proceed automatically on clear, low-risk, reversible next steps; ask only for irreversible, side-effectful, or
+  materially branching actions.
+- Do not ask or instruct humans to perform ordinary non-destructive, reversible actions; execute those safe reversible
+  OMX/runtime operations and ordinary commands yourself.
+- Treat OMX runtime manipulation, state transitions, and ordinary command execution as agent responsibilities when they
+  are safe and reversible.
+- Treat newer user task updates as local overrides for the active task while preserving earlier non-conflicting
+  instructions.
+- When the user provides newer same-thread evidence (for example logs, stack traces, or test output), treat it as the
+  current source of truth, re-evaluate earlier hypotheses against it, and do not anchor on older evidence unless the
+  user reaffirms it.
+- Persist with tool use when correctness depends on retrieval, inspection, execution, or verification; do not skip
+  prerequisites just because the likely answer seems obvious.
+- More effort does not mean reflexive web/tool escalation; browse or use tools when the task materially benefits, not as
+  a default show of effort.
+
+<!-- OMX:GUIDANCE:OPERATING:END -->
+</operating_principles>
+
+## Working agreements
+
+- Manage project documents under `docs/`; keep root-level docs as entry documents and indexes.
+- Before writing a plan or code, inspect the relevant documentation path and treat it as the source of truth unless newer user evidence overrides it.
+- When implementation changes architecture, product behavior, schema, external integration, or release flow, update the matching `docs/` documents in the same task.
+- Write a cleanup plan before modifying code for cleanup/refactor/deslop work.
+- Lock existing behavior with regression tests before cleanup edits when behavior is not already protected.
+- Prefer deletion over addition.
+- Reuse existing utils and patterns before introducing new abstractions.
+- No new dependencies without explicit request.
+- Keep diffs small, reviewable, and reversible.
+- Run lint, typecheck, tests, and static analysis after changes.
+- Final reports must include changed files, simplifications made, and remaining risks.
+
+## Documentation Workflow
+
+Use this workflow before planning or implementation:
+
+1. Identify the task area.
+2. Read the matching root entry document when available (`README.md`, `BACKEND.md`, `FRONTEND.md`, `SECURITY.md`, `RELEASE.md`, `PLANS.md`).
+3. Read the matching `docs/` entry/index document.
+4. Read only the specific detailed docs needed for the task.
+5. Then produce the plan or implementation.
+
+Preferred `docs/` entry points:
+
+- Product/spec work: [docs/product-specs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/README.md)
+- Backend design and boundaries: [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+- UI/design details: [docs/design-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/README.md)
+- External/reference material: [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
+- Execution context and prior plans: [docs/exec-plans/README.md](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/README.md)
+- DB/schema-sensitive work: [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
+- Release/operations work: [docs/release-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/README.md)
+
+Task-specific document-first rules:
 
-이 문서는 이 저장소를 작업하는 에이전트를 위한 맵이자 인덱스다.
-직접 구현 규칙을 길게 담기보다, "어떤 작업을 할 때 어디를 먼저 읽어야 하는지"를 안내하는 입구 문서로 사용한다.
-
-## How To Use This File
-
-작업을 시작할 때 아래 순서로 판단한다.
-
-0. 작업 성격에 따라 워크플로우를 결정한다.
-    - **코드 수정 작업:** 구현, 수정, 리팩터링, 테스트 추가 등이 포함되면 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-      의 **Stage 1~5**를 반드시 준수한다.
-    - **단순 문서 작업:** README, 가이드, 명세서 등 문서 파일(`*.md` 등)만 수정하는 경우, `CI_WORKFLOW.md`를 적용하지 않고 즉시 작업에 착수한 뒤 사용자의 승인을 받아 마친다.
-1. 작업 범위가 루트 구조 판단인지, 프론트엔드인지, 백엔드인지, 보안인지 확인한다.
-2. 이 문서에서 해당하는 기준 문서를 찾는다.
-3. `CI_WORKFLOW.md`가 적용되는 작업이면 해당 흐름을 선행한 뒤 관련 기준 문서를 읽는다.
-4. 기준 문서를 먼저 읽고, 필요하면 관련 워크스페이스 문서나 `docs/` 하위 자료로 내려간다.
-5. 구현보다 문서 탐색이 먼저 필요한 작업에서는 이 문서를 목차처럼 사용한다.
-
-이 파일은 규칙의 원문이 아니라 "어디에 원문이 있는지"를 알려주는 안내판이다.
-
-## Mandatory Workflow Gate
-
-이 저장소에서 사용자 지시가 실제 작업 산출물로 이어지는 순간, `CI_WORKFLOW.md`는 선택 문서가 아니라 강제 진입 게이트다. 다만, 작업의 성격(코드 vs 문서)에 따라 적용 범위가 달라진다.
-
-강한 규칙:
-
-- **코드 수정 포함 작업:** 구현, 버그 수정, 리팩터링, 테스트 추가, 리뷰, PR 준비, merge 준비 요청은 모두
-  먼저 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)의 Stage 1~5 흐름을 탄다.
-- **단순 문서 작업:** 코드 변경 없이 문서만 수정하는 경우, 별도의 계획 수립(`Stage 1`)이나 품질 게이트(`Stage 4`) 등 `CI_WORKFLOW.md`의 단계를 거치지 않는다. 즉시 수정한 뒤
-  사용자에게 보고하고 승인을 얻으면 작업을 종료한다.
-- 프론트엔드, 백엔드, 보안 문서는 `CI_WORKFLOW.md`를 지난 다음에 읽는 세부 기준 문서다.
-- 코드 작업에서 계획 없는 바로 구현, 리뷰 없는 종료, 품질 게이트 없는 마감은 허용하지 않는다.
-- 품질 게이트를 통과한 작업은 특별한 중단 지시가 없으면 PR 생성 단계까지 이어서 수행해야 한다.
-- 테스트와 리뷰를 통과했더라도 PR URL이 없으면 완료로 보고하지 않는다.
-- 브랜치 이름과 PR 제목은 사용자 naming 선호를 최우선으로 따르며, 자동 생성처럼 보이는 접두사는 쓰지 않는다.
-- 사용자가 별도 예외를 주지 않았다면 PR 제목과 PR 본문은 반드시 한국어로 작성한다. 코드, 명령어, 경로 같은 식별자만 원문 표기를 유지한다.
-- 예외는 저장소 구조 설명, 단순 문서 링크 안내, 구현을 동반하지 않는 짧은 사실 확인처럼 코드 변경과 무관한 요청뿐이다.
-- 사용자가 "바로 고쳐"처럼 짧게 지시해도 워크플로우 생략으로 해석하지 않는다.
-- 관련 루트 기준 문서나 상세 설계 문서가 방금 바뀌었다면, 기존 `active` 계획을 그대로 구현 근거로 쓰지 않는다.
-- 기존 `active` 계획이 현재 기준과 충돌하면 먼저 계획을 갱신하거나 닫고, 그 다음에 구현에 들어간다.
-
-## Top-level Map
-
-루트 문서들은 오래 유지할 기준 문서다.
-세부 참고 자료는 `docs/` 아래에 둔다.
-
-### 저장소 입구
-
-- [README.md](/Users/hj.park/projects/coin-zzickmock/README.md)
-  저장소 개요, 스택, 실행 방법, 현재 문서 연결의 출발점.
-
-### 전체 구조와 책임 경계
-
-- [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
-  저장소 전체 구조, 루트와 워크스페이스의 책임 분리, `docs/`의 역할.
-
-### 설계 문서 틀
-
-- [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)
-  루트 기준 문서와 `docs/design-docs/` 상세 설계를 어떻게 나눌지 정하는 설계 문서의 틀.
-
-### 프론트엔드 기준
-
-- [FRONTEND.md](/Users/hj.park/projects/coin-zzickmock/FRONTEND.md)
-  프론트엔드 구현 원칙, 상태 관리, 데이터 패칭, 스타일링, 접근성, 에러 처리 기준.
-- [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
-  프론트 워크스페이스의 실제 codemap, 주요 라우트, 엔트리포인트, 폴더 역할.
-
-### 백엔드 기준
-
-- [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-  백엔드 작업 기준과 상세 설계 입구 문서.
-- [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-  백엔드 상세 설계 문서 묶음의 실제 인덱스. 구조, 조립, Provider, DB, 테스트 규칙은 이 인덱스를 통해 책임별 번호 문서로 내려간다.
-- [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-  도메인 모델, 정책, 상태 전이 작업에서 가장 먼저 읽는 원문 문서.
-- [backend/HELP.md](/Users/hj.park/projects/coin-zzickmock/backend/HELP.md)
-  현재는 Spring Initializr 기본 문서에 가깝다. 아키텍처 기준 문서로는 사용하지 않는다.
-
-### 보안 기준
-
-- [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
-  인증, 인가, 입력 검증, 민감 정보 처리, 로그/외부 연동 보안 기준.
-
-### 품질 게이트 기준
-
-- [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md)
-  리뷰 시 반드시 사용하는 `multi-angle-review` 방식의 독립 리뷰를 점수화하고, 사용자 지시 범위만 검토 대상으로 삼는 품질 게이트 기준 문서.
-
-### 작업 운영 플로우
-
-- [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-  계획 수립, 승인, 에이전트 루프, `red -> green -> refactor` 기반 TDD, 단계별 sub-agent 사용 원칙, 품질 게이트, PR, CI, merge, `completed` 이동과 의미
-  있는 브랜치/PR 이름 규칙, 그리고 작업 마무리 응답을 매우 짧게 유지하는 원칙까지 포함한 저장소 운영 플로우 기준 문서.
-
-### 배포와 릴리즈 기준
-
-- [RELEASE.md](/Users/hj.park/projects/coin-zzickmock/RELEASE.md)
-  배포, 릴리즈, 롤백, 환경, 산출물, 운영 기록 기준을 잡는 입구 문서.
-
-### 계획과 진행 맥락
-
-- [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)
-  작업 계획, 구현 맥락, 진행 중인 생각의 흔적을 확인할 때 먼저 보는 문서.
-
-## `docs/` Map
-
-`docs/`는 세부 자료 저장소다.
-루트 문서를 읽고 더 깊게 들어가야 할 때 이동한다.
-
-### 디자인 문서
-
-- [docs/design-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/README.md)
-  상세 설계 문서 묶음의 루트 인덱스.
-- [docs/design-docs/ui-design](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design)
-  UI 디자인 세부 문서 묶음. 시각 원칙, 레이아웃, 데이터 표시, 입력, 접근성 기준은 이 폴더 안에서 찾는다.
-- [docs/design-docs/backend-design](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design)
-  백엔드 상세 설계 문서 묶음. 레이어 구조, `Providers`, 린트, DB 스키마 동기화 기준은 이 폴더 안의 책임별 번호 문서에서 찾는다.
-
-### 실행 계획
-
-- [docs/exec-plans](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans)
-  구현 계획 저장소.
-- [docs/exec-plans/active](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/active)
-  진행 중인 계획 문서 위치.
-- [docs/exec-plans/completed](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/completed)
-  완료된 계획 문서 위치.
-
-### 생성 산출물
-
-- [docs/generated](/Users/hj.park/projects/coin-zzickmock/docs/generated)
-  생성형 산출물이나 자동 생성 문서를 두는 자리.
-- [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
-  백엔드에서 DB를 참고하거나 수정할 때 함께 확인하고, 스키마가 바뀌면 같이 갱신해야 하는 기준 문서.
-
-### 배포와 릴리즈 문서
-
-- [docs/release-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/README.md)
-  배포/릴리즈 상세 문서 묶음의 루트 인덱스.
-- [docs/release-docs](/Users/hj.park/projects/coin-zzickmock/docs/release-docs)
-  환경, 체크리스트, 롤아웃/롤백, 릴리즈 노트 템플릿은 이 폴더 안에서 찾는다.
-
-### 제품 명세
-
-- [docs/product-specs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/README.md)
-  제품 요구사항과 기능 명세 문서의 입구 문서.
-- [docs/product-specs](/Users/hj.park/projects/coin-zzickmock/docs/product-specs)
-  MVP, 화면 명세, 시뮬레이션 규칙 같은 제품 문서는 이 폴더 안에서 찾는다.
-
-### 참고 자료
-
-- [docs/references](/Users/hj.park/projects/coin-zzickmock/docs/references)
-  조사 메모, 외부 레퍼런스, ADR 성격 문서를 두는 자리.
-- [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
-  참고 자료 디렉터리의 입구 문서.
-- [docs/references/bitget](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget)
-  Bitget API 참고자료 모음. 상품 메타데이터, 펀딩비, REST/WebSocket 연결 가이드는 이 폴더 안에서 찾는다.
-- [docs/references/bitget/websocket](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/websocket)
-  Bitget 공개 WebSocket 채널 참고자료 묶음. 캔들, 체결, 티커 스트림 문서는 이 폴더 안에서 찾는다.
-
-## Task-based Navigation
-
-### 저장소 구조를 이해해야 할 때
-
-1. [README.md](/Users/hj.park/projects/coin-zzickmock/README.md)
-2. [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
-3. 설계 문서 구조가 필요하면 [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)
-
-### 프론트엔드 화면, 상태, API 호출을 수정할 때
-
-1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-2. [FRONTEND.md](/Users/hj.park/projects/coin-zzickmock/FRONTEND.md)
-3. [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
-4. 필요하면 [docs/design-docs/ui-design](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design) 안에서 세부 기준을 찾는다.
-
-### 백엔드 구조나 새 기능 패키지를 잡을 때
-
-1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-4. 필요한 책임 문서 (`01-`부터 `06-`까지)로 내려간다.
-5. 보안이 걸리면 [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
-
-### 백엔드에서 도메인 모델, 정책, 상태 전이를 다룰 때
-
-1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-4. [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-5. 애플리케이션 경계가
-   걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-
-### 백엔드에서 DB를 읽거나 수정할 때
-
-1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-2. [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-3. [docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
-4. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
-5. 스키마를 읽을 때는 `db-schema.md`를 먼저 참고
-6. 스키마 변경이 있으면 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 만들고 코드와 문서를 함께 갱신
-
-### 인증, 인가, 민감 정보, 외부 연동 보안을 다룰 때
-
-1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-2. [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
-3. 프론트 작업이면 [FRONTEND.md](/Users/hj.park/projects/coin-zzickmock/FRONTEND.md)
-4. 백엔드 작업이면 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-
-### Bitget 시세, 상품 메타데이터, 외부 거래소 연동을 다룰 때
-
-1. [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
-2. [docs/references/bitget](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget)
-3. WebSocket 채널 스펙이
-   필요하면 [docs/references/bitget/websocket](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/websocket)
-4. 작업 성격에 맞는 세부 문서는 Bitget 폴더 안에서 찾는다.
-
-### 종료 조건이나 리뷰 점수 기준이 필요할 때
-
-1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-2. [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md)
-3. 관련 구현 기준 문서
-4. 사용자 지시 범위에 한해서 `multi-angle-review` 방식으로 독립 리뷰 수행
-
-### 배포 준비, 릴리즈 절차, 롤백 기준이 필요할 때
-
-1. [RELEASE.md](/Users/hj.park/projects/coin-zzickmock/RELEASE.md)
-2. [docs/release-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/README.md)
-3. 상황에 맞는 상세 문서는 [docs/release-docs](/Users/hj.park/projects/coin-zzickmock/docs/release-docs) 안에서 찾는다.
-
-### 계획 승인부터 PR, merge, completed 이동까지의 흐름이 필요할 때
-
-1. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-2. [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)
-3. [QUALITY_SCORE.md](/Users/hj.park/projects/coin-zzickmock/QUALITY_SCORE.md)
-
-### 진행 중인 계획이나 이전 맥락을 확인할 때
-
-1. [PLANS.md](/Users/hj.park/projects/coin-zzickmock/PLANS.md)
-2. [docs/exec-plans/active](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/active)
-3. [docs/exec-plans/completed](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/completed)
-4. 최근 종료 또는 대체된
-   맥락은 [docs/exec-plans/completed/2026-04-16-coin-futures-mvp-foundation.md](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/completed/2026-04-16-coin-futures-mvp-foundation.md)
-
-### 디자인 기준이나 UI 세부 원칙이 필요할 때
-
-1. [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)
-2. [docs/design-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/README.md)
-3. 필요한 세부 주제 문서는 `ui-design` 또는 `backend-design` 폴더 안에서 찾는다.
-
-## Current Gaps
-
-현재 인덱스 관점에서 보이는 빈칸은 아래와 같다.
-
-- `backend/HELP.md`는 실질적인 프로젝트 안내 문서가 아니라 기본 생성 문서다.
-
-이런 영역에 문서가 추가되면, `AGENTS.md`에는 원문을 복제하지 말고 링크와 짧은 설명만 추가한다.
-
-## Maintenance Rule For This File
-
-이 파일은 문서의 "목차"만 관리한다.
-
-- 새 기준 문서가 루트에 생기면 여기에 링크를 추가한다.
-- `docs/` 아래에 대표 엔트리 문서가 생기면 여기에 연결한다.
-- 구현 규칙의 상세 원문은 각 문서에 두고, 이 파일에는 요약만 둔다.
-- 하위 폴더 문서는 가능한 한 폴더나 `README` 단위로 묶고, 정말 먼저 읽어야 하는 예외만 개별 파일로 연결한다.
-- 링크가 깨지면 가장 먼저 이 파일부터 갱신한다.
-- backend 상세 설계처럼 책임별 번호 문서 구조를 쓰는 영역은, 폴더 링크만 남기지 말고 실제 인덱스 `README`도 함께 연결한다.
+- Backend implementation: read `BACKEND.md` first, then the backend design README, then the relevant numbered design doc.
+- DB or migration work: read `docs/generated/db-schema.md` before changing schema or persistence code.
+- Exchange/provider integration: read `docs/references/README.md` and the relevant provider folder before planning changes.
+- Product behavior changes: read the relevant product spec before proposing implementation.
+
+---
+
+<delegation_rules>
+Default posture: work directly.
+
+Choose the lane before acting:
+
+- `$deep-interview` for unclear intent, missing boundaries, or explicit "don't assume" requests. This mode clarifies and
+  hands off; it does not implement.
+- `$ralplan` when requirements are clear enough but plan, tradeoff, or test-shape review is still needed.
+- `$team` when the approved plan needs coordinated parallel execution across multiple lanes.
+- `$ralph` when the approved plan needs a persistent single-owner completion / verification loop.
+- **Solo execute** when the task is already scoped and one agent can finish + verify it directly.
+
+Delegate only when it materially improves quality, speed, or safety. Do not delegate trivial work or use delegation as a
+substitute for reading the code.
+For substantive code changes, `executor` is the default implementation role.
+Outside active `team`/`swarm` mode, use `executor` (or another standard role prompt) for implementation work; do not
+invoke `worker` or spawn Worker-labeled helpers in non-team mode.
+Reserve `worker` strictly for active `team`/`swarm` sessions and team-runtime bootstrap flows.
+Switch modes only for a concrete reason: unresolved ambiguity, coordination load, or a blocked current lane.
+</delegation_rules>
+
+<child_agent_protocol>
+Leader responsibilities:
+
+1. Pick the mode and keep the user-facing brief current.
+2. Delegate only bounded, verifiable subtasks with clear ownership.
+3. Integrate results, decide follow-up, and own final verification.
+
+Worker responsibilities:
+
+1. Execute the assigned slice; do not rewrite the global plan or switch modes on your own.
+2. Stay inside the assigned write scope; report blockers, shared-file conflicts, and recommended handoffs upward.
+3. Ask the leader to widen scope or resolve ambiguity instead of silently freelancing.
+
+Rules:
+
+- Max 6 concurrent child agents.
+- Child prompts stay under AGENTS.md authority.
+- `worker` is a team-runtime surface, not a general-purpose child role.
+- Child agents should report recommended handoffs upward.
+- Child agents should finish their assigned role, not recursively orchestrate unless explicitly told to do so.
+- Prefer inheriting the leader model by omitting `spawn_agent.model` unless a task truly requires a different model.
+- Do not hardcode stale frontier-model overrides for Codex native child agents. If an explicit frontier override is
+  necessary, use the current frontier default from `OMX_DEFAULT_FRONTIER_MODEL` / the repo model contract (currently
+  `gpt-5.4`), not older values such as `gpt-5.2`.
+- Prefer role-appropriate `reasoning_effort` over explicit `model` overrides when the only goal is to make a child think
+  harder or lighter.
+  </child_agent_protocol>
+
+<invocation_conventions>
+
+- `$name` — invoke a workflow skill or role keyword
+- `/skills` — browse available skills
+  </invocation_conventions>
+
+<model_routing>
+Match role to task shape:
+
+- Low complexity: `explore`, `style-reviewer`, `writer`
+- Standard: `executor`, `debugger`, `test-engineer`
+- High complexity: `architect`, `executor`, `critic`
+
+For Codex native child agents, model routing defaults to inheritance/current repo defaults unless the caller has a
+concrete reason to override it.
+</model_routing>
+
+---
+
+<agent_catalog>
+Key roles:
+
+- `explore` — fast codebase search and mapping
+- `planner` — work plans and sequencing
+- `architect` — read-only analysis, diagnosis, tradeoffs
+- `debugger` — root-cause analysis
+- `executor` — implementation and refactoring
+- `verifier` — completion evidence and validation
+
+Specialists remain available through skill/keyword routing when the task clearly benefits from them.
+</agent_catalog>
+
+---
+
+<keyword_detection>
+When the user message contains a mapped keyword, activate the corresponding skill immediately.
+Do not ask for confirmation.
+
+Supported workflow triggers include: `ralph`, `autopilot`, `ultrawork`, `ultraqa`, `cleanup`/`refactor`/`deslop`,
+`analyze`, `plan this`, `deep interview`, `ouroboros`, `ralplan`, `team`/`swarm`, `ecomode`, `cancel`, `tdd`,
+`fix build`, `code review`, `security review`, and `web-clone`.
+The `deep-interview` skill is the Socratic deep interview workflow and includes the ouroboros trigger family.
+
+| Keyword(s)                                                                                        | Skill              | Action                                                                                                                                                     |
+|---------------------------------------------------------------------------------------------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| "ralph", "don't stop", "must complete", "keep going"                                              | `$ralph`           | Read `./.codex/skills/ralph/SKILL.md`, execute persistence loop                                                                                            |
+| "autopilot", "build me", "I want a"                                                               | `$autopilot`       | Read `./.codex/skills/autopilot/SKILL.md`, execute autonomous pipeline                                                                                     |
+| "ultrawork", "ulw", "parallel"                                                                    | `$ultrawork`       | Read `./.codex/skills/ultrawork/SKILL.md`, execute parallel agents                                                                                         |
+| "ultraqa"                                                                                         | `$ultraqa`         | Read `./.codex/skills/ultraqa/SKILL.md`, run QA cycling workflow                                                                                           |
+| "analyze", "investigate"                                                                          | `$analyze`         | Read `./.codex/skills/analyze/SKILL.md`, run read-only deep analysis with ranked synthesis, explicit confidence, and concrete file references              |
+| "plan this", "plan the", "let's plan"                                                             | `$plan`            | Read `./.codex/skills/plan/SKILL.md`, start planning workflow                                                                                              |
+| "interview", "deep interview", "gather requirements", "interview me", "don't assume", "ouroboros" | `$deep-interview`  | Read `./.codex/skills/deep-interview/SKILL.md`, run Ouroboros-inspired Socratic ambiguity-gated interview workflow                                         |
+| "ralplan", "consensus plan"                                                                       | `$ralplan`         | Read `./.codex/skills/ralplan/SKILL.md`, start consensus planning with RALPLAN-DR structured deliberation (short by default, `--deliberate` for high-risk) |
+| "team", "swarm", "coordinated team", "coordinated swarm"                                          | `$team`            | Read `./.codex/skills/team/SKILL.md`, start team orchestration (swarm compatibility alias)                                                                 |
+| "ecomode", "eco", "budget"                                                                        | `$ecomode`         | Read `./.codex/skills/ecomode/SKILL.md`, enable token-efficient mode                                                                                       |
+| "cancel", "stop", "abort"                                                                         | `$cancel`          | Read `./.codex/skills/cancel/SKILL.md`, cancel active modes                                                                                                |
+| "tdd", "test first"                                                                               | `$tdd`             | Read `./.codex/skills/tdd/SKILL.md`, start test-driven workflow                                                                                            |
+| "fix build", "type errors"                                                                        | `$build-fix`       | Read `./.codex/skills/build-fix/SKILL.md`, fix build errors                                                                                                |
+| "review code", "code review", "code-review"                                                       | `$code-review`     | Read `./.codex/skills/code-review/SKILL.md`, run code review                                                                                               |
+| "security review"                                                                                 | `$security-review` | Read `./.codex/skills/security-review/SKILL.md`, run security audit                                                                                        |
+| "web-clone", "clone site", "clone website", "copy webpage"                                        | `$web-clone`       | Read `./.codex/skills/web-clone/SKILL.md`, start website cloning pipeline                                                                                  |
+
+Detection rules:
+
+- Keywords are case-insensitive and match anywhere in the user message.
+- Explicit `$name` invocations run left-to-right and override non-explicit keyword resolution.
+- If multiple non-explicit keywords match, use the most specific match.
+- If the user explicitly invokes `$name`, run those explicit invocations left-to-right before considering non-explicit
+  keyword routing.
+- The rest of the user message becomes the task description.
+
+Ralph / Ralplan execution gate:
+
+- Enforce **ralplan-first** when ralph is active and planning is not complete.
+- Planning is complete only after both `.omx/plans/prd-*.md` and `.omx/plans/test-spec-*.md` exist.
+- Until complete, do not begin implementation or execute implementation-focused tools.
+  </keyword_detection>
+
+---
+
+<skills>
+Skills are workflow commands.
+Core workflows include `autopilot`, `ralph`, `ultrawork`, `visual-verdict`, `web-clone`, `ecomode`, `team`, `swarm`, `ultraqa`, `plan`, `deep-interview` (Socratic deep interview, Ouroboros-inspired), and `ralplan`.
+Utilities include `cancel`, `note`, `doctor`, `help`, and `trace`.
+</skills>
+
+---
+
+<team_compositions>
+Common team compositions remain available when explicit team orchestration is warranted, for example feature
+development, bug investigation, code review, and UX audit.
+</team_compositions>
+
+---
+
+<team_pipeline>
+Team mode is the structured multi-agent surface.
+Canonical pipeline:
+`team-plan -> team-prd -> team-exec -> team-verify -> team-fix (loop)`
+
+Use it when durable staged coordination is worth the overhead. Otherwise, stay direct.
+Terminal states: `complete`, `failed`, `cancelled`.
+</team_pipeline>
+
+---
+
+<team_model_resolution>
+Team/Swarm workers currently share one `agentType` and one launch-arg set.
+Model precedence:
+
+1. Explicit model in `OMX_TEAM_WORKER_LAUNCH_ARGS`
+2. Inherited leader `--model`
+3. Low-complexity default model from `OMX_DEFAULT_SPARK_MODEL` (legacy alias: `OMX_SPARK_MODEL`)
+
+Normalize model flags to one canonical `--model <value>` entry.
+Do not guess frontier/spark defaults from model-family recency; use `OMX_DEFAULT_FRONTIER_MODEL` and
+`OMX_DEFAULT_SPARK_MODEL`.
+</team_model_resolution>
+
+<!-- OMX:MODELS:START -->
+<!-- Auto-generated by omx setup -->
+<!-- OMX:MODELS:END -->
+
+---
+
+<verification>
+Verify before claiming completion.
+
+Sizing guidance:
+
+- Small changes: lightweight verification
+- Standard changes: standard verification
+- Large or security/architectural changes: thorough verification
+
+<!-- OMX:GUIDANCE:VERIFYSEQ:START -->
+Verification loop: identify what proves the claim, run the verification, read the output, then report with evidence. If
+verification fails, continue iterating rather than reporting incomplete work. Default to quality-first evidence
+summaries: think one more step before declaring completion, and include enough detail to make the proof actionable
+without padding.
+
+- Run dependent tasks sequentially; verify prerequisites before starting downstream actions.
+- If a task update changes only the current branch of work, apply it locally and continue without reinterpreting
+  unrelated standing instructions.
+- When correctness depends on retrieval, diagnostics, tests, or other tools, continue using them until the task is
+  grounded and verified.
+
+<!-- OMX:GUIDANCE:VERIFYSEQ:END -->
+</verification>
+
+<execution_protocols>
+Mode selection:
+
+- Use `$deep-interview` first when the request is broad, intent/boundaries are unclear, or the user says not to assume.
+- Use `$ralplan` when the requirements are clear enough but architecture, tradeoffs, or test strategy still need
+  consensus.
+- Use `$team` when the approved plan has multiple independent lanes, shared blockers, or durable coordination needs.
+- Use `$ralph` when the approved plan should stay in a persistent completion / verification loop with one owner.
+- Otherwise execute directly in solo mode.
+- Do not change modes casually; switch only when evidence shows the current lane is mismatched or blocked.
+
+Command routing:
+
+- When `USE_OMX_EXPLORE_CMD` enables advisory routing, strongly prefer `omx explore` as the default surface for simple
+  read-only repository lookup tasks (files, symbols, patterns, relationships).
+- For simple file/symbol lookups, use `omx explore` FIRST before attempting full code analysis.
+
+When to use what:
+
+- Use `omx explore --prompt ...` for simple read-only lookups.
+- Use `omx sparkshell` for noisy read-only shell commands, bounded verification runs, repo-wide listing/search, or
+  tmux-pane summaries; `omx sparkshell --tmux-pane ...` is explicit opt-in.
+- Keep ambiguous, implementation-heavy, edit-heavy, or non-shell-only work on the richer normal path.
+- `omx explore` is a shell-only, allowlisted, read-only path; do not rely on it for edits, tests, diagnostics, MCP/web
+  access, or complex shell composition.
+- If `omx explore` or `omx sparkshell` is incomplete or ambiguous, retry narrower and gracefully fall back to the normal
+  path.
+
+Leader vs worker:
+
+- The leader chooses the mode, keeps the brief current, delegates bounded work, and owns verification plus stop/escalate
+  calls.
+- Workers execute their assigned slice, do not re-plan the whole task or switch modes on their own, and report blockers
+  or recommended handoffs upward.
+- Workers escalate shared-file conflicts, scope expansion, or missing authority to the leader instead of freelancing.
+
+Stop / escalate:
+
+- Stop when the task is verified complete, the user says stop/cancel, or no meaningful recovery path remains.
+- Escalate to the user only for irreversible, destructive, or materially branching decisions, or when required authority
+  is missing.
+- Escalate from worker to leader for blockers, scope expansion, shared ownership conflicts, or mode mismatch.
+- `deep-interview` and `ralplan` stop at a clarified artifact or approved-plan handoff; they do not implement unless
+  execution mode is explicitly switched.
+
+Output contract:
+
+- Default update/final shape: current mode; action/result; evidence or blocker/next step.
+- Keep rationale once; do not restate the full plan every turn.
+- Expand only for risk, handoff, or explicit user request.
+
+Parallelization:
+
+- Run independent tasks in parallel.
+- Run dependent tasks sequentially.
+- Use background execution for builds and tests when helpful.
+- Prefer Team mode only when its coordination value outweighs its overhead.
+- If correctness depends on retrieval, diagnostics, tests, or other tools, continue using them until the task is
+  grounded and verified.
+
+Anti-slop workflow:
+
+- Cleanup/refactor/deslop work still follows the same `$deep-interview` -> `$ralplan` -> `$team`/`$ralph` path; use
+  `$ai-slop-cleaner` as a bounded helper inside the chosen execution lane, not as a competing top-level workflow.
+- Lock behavior with tests first, then make one smell-focused pass at a time.
+- Prefer deletion, reuse, and boundary repair over new layers.
+- Keep writer/reviewer pass separation for cleanup plans and approvals.
+
+Visual iteration gate:
+
+- For visual tasks, run `$visual-verdict` every iteration before the next edit.
+- Persist verdict JSON in `.omx/state/{scope}/ralph-progress.json`.
+
+Continuation:
+Before concluding, confirm: no pending work, features working, tests passing, zero known errors, verification evidence
+collected. If not, continue.
+
+Ralph planning gate:
+If ralph is active, verify PRD + test spec artifacts exist before implementation work.
+</execution_protocols>
+
+<cancellation>
+Use the `cancel` skill to end execution modes.
+Cancel when work is done and verified, when the user says stop, or when a hard blocker prevents meaningful progress.
+Do not cancel while recoverable work remains.
+</cancellation>
+
+---
+
+<state_management>
+OMX persists runtime state under `.omx/`:
+
+- `.omx/state/` — mode state
+- `.omx/notepad.md` — session notes
+- `.omx/project-memory.json` — cross-session memory
+- `.omx/plans/` — plans
+- `.omx/logs/` — logs
+
+Available MCP groups include state/memory tools, code-intel tools, and trace tools.
+
+Mode lifecycle requirements:
+
+- Write state on start.
+- Update state on phase or iteration change.
+- Mark inactive with `completed_at` on completion.
+- Clear state on cancel/abort cleanup.
+  </state_management>
+
+---
+
+## Setup
+
+Execute `omx setup` to install all components. Execute `omx doctor` to verify installation.

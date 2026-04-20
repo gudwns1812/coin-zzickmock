@@ -41,7 +41,8 @@
 
 1. 이 문서의 `Runtime Verification`
 2. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-3. 필요하면 [docs/design-docs/ui-design/05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
+3.
+필요하면 [docs/design-docs/ui-design/05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
 
 ## Current Reality
 
@@ -155,4 +156,3 @@
 - 필요한 경우 타입체크와 빌드를 통과했다.
 - UI 영향이 있는 변경이면 실제 화면에서 핵심 사용자 흐름을 검증했거나, 생략 이유를 남겼다.
 - 프론트 작업의 완료 판단은 점수 문서가 아니라 실제 UI가 의도대로 작동하는지로 한다.
-- PR/CI 같은 작업 운영 흐름은 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)를 따른다.

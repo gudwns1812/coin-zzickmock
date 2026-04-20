@@ -16,7 +16,7 @@
 - [x] (2026-04-17 15:36+09:00) `green` 단계 완료: 시장 히스토리 영속 계층과 최신가 가공 저장 구현
 - [x] (2026-04-17 15:36+09:00) `refactor` 단계 완료: 시간 버킷/롤업 로직 분리와 in-memory 테스트 보강
 - [x] (2026-04-17 15:37+09:00) 검증 완료: `./gradlew architectureLint`, `GRADLE_USER_HOME=/tmp/gradle-home ./gradlew check`
-- [ ] 품질 게이트 확인 및 PR 단계 진행
+- [ ] review gate 확인 및 PR 단계 진행
 
 ## 놀라움과 발견
 

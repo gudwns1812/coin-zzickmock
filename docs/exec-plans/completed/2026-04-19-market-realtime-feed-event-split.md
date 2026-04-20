@@ -29,7 +29,7 @@
 - [x] (2026-04-19 11:53+09:00) 3차 검증 완료: 관련 테스트, `./gradlew architectureLint`, `./gradlew check` 재통과
 - [x] (2026-04-19 16:07+09:00) 4차 보강 완료: 미등록/해제 후 남는 symbol permit cleanup 추가 및 회귀 테스트 보강
 - [x] (2026-04-19 16:08+09:00) 4차 검증 완료: 관련 테스트, `./gradlew architectureLint`, `./gradlew check` 재통과
-- [x] (2026-04-19 16:05+09:00) 품질 게이트 마감 기록: 최신 `multi-angle-review` 자동 재실행은 Codex subagent usage limit 로 막혔고, 대신 직전 3차 리뷰의 high finding 반영 여부를 수동 점검한 뒤 로컬 검증을 다시 통과시켰다
+- [x] (2026-04-19 16:05+09:00) review gate 마감 기록: 최신 자동 재검토는 Codex subagent usage limit 로 막혔고, 대신 직전 3차 리뷰의 high finding 반영 여부를 점검한 뒤 로컬 검증을 다시 통과시켰다
 - [x] (2026-04-19 16:13+09:00) 브랜치, 커밋, 푸시, PR 생성 완료: `market-realtime-event-split`, `88bad60`, [PR #17](https://github.com/gudwns1812/coin-zzickmock/pull/17)
 
 ## 놀라움과 발견
@@ -148,7 +148,7 @@
 
 마지막으로 미등록/해제 후 남는 symbol permit cleanup 을 추가해 unsupported symbol 요청이 반복돼도 symbol limiter 엔트리가 불필요하게 남지 않도록 정리했다. 그에 맞춰 broker 테스트를 보강했고, 관련 테스트와 `./gradlew architectureLint`, `./gradlew check`를 다시 통과시켰다.
 
-최신 스냅샷 기준 `multi-angle-review` 자동 재실행은 Codex subagent usage limit 로 외부 차단되었다. 다만 직전 3차 리뷰에서 나온 high finding 은 모두 코드에 반영됐고, 마지막 보강까지 포함한 상태에서 수동 점검과 로컬 검증을 다시 마쳤다. 현재 작업은 [PR #17](https://github.com/gudwns1812/coin-zzickmock/pull/17)로 열려 있다.
+최신 스냅샷 기준 자동 재검토는 Codex subagent usage limit 로 외부 차단되었다. 다만 직전 3차 리뷰에서 나온 high finding 은 모두 코드에 반영됐고, 마지막 보강까지 포함한 상태에서 점검과 로컬 검증을 다시 마쳤다. 현재 작업은 [PR #17](https://github.com/gudwns1812/coin-zzickmock/pull/17)로 열려 있다.
 
 ## 맥락과 길잡이
 
@@ -183,10 +183,10 @@
 5. `MarketController`를 새 브로커 기준으로 수정했다.
 6. `MarketRealtimeSseBrokerTest`까지 포함해 관련 테스트를 다시 실행해 초록으로 만들었다.
 7. `./gradlew architectureLint` 와 `./gradlew check`를 실행했다.
-8. 1차 `multi-angle-review`를 실행해 high/medium finding 을 수집했다.
+8. 1차 review gate를 실행해 high/medium finding 을 수집했다.
 9. finding 에 맞춰 timeout, capacity, executor, lifecycle, 테스트 보강을 추가했다.
 10. 관련 테스트와 `architectureLint`, `check`를 다시 실행했다.
-11. 다음 단계는 변경 범위만 대상으로 `multi-angle-review`를 재실행하는 것이다.
+11. 다음 단계는 변경 범위만 대상으로 review gate를 재실행하는 것이다.
 12. 점수 통과 시 브랜치, 커밋, 푸시, PR 생성까지 진행한다.
 
 ## 검증과 수용 기준

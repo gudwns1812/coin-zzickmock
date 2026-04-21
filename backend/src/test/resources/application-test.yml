@@ -22,3 +22,10 @@ spring:
   task:
     scheduling:
       enabled: false
+
+coin:
+  market:
+    startup-warmup:
+      enabled: false
+    startup-backfill:
+      enabled: false

@@ -20,7 +20,8 @@ public class MarketSnapshotStore {
 
     public MarketSnapshotStore(@Qualifier("localCacheManager") CacheManager cacheManager) {
         this.marketSnapshotCache = requireCache(cacheManager, CoinCacheNames.MARKET_SNAPSHOT_LOCAL_CACHE);
-        this.marketSupportedSymbolsCache = requireCache(cacheManager, CoinCacheNames.MARKET_SUPPORTED_SYMBOLS_LOCAL_CACHE);
+        this.marketSupportedSymbolsCache = requireCache(cacheManager,
+                CoinCacheNames.MARKET_SUPPORTED_SYMBOLS_LOCAL_CACHE);
     }
 
     public void putSupportedMarkets(List<MarketSummaryResult> markets) {
@@ -48,20 +49,20 @@ public class MarketSnapshotStore {
                 .toList();
     }
 
-    public Optional<MarketSummaryResult> getMarket(String symbol) {
-        return Optional.ofNullable(marketSnapshotCache.get(symbol, MarketSummaryResult.class));
-    }
-
-    public void putMarket(MarketSummaryResult result) {
-        marketSnapshotCache.put(result.symbol(), result);
-    }
-
     private List<String> getSupportedSymbols() {
         SupportedSymbols cached = marketSupportedSymbolsCache.get(SUPPORTED_SYMBOLS_KEY, SupportedSymbols.class);
         if (cached == null) {
             return List.of();
         }
         return cached.symbols();
+    }
+
+    public Optional<MarketSummaryResult> getMarket(String symbol) {
+        return Optional.ofNullable(marketSnapshotCache.get(symbol, MarketSummaryResult.class));
+    }
+
+    public void putMarket(MarketSummaryResult result) {
+        marketSnapshotCache.put(result.symbol(), result);
     }
 
     private Cache requireCache(CacheManager cacheManager, String cacheName) {

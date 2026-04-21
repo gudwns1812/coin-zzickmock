@@ -1,7 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import java.time.Instant;
@@ -10,7 +9,6 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,40 +21,29 @@ public class MarketHistoryStartupBackfill {
     private final MarketHistoryRepository marketHistoryRepository;
     private final MarketHistoryRecorder marketHistoryRecorder;
 
-    public void backfillMissingMinuteHistory(
-            List<MarketSummaryResult> currentMarkets,
-            Instant observedAt,
-            MarketDataGateway marketDataGateway
-    ) {
-        if (currentMarkets == null || currentMarkets.isEmpty()) {
+    public void backfillMissingMinuteHistory(Instant observedAt, MarketDataGateway marketDataGateway) {
+        List<MarketHistoryRepository.StartupBackfillCursor> backfillCursors = marketHistoryRepository.findStartupBackfillCursors();
+        if (backfillCursors.isEmpty()) {
             return;
         }
 
         Instant currentMinuteOpenTime = truncate(observedAt, ChronoUnit.MINUTES);
-        Map<String, Long> symbolIds = marketHistoryRepository.findSymbolIdsBySymbols(
-                currentMarkets.stream().map(MarketSummaryResult::symbol).distinct().toList()
-        );
-
-        currentMarkets.forEach(market -> backfillSymbol(
-                symbolIds.get(market.symbol()),
-                market.symbol(),
+        backfillCursors.forEach(cursor -> backfillSymbol(
+                cursor.symbolId(),
+                cursor.symbol(),
+                cursor.latestPersistedMinuteOpenTime(),
                 currentMinuteOpenTime,
                 marketDataGateway
         ));
     }
 
     private void backfillSymbol(
-            Long symbolId,
+            long symbolId,
             String symbol,
+            Instant latestPersistedMinuteOpenTime,
             Instant currentMinuteOpenTime,
             MarketDataGateway marketDataGateway
     ) {
-        if (symbolId == null) {
-            return;
-        }
-
-        Instant latestPersistedMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId)
-                .orElse(null);
         if (latestPersistedMinuteOpenTime == null) {
             return;
         }

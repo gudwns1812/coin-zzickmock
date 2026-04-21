@@ -270,13 +270,6 @@ function MarketTableRow({
     flashTone === "rise"
       ? "bg-[linear-gradient(135deg,_rgba(34,197,94,0.24),_rgba(134,239,172,0.12))]"
       : "bg-[linear-gradient(135deg,_rgba(239,68,68,0.2),_rgba(252,165,165,0.12))]";
-  const borderColor =
-    flashTone === "rise"
-      ? `rgba(34, 197, 94, ${0.1 + flashIntensity * 0.35})`
-      : flashTone === "fall"
-        ? `rgba(239, 68, 68, ${0.08 + flashIntensity * 0.38})`
-        : "rgba(148, 163, 184, 0.18)";
-
   return (
     <tr className="group border-b border-main-light-gray/30 text-sm-custom text-main-dark-gray transition-colors duration-200 hover:bg-main-blue/5 last:border-0">
       <td className="px-main py-4">
@@ -299,9 +292,8 @@ function MarketTableRow({
       </td>
       <td className="px-main py-4">
         <div
-          className="relative overflow-hidden rounded-main border bg-white/65 px-3 py-3 backdrop-blur-sm"
+          className="relative overflow-hidden rounded-main bg-white/65 px-3 py-3 backdrop-blur-sm"
           style={{
-            borderColor,
             boxShadow:
               flashIntensity > 0
                 ? `0 0 ${10 + flashIntensity * 10}px rgba(15, 23, 42, ${flashIntensity * 0.05})`

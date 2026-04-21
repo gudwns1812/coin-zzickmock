@@ -1,157 +1,157 @@
 @import "tailwindcss";
 
 @theme {
-  --color-main-blue: #3485fa;
-  --color-main-red: #f04251;
-  --color-main-light-gray: #e9e9e9;
-  --color-main-dark-gray: #666;
-  --color-keyword: #91b2ce;
-  --color-sub: rgba(0, 19, 43, 0.58);
-  /* --shadow-color: 0 2px 8px rgb(0 0 0 / 0.12); */
-  --shadow-color: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
+    --color-main-blue: #3485fa;
+    --color-main-red: #f04251;
+    --color-main-light-gray: #e9e9e9;
+    --color-main-dark-gray: #666;
+    --color-keyword: #91b2ce;
+    --color-sub: rgba(0, 19, 43, 0.58);
+    /* --shadow-color: 0 2px 8px rgb(0 0 0 / 0.12); */
+    --shadow-color: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
     rgba(15, 15, 15, 0.1) 0px 2px 4px;
-  --container-main-max: 1280px;
-  --container-main-min: 940px;
-  --spacing-main-1/2: 5px;
-  --spacing-main: 10px;
-  --spacing-main-2: 20px;
-  --spacing-main-3: 30px;
-  --spacing-main-4: 40px;
-  --spacing-main-5: 50px;
-  --spacing-main-6: 60px;
-  --spacing-main-7: 70px;
-  --spacing-main-8: 80px;
-  --spacing-main-9: 90px;
-  --spacing-main-10: 100px;
-  --radius-main: 10px;
+    --container-main-max: 1280px;
+    --container-main-min: 940px;
+    --spacing-main-1: 5px;
+    --spacing-main: 10px;
+    --spacing-main-2: 20px;
+    --spacing-main-3: 30px;
+    --spacing-main-4: 40px;
+    --spacing-main-5: 50px;
+    --spacing-main-6: 60px;
+    --spacing-main-7: 70px;
+    --spacing-main-8: 80px;
+    --spacing-main-9: 90px;
+    --spacing-main-10: 100px;
+    --radius-main: 10px;
 
-  /* Custom Font Sizes */
-  --font-size-xs-custom: 11px;
-  --font-size-sm-custom: 13px;
-  --font-size-base-custom: 15px;
-  --font-size-lg-custom: 17px;
-  --font-size-xl-custom: 19px;
-  --font-size-2xl-custom: 23px;
-  --font-size-3xl-custom: 28px;
-  --font-size-4xl-custom: 34px;
+    /* Custom Font Sizes */
+    --font-size-xs-custom: 11px;
+    --font-size-sm-custom: 13px;
+    --font-size-base-custom: 15px;
+    --font-size-lg-custom: 17px;
+    --font-size-xl-custom: 19px;
+    --font-size-2xl-custom: 23px;
+    --font-size-3xl-custom: 28px;
+    --font-size-4xl-custom: 34px;
 }
 
 @layer utilities {
-  @keyframes bounce-x {
-    0%,
-    100% {
-      transform: translateX(0%);
-      animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    @keyframes bounce-x {
+        0%,
+        100% {
+            transform: translateX(0%);
+            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+        }
+        50% {
+            transform: translateX(25%);
+            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+        }
     }
-    50% {
-      transform: translateX(25%);
-      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    .animate-bounce-x {
+        animation: bounce-x 1s infinite;
     }
-  }
-  .animate-bounce-x {
-    animation: bounce-x 1s infinite;
-  }
 
-  @keyframes slideIn {
-    from {
-      transform: translateX(-100%);
-      opacity: 0;
+    @keyframes slideIn {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
-    to {
-      transform: translateX(0);
-      opacity: 1;
+
+    .slide-in {
+        animation: slideIn 0.5s ease-out;
     }
-  }
 
-  .slide-in {
-    animation: slideIn 0.5s ease-out;
-  }
-
-  @keyframes marquee {
-    0% {
-      transform: translateX(100%);
+    @keyframes marquee {
+        0% {
+            transform: translateX(100%);
+        }
+        100% {
+            transform: translateX(-100%);
+        }
     }
-    100% {
-      transform: translateX(-100%);
+
+    .animate-marquee {
+        animation: marquee 20s linear infinite;
     }
-  }
 
-  .animate-marquee {
-    animation: marquee 20s linear infinite;
-  }
-
-  .marquee-wrapper {
-    overflow: hidden;
-    white-space: nowrap;
-  }
-
-  @keyframes fadeHighlight {
-    0% {
-      background-color: rgba(52, 133, 250, 0.2);
+    .marquee-wrapper {
+        overflow: hidden;
+        white-space: nowrap;
     }
-    100% {
-      background-color: transparent;
+
+    @keyframes fadeHighlight {
+        0% {
+            background-color: rgba(52, 133, 250, 0.2);
+        }
+        100% {
+            background-color: transparent;
+        }
     }
-  }
 
-  .fade-bg {
-    animation: fadeHighlight 2s ease-in-out;
-  }
+    .fade-bg {
+        animation: fadeHighlight 2s ease-in-out;
+    }
 
-  /* Custom Font Size Classes */
-  .text-xs-custom {
-    font-size: var(--font-size-xs-custom);
-  }
+    /* Custom Font Size Classes */
+    .text-xs-custom {
+        font-size: var(--font-size-xs-custom);
+    }
 
-  .text-sm-custom {
-    font-size: var(--font-size-sm-custom);
-  }
+    .text-sm-custom {
+        font-size: var(--font-size-sm-custom);
+    }
 
-  .text-base-custom {
-    font-size: var(--font-size-base-custom);
-  }
+    .text-base-custom {
+        font-size: var(--font-size-base-custom);
+    }
 
-  .text-lg-custom {
-    font-size: var(--font-size-lg-custom);
-  }
+    .text-lg-custom {
+        font-size: var(--font-size-lg-custom);
+    }
 
-  .text-xl-custom {
-    font-size: var(--font-size-xl-custom);
-  }
+    .text-xl-custom {
+        font-size: var(--font-size-xl-custom);
+    }
 
-  .text-2xl-custom {
-    font-size: var(--font-size-2xl-custom);
-  }
+    .text-2xl-custom {
+        font-size: var(--font-size-2xl-custom);
+    }
 
-  .text-3xl-custom {
-    font-size: var(--font-size-3xl-custom);
-  }
+    .text-3xl-custom {
+        font-size: var(--font-size-3xl-custom);
+    }
 
-  .text-4xl-custom {
-    font-size: var(--font-size-4xl-custom);
-  }
+    .text-4xl-custom {
+        font-size: var(--font-size-4xl-custom);
+    }
 }
 
 :root {
-  --background: #ffffff;
-  --background-from: #3485fa;
-  --background-to: #93c5fd;
-  --foreground: #171717;
+    --background: #ffffff;
+    --background-from: #3485fa;
+    --background-to: #93c5fd;
+    --foreground: #171717;
 
-  --color-main-blue: #3485fa;
-  --color-main-red: #f04251;
-  --color-main-light-gray: #e9e9e9;
-  --color-main-dark-gray: #666;
-  --color-keyword: #91b2ce;
-  --color-sub: rgba(0, 19, 43, 0.58);
-  /* --shadow-color: 0 2px 8px rgb(0 0 0 / 0.12); */
-  --shadow-color: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
+    --color-main-blue: #3485fa;
+    --color-main-red: #f04251;
+    --color-main-light-gray: #e9e9e9;
+    --color-main-dark-gray: #666;
+    --color-keyword: #91b2ce;
+    --color-sub: rgba(0, 19, 43, 0.58);
+    /* --shadow-color: 0 2px 8px rgb(0 0 0 / 0.12); */
+    --shadow-color: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
     rgba(15, 15, 15, 0.1) 0px 2px 4px;
-  --container-main-max: 1280px;
-  --container-main-min: 940px;
-  --spacing-main: 10px;
-  --radius-main: 10px;
-  --font-pretendard: "Pretendard Variable", sans-serif;
+    --container-main-max: 1280px;
+    --container-main-min: 940px;
+    --spacing-main: 10px;
+    --radius-main: 10px;
+    --font-pretendard: "Pretendard Variable", sans-serif;
 }
 
 /* @theme inline {
@@ -169,44 +169,44 @@
 } */
 
 body {
-  /* background: var(--background); */
-  background: linear-gradient(
-    28deg,
-    var(--background-from),
-    var(--background-to)
-  );
+    /* background: var(--background); */
+    background: linear-gradient(
+            28deg,
+            var(--background-from),
+            var(--background-to)
+    );
 
-  min-height: 100vh;
+    min-height: 100vh;
 
-  overscroll-behavior: none;
-  color: var(--foreground);
-  /* font-family: Arial, Helvetica, sans-serif; */
-  font-family: var(--font-pretendard);
-  font-size: var(--font-size-base-custom);
+    overscroll-behavior: none;
+    color: var(--foreground);
+    /* font-family: Arial, Helvetica, sans-serif; */
+    font-family: var(--font-pretendard);
+    font-size: var(--font-size-base-custom);
 }
 
 /* 크롬, 엣지, 사파리 */
 ::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 /* 파이어폭스 */
 * {
-  scrollbar-width: none;
+    scrollbar-width: none;
 }
 
 /* IE, Edge 구버전 */
 * {
-  -ms-overflow-style: none;
+    -ms-overflow-style: none;
 }
 
 body {
-  cursor: url("/cursor/default.png") 2 2, auto;
+    cursor: url("/cursor/default.png") 2 2, auto;
 }
 
 button,
 a {
-  cursor: url("/cursor/pointer.png") 2 2, pointer !important;
+    cursor: url("/cursor/pointer.png") 2 2, pointer !important;
 }
 
 /* input:hover,

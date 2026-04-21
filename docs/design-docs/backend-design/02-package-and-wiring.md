@@ -113,6 +113,11 @@ annotation 위치와 configuration 소유권을 명확히 드러내야 한다.
 - 앱 시작 시 필요한 seed나 초기화도 전역 bucket이 아니라 소유 feature의 `infrastructure/config`에서 선언한다.
 - `@Entity`, `@Embeddable`은 infrastructure persistence 쪽에 둔다.
 - `@Transactional`은 application 유스케이스 경계에서 사용한다.
+- `@PostConstruct`, `@Scheduled` 같은 lifecycle hook은 trigger 역할에 집중하고, transactional write orchestration은 별도 application 협력 객체로 위임한다.
+- bean에 다른 협력 객체가 얽히는 startup warm-up/backfill은 `@PostConstruct`로 시작하지 않고 `feature/.../infrastructure/config`의 명시적 `@EventListener(ApplicationReadyEvent.class)` 경로를 기본값으로 사용한다.
+- `@PostConstruct` lifecycle path가 transactional write orchestration을 직접 수행하거나, 그 목적의 `@Transactional` 협력 객체를 호출하도록 만들지 않는다.
+- startup cache warm-up은 provider read -> cache update -> event publish에만 집중한다.
+- startup backfill은 DB에 이미 추적되는 symbol/timestamp cursor를 기준으로 빠진 persisted history만 채우고, current snapshot persistence를 같이 맡지 않는다.
 - `domain`에는 Spring annotation을 두지 않는다.
 - `@RestController`가 application service 대신 형식적인 `*UseCase` 인터페이스만 바라보도록 강제하지 않는다.
 - 스프링이 관리하는 클래스에서 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.

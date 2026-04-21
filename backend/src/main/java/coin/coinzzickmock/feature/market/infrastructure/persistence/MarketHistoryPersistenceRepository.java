@@ -30,6 +30,21 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional(readOnly = true)
+    public List<StartupBackfillCursor> findStartupBackfillCursors() {
+        return marketSymbolEntityRepository.findAllByOrderByIdAsc().stream()
+                .map(entity -> new StartupBackfillCursor(
+                        entity.id(),
+                        entity.symbol(),
+                        marketCandle1mEntityRepository.findTopBySymbolIdOrderByOpenTimeDesc(entity.id())
+                                .map(MarketCandle1mEntity::toDomain)
+                                .map(MarketHistoryCandle::openTime)
+                                .orElse(null)
+                ))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId) {
         return marketCandle1mEntityRepository.findTopBySymbolIdOrderByOpenTimeDesc(symbolId)
                 .map(MarketCandle1mEntity::toDomain)

@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -23,7 +22,6 @@ public class MarketHistoryRecorder {
 
     private final MarketHistoryRepository marketHistoryRepository;
 
-    @Transactional
     public void recordSnapshots(List<MarketSummaryResult> snapshots, Instant observedAt) {
         if (snapshots == null || snapshots.isEmpty()) {
             return;
@@ -36,7 +34,6 @@ public class MarketHistoryRecorder {
         snapshots.forEach(snapshot -> recordSnapshot(symbolIds.get(snapshot.symbol()), snapshot, observedAt));
     }
 
-    @Transactional
     public void recordHistoricalMinuteCandles(long symbolId, List<MarketMinuteCandleSnapshot> minuteCandles) {
         if (minuteCandles == null || minuteCandles.isEmpty()) {
             return;

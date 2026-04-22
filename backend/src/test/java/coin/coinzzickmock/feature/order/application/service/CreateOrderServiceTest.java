@@ -183,6 +183,16 @@ class CreateOrderServiceTest {
         public List<FuturesOrder> findByMemberId(String memberId) {
             return List.of();
         }
+
+        @Override
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static class FakeProviders implements Providers {

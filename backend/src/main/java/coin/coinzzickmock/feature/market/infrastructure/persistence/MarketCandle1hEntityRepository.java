@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MarketCandle1hEntityRepository extends JpaRepository<MarketCandle1hEntity, Long> {
     Optional<MarketCandle1hEntity> findBySymbolIdAndOpenTime(Long symbolId, Instant openTime);
 
+    Optional<MarketCandle1hEntity> findTopBySymbolIdOrderByOpenTimeDesc(Long symbolId);
+
     List<MarketCandle1hEntity> findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
             Long symbolId,
             Instant fromInclusive,

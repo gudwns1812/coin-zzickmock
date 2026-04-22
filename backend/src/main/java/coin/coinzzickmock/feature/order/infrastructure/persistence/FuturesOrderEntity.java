@@ -100,6 +100,10 @@ public class FuturesOrderEntity {
         );
     }
 
+    public void updateStatus(String status) {
+        this.status = status;
+    }
+
     private static BigDecimal decimal(double value) {
         return BigDecimal.valueOf(value);
     }

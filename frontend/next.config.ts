@@ -1,6 +1,11 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
+const futuresProxyTarget =
+  process.env.FUTURES_API_BASE_URL ??
+  process.env.FUTURES_PROXY_TARGET ??
+  "http://127.0.0.1:8080";
+
 const nextConfig: NextConfig = {
   /* config options here */
   async rewrites() {
@@ -8,7 +13,7 @@ const nextConfig: NextConfig = {
       {
         // 로컬 인증 서버
         source: "/proxy/auth/:path*",
-        destination: "http://127.0.0.1:8080/api/futures/auth/:path*",
+        destination: `${futuresProxyTarget}/api/futures/auth/:path*`,
       },
       {
         // 메인서버
@@ -23,7 +28,7 @@ const nextConfig: NextConfig = {
       {
         // 코인 선물 백엔드
         source: "/proxy-futures/:path*",
-        destination: "http://127.0.0.1:8080/api/futures/:path*",
+        destination: `${futuresProxyTarget}/api/futures/:path*`,
       },
     ];
   },

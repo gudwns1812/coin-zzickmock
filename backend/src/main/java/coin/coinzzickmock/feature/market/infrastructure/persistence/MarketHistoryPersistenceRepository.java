@@ -53,6 +53,14 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId) {
+        return marketCandle1hEntityRepository.findTopBySymbolIdOrderByOpenTimeDesc(symbolId)
+                .map(MarketCandle1hEntity::toDomain)
+                .map(HourlyMarketCandle::openTime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime) {
         return marketCandle1mEntityRepository.findBySymbolIdAndOpenTime(symbolId, openTime)
                 .map(MarketCandle1mEntity::toDomain);
@@ -77,6 +85,20 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     public Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime) {
         return marketCandle1hEntityRepository.findBySymbolIdAndOpenTime(symbolId, openTime)
                 .map(MarketCandle1hEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HourlyMarketCandle> findHourlyCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
+        return marketCandle1hEntityRepository
+                .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
+                        Long.valueOf(symbolId),
+                        fromInclusive,
+                        toExclusive
+                )
+                .stream()
+                .map(MarketCandle1hEntity::toDomain)
+                .toList();
     }
 
     @Override

@@ -2,13 +2,21 @@ package coin.coinzzickmock.feature.order.api;
 
 import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.result.OpenOrderResult;
+import coin.coinzzickmock.feature.order.application.service.CancelOrderService;
 import coin.coinzzickmock.feature.order.application.service.CreateOrderService;
+import coin.coinzzickmock.feature.order.application.service.GetOpenOrdersService;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.providers.Providers;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,7 +25,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class OrderController {
     private final CreateOrderService createOrderService;
+    private final GetOpenOrdersService getOpenOrdersService;
+    private final CancelOrderService cancelOrderService;
     private final Providers providers;
+
+    @GetMapping("/open")
+    public ApiResponse<List<OpenOrderResponse>> open(@RequestParam(required = false) String symbol) {
+        List<OpenOrderResult> orders = getOpenOrdersService.getOpenOrders(
+                providers.auth().currentActor().memberId(),
+                symbol
+        );
+        return ApiResponse.success(orders.stream().map(OpenOrderResponse::from).toList());
+    }
 
     @PostMapping("/preview")
     public ApiResponse<OrderPreviewResponse> preview(@RequestBody CreateOrderRequest request) {
@@ -45,6 +64,15 @@ public class OrderController {
                 result.estimatedLiquidationPrice(),
                 result.executionPrice()
         ));
+    }
+
+    @PostMapping("/{orderId}/cancel")
+    public ApiResponse<CancelOrderResponse> cancel(@PathVariable String orderId) {
+        CancelOrderResult result = cancelOrderService.cancel(
+                providers.auth().currentActor().memberId(),
+                orderId
+        );
+        return ApiResponse.success(CancelOrderResponse.from(result));
     }
 
     private CreateOrderCommand toCommand(CreateOrderRequest request) {

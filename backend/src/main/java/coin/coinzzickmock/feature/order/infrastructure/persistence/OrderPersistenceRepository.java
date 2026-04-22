@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -25,5 +26,21 @@ public class OrderPersistenceRepository implements OrderRepository {
         return futuresOrderEntityRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
                 .map(FuturesOrderEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        return futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
+                .map(FuturesOrderEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
+                .orElseThrow();
+        entity.updateStatus(status);
+        return futuresOrderEntityRepository.save(entity).toDomain();
     }
 }

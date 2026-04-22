@@ -1,7 +1,10 @@
 package coin.coinzzickmock.feature.market.api;
 
 import coin.coinzzickmock.common.api.ApiResponse;
+import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
+import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.io.IOException;
@@ -10,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -18,15 +22,18 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequestMapping("/api/futures/markets")
 public class MarketController {
     private final GetMarketSummaryService getMarketSummaryService;
+    private final GetMarketCandlesService getMarketCandlesService;
     private final MarketRealtimeSseBroker marketRealtimeSseBroker;
     private final long streamTimeoutMs;
 
     public MarketController(
             GetMarketSummaryService getMarketSummaryService,
+            GetMarketCandlesService getMarketCandlesService,
             MarketRealtimeSseBroker marketRealtimeSseBroker,
             @Value("${coin.market.sse.timeout-ms:300000}") long streamTimeoutMs
     ) {
         this.getMarketSummaryService = getMarketSummaryService;
+        this.getMarketCandlesService = getMarketCandlesService;
         this.marketRealtimeSseBroker = marketRealtimeSseBroker;
         this.streamTimeoutMs = streamTimeoutMs;
     }
@@ -44,6 +51,18 @@ public class MarketController {
         return ApiResponse.success(MarketSummaryResponse.from(
                 getMarketSummaryService.getMarket(new GetMarketQuery(symbol))
         ));
+    }
+
+    @GetMapping("/{symbol}/candles")
+    public ApiResponse<List<MarketCandleResponse>> candles(
+            @PathVariable String symbol,
+            @RequestParam String interval,
+            @RequestParam(required = false) Integer limit
+    ) {
+        List<MarketCandleResult> candles = getMarketCandlesService.getCandles(
+                new GetMarketCandlesQuery(symbol, interval, limit)
+        );
+        return ApiResponse.success(candles.stream().map(MarketCandleResponse::from).toList());
     }
 
     @GetMapping(value = "/{symbol}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

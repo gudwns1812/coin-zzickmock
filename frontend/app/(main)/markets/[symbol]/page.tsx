@@ -1,6 +1,7 @@
 import MarketDetailRealtimeView from "@/components/futures/MarketDetailRealtimeView";
 import {
   getFuturesMarket,
+  getFuturesOpenOrders,
   getFuturesPositions,
   isSupportedFuturesSymbol,
 } from "@/lib/futures-api";
@@ -36,15 +37,17 @@ export default async function MarketDetailPage({
     notFound();
   }
 
-  const [market, positions] = await Promise.all([
+  const [market, positions, openOrders] = await Promise.all([
     getFuturesMarket(symbol),
     getFuturesPositions(),
+    getFuturesOpenOrders(symbol),
   ]);
   const currentPositions = positions.filter((position) => position.symbol === symbol);
 
   return (
     <MarketDetailRealtimeView
       initialMarket={market}
+      currentOpenOrders={openOrders}
       currentPositions={currentPositions}
     />
   );

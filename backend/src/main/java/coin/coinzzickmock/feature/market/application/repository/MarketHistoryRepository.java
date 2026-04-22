@@ -19,15 +19,17 @@ public interface MarketHistoryRepository {
 
     List<StartupBackfillCursor> findStartupBackfillCursors();
 
-    default Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId) {
-        return Optional.empty();
-    }
+    Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId);
+
+    Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId);
 
     Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime);
 
     List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive);
 
     Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime);
+
+    List<HourlyMarketCandle> findHourlyCandles(long symbolId, Instant fromInclusive, Instant toExclusive);
 
     void saveMinuteCandle(MarketHistoryCandle candle);
 

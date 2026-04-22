@@ -445,6 +445,14 @@ class MarketRealtimeFeedTest {
         }
 
         @Override
+        public Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId) {
+            return hourlyCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .map(HourlyMarketCandle::openTime)
+                    .max(Instant::compareTo);
+        }
+
+        @Override
         public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
             return minuteCandles.values().stream()
                     .filter(candle -> candle.symbolId() == symbolId)
@@ -457,6 +465,16 @@ class MarketRealtimeFeedTest {
         @Override
         public Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime) {
             return Optional.ofNullable(hourlyCandles.get(key(symbolId, openTime)));
+        }
+
+        @Override
+        public List<HourlyMarketCandle> findHourlyCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
+            return hourlyCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                    .filter(candle -> candle.openTime().isBefore(toExclusive))
+                    .sorted(java.util.Comparator.comparing(HourlyMarketCandle::openTime))
+                    .toList();
         }
 
         @Override

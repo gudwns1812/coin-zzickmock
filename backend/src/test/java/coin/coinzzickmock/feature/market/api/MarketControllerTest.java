@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.io.IOException;
@@ -49,7 +50,7 @@ class MarketControllerTest {
         when(service.getMarket(org.mockito.ArgumentMatchers.any())).thenReturn(market);
         when(broker.reserve("BTCUSDT")).thenReturn(permit);
 
-        MarketController controller = new TestableMarketController(service, broker, SSE_TIMEOUT_MS);
+        MarketController controller = new TestableMarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
 
         SseEmitter emitter = controller.stream("BTCUSDT");
 
@@ -76,7 +77,7 @@ class MarketControllerTest {
         when(service.getMarket(org.mockito.ArgumentMatchers.any())).thenReturn(market);
         when(broker.reserve("BTCUSDT")).thenReturn(permit);
 
-        MarketController controller = new MarketController(service, broker, SSE_TIMEOUT_MS);
+        MarketController controller = new MarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
 
         SseEmitter emitter = controller.stream("BTCUSDT");
 
@@ -89,7 +90,7 @@ class MarketControllerTest {
     void failsBeforeEmitterCreationWhenCapacityIsExceeded() {
         GetMarketSummaryService service = mock(GetMarketSummaryService.class);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
-        MarketController controller = new MarketController(service, broker, SSE_TIMEOUT_MS);
+        MarketController controller = new MarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
         CoreException exception = new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         org.mockito.Mockito.doThrow(exception).when(broker).reserve("BTCUSDT");
 
@@ -106,7 +107,7 @@ class MarketControllerTest {
         GetMarketSummaryService service = mock(GetMarketSummaryService.class);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
-        MarketController controller = new MarketController(service, broker, SSE_TIMEOUT_MS);
+        MarketController controller = new MarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
         when(broker.reserve("UNSUPPORTED")).thenReturn(permit);
         when(service.getMarket(any())).thenThrow(new CoreException(ErrorCode.MARKET_NOT_FOUND));
 
@@ -122,6 +123,7 @@ class MarketControllerTest {
     void createsEmitterWithFiniteTimeout() {
         MarketController controller = new MarketController(
                 mock(GetMarketSummaryService.class),
+                mock(GetMarketCandlesService.class),
                 mock(MarketRealtimeSseBroker.class),
                 SSE_TIMEOUT_MS
         );
@@ -135,8 +137,13 @@ class MarketControllerTest {
     }
 
     private static class TestableMarketController extends MarketController {
-        private TestableMarketController(GetMarketSummaryService service, MarketRealtimeSseBroker broker, long timeoutMs) {
-            super(service, broker, timeoutMs);
+        private TestableMarketController(
+                GetMarketSummaryService service,
+                GetMarketCandlesService candleService,
+                MarketRealtimeSseBroker broker,
+                long timeoutMs
+        ) {
+            super(service, candleService, broker, timeoutMs);
         }
 
         @Override

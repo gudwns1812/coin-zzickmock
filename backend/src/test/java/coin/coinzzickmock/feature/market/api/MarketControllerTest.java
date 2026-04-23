@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -17,6 +18,7 @@ import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesSer
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -134,6 +136,26 @@ class MarketControllerTest {
         assertTrue(emitter.getTimeout() != null);
         assertTrue(emitter.getTimeout() > 0L);
         assertTrue(emitter.getTimeout().equals(SSE_TIMEOUT_MS));
+    }
+
+    @Test
+    void passesBeforeCursorToCandleQuery() {
+        GetMarketSummaryService summaryService = mock(GetMarketSummaryService.class);
+        GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);
+        MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
+        MarketController controller = new MarketController(summaryService, candleService, broker, SSE_TIMEOUT_MS);
+        Instant before = Instant.parse("2026-04-21T00:05:00Z");
+
+        when(candleService.getCandles(any())).thenReturn(java.util.List.of());
+
+        controller.candles("BTCUSDT", "1m", 120, before);
+
+        verify(candleService).getCandles(argThat(query ->
+                query.symbol().equals("BTCUSDT")
+                        && query.interval().equals("1m")
+                        && query.limit().equals(120)
+                        && before.equals(query.beforeOpenTime())
+        ));
     }
 
     private static class TestableMarketController extends MarketController {

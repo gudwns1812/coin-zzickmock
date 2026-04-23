@@ -53,8 +53,24 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Instant> findLatestMinuteCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
+        return marketCandle1mEntityRepository.findTopBySymbolIdAndOpenTimeLessThanOrderByOpenTimeDesc(symbolId, beforeExclusive)
+                .map(MarketCandle1mEntity::toDomain)
+                .map(MarketHistoryCandle::openTime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId) {
         return marketCandle1hEntityRepository.findTopBySymbolIdOrderByOpenTimeDesc(symbolId)
+                .map(MarketCandle1hEntity::toDomain)
+                .map(HourlyMarketCandle::openTime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findLatestHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
+        return marketCandle1hEntityRepository.findTopBySymbolIdAndOpenTimeLessThanOrderByOpenTimeDesc(symbolId, beforeExclusive)
                 .map(MarketCandle1hEntity::toDomain)
                 .map(HourlyMarketCandle::openTime);
     }

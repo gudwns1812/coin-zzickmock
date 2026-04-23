@@ -1,9 +1,7 @@
 import { isSupportedMarketSymbol } from "@/lib/markets";
 
 const FUTURES_API_BASE_URL =
-  process.env.FUTURES_API_BASE_URL ??
-  process.env.FUTURES_PROXY_TARGET ??
-  "http://127.0.0.1:8080";
+  process.env.FUTURES_API_BASE_URL ?? "http://127.0.0.1:8080";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

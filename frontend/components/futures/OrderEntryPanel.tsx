@@ -8,7 +8,7 @@ import type {
 } from "@/lib/futures-api";
 import { formatUsd, type MarketSymbol } from "@/lib/markets";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
@@ -36,133 +36,71 @@ export default function OrderEntryPanel({ symbol, currentPrice }: Props) {
   const [limitPrice, setLimitPrice] = useState(currentPrice.toString());
   const [isLimitPriceDirty, setIsLimitPriceDirty] = useState(false);
   const [preview, setPreview] = useState<OrderPreviewResponse | null>(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [isPreviewBlocked, setIsPreviewBlocked] = useState(false);
   const [isPreviewPending, setIsPreviewPending] = useState(false);
   const [isSubmitPending, setIsSubmitPending] = useState(false);
 
   useEffect(() => {
-    if (orderType === "MARKET") {
-      setLimitPrice(currentPrice.toString());
-      setIsLimitPriceDirty(false);
-      return;
-    }
-
     if (!isLimitPriceDirty) {
       setLimitPrice(currentPrice.toString());
     }
-  }, [currentPrice, isLimitPriceDirty, orderType]);
+  }, [currentPrice, isLimitPriceDirty]);
 
-  const previewPayload = useMemo(
-    () =>
-      buildOrderPayload({
-        symbol,
-        positionSide,
-        orderType,
-        marginMode,
-        leverage,
-        quantity,
-        limitPrice,
-      }),
-    [leverage, limitPrice, marginMode, orderType, positionSide, quantity, symbol]
-  );
+  const orderPayload = buildOrderPayload({
+    symbol,
+    positionSide,
+    orderType,
+    marginMode,
+    leverage,
+    quantity,
+    limitPrice,
+  });
 
-  const hasValidOrder = previewPayload !== null;
+  const hasValidOrder = orderPayload !== null;
 
-  async function requestPreview(
-    payload: OrderPreviewRequest,
-    side: Side,
-    options?: { allowPreviewBlock?: boolean }
-  ) {
-    const response = await fetch("/proxy-futures/orders/preview", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const parsedPayload =
-      (await response.json()) as ClientApiResponse<OrderPreviewResponse>;
-
-    if (!response.ok || !parsedPayload.success || !parsedPayload.data) {
-      if (
-        options?.allowPreviewBlock !== false &&
-        (response.status === 401 || response.status === 403)
-      ) {
-        setIsPreviewBlocked(true);
-      }
-      throw new Error(parsedPayload.message ?? "주문 계산에 실패했습니다.");
-    }
-
-    setPositionSide(side);
-    setPreview(parsedPayload.data);
-    setPreviewError(null);
-    return parsedPayload.data;
-  }
-
-  useEffect(() => {
-    if (!previewPayload) {
-      setPreview(null);
-      setPreviewError(null);
-      return;
-    }
-
-    if (isPreviewBlocked) {
-      return;
-    }
-
-    let cancelled = false;
-    const timeout = window.setTimeout(async () => {
-      setIsPreviewPending(true);
-      setPreviewError(null);
-
-      try {
-        if (!cancelled) {
-          await requestPreview(previewPayload, positionSide);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setPreview(null);
-          setPreviewError(
-            error instanceof Error ? error.message : "주문 계산에 실패했습니다."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsPreviewPending(false);
-        }
-      }
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, [isPreviewBlocked, previewPayload]);
-
-  async function handleSubmit(side: Side) {
-    const orderPayload = buildOrderPayload({
-      symbol,
-      positionSide: side,
-      orderType,
-      marginMode,
-      leverage,
-      quantity,
-      limitPrice,
-    });
-
+  async function handlePreview() {
     if (!orderPayload) {
       toast.error("수량과 가격을 다시 확인해주세요.");
       return;
     }
 
-    setPositionSide(side);
+    setIsPreviewPending(true);
+
+    try {
+      const response = await fetch("/proxy-futures/orders/preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      const payload =
+        (await response.json()) as ClientApiResponse<OrderPreviewResponse>;
+
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(payload.message ?? "주문 미리보기에 실패했습니다.");
+      }
+
+      setPreview(payload.data);
+      toast.success("주문 미리보기를 불러왔습니다.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "주문 미리보기에 실패했습니다."
+      );
+    } finally {
+      setIsPreviewPending(false);
+    }
+  }
+
+  async function handleSubmit() {
+    if (!orderPayload) {
+      toast.error("수량과 가격을 다시 확인해주세요.");
+      return;
+    }
+
     setIsSubmitPending(true);
 
     try {
-      await requestPreview(orderPayload, side, { allowPreviewBlock: false });
-
       const response = await fetch("/proxy-futures/orders", {
         method: "POST",
         headers: {
@@ -178,10 +116,11 @@ export default function OrderEntryPanel({ symbol, currentPrice }: Props) {
         throw new Error(payload.message ?? "주문 생성에 실패했습니다.");
       }
 
+      setPreview(null);
       toast.success(
         payload.data.status === "FILLED"
-          ? `${symbol} ${side} 주문이 즉시 체결되었습니다.`
-          : `${symbol} ${side} 지정가 주문이 대기열에 등록되었습니다.`
+          ? `${symbol} 주문이 즉시 체결되었습니다.`
+          : `${symbol} 지정가 주문이 대기열에 등록되었습니다.`
       );
       router.refresh();
     } catch (error) {
@@ -198,14 +137,13 @@ export default function OrderEntryPanel({ symbol, currentPrice }: Props) {
       <div className="grid grid-cols-2 gap-main">
         <ToggleButton
           active={positionSide === "LONG"}
-          tone="positive"
           onClick={() => setPositionSide("LONG")}
         >
           LONG
         </ToggleButton>
         <ToggleButton
           active={positionSide === "SHORT"}
-          tone="negative"
+          tone="danger"
           onClick={() => setPositionSide("SHORT")}
         >
           SHORT
@@ -256,9 +194,9 @@ export default function OrderEntryPanel({ symbol, currentPrice }: Props) {
         <FieldGroup label="수량">
           <input
             className="w-full rounded-main border border-main-light-gray px-main py-3 text-sm-custom"
+            type="number"
             min="0.001"
             step="0.001"
-            type="number"
             value={quantity}
             onChange={(event) => setQuantity(event.target.value)}
           />
@@ -266,11 +204,11 @@ export default function OrderEntryPanel({ symbol, currentPrice }: Props) {
         <FieldGroup label="지정가">
           <input
             className="w-full rounded-main border border-main-light-gray px-main py-3 text-sm-custom disabled:bg-main-light-gray/40"
-            disabled={orderType === "MARKET"}
+            type="number"
             min="0"
             step="0.1"
-            type="number"
             value={limitPrice}
+            disabled={orderType === "MARKET"}
             onChange={(event) => {
               setLimitPrice(event.target.value);
               setIsLimitPriceDirty(true);
@@ -287,86 +225,59 @@ export default function OrderEntryPanel({ symbol, currentPrice }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-main">
-        <PreviewField label="현재 기준가" value={formatUsd(currentPrice)} />
-        <PreviewField
-          label="계산 상태"
-          value={
-            isPreviewPending
-              ? "계산 중"
-              : previewError
-                ? "계산 실패"
-                : preview
-                  ? "실시간 갱신"
-                  : "입력 대기"
-          }
-        />
-        <PreviewField
-          label="예상 진입가"
-          value={
-            preview ? formatUsd(preview.estimatedEntryPrice) : formatUsd(currentPrice)
-          }
-        />
-        <PreviewField
-          label="수수료 타입"
-          value={
-            preview
-              ? preview.feeType
-              : orderType === "MARKET"
-                ? "TAKER"
-                : "MAKER/TAKER"
-          }
-        />
-        <PreviewField
-          label="예상 수수료"
-          value={preview ? formatUsd(preview.estimatedFee) : "-"}
-        />
-        <PreviewField
-          label="필요 증거금"
-          value={preview ? formatUsd(preview.estimatedInitialMargin) : "-"}
-        />
-        <PreviewField
-          label="예상 청산가"
-          value={
-            preview?.estimatedLiquidationPrice
-              ? formatUsd(preview.estimatedLiquidationPrice)
-              : "-"
-          }
-        />
-        <PreviewField
-          label="체결 상태"
-          value={
-            preview
-              ? preview.executable
-                ? "즉시 체결"
-                : "대기 주문"
-              : "계산 대기"
-          }
-        />
-      </div>
-
-      {previewError && (
-        <div className="rounded-main border border-rose-200 bg-rose-50 px-main py-3 text-sm-custom text-rose-600">
-          {previewError}
+      {preview ? (
+        <div className="grid grid-cols-2 gap-main">
+          <PreviewField
+            label="예상 진입가"
+            value={formatUsd(preview.estimatedEntryPrice)}
+          />
+          <PreviewField label="수수료 타입" value={preview.feeType} />
+          <PreviewField
+            label="예상 수수료"
+            value={formatUsd(preview.estimatedFee)}
+          />
+          <PreviewField
+            label="필요 증거금"
+            value={formatUsd(preview.estimatedInitialMargin)}
+          />
+          <PreviewField
+            label="예상 청산가"
+            value={
+              preview.estimatedLiquidationPrice
+                ? formatUsd(preview.estimatedLiquidationPrice)
+                : "-"
+            }
+          />
+          <PreviewField
+            label="즉시 체결 여부"
+            value={preview.executable ? "즉시 체결" : "대기 주문"}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-main">
+          <PreviewField label="현재 기준가" value={formatUsd(currentPrice)} />
+          <PreviewField
+            label="수수료"
+            value={orderType === "MARKET" ? "TAKER 0.05%" : "MAKER/TAKER 판정"}
+          />
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-main">
         <Button
-          className="bg-emerald-500 py-3 text-white hover:bg-emerald-600"
+          className="py-3"
           disabled={!hasValidOrder || isPreviewPending || isSubmitPending}
-          onClick={() => handleSubmit("LONG")}
+          onClick={handlePreview}
         >
-          {isSubmitPending && positionSide === "LONG" ? "LONG 전송 중..." : "LONG 진입"}
+          {isPreviewPending ? "미리보기 계산 중..." : "주문 미리보기"}
         </Button>
         <Button
-          className="bg-rose-500 py-3 text-white hover:bg-rose-600"
+          className="py-3"
           disabled={!hasValidOrder || isPreviewPending || isSubmitPending}
-          onClick={() => handleSubmit("SHORT")}
+          onClick={handleSubmit}
+          variant={positionSide === "SHORT" ? "danger" : "primary"}
         >
-          {isSubmitPending && positionSide === "SHORT"
-            ? "SHORT 전송 중..."
-            : "SHORT 진입"}
+          {isSubmitPending ? "주문 전송 중..." : "주문 실행"}
         </Button>
       </div>
     </div>
@@ -425,16 +336,14 @@ function ToggleButton({
   onClick,
 }: {
   active: boolean;
-  tone?: "primary" | "positive" | "negative";
+  tone?: "primary" | "danger";
   children: string;
   onClick: () => void;
 }) {
   const activeClassName =
-    tone === "negative"
-      ? "border-rose-400 bg-rose-50 text-rose-600"
-      : tone === "positive"
-        ? "border-emerald-400 bg-emerald-50 text-emerald-600"
-        : "border-main-blue bg-main-blue/10 text-main-blue";
+    tone === "danger"
+      ? "border-main-red bg-main-red/10 text-main-red"
+      : "border-main-blue bg-main-blue/10 text-main-blue";
 
   return (
     <button

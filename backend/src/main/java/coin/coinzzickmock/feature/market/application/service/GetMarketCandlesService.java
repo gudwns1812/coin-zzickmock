@@ -37,7 +37,8 @@ public class GetMarketCandlesService {
 
         return switch (interval) {
             case ONE_MINUTE -> {
-                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId).orElse(null);
+                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId)
+                        .orElse(null);
                 if (latestMinuteOpenTime == null) {
                     yield List.of();
                 }
@@ -50,32 +51,32 @@ public class GetMarketCandlesService {
                 );
             }
             case THREE_MINUTES -> {
-                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId).orElse(null);
+                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId)
+                        .orElse(null);
                 if (latestMinuteOpenTime == null) {
                     yield List.of();
                 }
                 yield rollupMinuteResults(symbolId, latestMinuteOpenTime, limit, 3);
             }
             case FIVE_MINUTES -> {
-                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId).orElse(null);
+                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId)
+                        .orElse(null);
                 if (latestMinuteOpenTime == null) {
                     yield List.of();
                 }
                 yield rollupMinuteResults(symbolId, latestMinuteOpenTime, limit, 5);
             }
             case FIFTEEN_MINUTES -> {
-                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId).orElse(null);
+                Instant latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId)
+                        .orElse(null);
                 if (latestMinuteOpenTime == null) {
                     yield List.of();
                 }
                 yield rollupMinuteResults(symbolId, latestMinuteOpenTime, limit, 15);
             }
             case ONE_HOUR -> hourlyResults(symbolId, limit);
-            case FOUR_HOURS -> rollupHourlyResults(symbolId, limit, interval);
-            case TWELVE_HOURS -> rollupHourlyResults(symbolId, limit, interval);
-            case ONE_DAY -> rollupHourlyResults(symbolId, limit, interval);
-            case ONE_WEEK -> rollupHourlyResults(symbolId, limit, interval);
-            case ONE_MONTH -> rollupHourlyResults(symbolId, limit, interval);
+            case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
+                    rollupHourlyResults(symbolId, limit, interval);
         };
     }
 
@@ -212,7 +213,8 @@ public class GetMarketCandlesService {
         };
     }
 
-    private MarketCandleResult rollupMinuteBucket(Instant bucketStart, int bucketMinutes, List<MarketHistoryCandle> candles) {
+    private MarketCandleResult rollupMinuteBucket(Instant bucketStart, int bucketMinutes,
+                                                  List<MarketHistoryCandle> candles) {
         MarketHistoryCandle first = candles.get(0);
         MarketHistoryCandle last = candles.get(0);
         double high = first.highPrice();

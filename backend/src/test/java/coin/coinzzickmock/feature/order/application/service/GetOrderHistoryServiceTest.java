@@ -3,27 +3,55 @@ package coin.coinzzickmock.feature.order.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.result.OrderHistoryResult;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
-import coin.coinzzickmock.feature.order.application.result.OpenOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class GetOpenOrdersServiceTest {
+class GetOrderHistoryServiceTest {
     @Test
-    void returnsOnlyPendingLimitOrdersForRequestedSymbol() {
-        GetOpenOrdersService service = new GetOpenOrdersService(new InMemoryOrderRepository(
-                new FuturesOrder("1", "BTCUSDT", "LONG", "LIMIT", "ISOLATED", 10, 0.1, 99000.0, "PENDING", "MAKER", 1.5, 99000.0),
-                new FuturesOrder("2", "BTCUSDT", "SHORT", "LIMIT", "ISOLATED", 10, 0.2, 101000.0, "CANCELLED", "MAKER", 1.5, 101000.0),
-                new FuturesOrder("3", "ETHUSDT", "LONG", "LIMIT", "ISOLATED", 10, 0.3, 3000.0, "PENDING", "MAKER", 1.5, 3000.0)
+    void returnsOnlyNonPendingOrdersForRequestedSymbol() {
+        GetOrderHistoryService service = new GetOrderHistoryService(new InMemoryOrderRepository(
+                order("1", "BTCUSDT", "LONG", "LIMIT", "ISOLATED", 10, 0.1, 99000.0, "PENDING"),
+                order("2", "BTCUSDT", "SHORT", "LIMIT", "ISOLATED", 10, 0.2, 101000.0, "CANCELLED"),
+                order("3", "BTCUSDT", "LONG", "MARKET", "CROSS", 20, 0.3, null, "FILLED"),
+                order("4", "ETHUSDT", "LONG", "MARKET", "ISOLATED", 5, 1.0, null, "FILLED")
         ));
 
-        List<OpenOrderResult> results = service.getOpenOrders("demo-member", "BTCUSDT");
+        List<OrderHistoryResult> results = service.getOrderHistory("demo-member", "BTCUSDT");
 
-        assertEquals(1, results.size());
-        assertEquals("1", results.get(0).orderId());
-        assertEquals("BTCUSDT", results.get(0).symbol());
+        assertEquals(2, results.size());
+        assertEquals("2", results.get(0).orderId());
+        assertEquals("3", results.get(1).orderId());
+    }
+
+    private static FuturesOrder order(
+            String orderId,
+            String symbol,
+            String positionSide,
+            String orderType,
+            String marginMode,
+            int leverage,
+            double quantity,
+            Double limitPrice,
+            String status
+    ) {
+        return new FuturesOrder(
+                orderId,
+                symbol,
+                positionSide,
+                orderType,
+                marginMode,
+                leverage,
+                quantity,
+                limitPrice,
+                status,
+                "MAKER",
+                1.5,
+                limitPrice == null ? 100500.0 : limitPrice
+        );
     }
 
     private static class InMemoryOrderRepository implements OrderRepository {
@@ -51,8 +79,8 @@ class GetOpenOrdersServiceTest {
         @Override
         public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
             return orders.stream()
-                    .filter(FuturesOrder::isPending)
                     .filter(order -> order.symbol().equals(symbol))
+                    .filter(FuturesOrder::isPending)
                     .map(order -> new PendingOrderCandidate("demo-member", order))
                     .toList();
         }
@@ -65,7 +93,7 @@ class GetOpenOrdersServiceTest {
                 String feeType,
                 double estimatedFee
         ) {
-            throw new UnsupportedOperationException();
+            return Optional.empty();
         }
 
         @Override

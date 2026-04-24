@@ -28,6 +28,7 @@ public class MarketHistoryStartupBackfill {
         }
 
         Instant currentMinuteOpenTime = truncate(observedAt, ChronoUnit.MINUTES);
+
         backfillCursors.forEach(cursor -> backfillSymbol(
                 cursor.symbolId(),
                 cursor.symbol(),
@@ -44,6 +45,12 @@ public class MarketHistoryStartupBackfill {
             Instant currentMinuteOpenTime,
             MarketDataGateway marketDataGateway
     ) {
+        latestPersistedMinuteOpenTime = resolveBackfillCursorOpenTime(
+                symbolId,
+                latestPersistedMinuteOpenTime,
+                currentMinuteOpenTime
+        );
+
         if (latestPersistedMinuteOpenTime == null) {
             return;
         }
@@ -59,7 +66,27 @@ public class MarketHistoryStartupBackfill {
                 currentMinuteOpenTime,
                 marketDataGateway
         );
+
+        if (missingCandles.isEmpty()) {
+            return;
+        }
+
         marketHistoryRecorder.recordHistoricalMinuteCandles(symbolId, missingCandles);
+    }
+
+    private Instant resolveBackfillCursorOpenTime(
+            long symbolId,
+            Instant latestPersistedMinuteOpenTime,
+            Instant currentMinuteOpenTime
+    ) {
+        if (latestPersistedMinuteOpenTime == null || !latestPersistedMinuteOpenTime.isAfter(currentMinuteOpenTime)) {
+            return latestPersistedMinuteOpenTime;
+        }
+
+        Instant latestUsableMinuteOpenTime = marketHistoryRepository
+                .findLatestMinuteCandleOpenTimeBefore(symbolId, currentMinuteOpenTime)
+                .orElse(null);
+        return latestUsableMinuteOpenTime;
     }
 
     private List<MarketMinuteCandleSnapshot> loadMissingMinuteCandles(

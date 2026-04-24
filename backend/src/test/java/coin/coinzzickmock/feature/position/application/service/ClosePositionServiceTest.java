@@ -4,6 +4,7 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
@@ -155,10 +156,25 @@ class ClosePositionServiceTest {
         }
 
         @Override
+        public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
+            return positions.stream()
+                    .filter(position -> position.symbol().equals(symbol))
+                    .map(position -> new OpenPositionCandidate("demo-member", position))
+                    .toList();
+        }
+
+        @Override
         public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
             delete(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode());
             positions.add(positionSnapshot);
             return positionSnapshot;
+        }
+
+        @Override
+        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+            int before = positions.size();
+            delete(memberId, symbol, positionSide, marginMode);
+            return before != positions.size();
         }
 
         @Override

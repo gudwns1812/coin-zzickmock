@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.infrastructure.persistence;
 
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,22 @@ public class PositionPersistenceRepository implements PositionRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
+        return jpaQueryFactory.selectFrom(position)
+                .where(position.getString("symbol").eq(symbol))
+                .orderBy(
+                        position.getString("memberId").asc(),
+                        position.getString("positionSide").asc(),
+                        position.getString("marginMode").asc()
+                )
+                .fetch()
+                .stream()
+                .map(entity -> new OpenPositionCandidate(entity.memberId(), entity.toDomain()))
+                .toList();
+    }
+
+    @Override
     @Transactional
     public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
         OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
@@ -72,14 +89,20 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional
-    public void delete(String memberId, String symbol, String positionSide, String marginMode) {
-        jpaQueryFactory.delete(position)
+    public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        return jpaQueryFactory.delete(position)
                 .where(
                         position.getString("memberId").eq(memberId),
                         position.getString("symbol").eq(symbol),
                         position.getString("positionSide").eq(positionSide),
                         position.getString("marginMode").eq(marginMode)
                 )
-                .execute();
+                .execute() > 0;
+    }
+
+    @Override
+    @Transactional
+    public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        deleteIfOpen(memberId, symbol, positionSide, marginMode);
     }
 }

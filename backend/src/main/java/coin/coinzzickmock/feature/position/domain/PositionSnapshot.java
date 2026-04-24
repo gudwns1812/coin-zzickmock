@@ -11,6 +11,8 @@ public record PositionSnapshot(
         Double liquidationPrice,
         double unrealizedPnl
 ) {
+    private static final String MARGIN_MODE_CROSS = "CROSS";
+
     public static PositionSnapshot open(
             String symbol,
             String positionSide,
@@ -33,6 +35,20 @@ public record PositionSnapshot(
         );
     }
 
+    public PositionSnapshot markToMarket(double nextMarkPrice) {
+        return new PositionSnapshot(
+                symbol,
+                positionSide,
+                marginMode,
+                leverage,
+                quantity,
+                entryPrice,
+                nextMarkPrice,
+                liquidationPrice,
+                pnl(nextMarkPrice, quantity)
+        );
+    }
+
     public PositionSnapshot increase(int leverage, double additionalQuantity, double executionPrice, double markPrice) {
         double totalQuantity = quantity + additionalQuantity;
         double weightedEntryPrice = ((entryPrice * quantity) + (executionPrice * additionalQuantity)) / totalQuantity;
@@ -47,6 +63,26 @@ public record PositionSnapshot(
                 liquidationPrice(positionSide, leverage, weightedEntryPrice),
                 0
         );
+    }
+
+    public boolean isCrossMargin() {
+        return MARGIN_MODE_CROSS.equalsIgnoreCase(marginMode);
+    }
+
+    public double notional(double targetMarkPrice) {
+        return targetMarkPrice * quantity;
+    }
+
+    public double initialMargin() {
+        return (entryPrice * quantity) / leverage;
+    }
+
+    public double unrealizedPnl(double targetMarkPrice) {
+        return pnl(targetMarkPrice, quantity);
+    }
+
+    public String stableKey() {
+        return String.join(":", symbol, positionSide, marginMode);
     }
 
     public PositionCloseOutcome close(double closeQuantity, double markPrice, double executionPrice, double takerFeeRate) {

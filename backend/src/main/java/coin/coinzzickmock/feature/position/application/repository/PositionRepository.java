@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.position.application.repository;
 
+import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 
 import java.util.List;
@@ -15,7 +16,11 @@ public interface PositionRepository {
             String marginMode
     );
 
+    List<OpenPositionCandidate> findOpenBySymbol(String symbol);
+
     PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot);
+
+    boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode);
 
     void delete(String memberId, String symbol, String positionSide, String marginMode);
 }

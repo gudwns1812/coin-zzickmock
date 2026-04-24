@@ -6,10 +6,12 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
@@ -161,10 +163,25 @@ class CreateOrderServiceTest {
         }
 
         @Override
+        public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
+            return positions.stream()
+                    .filter(position -> position.symbol().equals(symbol))
+                    .map(position -> new OpenPositionCandidate("demo-member", position))
+                    .toList();
+        }
+
+        @Override
         public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
             positions.clear();
             positions.add(positionSnapshot);
             return positionSnapshot;
+        }
+
+        @Override
+        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+            boolean deleted = !positions.isEmpty();
+            positions.clear();
+            return deleted;
         }
 
         @Override
@@ -186,6 +203,22 @@ class CreateOrderServiceTest {
 
         @Override
         public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
+            return List.of();
+        }
+
+        @Override
+        public Optional<FuturesOrder> claimPendingFill(
+                String memberId,
+                String orderId,
+                double executionPrice,
+                String feeType,
+                double estimatedFee
+        ) {
             return Optional.empty();
         }
 

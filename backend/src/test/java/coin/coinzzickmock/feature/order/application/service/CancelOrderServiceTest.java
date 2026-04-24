@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.util.ArrayList;
@@ -79,6 +80,30 @@ class CancelOrderServiceTest {
         @Override
         public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
             return orders.stream().filter(order -> order.orderId().equals(orderId)).findFirst();
+        }
+
+        @Override
+        public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
+            return orders.stream()
+                    .filter(FuturesOrder::isPending)
+                    .filter(order -> order.symbol().equals(symbol))
+                    .map(order -> new PendingOrderCandidate("demo-member", order))
+                    .toList();
+        }
+
+        @Override
+        public Optional<FuturesOrder> claimPendingFill(
+                String memberId,
+                String orderId,
+                double executionPrice,
+                String feeType,
+                double estimatedFee
+        ) {
+            Optional<FuturesOrder> order = findByMemberIdAndOrderId(memberId, orderId)
+                    .filter(FuturesOrder::isPending)
+                    .map(found -> found.fill(executionPrice, feeType, estimatedFee));
+            order.ifPresent(updated -> save(memberId, updated));
+            return order;
         }
 
         @Override

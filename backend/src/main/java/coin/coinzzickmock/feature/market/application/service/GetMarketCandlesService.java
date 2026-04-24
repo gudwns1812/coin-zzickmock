@@ -70,9 +70,9 @@ public class GetMarketCandlesService {
                 }
                 yield rollupMinuteResults(symbolId, latestMinuteOpenTime, limit, 15);
             }
-            case ONE_HOUR -> hourlyResults(symbolId, limit);
+            case ONE_HOUR -> hourlyResults(symbolId, limit, query.beforeOpenTime());
             case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
-                    rollupHourlyResults(symbolId, limit, interval);
+                    rollupHourlyResults(symbolId, limit, interval, query.beforeOpenTime());
         };
     }
 

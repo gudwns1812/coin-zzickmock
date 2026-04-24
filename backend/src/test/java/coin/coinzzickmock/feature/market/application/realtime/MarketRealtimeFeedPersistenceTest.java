@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
+import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
@@ -11,6 +12,8 @@ import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +39,9 @@ class MarketRealtimeFeedPersistenceTest {
     private MarketRealtimeFeed marketRealtimeFeed;
 
     @Autowired
+    private MarketMinuteCandleHistoryListener marketMinuteCandleHistoryListener;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
@@ -52,16 +58,26 @@ class MarketRealtimeFeedPersistenceTest {
     }
 
     @Test
-    void persistsMinuteAndHourlyHistoryWhenMarketsRefresh() {
+    void persistsMinuteAndHourlyHistoryWhenMinuteClosedEventArrives() {
         marketRealtimeFeed.refreshSupportedMarkets();
+        marketMinuteCandleHistoryListener.onMinuteClosed(new MarketMinuteClosedEvent(
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z")
+        ));
 
         assertThat(count("market_candles_1m")).isEqualTo(2);
         assertThat(count("market_candles_1h")).isEqualTo(2);
+        assertThat(volume("market_candles_1m")).isGreaterThan(0.0);
     }
 
     private int count(String tableName) {
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + tableName, Integer.class);
         return count == null ? 0 : count;
+    }
+
+    private double volume(String tableName) {
+        Double volume = jdbcTemplate.queryForObject("SELECT SUM(volume) FROM " + tableName, Double.class);
+        return volume == null ? 0.0 : volume;
     }
 
     private static MarketSnapshot snapshot(
@@ -142,6 +158,29 @@ class MarketRealtimeFeedPersistenceTest {
                     .filter(snapshot -> snapshot.symbol().equals(symbol))
                     .findFirst()
                     .orElse(null);
+        }
+
+        @Override
+        public List<MarketMinuteCandleSnapshot> loadMinuteCandles(
+                String symbol,
+                Instant fromInclusive,
+                Instant toExclusive
+        ) {
+            MarketSnapshot snapshot = loadMarket(symbol);
+            if (snapshot == null) {
+                return List.of();
+            }
+
+            return List.of(new MarketMinuteCandleSnapshot(
+                    fromInclusive,
+                    fromInclusive.plus(1, ChronoUnit.MINUTES),
+                    snapshot.lastPrice(),
+                    snapshot.lastPrice(),
+                    snapshot.lastPrice(),
+                    snapshot.lastPrice(),
+                    10.0,
+                    snapshot.lastPrice() * 10.0
+            ));
         }
 
         void replaceSnapshots(List<MarketSnapshot> snapshots) {

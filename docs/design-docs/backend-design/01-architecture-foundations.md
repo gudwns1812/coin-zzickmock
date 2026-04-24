@@ -23,6 +23,7 @@
 
 - 기능은 `feature` 아래에서 수직으로 자른다.
 - 모든 기능은 같은 레이어 집합을 사용한다.
+- 클래스와 메서드는 하나의 변경 이유와 하나의 추상화 수준을 유지한다.
 - 도메인은 프레임워크와 외부 SDK를 모른다.
 - 애플리케이션은 유스케이스를 조합하지만 기술 세부사항을 모른다.
 - 인프라는 영속성, 외부 시스템, 프레임워크 연결을 담당한다.
@@ -128,6 +129,10 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 
 1. [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 
+### 클래스나 메서드 책임 분리, 클린 코드 기준이 필요할 때
+
+1. [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
+
 ### 도메인 모델, 정책, 상태 전이 규칙이 필요할 때
 
 1. [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
@@ -159,3 +164,4 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
 - [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+- [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)

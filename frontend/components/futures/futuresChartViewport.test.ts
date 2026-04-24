@@ -4,8 +4,12 @@ import test from "node:test";
 const viewportModule: typeof import("./futuresChartViewport") = await import(
   new URL("./futuresChartViewport.ts", import.meta.url).href
 );
-const { getIntervalConfig, getLatestVisibleLogicalRange, INTERVAL_OPTIONS } =
-  viewportModule;
+const {
+  getIntervalConfig,
+  getLatestVisibleLogicalRange,
+  getViewportScaleOptions,
+  INTERVAL_OPTIONS,
+} = viewportModule;
 
 test("all chart intervals expose the approved viewport presets", () => {
   assert.deepEqual(
@@ -91,14 +95,33 @@ test("all chart intervals expose the approved viewport presets", () => {
   );
 });
 
-test("viewport range uses all available bars when less than target visible bars", () => {
+test("viewport range reserves configured width when less than target visible bars", () => {
   const config = getIntervalConfig("1D");
   const range = getLatestVisibleLogicalRange(12, config);
 
   assert.deepEqual(range, {
-    from: 2,
+    from: -76,
     to: 14,
   });
+});
+
+test("viewport range avoids oversized sparse refresh candles", () => {
+  const config = getIntervalConfig("1D");
+
+  assert.deepEqual(getLatestVisibleLogicalRange(1, config), {
+    from: -87,
+    to: 3,
+  });
+  assert.deepEqual(getLatestVisibleLogicalRange(2, config), {
+    from: -86,
+    to: 4,
+  });
+});
+
+test("viewport range is null when no candles are loaded", () => {
+  const config = getIntervalConfig("1D");
+
+  assert.equal(getLatestVisibleLogicalRange(0, config), null);
 });
 
 test("viewport range uses configured visible bars when enough candles are loaded", () => {
@@ -108,6 +131,18 @@ test("viewport range uses configured visible bars when enough candles are loaded
   assert.deepEqual(range, {
     from: 87,
     to: 171,
+  });
+});
+
+test("viewport scale caps sparse histories to prevent oversized refresh candles", () => {
+  const config = getIntervalConfig("1m");
+
+  assert.deepEqual(getViewportScaleOptions(2, config), {
+    barSpacing: 6,
+    maxBarSpacing: 6,
+  });
+  assert.deepEqual(getViewportScaleOptions(180, config), {
+    maxBarSpacing: 0,
   });
 });
 

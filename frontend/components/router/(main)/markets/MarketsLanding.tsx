@@ -77,13 +77,13 @@ export default function MarketsLanding({
   });
 
   return (
-    <div className="px-main-2 pb-24 pt-4 flex flex-col gap-6">
+    <div className="px-main-3 pb-24 pt-2 flex flex-col gap-7">
       <section className="flex items-end justify-between gap-main">
         <div>
-          <h1 className="text-3xl-custom font-bold text-main-dark-gray">
+          <h1 className="text-4xl-custom font-bold text-main-dark-gray">
             메인 대시보드
           </h1>
-          <p className="mt-2 text-sm-custom text-main-dark-gray/60">
+          <p className="mt-3 text-base-custom text-main-dark-gray/60">
             포트폴리오 및 시장 현황
           </p>
         </div>
@@ -99,7 +99,7 @@ export default function MarketsLanding({
       </section>
 
       <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-        <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-5">
+        <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-6">
           <div>
             <h2 className="text-xl-custom font-semibold text-main-dark-gray">
               코인 시세
@@ -142,13 +142,13 @@ export default function MarketsLanding({
           <table className="min-w-full table-fixed">
             <thead className="bg-main-blue/[0.02]">
               <tr className="text-left text-xs-custom text-main-dark-gray/60">
-                <th className="px-main py-4 font-medium">코인</th>
-                <th className="px-main py-4 font-medium">가격</th>
-                <th className="px-main py-4 font-medium">24h 변동</th>
-                <th className="px-main py-4 font-medium">Mark Price</th>
-                <th className="px-main py-4 font-medium">Funding Rate</th>
-                <th className="px-main py-4 font-medium">Index Price</th>
-                <th className="px-main py-4 font-medium">시장 메모</th>
+                <th className="px-main py-5 font-medium">코인</th>
+                <th className="px-main py-5 font-medium">가격</th>
+                <th className="px-main py-5 font-medium">24h 변동</th>
+                <th className="px-main py-5 font-medium">Mark Price</th>
+                <th className="px-main py-5 font-medium">Funding Rate</th>
+                <th className="px-main py-5 font-medium">Index Price</th>
+                <th className="px-main py-5 font-medium">시장 메모</th>
               </tr>
             </thead>
             <tbody>
@@ -166,7 +166,7 @@ export default function MarketsLanding({
       </section>
 
       <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-        <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-5">
+        <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-6">
           <div>
             <h2 className="text-xl-custom font-semibold text-main-dark-gray">
               수익률 랭킹
@@ -225,7 +225,7 @@ function SummaryMetricCard({ card }: { card: DashboardSummaryCard }) {
 
   return (
     <article
-      className={`rounded-main border backdrop-blur-md px-main-2 py-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${toneClassName.panel}`}
+      className={`rounded-main border backdrop-blur-md px-main-2 py-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${toneClassName.panel}`}
     >
       <div className="flex items-start gap-3">
         <div
@@ -272,7 +272,7 @@ function MarketTableRow({
       : "bg-[linear-gradient(135deg,_rgba(239,68,68,0.2),_rgba(252,165,165,0.12))]";
   return (
     <tr className="group border-b border-main-light-gray/30 text-sm-custom text-main-dark-gray transition-colors duration-200 hover:bg-main-blue/5 last:border-0">
-      <td className="px-main py-4">
+      <td className="px-main py-5">
         <Link
           href={`/markets/${market.symbol}`}
           className="flex items-center gap-3 rounded-main transition-all group-hover:translate-x-1"
@@ -290,7 +290,7 @@ function MarketTableRow({
           </div>
         </Link>
       </td>
-      <td className="px-main py-4">
+      <td className="px-main py-5">
         <div
           className="relative overflow-hidden rounded-main bg-white/65 px-3 py-3 backdrop-blur-sm"
           style={{
@@ -312,19 +312,19 @@ function MarketTableRow({
           </p>
         </div>
       </td>
-      <td className={`px-main py-4 font-semibold ${changeClassName}`}>
+      <td className={`px-main py-5 font-semibold ${changeClassName}`}>
         {isMarketDataDegraded ? "-" : formatPercent(market.change24h)}
       </td>
-      <td className="px-main py-4 text-main-dark-gray/70">
+      <td className="px-main py-5 text-main-dark-gray/70">
         {isMarketDataDegraded ? "-" : formatUsd(market.markPrice)}
       </td>
-      <td className={`px-main py-4 font-semibold ${fundingClassName}`}>
+      <td className={`px-main py-5 font-semibold ${fundingClassName}`}>
         {isMarketDataDegraded ? "-" : formatPercent(market.fundingRate * 100)}
       </td>
-      <td className="px-main py-4 text-main-dark-gray/70">
+      <td className="px-main py-5 text-main-dark-gray/70">
         {isMarketDataDegraded ? "-" : formatUsd(market.indexPrice)}
       </td>
-      <td className="px-main py-4 text-main-blue/80 font-semibold">
+      <td className="px-main py-5 text-main-blue/80 font-semibold">
         {market.openInterestLabel}
       </td>
     </tr>
@@ -333,7 +333,7 @@ function MarketTableRow({
 
 function RankingRow({ entry }: { entry: MarketRankingEntry }) {
   return (
-    <div className="grid grid-cols-[120px_1fr_220px_180px] items-center gap-main px-main-2 py-5 transition-colors duration-200 hover:bg-main-blue/5">
+    <div className="grid grid-cols-[120px_1fr_220px_180px] items-center gap-main px-main-2 py-6 transition-colors duration-200 hover:bg-main-blue/5">
       <div className="flex items-center gap-3">
         <RankBadge rank={entry.rank} />
         <span className="text-sm-custom font-semibold text-main-dark-gray/80">

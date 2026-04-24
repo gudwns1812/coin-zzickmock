@@ -2,7 +2,15 @@
 
 import type { FuturesOpenOrder, FuturesPosition } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import Modal from "@/components/ui/Modal";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Activity,
+  ChartArea,
+  ChartLine,
+  Settings2,
+  type LucideIcon,
+} from "lucide-react";
 import {
   CandlestickSeries,
   ColorType,
@@ -38,8 +46,13 @@ import {
 } from "./futuresChartIndicatorSeries";
 import { isFreshFuturesHistory } from "./futuresChartHistory";
 import {
+  getLiveCandleBucket,
+  mergeCandlesWithLivePrice,
+} from "./futuresLiveCandles";
+import {
   focusLatestCandles,
   getIntervalConfig,
+  getViewportScaleOptions,
   INTERVAL_OPTIONS,
   isViewingLatestRange,
   type FuturesCandleInterval,
@@ -48,6 +61,7 @@ import {
 type Props = {
   symbol: MarketSymbol;
   currentPrice: number;
+  currentPriceUpdatedAt: number;
   change24h: number;
   positions: FuturesPosition[];
   openOrders: FuturesOpenOrder[];
@@ -81,6 +95,8 @@ type OhlcSnapshot = {
   open: number;
 };
 
+type OhlcTone = "bearish" | "bullish" | "neutral";
+
 type PriceLineOwner = ISeriesApi<"Candlestick"> | ISeriesApi<"Line">;
 
 type OwnedPriceLine = {
@@ -98,15 +114,18 @@ const CHART_COLORS = {
 } as const;
 
 const LOAD_MORE_THRESHOLD = 25;
+const CHART_HEIGHT = 500;
 const INDICATOR_TYPES: IndicatorType[] = ["EMA", "SMA", "BOLLINGER"];
 
 export default function FuturesPriceChart({
   symbol,
   currentPrice,
+  currentPriceUpdatedAt,
   change24h,
   positions,
   openOrders,
 }: Props) {
+  const queryClient = useQueryClient();
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -116,16 +135,18 @@ export default function FuturesPriceChart({
   const positionPriceLinesRef = useRef<OwnedPriceLine[]>([]);
   const orderPriceLinesRef = useRef<OwnedPriceLine[]>([]);
   const pendingViewportResetRef = useRef(true);
+  const liveBucketOpenTimeRef = useRef<number | null>(null);
   const [selectedInterval, setSelectedInterval] =
     useState<FuturesCandleInterval>("1m");
   const [hoveredOhlc, setHoveredOhlc] = useState<OhlcSnapshot | null>(null);
   const [indicatorConfigs, setIndicatorConfigs] = useState<IndicatorConfigs>(() =>
     resetIndicators(DEFAULT_INDICATOR_CONFIGS)
   );
+  const [isIndicatorSettingsOpen, setIsIndicatorSettingsOpen] = useState(false);
   const [isAtLatest, setIsAtLatest] = useState(true);
   const [livePoints, setLivePoints] = useState<LinePoint[]>([
     {
-      time: toUnixSeconds(Date.now()),
+      time: toUnixSeconds(currentPriceUpdatedAt),
       value: currentPrice,
     },
   ]);
@@ -192,8 +213,26 @@ export default function FuturesPriceChart({
   }, [candles, selectedInterval]);
 
   const hasFreshHistory = historyStatus === "ready";
-  const visibleCandles = hasFreshHistory ? candles : [];
-  const latestVisibleCandle = visibleCandles.at(-1) ?? null;
+  const historicalCandles = hasFreshHistory ? candles : [];
+  const displayCandles = useMemo(() => {
+    if (!hasFreshHistory) {
+      return historicalCandles;
+    }
+
+    return mergeCandlesWithLivePrice(
+      historicalCandles,
+      selectedInterval,
+      currentPrice,
+      currentPriceUpdatedAt
+    );
+  }, [
+    currentPrice,
+    currentPriceUpdatedAt,
+    hasFreshHistory,
+    historicalCandles,
+    selectedInterval,
+  ]);
+  const latestVisibleCandle = displayCandles.at(-1) ?? null;
   const displayedOhlc = hoveredOhlc ?? toOhlcSnapshot(latestVisibleCandle);
   const {
     fetchNextPage,
@@ -204,9 +243,10 @@ export default function FuturesPriceChart({
   } = historyQuery;
 
   useEffect(() => {
+    liveBucketOpenTimeRef.current = null;
     setLivePoints([
       {
-        time: toUnixSeconds(Date.now()),
+        time: toUnixSeconds(currentPriceUpdatedAt),
         value: currentPrice,
       },
     ]);
@@ -215,7 +255,7 @@ export default function FuturesPriceChart({
   useEffect(() => {
     setLivePoints((current) => {
       const nextPoint = {
-        time: toUnixSeconds(Date.now()),
+        time: toUnixSeconds(currentPriceUpdatedAt),
         value: currentPrice,
       };
       const previous = current[current.length - 1];
@@ -226,17 +266,17 @@ export default function FuturesPriceChart({
 
       return [...current, nextPoint].slice(-240);
     });
-  }, [currentPrice]);
+  }, [currentPrice, currentPriceUpdatedAt]);
 
   const candlestickData = useMemo<CandlestickData<Time>[]>(() => {
-    return visibleCandles.map((candle) => ({
+    return displayCandles.map((candle) => ({
       time: toUnixSeconds(candle.openTime),
       open: candle.openPrice,
       high: candle.highPrice,
       low: candle.lowPrice,
       close: candle.closePrice,
     }));
-  }, [visibleCandles]);
+  }, [displayCandles]);
 
   const indicatorCandles = useMemo(
     () =>
@@ -248,7 +288,7 @@ export default function FuturesPriceChart({
   );
 
   const volumeData = useMemo<HistogramData<Time>[]>(() => {
-    return visibleCandles.map((candle) => ({
+    return displayCandles.map((candle) => ({
       time: toUnixSeconds(candle.openTime),
       value: candle.volume,
       color:
@@ -256,12 +296,13 @@ export default function FuturesPriceChart({
           ? "rgba(16,185,129,0.35)"
           : "rgba(239,68,68,0.35)",
     }));
-  }, [visibleCandles]);
+  }, [displayCandles]);
 
   const hasCandleData = candlestickData.length > 0;
   const indicatorControlsEnabled = canEditIndicators(hasFreshHistory);
   const indicatorFallbackMessage = getIndicatorFallbackMessage(hasFreshHistory);
   const enabledIndicatorCount = getEnabledIndicatorCount(indicatorConfigs);
+  const ohlcTone = getOhlcTone(displayedOhlc);
 
   useEffect(() => {
     if (!chartContainerRef.current) {
@@ -282,7 +323,7 @@ export default function FuturesPriceChart({
         mode: 0,
       },
       width: container.clientWidth,
-      height: 420,
+      height: CHART_HEIGHT,
       handleScale: true,
       handleScroll: true,
       rightPriceScale: {
@@ -350,7 +391,7 @@ export default function FuturesPriceChart({
     });
 
     const resizeObserver = new window.ResizeObserver(() => {
-      chart.resize(container.clientWidth, 420);
+      chart.resize(container.clientWidth, CHART_HEIGHT);
     });
     resizeObserver.observe(container);
 
@@ -369,6 +410,7 @@ export default function FuturesPriceChart({
 
   useEffect(() => {
     pendingViewportResetRef.current = true;
+    liveBucketOpenTimeRef.current = null;
     setHoveredOhlc(null);
 
     chartRef.current?.applyOptions({
@@ -377,6 +419,41 @@ export default function FuturesPriceChart({
       },
     });
   }, [selectedConfig.secondsVisible, selectedInterval, symbol]);
+
+  useEffect(() => {
+    if (!hasFreshHistory) {
+      liveBucketOpenTimeRef.current = null;
+      return;
+    }
+
+    const bucket = getLiveCandleBucket(selectedInterval, currentPriceUpdatedAt);
+    const previousBucketOpenTime = liveBucketOpenTimeRef.current;
+    liveBucketOpenTimeRef.current = bucket.openTimeMs;
+
+    if (
+      previousBucketOpenTime === null ||
+      previousBucketOpenTime === bucket.openTimeMs
+    ) {
+      return;
+    }
+
+    void queryClient.invalidateQueries({
+      queryKey: ["futures-candles", symbol, selectedInterval],
+    });
+
+    if (isAtLatest && chartRef.current) {
+      focusLatestCandles(chartRef.current, candlestickData.length, selectedConfig);
+    }
+  }, [
+    candlestickData.length,
+    currentPriceUpdatedAt,
+    hasFreshHistory,
+    isAtLatest,
+    queryClient,
+    selectedConfig,
+    selectedInterval,
+    symbol,
+  ]);
 
   useEffect(() => {
     liveSeriesRef.current?.applyOptions({
@@ -398,10 +475,14 @@ export default function FuturesPriceChart({
       liveSeries.setData([]);
       candleSeries.setData(candlestickData);
       volumeSeries.setData(volumeData);
+      chart.timeScale().applyOptions(
+        getViewportScaleOptions(candlestickData.length, selectedConfig)
+      );
     } else {
       candleSeries.setData([]);
       volumeSeries.setData([]);
       liveSeries.setData(livePoints);
+      chart.timeScale().applyOptions({ maxBarSpacing: 0 });
     }
 
     if (pendingViewportResetRef.current) {
@@ -570,57 +651,142 @@ export default function FuturesPriceChart({
         })}
       </div>
 
-      <div className="relative mt-4 h-[420px] overflow-hidden rounded-main border border-main-light-gray/70 bg-white">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-3">
-          <div className="flex items-start justify-between gap-4">
-            <div className="rounded-main bg-white/92 px-3 py-2 shadow-sm ring-1 ring-main-light-gray/70 backdrop-blur">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs-custom text-main-dark-gray">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-main-dark-gray/55">
-                  {symbol}
-                </span>
-                <span>O {formatOhlc(displayedOhlc?.open)}</span>
-                <span>H {formatOhlc(displayedOhlc?.high)}</span>
-                <span>L {formatOhlc(displayedOhlc?.low)}</span>
-                <span>C {formatOhlc(displayedOhlc?.close)}</span>
-              </div>
-            </div>
+      <div className="mt-4 flex items-stretch gap-3">
+        <div className="flex w-16 shrink-0 flex-col items-center gap-2 rounded-main border border-main-light-gray/70 bg-main-light-gray/20 px-2 py-3">
+          <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-main-dark-gray shadow-sm ring-1 ring-main-light-gray/70">
+            {enabledIndicatorCount}/3
+          </span>
 
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-semibold text-main-dark-gray shadow-sm ring-1 ring-main-light-gray/70">
-                {activeChartStatus}
-              </span>
-              {isFetchingNextPage && (
-                <span className="rounded-full bg-main-dark-gray px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-                  과거 데이터 로딩 중
-                </span>
-              )}
-              <button
-                className={[
-                  "pointer-events-auto rounded-main border px-3 py-2 text-xs-custom font-semibold transition-colors",
-                  isAtLatest
-                    ? "border-main-light-gray bg-white/92 text-main-dark-gray/45"
-                    : "border-emerald-300 bg-emerald-50 text-emerald-700",
-                ].join(" ")}
-                onClick={() => {
-                  if (hasCandleData && chartRef.current) {
-                    focusLatestCandles(
-                      chartRef.current,
-                      candlestickData.length,
-                      selectedConfig
-                    );
-                  } else {
-                    chartRef.current?.timeScale().scrollToRealTime();
-                  }
-                  setIsAtLatest(true);
-                }}
-                type="button"
+          <div className="flex flex-col items-center gap-1.5">
+            {INDICATOR_TYPES.map((type) => (
+              <IndicatorToolbarButton
+                controlsEnabled={indicatorControlsEnabled}
+                enabled={indicatorConfigs[type].enabled}
+                key={type}
+                onClick={() =>
+                  setIndicatorConfigs((current) =>
+                    setIndicatorEnabled(current, type, !current[type].enabled)
+                  )
+                }
+                type={type}
+              />
+            ))}
+            <button
+              aria-label="Indicator settings"
+              className={[
+                "inline-flex h-10 w-10 items-center justify-center rounded-main border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-main-dark-gray/20",
+                isIndicatorSettingsOpen
+                  ? "border-main-dark-gray bg-main-dark-gray text-white"
+                  : "border-main-light-gray bg-white text-main-dark-gray/70 hover:border-main-dark-gray/25 hover:bg-main-light-gray/25 hover:text-main-dark-gray",
+              ].join(" ")}
+              onClick={() => setIsIndicatorSettingsOpen(true)}
+              title="Indicator settings"
+              type="button"
+            >
+              <Settings2 size={16} />
+            </button>
+          </div>
+
+          {indicatorFallbackMessage && (
+            <span
+              className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200"
+              title={indicatorFallbackMessage}
+            >
+              대기
+            </span>
+          )}
+        </div>
+
+        <div className="relative h-[500px] min-w-0 flex-1 overflow-hidden rounded-main border border-main-light-gray/70 bg-white">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-3">
+            <div className="flex items-start justify-between gap-4">
+              <div
+                aria-label={`${symbol} OHLC legend`}
+                className="rounded-main bg-white/92 px-3 py-2 shadow-sm ring-1 ring-main-light-gray/70 backdrop-blur"
+                role="group"
               >
-                최신 보기
-              </button>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs-custom text-main-dark-gray">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-main-dark-gray/55">
+                    {symbol}
+                  </span>
+                  <OhlcLegendValue
+                    label="O"
+                    tone={ohlcTone}
+                    value={formatOhlc(displayedOhlc?.open)}
+                  />
+                  <OhlcLegendValue
+                    label="H"
+                    tone={ohlcTone}
+                    value={formatOhlc(displayedOhlc?.high)}
+                  />
+                  <OhlcLegendValue
+                    label="L"
+                    tone={ohlcTone}
+                    value={formatOhlc(displayedOhlc?.low)}
+                  />
+                  <OhlcLegendValue
+                    label="C"
+                    tone={ohlcTone}
+                    value={formatOhlc(displayedOhlc?.close)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-semibold text-main-dark-gray shadow-sm ring-1 ring-main-light-gray/70">
+                  {activeChartStatus}
+                </span>
+                {isFetchingNextPage && (
+                  <span className="rounded-full bg-main-dark-gray px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+                    과거 데이터 로딩 중
+                  </span>
+                )}
+                <button
+                  className={[
+                    "pointer-events-auto rounded-main border px-3 py-2 text-xs-custom font-semibold transition-colors",
+                    isAtLatest
+                      ? "border-main-light-gray bg-white/92 text-main-dark-gray/45"
+                      : "border-emerald-300 bg-emerald-50 text-emerald-700",
+                  ].join(" ")}
+                  onClick={() => {
+                    if (hasCandleData && chartRef.current) {
+                      focusLatestCandles(
+                        chartRef.current,
+                        candlestickData.length,
+                        selectedConfig
+                      );
+                    } else {
+                      chartRef.current?.timeScale().scrollToRealTime();
+                    }
+                    setIsAtLatest(true);
+                  }}
+                  type="button"
+                >
+                  최신 보기
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-start gap-2">
+          <div className="h-full w-full" ref={chartContainerRef} />
+        </div>
+      </div>
+
+      <Modal
+        hasBackdropBlur={false}
+        isEscapeClose
+        isOpen={isIndicatorSettingsOpen}
+        onClose={() => setIsIndicatorSettingsOpen(false)}
+      >
+        <div className="w-[min(720px,calc(100vw-48px))] pr-6">
+          <p className="text-sm-custom font-semibold text-main-dark-gray">
+            Indicator 설정
+          </p>
+          <p className="mt-2 text-xs-custom text-main-dark-gray/60">
+            최대 3개까지 활성화할 수 있으며, 히스토리가 준비된 차트에서만 표시됩니다.
+          </p>
+
+          <div className="mt-5 grid gap-3">
             {INDICATOR_TYPES.map((type) => (
               <IndicatorControl
                 config={indicatorConfigs[type]}
@@ -643,9 +809,19 @@ export default function FuturesPriceChart({
                 }
               />
             ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-main-light-gray pt-4">
+            <span className="text-xs-custom font-medium text-main-dark-gray/70">
+              활성 indicator {enabledIndicatorCount}/3
+            </span>
 
             <button
-              className="pointer-events-auto rounded-main border border-main-light-gray bg-white/92 px-3 py-2 text-xs-custom font-semibold text-main-dark-gray shadow-sm ring-1 ring-main-light-gray/70 transition-colors hover:border-main-dark-gray/25"
+              className={[
+                "rounded-main border border-main-light-gray bg-white px-3 py-2 text-xs-custom font-semibold text-main-dark-gray transition-colors hover:border-main-dark-gray/25",
+                !indicatorControlsEnabled ? "cursor-not-allowed opacity-50" : "",
+              ].join(" ")}
+              disabled={!indicatorControlsEnabled}
               onClick={() =>
                 setIndicatorConfigs((current) => resetIndicators(current))
               }
@@ -653,44 +829,9 @@ export default function FuturesPriceChart({
             >
               초기화
             </button>
-
-            <span className="rounded-main bg-white/85 px-3 py-2 text-[11px] font-medium text-main-dark-gray/70 shadow-sm ring-1 ring-main-light-gray/60">
-              활성 indicator {enabledIndicatorCount}/3
-            </span>
-
-            {indicatorFallbackMessage && (
-              <span className="rounded-main bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700 shadow-sm ring-1 ring-amber-200">
-                {indicatorFallbackMessage}
-              </span>
-            )}
           </div>
         </div>
-
-        <div className="h-full w-full" ref={chartContainerRef} />
-      </div>
-
-      <div className="mt-4 grid grid-cols-4 gap-main">
-        <ChartMeta
-          label="24h 변화율"
-          tone={change24h >= 0 ? "positive" : "negative"}
-          value={formatPercent(change24h)}
-        />
-        <ChartMeta
-          label="차트 상태"
-          tone={hasCandleData ? "neutral" : "warning"}
-          value={activeChartStatus}
-        />
-        <ChartMeta
-          label="열린 포지션선"
-          tone={positions.length > 0 ? "positive" : "neutral"}
-          value={`${positions.length}개`}
-        />
-        <ChartMeta
-          label="열린 주문선"
-          tone={openOrders.length > 0 ? "warning" : "neutral"}
-          value={`${openOrders.length}개`}
-        />
-      </div>
+      </Modal>
 
       {(isLoading || isError || historyStatus === "stale") && (
         <div className="mt-4 rounded-main border border-main-light-gray bg-main-light-gray/30 px-main py-3 text-sm-custom text-main-dark-gray/70">
@@ -714,8 +855,6 @@ function IndicatorControl({
   onStdDevChange: (stdDev: number) => void;
   onToggle: (enabled: boolean) => void;
 }) {
-  const canEnable = controlsEnabled || config.enabled;
-
   return (
     <div className="pointer-events-auto rounded-main bg-white/92 px-3 py-2 shadow-sm ring-1 ring-main-light-gray/70 backdrop-blur">
       <div className="flex items-center gap-2">
@@ -728,9 +867,9 @@ function IndicatorControl({
             config.enabled
               ? "border-rose-200 bg-rose-50 text-rose-700"
               : "border-main-light-gray text-main-dark-gray/70",
-            !canEnable ? "cursor-not-allowed opacity-50" : "",
+            !controlsEnabled ? "cursor-not-allowed opacity-50" : "",
           ].join(" ")}
-          disabled={!canEnable}
+          disabled={!controlsEnabled}
           onClick={() => onToggle(!config.enabled)}
           type="button"
         >
@@ -771,24 +910,68 @@ function IndicatorControl({
   );
 }
 
-function ChartMeta({
-  label,
-  value,
-  tone,
+function IndicatorToolbarButton({
+  type,
+  enabled,
+  controlsEnabled,
+  onClick,
 }: {
-  label: string;
-  value: string;
-  tone: "positive" | "negative" | "neutral" | "warning";
+  type: IndicatorType;
+  enabled: boolean;
+  controlsEnabled: boolean;
+  onClick: () => void;
 }) {
-  const toneClassName = getChartMetaToneClassName(tone);
+  const shortLabel = type === "BOLLINGER" ? "BB" : type;
+  const ariaLabel =
+    type === "BOLLINGER" ? "Bollinger Bands indicator toggle" : `${type} indicator toggle`;
+  const Icon = getIndicatorIcon(type);
 
   return (
-    <div className="rounded-main border border-main-light-gray px-main py-3">
-      <p className="text-xs-custom text-main-dark-gray/60">{label}</p>
-      <p className={`mt-2 text-sm-custom font-semibold ${toneClassName}`}>
-        {value}
-      </p>
-    </div>
+    <button
+      aria-label={ariaLabel}
+      aria-pressed={enabled}
+      className={[
+        "inline-flex h-10 w-10 items-center justify-center rounded-main border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-main-dark-gray/20",
+        enabled
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-main-light-gray bg-white text-main-dark-gray/70 hover:border-main-dark-gray/25 hover:bg-main-light-gray/25 hover:text-main-dark-gray",
+        !controlsEnabled ? "cursor-not-allowed opacity-50" : "",
+      ].join(" ")}
+      disabled={!controlsEnabled}
+      onClick={onClick}
+      title={shortLabel}
+      type="button"
+    >
+      <Icon aria-hidden="true" size={16} />
+    </button>
+  );
+}
+
+function getIndicatorIcon(type: IndicatorType): LucideIcon {
+  switch (type) {
+    case "EMA":
+      return ChartLine;
+    case "SMA":
+      return Activity;
+    case "BOLLINGER":
+      return ChartArea;
+  }
+}
+
+function OhlcLegendValue({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone: OhlcTone;
+  value: string;
+}) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="text-main-dark-gray/55">{label}</span>
+      <span className={getOhlcToneClassName(tone)}>{value}</span>
+    </span>
   );
 }
 
@@ -860,18 +1043,30 @@ function getChartHistoryBannerMessage(
   return "차트 히스토리 시간이 현재 기준으로 너무 오래되어 실시간 가격선만 표시합니다.";
 }
 
-function getChartMetaToneClassName(
-  tone: "positive" | "negative" | "neutral" | "warning"
-): string {
+function getOhlcTone(snapshot: OhlcSnapshot | null): OhlcTone {
+  if (!snapshot) {
+    return "neutral";
+  }
+
+  if (snapshot.close > snapshot.open) {
+    return "bullish";
+  }
+
+  if (snapshot.close < snapshot.open) {
+    return "bearish";
+  }
+
+  return "neutral";
+}
+
+function getOhlcToneClassName(tone: OhlcTone): string {
   switch (tone) {
-    case "positive":
-      return "text-emerald-600";
-    case "negative":
-      return "text-rose-600";
-    case "warning":
-      return "text-amber-600";
+    case "bullish":
+      return "font-semibold text-emerald-600";
+    case "bearish":
+      return "font-semibold text-rose-600";
     case "neutral":
-      return "text-main-dark-gray";
+      return "font-semibold text-main-dark-gray";
   }
 }
 

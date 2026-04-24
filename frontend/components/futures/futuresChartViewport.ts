@@ -1,4 +1,4 @@
-import type { IChartApi } from "lightweight-charts";
+import type { HorzScaleOptions, IChartApi } from "lightweight-charts";
 
 export type FuturesCandleInterval =
   | "1m"
@@ -109,6 +109,13 @@ export type LogicalRange = {
   to: number;
 };
 
+export type ViewportScaleOptions = Partial<Pick<
+  HorzScaleOptions,
+  "barSpacing" | "maxBarSpacing"
+>>;
+
+const SPARSE_HISTORY_BAR_SPACING = 6;
+
 export function getIntervalConfig(
   interval: FuturesCandleInterval
 ): FuturesChartIntervalConfig {
@@ -123,11 +130,26 @@ export function getLatestVisibleLogicalRange(
     return null;
   }
 
-  const visibleBars = Math.max(1, Math.min(totalBars, config.visibleBars));
   const to = totalBars - 1 + config.rightOffset;
-  const from = Math.max(to - visibleBars, -0.5);
+  const from = to - config.visibleBars;
 
   return { from, to };
+}
+
+export function getViewportScaleOptions(
+  totalBars: number,
+  config: Pick<FuturesChartIntervalConfig, "visibleBars">
+): ViewportScaleOptions {
+  if (totalBars > 0 && totalBars < config.visibleBars) {
+    return {
+      barSpacing: SPARSE_HISTORY_BAR_SPACING,
+      maxBarSpacing: SPARSE_HISTORY_BAR_SPACING,
+    };
+  }
+
+  return {
+    maxBarSpacing: 0,
+  };
 }
 
 export function focusLatestCandles(

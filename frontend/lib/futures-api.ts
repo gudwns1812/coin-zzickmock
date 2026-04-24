@@ -59,10 +59,14 @@ export type FuturesOpenOrder = {
   leverage: number;
   quantity: number;
   limitPrice: number | null;
-  status: "OPEN" | "FILLED";
+  status: "PENDING" | "OPEN" | "FILLED" | "CANCELLED";
   feeType: "MAKER" | "TAKER";
   estimatedFee: number;
   executionPrice: number;
+};
+
+export type FuturesOrderHistory = Omit<FuturesOpenOrder, "status"> & {
+  status: "FILLED" | "CANCELLED" | "REJECTED";
 };
 
 export type FuturesReward = {
@@ -105,6 +109,18 @@ export type OrderExecutionResponse = {
   estimatedInitialMargin: number;
   estimatedLiquidationPrice: number | null;
   executionPrice: number;
+};
+
+export type FuturesTradingExecutionEvent = {
+  type: "ORDER_FILLED" | "POSITION_LIQUIDATED";
+  orderId: string | null;
+  symbol: MarketSymbol;
+  positionSide: "LONG" | "SHORT";
+  marginMode: "ISOLATED" | "CROSS";
+  quantity: number;
+  executionPrice: number;
+  realizedPnl: number;
+  message: string;
 };
 
 const FUTURES_API_BASE_URL =
@@ -225,6 +241,21 @@ export async function getFuturesOpenOrders(
   const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
   const response = await readApi<FuturesOpenOrder[]>(
     `/api/futures/orders/open${query}`
+  );
+
+  if (!response) {
+    return [];
+  }
+
+  return response.filter((order) => isSupportedMarketSymbol(order.symbol));
+}
+
+export async function getFuturesOrderHistory(
+  symbol?: MarketSymbol
+): Promise<FuturesOrderHistory[]> {
+  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  const response = await readApi<FuturesOrderHistory[]>(
+    `/api/futures/orders/history${query}`
   );
 
   if (!response) {

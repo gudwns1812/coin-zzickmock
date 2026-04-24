@@ -77,6 +77,13 @@ interface CandleData {
   volume: number;
 }
 
+interface OhlcSnapshot {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 interface StockChartProps {
   code: string;
   selectedInterval: IntervalKey;
@@ -149,11 +156,11 @@ const StockChart = ({
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [allLoadedData, setAllLoadedData] = useState<{
     [key: string]: CandleData[];
   }>({});
+  const [hoveredOhlc, setHoveredOhlc] = useState<OhlcSnapshot | null>(null);
 
   const loadedStartDatesRef = useRef<{
     [key in IntervalKey]?: Set<string>;
@@ -169,6 +176,9 @@ const StockChart = ({
   );
 
   const isMyStock = useMemo(() => Boolean(myStock), [myStock]);
+  const currentIntervalData = allLoadedData[selectedInterval] ?? [];
+  const latestCandle = currentIntervalData.at(-1) ?? null;
+  const displayedOhlc = hoveredOhlc ?? toOhlcSnapshot(latestCandle);
 
   // useQuery 로직 통합
   const createStockQuery = useCallback(
@@ -320,71 +330,37 @@ const StockChart = ({
 
     chartRef.current = chart;
 
-    // 커서 변경 및 툴팁 표시
+    // 커서 이동 시 legend가 해당 캔들의 OHLC를 보여주도록 동기화한다.
     chart.subscribeCrosshairMove((param) => {
-      if (!chartContainerRef.current || !tooltipRef.current) return;
+      if (!chartContainerRef.current) return;
       const container = chartContainerRef.current;
-      const tooltip = tooltipRef.current;
+      const candlestickSeries = candlestickRef.current;
 
-      if (param.point === undefined || !param.time) {
+      if (param.point === undefined || !param.time || !candlestickSeries) {
         container.style.cursor = "default";
-        tooltip.style.display = "none";
+        setHoveredOhlc(null);
         return;
       }
 
       container.style.cursor = "crosshair";
 
-      const data = param.seriesData.get(candlestickRef.current!);
+      const data = param.seriesData.get(candlestickSeries);
       if (!data) {
-        tooltip.style.display = "none";
+        setHoveredOhlc(null);
         return;
       }
 
-      // 툴팁 내용 업데이트
-      const tooltipContent = `
-        <div style="margin-bottom: 4px;"><strong>날짜:</strong> ${
-          param.time
-        }</div>
-        ${
-          "open" in data
-            ? `<div style="margin-bottom: 2px;"><strong>시가:</strong> ${data.open.toLocaleString()}원</div>`
-            : ""
-        }
-        ${
-          "high" in data
-            ? `<div style="margin-bottom: 2px;"><strong>고가:</strong> ${data.high.toLocaleString()}원</div>`
-            : ""
-        }
-        ${
-          "low" in data
-            ? `<div style="margin-bottom: 2px;"><strong>저가:</strong> ${data.low.toLocaleString()}원</div>`
-            : ""
-        }
-        ${
-          "close" in data
-            ? `<div><strong>종가:</strong> ${data.close.toLocaleString()}원</div>`
-            : ""
-        }
-      `;
+      if ("open" in data) {
+        setHoveredOhlc({
+          open: data.open,
+          high: data.high,
+          low: data.low,
+          close: data.close,
+        });
+        return;
+      }
 
-      tooltip.innerHTML = tooltipContent;
-      tooltip.style.display = "block";
-
-      // 툴팁 위치 설정
-      const containerRect = container.getBoundingClientRect();
-      const left = param.point.x + 15;
-      const top = param.point.y - 10;
-
-      // 화면 경계 체크
-      const tooltipRect = tooltip.getBoundingClientRect();
-      const finalLeft =
-        left + tooltipRect.width > containerRect.width
-          ? param.point.x - tooltipRect.width - 15
-          : left;
-      const finalTop = top < 0 ? param.point.y + 15 : top;
-
-      tooltip.style.left = `${finalLeft}px`;
-      tooltip.style.top = `${finalTop}px`;
+      setHoveredOhlc(null);
     });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
@@ -435,9 +411,6 @@ const StockChart = ({
     volumeRef.current = volumeSeries;
 
     return () => {
-      if (tooltipRef.current) {
-        tooltipRef.current.style.display = "none";
-      }
       chart.remove();
     };
   }, [isMyStock, myStock, chartConfig]);
@@ -585,6 +558,7 @@ const StockChart = ({
     // 현재 로딩 상태만 초기화 (로드 기록은 유지)
     isLoadingRef.current = false;
     setIsLoadingMore(false);
+    setHoveredOhlc(null);
   }, [selectedInterval]);
 
   // 부모 크기 변경 감지 및 차트 리사이즈
@@ -616,8 +590,24 @@ const StockChart = ({
         style={{ width: "100%", height: "100%", position: "relative" }}
       />
 
+      <div
+        aria-label={`${code} OHLC legend`}
+        className="pointer-events-none absolute left-main top-0 z-10 rounded-main bg-white/92 px-3 py-2 shadow-sm ring-1 ring-main-light-gray/70 backdrop-blur"
+        role="group"
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs-custom text-main-dark-gray">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-main-dark-gray/55">
+            {code}
+          </span>
+          <span>O {formatKrwOhlc(displayedOhlc?.open)}</span>
+          <span>H {formatKrwOhlc(displayedOhlc?.high)}</span>
+          <span>L {formatKrwOhlc(displayedOhlc?.low)}</span>
+          <span>C {formatKrwOhlc(displayedOhlc?.close)}</span>
+        </div>
+      </div>
+
       {/* 실시간 상태 인디케이터 */}
-      <div className="absolute top-0 left-main flex items-center gap-2">
+      <div className="absolute right-2 top-0 flex items-center gap-2">
         {marketOpen && realTimeData && (
           <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -632,32 +622,30 @@ const StockChart = ({
         )}
       </div>
 
-      {/* 툴팁 */}
-      <div
-        ref={tooltipRef}
-        style={{
-          position: "absolute",
-          display: "none",
-          padding: "8px 12px",
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
-          color: "white",
-          borderRadius: "6px",
-          fontSize: "12px",
-          lineHeight: "1.4",
-          pointerEvents: "none",
-          zIndex: 1000,
-          minWidth: "120px",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-        }}
-      />
-
       {isLoadingMore && (
-        <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-sm">
+        <div className="absolute left-2 top-12 rounded bg-blue-500 px-2 py-1 text-sm text-white">
           이전 데이터 로딩 중...
         </div>
       )}
     </div>
   );
 };
+
+function formatKrwOhlc(value: number | undefined): string {
+  return typeof value === "number" ? `${value.toLocaleString()}원` : "-";
+}
+
+function toOhlcSnapshot(candle: CandleData | null): OhlcSnapshot | null {
+  if (!candle) {
+    return null;
+  }
+
+  return {
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+  };
+}
 
 export default StockChart;

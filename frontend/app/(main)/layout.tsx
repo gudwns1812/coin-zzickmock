@@ -16,7 +16,7 @@ export default async function MainLayout({
         <Header />
         <div
           id="main-layout"
-          className="flex-1 overflow-y-scroll pt-[100px] flex flex-col justify-between bg-white"
+          className="flex-1 overflow-y-scroll pt-[78px] flex flex-col justify-between bg-white"
         >
           <div className="grow shrink-0 min-w-[1000px]">{children}</div>
         </div>

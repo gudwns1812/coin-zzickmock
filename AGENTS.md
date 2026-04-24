@@ -40,7 +40,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Prefer evidence over assumption; verify before claiming completion.
 - Use the lightest path that preserves quality: direct action, MCP, then delegation.
 - Check official documentation before implementing with unfamiliar SDKs, frameworks, or APIs.
-- Treat `docs/` as the project's canonical documentation repository; before planning or implementation, read the relevant entry docs and detailed references first.
+- Treat `.omx/wiki` as the first project knowledge index; before planning or implementation, explore the wiki first through the `omx_wiki` MCP tools, then refresh it from relevant project documents or repositories when coverage is missing or stale.
 - Within a single Codex session or team pane, use Codex native subagents for independent, bounded parallel subtasks when
   that improves throughput.
 
@@ -70,7 +70,9 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 ## Working agreements
 
 - Manage project documents under `docs/`; keep root-level docs as entry documents and indexes.
-- Before writing a plan or code, inspect the relevant documentation path and treat it as the source of truth unless newer user evidence overrides it.
+- Before writing a plan or code, explore `.omx/wiki` first with `omx_wiki` MCP tools (`wiki_list`, `wiki_query`, `wiki_read`) and treat relevant wiki pages as the first knowledge index unless newer user evidence overrides it.
+- Add or refresh `.omx/wiki` entries with `omx_wiki` MCP tools from root-level project documents, related repository documentation, and discovered implementation conventions when they are relevant to the current task.
+- Keep `.omx/wiki` pages MCP-compatible: store readable wiki pages as top-level `.md` files with frontmatter, and preserve source hierarchy through filenames, tags, sources, and the generated index instead of nested directories.
 - When implementation changes architecture, product behavior, schema, external integration, or release flow, update the matching `docs/` documents in the same task.
 - Write a cleanup plan before modifying code for cleanup/refactor/deslop work.
 - Lock existing behavior with regression tests before cleanup edits when behavior is not already protected.
@@ -86,27 +88,28 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 Use this workflow before planning or implementation:
 
 1. Identify the task area.
-2. Read the matching root entry document when available (`README.md`, `BACKEND.md`, `FRONTEND.md`, `SECURITY.md`, `RELEASE.md`, `PLANS.md`).
-3. Read the matching `docs/` entry/index document.
-4. Read only the specific detailed docs needed for the task.
+2. Query or browse `.omx/wiki` through `omx_wiki` MCP (`wiki_list`, `wiki_query`, `wiki_read`) for matching project knowledge, conventions, prior decisions, and references.
+3. If the wiki is missing or stale for the task area, ingest the relevant root-level project documents or related repository documentation into `.omx/wiki` through `omx_wiki` MCP.
+4. Read only the specific detailed docs needed to verify or update the wiki-backed understanding.
 5. Then produce the plan or implementation.
 
-Preferred `docs/` entry points:
+Preferred `.omx/wiki` coverage areas:
 
-- Product/spec work: [docs/product-specs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/README.md)
-- Backend design and boundaries: [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-- UI/design details: [docs/design-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/README.md)
-- External/reference material: [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
-- Execution context and prior plans: [docs/exec-plans/README.md](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/README.md)
-- DB/schema-sensitive work: [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
-- Release/operations work: [docs/release-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/README.md)
+- Product/spec behavior
+- Backend design and boundaries
+- Frontend UI/design details
+- External/reference material
+- Execution context and prior plans
+- DB/schema-sensitive context
+- Release/operations context
 
 Task-specific document-first rules:
 
-- Backend implementation: read `BACKEND.md` first, then the backend design README, then the relevant numbered design doc.
-- DB or migration work: read `docs/generated/db-schema.md` before changing schema or persistence code.
-- Exchange/provider integration: read `docs/references/README.md` and the relevant provider folder before planning changes.
-- Product behavior changes: read the relevant product spec before proposing implementation.
+- Backend implementation: explore `.omx/wiki` for backend conventions through `omx_wiki` MCP first; if coverage is missing, refresh the wiki from the relevant backend project documents before implementing.
+- Frontend implementation: explore `.omx/wiki` for frontend conventions through `omx_wiki` MCP first; if coverage is missing, refresh the wiki from the relevant frontend project documents before implementing.
+- DB or migration work: explore `.omx/wiki` for schema context through `omx_wiki` MCP first; if coverage is missing, refresh the wiki from the relevant schema documents before changing persistence code.
+- Exchange/provider integration: explore `.omx/wiki` for provider references through `omx_wiki` MCP first; if coverage is missing, refresh the wiki from the relevant provider documents or repositories before planning changes.
+- Product behavior changes: explore `.omx/wiki` for product/spec context through `omx_wiki` MCP first; if coverage is missing, refresh the wiki from the relevant product documents before proposing implementation.
 
 ---
 
@@ -154,7 +157,7 @@ Rules:
 - Prefer inheriting the leader model by omitting `spawn_agent.model` unless a task truly requires a different model.
 - Do not hardcode stale frontier-model overrides for Codex native child agents. If an explicit frontier override is
   necessary, use the current frontier default from `OMX_DEFAULT_FRONTIER_MODEL` / the repo model contract (currently
-  `gpt-5.4`), not older values such as `gpt-5.2`.
+  `gpt-5.5`), not older values such as `gpt-5.2`.
 - Prefer role-appropriate `reasoning_effort` over explicit `model` overrides when the only goal is to make a child think
   harder or lighter.
   </child_agent_protocol>

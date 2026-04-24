@@ -21,7 +21,11 @@ public interface MarketHistoryRepository {
 
     Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId);
 
+    Optional<Instant> findLatestMinuteCandleOpenTimeBefore(long symbolId, Instant beforeExclusive);
+
     Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId);
+
+    Optional<Instant> findLatestHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive);
 
     Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime);
 

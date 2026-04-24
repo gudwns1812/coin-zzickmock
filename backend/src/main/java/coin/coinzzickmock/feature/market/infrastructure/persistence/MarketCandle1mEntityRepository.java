@@ -10,6 +10,8 @@ public interface MarketCandle1mEntityRepository extends JpaRepository<MarketCand
 
     Optional<MarketCandle1mEntity> findTopBySymbolIdOrderByOpenTimeDesc(Long symbolId);
 
+    Optional<MarketCandle1mEntity> findTopBySymbolIdAndOpenTimeLessThanOrderByOpenTimeDesc(Long symbolId, Instant beforeExclusive);
+
     List<MarketCandle1mEntity> findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
             Long symbolId,
             Instant fromInclusive,

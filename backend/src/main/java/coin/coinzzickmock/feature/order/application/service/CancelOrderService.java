@@ -19,7 +19,7 @@ public class CancelOrderService {
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
 
-        if (!"PENDING".equals(order.status())) {
+        if (!order.isPending()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 

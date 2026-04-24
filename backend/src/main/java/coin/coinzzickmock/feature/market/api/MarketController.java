@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesSer
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -57,10 +58,11 @@ public class MarketController {
     public ApiResponse<List<MarketCandleResponse>> candles(
             @PathVariable String symbol,
             @RequestParam String interval,
-            @RequestParam(required = false) Integer limit
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Instant before
     ) {
         List<MarketCandleResult> candles = getMarketCandlesService.getCandles(
-                new GetMarketCandlesQuery(symbol, interval, limit)
+                new GetMarketCandlesQuery(symbol, interval, limit, before)
         );
         return ApiResponse.success(candles.stream().map(MarketCandleResponse::from).toList());
     }

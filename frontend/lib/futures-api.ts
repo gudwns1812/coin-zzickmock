@@ -50,6 +50,25 @@ export type FuturesPosition = {
   unrealizedPnl: number;
 };
 
+export type FuturesOpenOrder = {
+  orderId: string;
+  symbol: MarketSymbol;
+  positionSide: "LONG" | "SHORT";
+  orderType: "MARKET" | "LIMIT";
+  marginMode: "ISOLATED" | "CROSS";
+  leverage: number;
+  quantity: number;
+  limitPrice: number | null;
+  status: "PENDING" | "OPEN" | "FILLED" | "CANCELLED";
+  feeType: "MAKER" | "TAKER";
+  estimatedFee: number;
+  executionPrice: number;
+};
+
+export type FuturesOrderHistory = Omit<FuturesOpenOrder, "status"> & {
+  status: "FILLED" | "CANCELLED" | "REJECTED";
+};
+
 export type FuturesReward = {
   rewardPoint: number;
   tierLabel: string;
@@ -83,7 +102,7 @@ export type OrderPreviewResponse = {
 
 export type OrderExecutionResponse = {
   orderId: string;
-  status: "FILLED" | "PENDING" | "CANCELLED";
+  status: "FILLED" | "OPEN";
   symbol: MarketSymbol;
   feeType: "MAKER" | "TAKER";
   estimatedFee: number;
@@ -92,25 +111,20 @@ export type OrderExecutionResponse = {
   executionPrice: number;
 };
 
-export type FuturesOpenOrder = {
-  orderId: string;
+export type FuturesTradingExecutionEvent = {
+  type: "ORDER_FILLED" | "POSITION_LIQUIDATED";
+  orderId: string | null;
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";
-  orderType: "MARKET" | "LIMIT";
   marginMode: "ISOLATED" | "CROSS";
-  leverage: number;
   quantity: number;
-  limitPrice: number | null;
-  status: "PENDING" | "FILLED" | "CANCELLED";
-  feeType: "MAKER" | "TAKER";
-  estimatedFee: number;
   executionPrice: number;
+  realizedPnl: number;
+  message: string;
 };
 
 const FUTURES_API_BASE_URL =
-  process.env.FUTURES_API_BASE_URL ??
-  process.env.FUTURES_PROXY_TARGET ??
-  "http://127.0.0.1:8080";
+  process.env.FUTURES_API_BASE_URL ?? "http://127.0.0.1:8080";
 
 const SHOP_ITEM_FALLBACKS: ShopItem[] = [
   {
@@ -221,11 +235,6 @@ export async function getFuturesPositions(): Promise<FuturesPosition[]> {
   return response.filter((position) => isSupportedMarketSymbol(position.symbol));
 }
 
-export async function getFuturesReward(): Promise<FuturesReward> {
-  const response = await readApi<FuturesReward>("/api/futures/rewards/me");
-  return response ?? REWARD_FALLBACK;
-}
-
 export async function getFuturesOpenOrders(
   symbol?: MarketSymbol
 ): Promise<FuturesOpenOrder[]> {
@@ -238,12 +247,27 @@ export async function getFuturesOpenOrders(
     return [];
   }
 
-  return response.filter(
-    (order) =>
-      isSupportedMarketSymbol(order.symbol) &&
-      order.status === "PENDING" &&
-      order.limitPrice !== null
+  return response.filter((order) => isSupportedMarketSymbol(order.symbol));
+}
+
+export async function getFuturesOrderHistory(
+  symbol?: MarketSymbol
+): Promise<FuturesOrderHistory[]> {
+  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  const response = await readApi<FuturesOrderHistory[]>(
+    `/api/futures/orders/history${query}`
   );
+
+  if (!response) {
+    return [];
+  }
+
+  return response.filter((order) => isSupportedMarketSymbol(order.symbol));
+}
+
+export async function getFuturesReward(): Promise<FuturesReward> {
+  const response = await readApi<FuturesReward>("/api/futures/rewards/me");
+  return response ?? REWARD_FALLBACK;
 }
 
 export async function getShopItems(): Promise<ShopItem[]> {

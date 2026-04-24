@@ -445,10 +445,28 @@ class MarketRealtimeFeedTest {
         }
 
         @Override
+        public Optional<Instant> findLatestMinuteCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
+            return minuteCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .map(MarketHistoryCandle::openTime)
+                    .filter(openTime -> openTime.isBefore(beforeExclusive))
+                    .max(Instant::compareTo);
+        }
+
+        @Override
         public Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId) {
             return hourlyCandles.values().stream()
                     .filter(candle -> candle.symbolId() == symbolId)
                     .map(HourlyMarketCandle::openTime)
+                    .max(Instant::compareTo);
+        }
+
+        @Override
+        public Optional<Instant> findLatestHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
+            return hourlyCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .map(HourlyMarketCandle::openTime)
+                    .filter(openTime -> openTime.isBefore(beforeExclusive))
                     .max(Instant::compareTo);
         }
 

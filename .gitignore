@@ -59,7 +59,7 @@ backend/spy.log
 # compiled artifacts
 *.class
 
-scipts/*
+scripts/
 .omx/
 .codex/*
 !.codex/agents/

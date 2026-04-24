@@ -81,6 +81,54 @@ class MarketHistoryStartupBackfillTest {
         assertEquals(0, marketHistoryRepository.hourlyCandleCount());
     }
 
+    @Test
+    void ignoresFutureDatedLatestCandleWhenResolvingBackfillCursor() {
+        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
+                snapshot("BTCUSDT", 103000, 102950, 102900, 0.00013, 4.4)
+        ));
+        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
+                minuteCandle("2026-04-17T06:01:00Z", 101200, 101500, 101100, 101400, 12.0, 120000.0),
+                minuteCandle("2026-04-17T06:02:00Z", 101400, 102000, 101300, 101900, 14.0, 140000.0)
+        ));
+        InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
+        marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
+                1L,
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z"),
+                101000,
+                101000,
+                101000,
+                101000,
+                0.0,
+                0.0
+        ));
+        marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
+                1L,
+                Instant.parse("2026-04-17T15:00:00Z"),
+                Instant.parse("2026-04-17T15:01:00Z"),
+                110000,
+                110000,
+                110000,
+                110000,
+                0.0,
+                0.0
+        ));
+        MarketHistoryStartupBackfill marketHistoryStartupBackfill =
+                new MarketHistoryStartupBackfill(
+                        marketHistoryRepository,
+                        new MarketHistoryRecorder(marketHistoryRepository)
+                );
+
+        marketHistoryStartupBackfill.backfillMissingMinuteHistory(
+                Instant.parse("2026-04-17T06:03:20Z"),
+                marketDataGateway
+        );
+
+        assertEquals(1, marketDataGateway.minuteHistoryCalls());
+        assertEquals(4, marketHistoryRepository.minuteCandleCount());
+        assertEquals(101900, marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z").closePrice(), 0.0001);
+    }
+
     private static MarketSnapshot snapshot(
             String symbol,
             double lastPrice,

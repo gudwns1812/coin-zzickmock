@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.OpenOrderResult;
+import coin.coinzzickmock.feature.order.application.result.OrderHistoryResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -10,20 +10,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class GetOpenOrdersService {
+public class GetOrderHistoryService {
     private final OrderRepository orderRepository;
 
     @Transactional(readOnly = true)
-    public List<OpenOrderResult> getOpenOrders(String memberId, String symbol) {
+    public List<OrderHistoryResult> getOrderHistory(String memberId, String symbol) {
         return orderRepository.findByMemberId(memberId).stream()
-                .filter(FuturesOrder::isPending)
-                .filter(order -> symbol == null || symbol.isBlank() || order.symbol().equalsIgnoreCase(symbol))
+                .filter(order -> !"PENDING".equals(order.status()))
+                .filter(order -> matchesSymbol(order, symbol))
                 .map(this::toResult)
                 .toList();
     }
 
-    private OpenOrderResult toResult(FuturesOrder order) {
-        return new OpenOrderResult(
+    private boolean matchesSymbol(FuturesOrder order, String symbol) {
+        return symbol == null || symbol.isBlank() || order.symbol().equalsIgnoreCase(symbol);
+    }
+
+    private OrderHistoryResult toResult(FuturesOrder order) {
+        return new OrderHistoryResult(
                 order.orderId(),
                 order.symbol(),
                 order.positionSide(),

@@ -15,7 +15,6 @@
 coin-zzickmock/
 ├── frontend/                 # Next.js 프론트엔드
 ├── backend/                  # Spring Boot 백엔드
-├── DESIGN.md                 # 설계 문서 배치 기준
 ├── FRONTEND.md               # 프론트 작업 기준 문서
 ├── BACKEND.md                # 백엔드 아키텍처 기준 문서
 └── README.md
@@ -61,7 +60,6 @@ npm run lint
 - 프론트 기준 문서: [FRONTEND.md](FRONTEND.md)
 - 백엔드 기준 문서: [BACKEND.md](BACKEND.md)
 - 배포/릴리즈 기준 문서: [RELEASE.md](RELEASE.md)
-- 설계 틀: [DESIGN.md](DESIGN.md)
 - 백엔드 상세 설계: [docs/design-docs/backend-design/README.md](docs/design-docs/backend-design/README.md)
 - UI 상세 설계: [docs/design-docs/ui-design/README.md](docs/design-docs/ui-design/README.md)
 
@@ -70,7 +68,6 @@ npm run lint
 이 프로젝트의 백엔드 작업은 `BACKEND.md`를 기준으로 진행합니다.
 
 - 기준 문서: [BACKEND.md](BACKEND.md)
-- 설계 틀: [DESIGN.md](DESIGN.md)
 - 상세 설계: [docs/design-docs/backend-design/README.md](docs/design-docs/backend-design/README.md)
 
 핵심 원칙:

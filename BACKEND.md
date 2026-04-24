@@ -41,8 +41,10 @@
 
 1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
 2. [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-3. 애플리케이션 경계가 걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-4. bean 조립이 걸리면 [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
+3. 애플리케이션 경계가
+   걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
+4. bean 조립이
+   걸리면 [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
 
 ### DB를 읽거나 수정할 때
 
@@ -63,6 +65,7 @@
 
 아래는 상세 설계 문서로 내려가지 않더라도 기억해야 하는 핵심 규칙이다.
 
+- 문서의 내용과 다르게 유저의 지시사항으로 변경되거나 추가되면 반드시 문서도 업데이트를 한다.
 - 백엔드는 `feature-first`로 자른다.
 - 레이어는 `api`, `application`, `domain`, `infrastructure`로 고정한다.
 - 인증, 커넥터, 텔레메트리, 기능 플래그는 `Providers` 뒤로 숨긴다.
@@ -72,7 +75,9 @@
 - `application/service`는 API가 호출하는 유스케이스 진입점만 둔다.
 - `application/service`가 다른 `application/service`를 직접 주입하거나 호출하는 것은 금지한다.
 - 여러 유스케이스가 함께 쓰는 런타임/처리 로직은 `application`의 목적별 하위 패키지에 비-Service 협력 객체로 분리한다.
-- 도메인 모델, 정책, 상태 전이 규칙의 원문은 [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)에만 둔다.
+- 도메인 모델, 정책, 상태 전이 규칙의
+  원문은 [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+  에만 둔다.
 - Spring이 관리하는 협력 객체는 concrete class라도 클래스 내부에서 직접 `new`하지 않고 빈으로 조립한다.
 - 로컬 메모리 캐시는 클래스 내부 `ConcurrentHashMap` 같은 ad-hoc 상태보다 Spring Cache를 기본값으로 사용한다.
 - 여러 인스턴스가 같은 캐시를 공유해야 하는 분산 캐시는 Redis를 표준 구현으로 사용하고, 기능 코드는 Redis client 대신 Spring Cache 경계를 우선 의존한다.
@@ -83,11 +88,15 @@
 - 복잡한 native query가 필요할 때만 `JdbcTemplate` 사용을 허용한다.
 - 클래스 이름에는 `Jpa`, `SpringData`, `MyBatis`, `Redis` 같은 기술명을 넣지 않고 역할 이름을 먼저 드러낸다.
 - 스프링이 관리하는 클래스가 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
-- DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저 본다.
-- DB를 바꾸면 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을 추가하고, [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 같이 갱신한다.
+- DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
+  본다.
+- DB를 바꾸면 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을
+  추가하고, [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 같이 갱신한다.
 - 백엔드 변경은 `./gradlew architectureLint`와 `./gradlew check`를 기준으로 검증한다.
 - backend 상세 설계 원문은 책임별 번호 문서로 유지한다.
-- backend 설계 규칙을 수정할 때는 가장 큰 문서 하나에 계속 덧붙이지 않고, 알맞은 번호 문서와 [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)를 함께 갱신한다.
+- backend 설계 규칙을 수정할 때는 가장 큰 문서 하나에 계속 덧붙이지 않고, 알맞은 번호
+  문서와 [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+  를 함께 갱신한다.
 
 ## Architecture Lint
 
@@ -107,8 +116,11 @@
 
 - 관련 상세 설계를 읽고 반영했다.
 - 새 인터페이스를 추가했다면 왜 concrete class로 충분하지 않은지 설명할 수 있다.
-- DB를 읽는 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저 참고했다.
-- DB 변경이 있으면 새 `Flyway` migration 버전을 추가하고 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 갱신했다.
+- DB를 읽는 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
+  참고했다.
+- DB 변경이 있으면 새 `Flyway` migration 버전을
+  추가하고 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 갱신했다.
 - `./gradlew architectureLint`를 통과했다.
 - `./gradlew check`를 통과했다.
-- 리뷰 게이트와 PR/CI 흐름은 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)와 이 저장소의 review 관련 스킬, 그리고 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md) 기준을 따른다.
+- 리뷰 게이트와 PR/CI 흐름은 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)와 이 저장소의 review 관련 스킬,
+  그리고 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md) 기준을 따른다.

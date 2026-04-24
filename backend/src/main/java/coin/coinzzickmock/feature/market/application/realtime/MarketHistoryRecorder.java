@@ -1,7 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -10,6 +9,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -22,16 +22,38 @@ public class MarketHistoryRecorder {
 
     private final MarketHistoryRepository marketHistoryRepository;
 
-    public void recordSnapshots(List<MarketSummaryResult> snapshots, Instant observedAt) {
-        if (snapshots == null || snapshots.isEmpty()) {
-            return;
+    public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(
+            Map<String, List<MarketMinuteCandleSnapshot>> minuteCandlesBySymbol
+    ) {
+        if (minuteCandlesBySymbol == null || minuteCandlesBySymbol.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol = new LinkedHashMap<>();
+        minuteCandlesBySymbol.forEach((symbol, minuteCandles) -> {
+            if (symbol != null && minuteCandles != null && !minuteCandles.isEmpty()) {
+                nonEmptyMinuteCandlesBySymbol.put(symbol, minuteCandles);
+            }
+        });
+        if (nonEmptyMinuteCandlesBySymbol.isEmpty()) {
+            return Map.of();
         }
 
         Map<String, Long> symbolIds = marketHistoryRepository.findSymbolIdsBySymbols(
-                snapshots.stream().map(MarketSummaryResult::symbol).distinct().toList()
+                nonEmptyMinuteCandlesBySymbol.keySet().stream().toList()
         );
 
-        snapshots.forEach(snapshot -> recordSnapshot(symbolIds.get(snapshot.symbol()), snapshot, observedAt));
+        Map<String, Boolean> saveResults = new LinkedHashMap<>();
+        nonEmptyMinuteCandlesBySymbol.forEach((symbol, minuteCandles) -> {
+            Long symbolId = symbolIds.get(symbol);
+            if (symbolId != null) {
+                recordHistoricalMinuteCandles(symbolId, minuteCandles);
+                saveResults.put(symbol, true);
+                return;
+            }
+            saveResults.put(symbol, false);
+        });
+        return saveResults;
     }
 
     public void recordHistoricalMinuteCandles(long symbolId, List<MarketMinuteCandleSnapshot> minuteCandles) {
@@ -50,66 +72,6 @@ public class MarketHistoryRecorder {
                 .map(openTime -> truncate(openTime, ChronoUnit.HOURS))
                 .distinct()
                 .forEach(hourlyOpenTime -> rebuildHourlyCandle(symbolId, hourlyOpenTime));
-    }
-
-    void recordSnapshot(Long symbolId, MarketSummaryResult snapshot, Instant observedAt) {
-        if (symbolId == null) {
-            return;
-        }
-
-        MinuteCandleRevision minuteRevision = recordMinuteCandle(symbolId, snapshot.lastPrice(), observedAt);
-        recordHourlyCandle(symbolId, observedAt, minuteRevision);
-    }
-
-    private MinuteCandleRevision recordMinuteCandle(long symbolId, double lastPrice, Instant observedAt) {
-        Instant minuteOpenTime = truncate(observedAt, ChronoUnit.MINUTES);
-        Instant minuteCloseTime = minuteOpenTime.plus(1, ChronoUnit.MINUTES);
-
-        MarketHistoryCandle existingMinuteCandle = marketHistoryRepository
-                .findMinuteCandle(symbolId, minuteOpenTime)
-                .orElse(null);
-
-        MarketHistoryCandle currentMinuteCandle = existingMinuteCandle == null
-                ? MarketHistoryCandle.first(symbolId, minuteOpenTime, minuteCloseTime, lastPrice)
-                : existingMinuteCandle.mergeLatestPrice(lastPrice);
-
-        marketHistoryRepository.saveMinuteCandle(currentMinuteCandle);
-        return new MinuteCandleRevision(existingMinuteCandle, currentMinuteCandle);
-    }
-
-    private void recordHourlyCandle(long symbolId, Instant observedAt, MinuteCandleRevision minuteRevision) {
-        Instant hourlyOpenTime = truncate(observedAt, ChronoUnit.HOURS);
-        Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
-        MarketHistoryCandle currentMinuteCandle = minuteRevision.current();
-
-        HourlyMarketCandle hourlyCandle = marketHistoryRepository.findHourlyCandle(symbolId, hourlyOpenTime)
-                .map(existingHourlyCandle -> existingHourlyCandle.reviseMinute(minuteRevision.previous(), currentMinuteCandle))
-                .orElseGet(() -> buildHourlyCandle(symbolId, hourlyOpenTime, hourlyCloseTime, currentMinuteCandle));
-
-        if (hourlyCandle == null) {
-            return;
-        }
-
-        marketHistoryRepository.saveHourlyCandle(hourlyCandle);
-    }
-
-    private HourlyMarketCandle buildHourlyCandle(
-            long symbolId,
-            Instant hourlyOpenTime,
-            Instant hourlyCloseTime,
-            MarketHistoryCandle currentMinuteCandle
-    ) {
-        List<MarketHistoryCandle> hourlyCandles = marketHistoryRepository.findMinuteCandles(
-                symbolId,
-                hourlyOpenTime,
-                hourlyCloseTime
-        );
-
-        if (hourlyCandles.isEmpty()) {
-            return HourlyMarketCandle.first(symbolId, hourlyOpenTime, hourlyCloseTime, currentMinuteCandle);
-        }
-
-        return HourlyMarketCandle.rollup(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
     }
 
     private void rebuildHourlyCandle(long symbolId, Instant hourlyOpenTime) {
@@ -132,11 +94,5 @@ public class MarketHistoryRecorder {
         return ZonedDateTime.ofInstant(instant, HISTORY_ZONE)
                 .truncatedTo(unit)
                 .toInstant();
-    }
-
-    private record MinuteCandleRevision(
-            MarketHistoryCandle previous,
-            MarketHistoryCandle current
-    ) {
     }
 }

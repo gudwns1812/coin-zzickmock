@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 public class MarketRealtimeFeed {
 
     private final MarketSupportedMarketRefresher marketSupportedMarketRefresher;
-    private final MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator;
     private final MarketSnapshotStore marketSnapshotStore;
 
     @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:1000}")
@@ -27,8 +26,6 @@ public class MarketRealtimeFeed {
         if (refreshedMarkets.isEmpty()) {
             return;
         }
-
-        marketHistoryPersistenceCoordinator.refreshHistory(refreshedMarkets, observedAt);
     }
 
     public List<MarketSummaryResult> getSupportedMarkets() {

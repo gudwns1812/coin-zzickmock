@@ -46,6 +46,9 @@
 - [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
   영속성, 외부 연동, 예외 번역, 기술 중심 네이밍 규칙.
 
+- [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
+  클래스와 메서드 단위의 책임 분리, 클린 코드 기준, 계획/구현/검증 체크리스트.
+
 ## Task Guide
 
 ### 구조나 새 기능 패키지를 설계할 때
@@ -58,7 +61,14 @@
 
 1. [01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
 2. [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-3. 필요하면 [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
+3. [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
+4. 필요하면 [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
+
+### 클래스나 메서드 책임 분리, 클린 코드 기준을 확인할 때
+
+1. [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
+2. 유스케이스 경계가 걸리면 [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
+3. 도메인 규칙이 걸리면 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 
 ### 도메인 모델, 정책, 상태 전이 규칙을 볼 때
 

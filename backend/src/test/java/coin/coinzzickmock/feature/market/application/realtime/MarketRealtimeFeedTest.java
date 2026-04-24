@@ -134,71 +134,104 @@ class MarketRealtimeFeedTest {
     }
 
     @Test
-    void aggregatesLatestSnapshotsIntoMinuteAndHourlyHistory() {
+    void recordsClosedProviderMinuteCandlesWithVolumeIntoMinuteAndHourlyHistory() {
         FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2),
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
         ));
+        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
+                minuteCandle("2026-04-17T06:00:00Z", 101000, 102500, 100500, 102000, 12.5, 1_275_000)
+        ));
+        marketDataGateway.replaceMinuteCandles("ETHUSDT", List.of(
+                minuteCandle("2026-04-17T06:00:00Z", 3300, 3330, 3280, 3310, 45.25, 149_777.5)
+        ));
         InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
-        MarketRealtimeFeed feed = newFeed(
+        TestMarketRuntime runtime = newRuntime(
                 marketDataGateway,
                 marketHistoryRepository,
                 new RecordingApplicationEventPublisher()
         );
 
-        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:15Z"));
-
-        marketDataGateway.replaceSnapshots(List.of(
-                snapshot("BTCUSDT", 102500, 102450, 102400, 0.00012, 4.0),
-                snapshot("ETHUSDT", 3320, 3312, 3308, 0.00009, 2.4)
+        runtime.feed().refreshSupportedMarkets(Instant.parse("2026-04-17T06:01:10Z"));
+        runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z")
         ));
-        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:45Z"));
-
-        marketDataGateway.replaceSnapshots(List.of(
-                snapshot("BTCUSDT", 100500, 100450, 100400, 0.00007, -1.2),
-                snapshot("ETHUSDT", 3280, 3275, 3270, 0.00004, -0.6)
-        ));
-        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:01:10Z"));
 
         MarketHistoryCandle firstMinute = marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:00:00Z");
-        MarketHistoryCandle secondMinute = marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:01:00Z");
         HourlyMarketCandle firstHour = marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z");
 
         assertEquals(101000, firstMinute.openPrice(), 0.0001);
         assertEquals(102500, firstMinute.highPrice(), 0.0001);
-        assertEquals(101000, firstMinute.lowPrice(), 0.0001);
-        assertEquals(102500, firstMinute.closePrice(), 0.0001);
-        assertEquals(100500, secondMinute.openPrice(), 0.0001);
-        assertEquals(100500, secondMinute.closePrice(), 0.0001);
+        assertEquals(100500, firstMinute.lowPrice(), 0.0001);
+        assertEquals(102000, firstMinute.closePrice(), 0.0001);
+        assertEquals(12.5, firstMinute.volume(), 0.0001);
+        assertEquals(1_275_000, firstMinute.quoteVolume(), 0.0001);
         assertEquals(101000, firstHour.openPrice(), 0.0001);
         assertEquals(102500, firstHour.highPrice(), 0.0001);
         assertEquals(100500, firstHour.lowPrice(), 0.0001);
-        assertEquals(100500, firstHour.closePrice(), 0.0001);
+        assertEquals(102000, firstHour.closePrice(), 0.0001);
+        assertEquals(12.5, firstHour.volume(), 0.0001);
     }
 
     @Test
-    void updatesHourlyAggregateWhenLaterTickArrivesInSameMinute() {
+    void retriesClosedMinuteHistoryWhenProviderHasNoCandleYet() {
         FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
         ));
         InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
-        MarketRealtimeFeed feed = newFeed(
+        TestMarketRuntime runtime = newRuntime(
                 marketDataGateway,
                 marketHistoryRepository,
                 new RecordingApplicationEventPublisher()
         );
 
-        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:15Z"));
-
-        marketDataGateway.replaceSnapshots(List.of(
-                snapshot("BTCUSDT", 102500, 102450, 102400, 0.00012, 4.0)
+        runtime.feed().refreshSupportedMarkets(Instant.parse("2026-04-17T06:01:15Z"));
+        runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z")
         ));
-        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:45Z"));
 
-        HourlyMarketCandle firstHour = marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z");
+        assertEquals(0, marketHistoryRepository.minuteCandleCount());
+        assertEquals(1, marketDataGateway.minuteHistoryCalls());
+        assertEquals(1, runtime.retryRegistry().pendingRetries().size());
 
-        assertEquals(102500, firstHour.highPrice(), 0.0001);
-        assertEquals(102500, firstHour.closePrice(), 0.0001);
+        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
+                minuteCandle("2026-04-17T06:00:00Z", 101000, 102500, 100500, 102000, 12.5, 1_275_000)
+        ));
+        runtime.retryProcessor().retryPending();
+
+        MarketHistoryCandle firstMinute = marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:00:00Z");
+
+        assertEquals(1, marketHistoryRepository.minuteCandleCount());
+        assertEquals(2, marketDataGateway.minuteHistoryCalls());
+        assertEquals(12.5, firstMinute.volume(), 0.0001);
+        assertEquals(0, runtime.retryRegistry().pendingRetries().size());
+    }
+
+    @Test
+    void keepsRetryPendingWhenProviderCandleCannotBeMatchedToPersistedSymbol() {
+        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
+                snapshot("XRPUSDT", 1.2, 1.19, 1.18, 0.0001, 3.2)
+        ));
+        marketDataGateway.replaceMinuteCandles("XRPUSDT", List.of(
+                minuteCandle("2026-04-17T06:00:00Z", 1.1, 1.3, 1.0, 1.2, 500, 600)
+        ));
+        InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
+        TestMarketRuntime runtime = newRuntime(
+                marketDataGateway,
+                marketHistoryRepository,
+                new RecordingApplicationEventPublisher()
+        );
+
+        runtime.feed().refreshSupportedMarkets(Instant.parse("2026-04-17T06:01:15Z"));
+        runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z")
+        ));
+
+        assertEquals(0, marketHistoryRepository.minuteCandleCount());
+        assertEquals(1, runtime.retryRegistry().pendingRetries().size());
     }
 
     @Test
@@ -274,19 +307,53 @@ class MarketRealtimeFeedTest {
             InMemoryMarketHistoryRepository marketHistoryRepository,
             ApplicationEventPublisher applicationEventPublisher
     ) {
-        MarketHistoryRecorder marketHistoryRecorder = new MarketHistoryRecorder(marketHistoryRepository);
         MarketSnapshotStore marketSnapshotStore = newSnapshotStore();
-        MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator =
-                new MarketHistoryPersistenceCoordinator(marketHistoryRecorder);
         return new MarketRealtimeFeed(
                 new MarketSupportedMarketRefresher(
                         new FakeProviders(marketDataGateway),
                         marketSnapshotStore,
                         applicationEventPublisher
                 ),
-                marketHistoryPersistenceCoordinator,
                 marketSnapshotStore
         );
+    }
+
+    private static TestMarketRuntime newRuntime(
+            FakeMarketDataGateway marketDataGateway,
+            InMemoryMarketHistoryRepository marketHistoryRepository,
+            ApplicationEventPublisher applicationEventPublisher
+    ) {
+        MarketHistoryRecorder marketHistoryRecorder = new MarketHistoryRecorder(marketHistoryRepository);
+        MarketSnapshotStore marketSnapshotStore = newSnapshotStore();
+        MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator =
+                new MarketHistoryPersistenceCoordinator(marketDataGateway, marketHistoryRecorder);
+        MarketHistoryRetryRegistry marketHistoryRetryRegistry = new MarketHistoryRetryRegistry();
+        MarketRealtimeFeed feed = new MarketRealtimeFeed(
+                new MarketSupportedMarketRefresher(
+                        new FakeProviders(marketDataGateway),
+                        marketSnapshotStore,
+                        applicationEventPublisher
+                ),
+                marketSnapshotStore
+        );
+        MarketMinuteCandleHistoryListener listener = new MarketMinuteCandleHistoryListener(
+                marketSnapshotStore,
+                marketHistoryPersistenceCoordinator,
+                marketHistoryRetryRegistry
+        );
+        MarketHistoryRetryProcessor retryProcessor = new MarketHistoryRetryProcessor(
+                marketHistoryRetryRegistry,
+                marketHistoryPersistenceCoordinator
+        );
+        return new TestMarketRuntime(feed, listener, retryProcessor, marketHistoryRetryRegistry);
+    }
+
+    private record TestMarketRuntime(
+            MarketRealtimeFeed feed,
+            MarketMinuteCandleHistoryListener listener,
+            MarketHistoryRetryProcessor retryProcessor,
+            MarketHistoryRetryRegistry retryRegistry
+    ) {
     }
 
     private static MarketSnapshotStore newSnapshotStore() {

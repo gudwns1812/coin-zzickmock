@@ -71,6 +71,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 
 - Manage project documents under `docs/`; keep root-level docs as entry documents and indexes.
 - Before writing a plan or code, inspect the relevant documentation path and treat it as the source of truth unless newer user evidence overrides it.
+- For backend-related work, consult `BACKEND.md` before planning or implementation; for frontend-related work, consult `FRONTEND.md` before planning or implementation.
 - When implementation changes architecture, product behavior, schema, external integration, or release flow, update the matching `docs/` documents in the same task.
 - Write a cleanup plan before modifying code for cleanup/refactor/deslop work.
 - Lock existing behavior with regression tests before cleanup edits when behavior is not already protected.
@@ -104,6 +105,7 @@ Preferred `docs/` entry points:
 Task-specific document-first rules:
 
 - Backend implementation: read `BACKEND.md` first, then the backend design README, then the relevant numbered design doc.
+- Frontend implementation: read `FRONTEND.md` first, then the relevant design/docs entry, then the specific UI/design references needed for the task.
 - DB or migration work: read `docs/generated/db-schema.md` before changing schema or persistence code.
 - Exchange/provider integration: read `docs/references/README.md` and the relevant provider folder before planning changes.
 - Product behavior changes: read the relevant product spec before proposing implementation.

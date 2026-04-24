@@ -100,6 +100,10 @@ public class FuturesOrderEntity {
         );
     }
 
+    public String memberId() {
+        return memberId;
+    }
+
     public void updateStatus(String status) {
         this.status = status;
     }

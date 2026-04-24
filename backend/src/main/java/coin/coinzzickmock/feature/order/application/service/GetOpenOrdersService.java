@@ -16,7 +16,7 @@ public class GetOpenOrdersService {
     @Transactional(readOnly = true)
     public List<OpenOrderResult> getOpenOrders(String memberId, String symbol) {
         return orderRepository.findByMemberId(memberId).stream()
-                .filter(order -> "PENDING".equals(order.status()))
+                .filter(FuturesOrder::isPending)
                 .filter(order -> symbol == null || symbol.isBlank() || order.symbol().equalsIgnoreCase(symbol))
                 .map(this::toResult)
                 .toList();

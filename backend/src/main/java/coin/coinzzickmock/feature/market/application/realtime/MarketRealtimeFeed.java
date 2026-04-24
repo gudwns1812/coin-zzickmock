@@ -3,7 +3,6 @@ package coin.coinzzickmock.feature.market.application.realtime;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
-import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,22 +17,7 @@ public class MarketRealtimeFeed {
 
     @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:1000}")
     public void refreshSupportedMarkets() {
-        refreshSupportedMarkets(Instant.now());
-    }
-
-    void refreshSupportedMarkets(Instant observedAt) {
-        List<MarketSummaryResult> refreshedMarkets = marketSupportedMarketRefresher.refreshSupportedMarkets();
-        if (refreshedMarkets.isEmpty()) {
-            return;
-        }
-    }
-
-    public List<MarketSummaryResult> getSupportedMarkets() {
-        if (!marketSnapshotStore.hasSupportedMarkets()) {
-            marketSupportedMarketRefresher.refreshSupportedMarkets();
-        }
-
-        return marketSnapshotStore.getSupportedMarkets();
+        marketSupportedMarketRefresher.refreshSupportedMarkets();
     }
 
     public MarketSummaryResult getMarket(String symbol) {
@@ -46,5 +30,13 @@ public class MarketRealtimeFeed {
                 .filter(result -> result.symbol().equals(symbol))
                 .findFirst()
                 .orElseThrow(() -> new CoreException(ErrorCode.MARKET_NOT_FOUND));
+    }
+
+    public List<MarketSummaryResult> getSupportedMarkets() {
+        if (!marketSnapshotStore.hasSupportedMarkets()) {
+            marketSupportedMarketRefresher.refreshSupportedMarkets();
+        }
+
+        return marketSnapshotStore.getSupportedMarkets();
     }
 }

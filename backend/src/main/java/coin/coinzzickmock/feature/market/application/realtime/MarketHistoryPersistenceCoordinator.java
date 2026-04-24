@@ -53,9 +53,12 @@ public class MarketHistoryPersistenceCoordinator {
             return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.EMPTY);
         }
 
-        Map<String, Boolean> saveResults = marketHistoryRecorder.recordHistoricalMinuteCandlesBySymbol(
-                Map.of(symbol, minuteCandles)
-        );
+        Map<String, Boolean> saveResults;
+        try {
+            saveResults = marketHistoryRecorder.recordHistoricalMinuteCandlesBySymbol(Map.of(symbol, minuteCandles));
+        } catch (RuntimeException ignored) {
+            return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
+        }
         if (!Boolean.TRUE.equals(saveResults.get(symbol))) {
             return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
         }

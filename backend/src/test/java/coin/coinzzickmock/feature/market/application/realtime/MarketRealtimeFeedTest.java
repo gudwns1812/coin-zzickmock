@@ -134,6 +134,27 @@ class MarketRealtimeFeedTest {
     }
 
     @Test
+    void doesNotLoadMinuteCandlesFromTickerRefreshes() {
+        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
+                snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
+        ));
+        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
+                minuteCandle("2026-04-17T06:00:00Z", 101000, 102500, 100500, 102000, 12.5, 1_275_000)
+        ));
+        MarketRealtimeFeed feed = newFeed(
+                marketDataGateway,
+                new InMemoryMarketHistoryRepository(),
+                new RecordingApplicationEventPublisher()
+        );
+
+        feed.refreshSupportedMarkets();
+        feed.refreshSupportedMarkets();
+        feed.refreshSupportedMarkets();
+
+        assertEquals(0, marketDataGateway.minuteHistoryCalls());
+    }
+
+    @Test
     void recordsClosedProviderMinuteCandlesWithVolumeIntoMinuteAndHourlyHistory() {
         FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2),
@@ -152,7 +173,7 @@ class MarketRealtimeFeedTest {
                 new RecordingApplicationEventPublisher()
         );
 
-        runtime.feed().refreshSupportedMarkets(Instant.parse("2026-04-17T06:01:10Z"));
+        runtime.feed().refreshSupportedMarkets();
         runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
                 Instant.parse("2026-04-17T06:00:00Z"),
                 Instant.parse("2026-04-17T06:01:00Z")
@@ -186,7 +207,7 @@ class MarketRealtimeFeedTest {
                 new RecordingApplicationEventPublisher()
         );
 
-        runtime.feed().refreshSupportedMarkets(Instant.parse("2026-04-17T06:01:15Z"));
+        runtime.feed().refreshSupportedMarkets();
         runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
                 Instant.parse("2026-04-17T06:00:00Z"),
                 Instant.parse("2026-04-17T06:01:00Z")
@@ -224,13 +245,36 @@ class MarketRealtimeFeedTest {
                 new RecordingApplicationEventPublisher()
         );
 
-        runtime.feed().refreshSupportedMarkets(Instant.parse("2026-04-17T06:01:15Z"));
+        runtime.feed().refreshSupportedMarkets();
         runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
                 Instant.parse("2026-04-17T06:00:00Z"),
                 Instant.parse("2026-04-17T06:01:00Z")
         ));
 
         assertEquals(0, marketHistoryRepository.minuteCandleCount());
+        assertEquals(1, runtime.retryRegistry().pendingRetries().size());
+    }
+
+    @Test
+    void keepsRetryPendingWhenPersistenceFailsAfterProviderReturnsCandle() {
+        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
+                snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
+        ));
+        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
+                minuteCandle("2026-04-17T06:00:00Z", 101000, 102500, 100500, 102000, 12.5, 1_275_000)
+        ));
+        TestMarketRuntime runtime = newRuntime(
+                marketDataGateway,
+                new FailingSaveMarketHistoryRepository(),
+                new RecordingApplicationEventPublisher()
+        );
+
+        runtime.feed().refreshSupportedMarkets();
+        runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
+                Instant.parse("2026-04-17T06:00:00Z"),
+                Instant.parse("2026-04-17T06:01:00Z")
+        ));
+
         assertEquals(1, runtime.retryRegistry().pendingRetries().size());
     }
 
@@ -245,7 +289,7 @@ class MarketRealtimeFeedTest {
                 applicationEventPublisher
         );
 
-        feed.refreshSupportedMarkets(Instant.parse("2026-04-17T06:00:15Z"));
+        feed.refreshSupportedMarkets();
 
         assertEquals(0, applicationEventPublisher.events().size());
         assertEquals(0, marketHistoryRepository.minuteCandleCount());
@@ -590,6 +634,13 @@ class MarketRealtimeFeedTest {
 
         private int hourlyCandleCount() {
             return hourlyCandles.size();
+        }
+    }
+
+    private static class FailingSaveMarketHistoryRepository extends InMemoryMarketHistoryRepository {
+        @Override
+        public void saveMinuteCandle(MarketHistoryCandle candle) {
+            throw new IllegalStateException("failed to persist minute candle");
         }
     }
 

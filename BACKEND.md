@@ -15,6 +15,7 @@
 - [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 - [docs/design-docs/backend-design/05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
 - [docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+- [docs/design-docs/backend-design/07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
 
 ## What This File Does
 
@@ -46,6 +47,13 @@
 4. bean 조립이
    걸리면 [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
 
+### 클래스나 메서드 책임 분리, 클린 코드 기준을 확인할 때
+
+1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+2. [docs/design-docs/backend-design/07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
+3. 유스케이스 경계가 걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
+4. 도메인 판단이 걸리면 [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+
 ### DB를 읽거나 수정할 때
 
 1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
@@ -68,6 +76,8 @@
 - 문서의 내용과 다르게 유저의 지시사항으로 변경되거나 추가되면 반드시 문서도 업데이트를 한다.
 - 백엔드는 `feature-first`로 자른다.
 - 레이어는 `api`, `application`, `domain`, `infrastructure`로 고정한다.
+- 클래스는 하나의 변경 이유를, 메서드는 한 단계의 추상화 수준에서 한 가지 일을 갖도록 작성한다.
+- 긴 유스케이스 메서드는 흐름만 남기고 검증, 조회, 정책 판단, 저장, 이벤트 발행, 응답 변환을 이름 있는 책임으로 분리한다.
 - 인증, 커넥터, 텔레메트리, 기능 플래그는 `Providers` 뒤로 숨긴다.
 - 계층을 나눈다고 `port`, `usecase` 인터페이스를 기본값처럼 만들지 않는다.
 - 인터페이스는 여러 구현이 실제로 필요하거나, 외부 경계를 격리하는 계약이 꼭 필요할 때만 만든다.
@@ -115,6 +125,7 @@
 백엔드 작업을 끝냈다고 보기 위한 최소 조건은 아래와 같다.
 
 - 관련 상세 설계를 읽고 반영했다.
+- 클래스/메서드 책임 분리가 필요한 변경이면 [docs/design-docs/backend-design/07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)의 계획/구현/검증 체크리스트를 확인했다.
 - 새 인터페이스를 추가했다면 왜 concrete class로 충분하지 않은지 설명할 수 있다.
 - DB를 읽는 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
   참고했다.

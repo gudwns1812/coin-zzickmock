@@ -125,7 +125,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `order_id`, `member_id`, `symbol`, `position_side`, `order_type`, `margin_mode`, `leverage`, `quantity`, `limit_price`, `status`, `fee_type`, `estimated_fee`, `execution_price`, `created_at`
+  `order_id`, `member_id`, `symbol`, `position_side`, `order_type`, `order_purpose`, `margin_mode`, `leverage`, `quantity`, `limit_price`, `status`, `fee_type`, `estimated_fee`, `execution_price`, `created_at`
 - 관련 엔티티/모듈:
   `feature.order`
 - 관련 migration 또는 schema 파일:
@@ -139,12 +139,26 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `created_at`, `updated_at`
+  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_close_fee`, `created_at`, `updated_at`
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
+
+### `position_history`
+
+- 목적:
+  완전히 종료된 포지션의 요약 이력을 저장한다. 부분 종료는 열린 포지션의 누적 필드에 보존하고, 포지션이 0이 되는 순간에만 이 테이블에 기록한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `opened_at`, `average_entry_price`, `average_exit_price`, `position_size`, `realized_pnl`, `roi`, `closed_at`, `close_reason`, `created_at`
+- 관련 엔티티/모듈:
+  `feature.position`
+- 관련 migration 또는 schema 파일:
+  [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql),
+  [PositionHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionHistoryEntity.java)
 
 ### `market_symbols`
 

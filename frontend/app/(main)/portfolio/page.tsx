@@ -51,8 +51,8 @@ export default async function PortfolioPage() {
       <section className="grid grid-cols-4 gap-main-2">
         <PortfolioMetric label="총 평가 자산" value={formatUsd(totalEquity)} />
         <PortfolioMetric
-          label="사용 가능 증거금"
-          value={formatUsd(account.availableMargin)}
+          label="사용 가능 잔고"
+          value={formatUsd(account.available)}
         />
         <PortfolioMetric label="미실현 손익" value={formatUsd(unrealizedPnl)} />
         <PortfolioMetric label="포인트" value={`${reward.rewardPoint} P`} />
@@ -89,6 +89,7 @@ export default async function PortfolioPage() {
                       positionSide={position.positionSide}
                       marginMode={position.marginMode}
                       quantity={position.quantity}
+                      suggestedLimitPrice={position.markPrice}
                     />
                   </div>
 

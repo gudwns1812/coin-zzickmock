@@ -12,10 +12,17 @@ import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEve
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.service.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
+import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import coin.coinzzickmock.feature.reward.domain.RewardPointPolicy;
+import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -92,6 +99,54 @@ class MarketOrderExecutionServiceTest {
         assertEquals(-20.09, eventPublisher.events.get(0).realizedPnl(), 0.0001);
     }
 
+    @Test
+    void cancelsCloseOrderWhenOpenPositionQuantityIsSmallerThanOrderQuantity() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.5,
+                100,
+                100
+        ));
+        orderRepository.save("demo-member", FuturesOrder.place(
+                "order-close-1",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                1.0,
+                105.0,
+                false,
+                "MAKER",
+                0,
+                105
+        ));
+
+        MarketOrderExecutionService service = service(
+                orderRepository,
+                positionRepository,
+                accountRepository,
+                eventPublisher
+        );
+
+        service.onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "order-close-1").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
+        assertEquals(0.5, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow()
+                .quantity(), 0.0001);
+        assertTrue(eventPublisher.events.isEmpty());
+    }
+
     private MarketOrderExecutionService service(
             OrderRepository orderRepository,
             PositionRepository positionRepository,
@@ -104,6 +159,12 @@ class MarketOrderExecutionServiceTest {
                 accountRepository,
                 new PendingOrderExecutionCache(),
                 new LiquidationPolicy(),
+                new PositionCloseFinalizer(
+                        positionRepository,
+                        accountRepository,
+                        new InMemoryPositionHistoryRepository(),
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository())
+                ),
                 eventPublisher
         );
     }
@@ -269,6 +330,38 @@ class MarketOrderExecutionServiceTest {
 
         private String key(String memberId, String symbol, String positionSide, String marginMode) {
             return memberId + ":" + symbol + ":" + positionSide + ":" + marginMode;
+        }
+    }
+
+    private static class InMemoryPositionHistoryRepository implements PositionHistoryRepository {
+        private final Map<String, List<PositionHistory>> histories = new LinkedHashMap<>();
+
+        @Override
+        public PositionHistory save(String memberId, PositionHistory positionHistory) {
+            histories.computeIfAbsent(memberId, ignored -> new ArrayList<>()).add(positionHistory);
+            return positionHistory;
+        }
+
+        @Override
+        public List<PositionHistory> findByMemberId(String memberId, String symbol) {
+            return histories.getOrDefault(memberId, List.of()).stream()
+                    .filter(history -> symbol == null || history.symbol().equals(symbol))
+                    .toList();
+        }
+    }
+
+    private static class InMemoryRewardPointRepository implements RewardPointRepository {
+        private RewardPointWallet wallet = new RewardPointWallet("demo-member", 0);
+
+        @Override
+        public Optional<RewardPointWallet> findByMemberId(String memberId) {
+            return wallet.memberId().equals(memberId) ? Optional.of(wallet) : Optional.empty();
+        }
+
+        @Override
+        public RewardPointWallet save(RewardPointWallet rewardPointWallet) {
+            this.wallet = rewardPointWallet;
+            return rewardPointWallet;
         }
     }
 }

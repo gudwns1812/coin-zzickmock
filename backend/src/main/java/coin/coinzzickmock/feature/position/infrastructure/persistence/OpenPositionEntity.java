@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -55,6 +56,24 @@ public class OpenPositionEntity extends AuditableEntity {
     @Column(name = "unrealized_pnl", nullable = false, precision = 19, scale = 4)
     private BigDecimal unrealizedPnl;
 
+    @Column(name = "opened_at", nullable = false)
+    private Instant openedAt;
+
+    @Column(name = "original_quantity", nullable = false, precision = 19, scale = 8)
+    private BigDecimal originalQuantity;
+
+    @Column(name = "accumulated_closed_quantity", nullable = false, precision = 19, scale = 8)
+    private BigDecimal accumulatedClosedQuantity;
+
+    @Column(name = "accumulated_exit_notional", nullable = false, precision = 19, scale = 4)
+    private BigDecimal accumulatedExitNotional;
+
+    @Column(name = "accumulated_realized_pnl", nullable = false, precision = 19, scale = 4)
+    private BigDecimal accumulatedRealizedPnl;
+
+    @Column(name = "accumulated_close_fee", nullable = false, precision = 19, scale = 4)
+    private BigDecimal accumulatedCloseFee;
+
     protected OpenPositionEntity() {
     }
 
@@ -75,6 +94,12 @@ public class OpenPositionEntity extends AuditableEntity {
         this.markPrice = decimal(positionSnapshot.markPrice());
         this.liquidationPrice = positionSnapshot.liquidationPrice() == null ? null : decimal(positionSnapshot.liquidationPrice());
         this.unrealizedPnl = decimal(positionSnapshot.unrealizedPnl());
+        this.openedAt = positionSnapshot.openedAt();
+        this.originalQuantity = decimal(positionSnapshot.originalQuantity());
+        this.accumulatedClosedQuantity = decimal(positionSnapshot.accumulatedClosedQuantity());
+        this.accumulatedExitNotional = decimal(positionSnapshot.accumulatedExitNotional());
+        this.accumulatedRealizedPnl = decimal(positionSnapshot.accumulatedRealizedPnl());
+        this.accumulatedCloseFee = decimal(positionSnapshot.accumulatedCloseFee());
     }
 
     public PositionSnapshot toDomain() {
@@ -87,7 +112,13 @@ public class OpenPositionEntity extends AuditableEntity {
                 entryPrice.doubleValue(),
                 markPrice.doubleValue(),
                 liquidationPrice == null ? null : liquidationPrice.doubleValue(),
-                unrealizedPnl.doubleValue()
+                unrealizedPnl.doubleValue(),
+                openedAt,
+                originalQuantity.doubleValue(),
+                accumulatedClosedQuantity.doubleValue(),
+                accumulatedExitNotional.doubleValue(),
+                accumulatedRealizedPnl.doubleValue(),
+                accumulatedCloseFee.doubleValue()
         );
     }
 

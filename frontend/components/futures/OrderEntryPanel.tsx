@@ -1,11 +1,12 @@
 "use client";
 
 import type {
+  FuturesAccountSummary,
   OrderExecutionResponse,
   OrderPreviewRequest,
   OrderPreviewResponse,
 } from "@/lib/futures-api";
-import { formatUsd, type MarketSymbol } from "@/lib/markets";
+import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
 import Modal from "@/components/ui/Modal";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,7 @@ type Props = {
   symbol: MarketSymbol;
   currentPrice: number;
   isAuthenticated: boolean;
+  accountSummary: FuturesAccountSummary | null;
 };
 
 type Side = "LONG" | "SHORT";
@@ -30,7 +32,6 @@ type ClientApiResponse<T> = {
   message: string | null;
 };
 
-const AVAILABLE_BALANCE_USDT = 100_000;
 const MIN_LEVERAGE = 1;
 const MAX_LEVERAGE = 50;
 
@@ -38,6 +39,7 @@ export default function OrderEntryPanel({
   symbol,
   currentPrice,
   isAuthenticated,
+  accountSummary,
 }: Props) {
   const router = useRouter();
   const [positionSide, setPositionSide] = useState<Side>("LONG");
@@ -83,9 +85,10 @@ export default function OrderEntryPanel({
   const costEstimate =
     preview?.estimatedInitialMargin ?? (leverage > 0 ? orderNotional / leverage : 0);
   const baseAsset = symbol.replace("USDT", "");
+  const availableBalance = accountSummary?.available ?? 0;
   const maxQuantity =
     Number.isFinite(effectivePrice) && effectivePrice > 0
-      ? (AVAILABLE_BALANCE_USDT * leverage) / effectivePrice
+      ? (availableBalance * leverage) / effectivePrice
       : 0;
   const quantityPercent =
     maxQuantity > 0 && Number.isFinite(parsedQuantity)
@@ -249,7 +252,9 @@ export default function OrderEntryPanel({
 
       <div className="flex items-center justify-between text-xs-custom text-main-dark-gray/60">
         <span>Available</span>
-        <span className="font-semibold text-main-dark-gray">100,000 USDT</span>
+        <span className="font-semibold text-main-dark-gray">
+          {formatUsd(availableBalance)}
+        </span>
       </div>
 
       <TicketField label="Price">
@@ -392,23 +397,32 @@ export default function OrderEntryPanel({
       <div className="border-t border-main-light-gray pt-4">
         <div className="flex items-center justify-between">
           <p className="text-sm-custom font-bold text-main-dark-gray">Account</p>
-          <span className="text-xs-custom font-semibold text-main-blue">PnL</span>
+          <span className="text-xs-custom font-semibold text-main-blue">USDT</span>
         </div>
         <div className="mt-3 grid gap-2">
           <AccountLine
-            label="Fee"
-            value={preview?.estimatedFee ? formatUsd(preview.estimatedFee) : "-"}
+            label="USDT balance"
+            value={accountSummary ? formatUsd(accountSummary.usdtBalance) : "-"}
           />
           <AccountLine
-            label="Entry"
+            label="Wallet balance"
+            value={accountSummary ? formatUsd(accountSummary.walletBalance) : "-"}
+          />
+          <AccountLine
+            label="Available"
+            value={accountSummary ? formatUsd(accountSummary.available) : "-"}
+          />
+          <AccountLine
+            label="Unrealized PnL"
             value={
-              preview ? formatUsd(preview.estimatedEntryPrice) : formatUsd(currentPrice)
+              accountSummary
+                ? formatUsd(accountSummary.totalUnrealizedPnl)
+                : "-"
             }
           />
-          <AccountLine label="Fee type" value={preview?.feeType ?? "-"} />
           <AccountLine
-            label="Status"
-            value={preview?.executable ? "Taker fill" : "Maker wait"}
+            label="ROI"
+            value={accountSummary ? formatPercent(accountSummary.roi * 100) : "-"}
           />
         </div>
       </div>

@@ -28,6 +28,7 @@ public class GetOpenOrdersService {
                 order.symbol(),
                 order.positionSide(),
                 order.orderType(),
+                order.orderPurpose(),
                 order.marginMode(),
                 order.leverage(),
                 order.quantity(),
@@ -35,7 +36,8 @@ public class GetOpenOrdersService {
                 order.status(),
                 order.feeType(),
                 order.estimatedFee(),
-                order.executionPrice()
+                order.executionPrice(),
+                order.orderTime()
         );
     }
 }

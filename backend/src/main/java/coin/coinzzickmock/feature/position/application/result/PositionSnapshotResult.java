@@ -9,6 +9,8 @@ public record PositionSnapshotResult(
         double entryPrice,
         double markPrice,
         Double liquidationPrice,
-        double unrealizedPnl
+        double unrealizedPnl,
+        double margin,
+        double roi
 ) {
 }

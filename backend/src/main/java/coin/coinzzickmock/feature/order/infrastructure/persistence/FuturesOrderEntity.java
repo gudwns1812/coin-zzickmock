@@ -34,6 +34,9 @@ public class FuturesOrderEntity {
     @Column(name = "order_type", nullable = false, length = 20)
     private String orderType;
 
+    @Column(name = "order_purpose", nullable = false, length = 30)
+    private String orderPurpose;
+
     @Column(name = "margin_mode", nullable = false, length = 20)
     private String marginMode;
 
@@ -72,6 +75,7 @@ public class FuturesOrderEntity {
         entity.symbol = futuresOrder.symbol();
         entity.positionSide = futuresOrder.positionSide();
         entity.orderType = futuresOrder.orderType();
+        entity.orderPurpose = futuresOrder.orderPurpose();
         entity.marginMode = futuresOrder.marginMode();
         entity.leverage = futuresOrder.leverage();
         entity.quantity = decimal(futuresOrder.quantity());
@@ -89,6 +93,7 @@ public class FuturesOrderEntity {
                 symbol,
                 positionSide,
                 orderType,
+                orderPurpose,
                 marginMode,
                 leverage,
                 quantity.doubleValue(),
@@ -96,7 +101,8 @@ public class FuturesOrderEntity {
                 status,
                 feeType,
                 estimatedFee.doubleValue(),
-                executionPrice.doubleValue()
+                executionPrice.doubleValue(),
+                createdAt
         );
     }
 

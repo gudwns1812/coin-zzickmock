@@ -31,7 +31,9 @@ public class GetOpenPositionsService {
                 snapshot.entryPrice(),
                 snapshot.markPrice(),
                 snapshot.liquidationPrice(),
-                snapshot.unrealizedPnl()
+                snapshot.unrealizedPnl(),
+                snapshot.initialMargin(),
+                snapshot.roi()
         );
     }
 }

@@ -16,8 +16,9 @@ import coin.coinzzickmock.feature.position.application.result.OpenPositionCandid
 import coin.coinzzickmock.feature.position.domain.CrossLiquidationAssessment;
 import coin.coinzzickmock.feature.position.domain.IsolatedLiquidationAssessment;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
-import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
+import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import coin.coinzzickmock.feature.position.application.service.PositionCloseFinalizer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,7 @@ public class MarketOrderExecutionService {
     private final AccountRepository accountRepository;
     private final PendingOrderExecutionCache pendingOrderExecutionCache;
     private final LiquidationPolicy liquidationPolicy;
+    private final PositionCloseFinalizer positionCloseFinalizer;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @EventListener
@@ -61,6 +63,11 @@ public class MarketOrderExecutionService {
             if (!isExecutable(order, market.lastPrice())) {
                 continue;
             }
+            if (order.isClosePositionOrder() && !hasEnoughOpenPosition(candidate.memberId(), order)) {
+                orderRepository.updateStatus(candidate.memberId(), order.orderId(), FuturesOrder.STATUS_CANCELLED);
+                pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
+                continue;
+            }
 
             double estimatedFee = market.lastPrice() * order.quantity() * MAKER_FEE_RATE;
             Optional<FuturesOrder> claimed = orderRepository.claimPendingFill(
@@ -76,7 +83,12 @@ public class MarketOrderExecutionService {
                 continue;
             }
 
-            applyFilledOrder(candidate.memberId(), claimed.orElseThrow(), market.lastPrice(), market.markPrice());
+            FuturesOrder filledOrder = claimed.orElseThrow();
+            if (filledOrder.isClosePositionOrder()) {
+                applyFilledCloseOrder(candidate.memberId(), filledOrder, market.lastPrice(), market.markPrice());
+            } else {
+                applyFilledOrder(candidate.memberId(), filledOrder, market.lastPrice(), market.markPrice());
+            }
             pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
             applicationEventPublisher.publishEvent(TradingExecutionEvent.orderFilled(
                     candidate.memberId(),
@@ -94,10 +106,27 @@ public class MarketOrderExecutionService {
         if (!order.isPending() || order.limitPrice() == null) {
             return false;
         }
+        if (order.isClosePositionOrder()) {
+            if ("LONG".equalsIgnoreCase(order.positionSide())) {
+                return lastPrice >= order.limitPrice();
+            }
+            return lastPrice <= order.limitPrice();
+        }
         if ("LONG".equalsIgnoreCase(order.positionSide())) {
             return lastPrice <= order.limitPrice();
         }
         return lastPrice >= order.limitPrice();
+    }
+
+    private boolean hasEnoughOpenPosition(String memberId, FuturesOrder order) {
+        return positionRepository.findOpenPosition(
+                        memberId,
+                        order.symbol(),
+                        order.positionSide(),
+                        order.marginMode()
+                )
+                .filter(position -> position.quantity() >= order.quantity())
+                .isPresent();
     }
 
     private void applyFilledOrder(String memberId, FuturesOrder order, double executionPrice, double markPrice) {
@@ -129,6 +158,24 @@ public class MarketOrderExecutionService {
         positionRepository.save(
                 memberId,
                 existing.increase(order.leverage(), order.quantity(), executionPrice, markPrice)
+        );
+    }
+
+    private void applyFilledCloseOrder(String memberId, FuturesOrder order, double executionPrice, double markPrice) {
+        PositionSnapshot existing = positionRepository.findOpenPosition(
+                memberId,
+                order.symbol(),
+                order.positionSide(),
+                order.marginMode()
+        ).orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
+        positionCloseFinalizer.close(
+                memberId,
+                existing,
+                order.quantity(),
+                markPrice,
+                executionPrice,
+                MAKER_FEE_RATE,
+                PositionHistory.CLOSE_REASON_LIMIT_CLOSE
         );
     }
 
@@ -181,26 +228,23 @@ public class MarketOrderExecutionService {
     }
 
     private void liquidate(String memberId, PositionSnapshot position, double executionPrice, double markPrice) {
-        if (!positionRepository.deleteIfOpen(memberId, position.symbol(), position.positionSide(), position.marginMode())) {
-            return;
-        }
-
-        PositionCloseOutcome closeOutcome = position.close(position.quantity(), markPrice, executionPrice, TAKER_FEE_RATE);
-        TradingAccount account = accountRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        accountRepository.save(account.settlePositionClose(
-                closeOutcome.realizedPnl(),
-                closeOutcome.closeFee(),
-                closeOutcome.releasedMargin()
-        ));
+        var result = positionCloseFinalizer.close(
+                memberId,
+                position,
+                position.quantity(),
+                markPrice,
+                executionPrice,
+                TAKER_FEE_RATE,
+                PositionHistory.CLOSE_REASON_LIQUIDATION
+        );
         applicationEventPublisher.publishEvent(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),
                 position.positionSide(),
                 position.marginMode(),
-                closeOutcome.closedQuantity(),
+                result.closedQuantity(),
                 executionPrice,
-                closeOutcome.netRealizedPnl()
+                result.realizedPnl()
         ));
     }
 }

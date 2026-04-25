@@ -8,6 +8,9 @@ public record PositionSummaryResponse(
         double quantity,
         double entryPrice,
         double markPrice,
-        double unrealizedPnl
+        Double liquidationPrice,
+        double unrealizedPnl,
+        double margin,
+        double roi
 ) {
 }

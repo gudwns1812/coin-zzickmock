@@ -2,17 +2,37 @@ package coin.coinzzickmock.feature.market.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleCache;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentFetcher;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentPolicy;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentStore;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleTelemetry;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.providers.Providers;
+import coin.coinzzickmock.providers.auth.AuthProvider;
+import coin.coinzzickmock.providers.connector.ConnectorProvider;
+import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
+import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
+import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
 class GetMarketCandlesServiceTest {
     @Test
@@ -24,7 +44,7 @@ class GetMarketCandlesServiceTest {
         repository.saveMinuteCandle(minute(1L, "2026-04-21T00:03:00Z", 102.8, 104, 102, 103.6, 11));
         repository.saveMinuteCandle(minute(1L, "2026-04-21T00:04:00Z", 103.6, 105, 103, 104.4, 13));
 
-        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+        GetMarketCandlesService service = service(repository);
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "5m", 1, null));
 
@@ -44,7 +64,7 @@ class GetMarketCandlesServiceTest {
         repository.saveMinuteCandle(minute(1L, "2026-04-21T00:02:00Z", 101.2, 103, 101, 102.8, 15));
         repository.saveMinuteCandle(minute(1L, "2026-04-21T00:03:00Z", 102.8, 104, 102, 103.6, 11));
 
-        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+        GetMarketCandlesService service = service(repository);
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
@@ -76,7 +96,7 @@ class GetMarketCandlesServiceTest {
             ));
         }
 
-        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+        GetMarketCandlesService service = service(repository);
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
@@ -114,7 +134,7 @@ class GetMarketCandlesServiceTest {
         }
         repository.saveHourlyCandle(hourly(1L, "2026-04-24T20:00:00Z", 300, 301, 299, 300.5, 10));
 
-        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+        GetMarketCandlesService service = service(repository);
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "4h", 2, null));
 
@@ -145,7 +165,7 @@ class GetMarketCandlesServiceTest {
         }
         repository.saveHourlyCandle(hourly(1L, "2026-04-23T00:00:00Z", 300, 301, 299, 300.5, 10));
 
-        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+        GetMarketCandlesService service = service(repository);
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1D", 2, null));
 
@@ -176,7 +196,7 @@ class GetMarketCandlesServiceTest {
         }
         repository.saveHourlyCandle(hourly(1L, "2026-04-27T00:00:00Z", 300, 301, 299, 300.5, 10));
 
-        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+        GetMarketCandlesService service = service(repository);
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1W", 2, null));
 
@@ -184,6 +204,142 @@ class GetMarketCandlesServiceTest {
         assertEquals(Instant.parse("2026-04-20T00:00:00Z"), results.get(0).openTime());
         assertEquals(267.5, results.get(0).closePrice(), 0.0001);
         assertEquals(1680.0, results.get(0).volume(), 0.0001);
+    }
+
+    @Test
+    void supplementsPartialMinutePageFromHistoricalCacheWithoutSavingToRepository() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        Instant dbStart = Instant.parse("2026-03-01T00:00:00Z");
+        for (int minute = 0; minute < 80; minute++) {
+            Instant openTime = dbStart.plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(
+                    1L,
+                    openTime.toString(),
+                    200 + minute,
+                    201 + minute,
+                    199 + minute,
+                    200.5 + minute,
+                    10
+            ));
+        }
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
+                "BTCUSDT",
+                "1m",
+                200,
+                Instant.parse("2026-03-01T01:20:00Z")
+        ));
+
+        assertEquals(200, results.size());
+        assertEquals(1, gateway.historicalCallCount);
+        assertEquals(80, repository.findMinuteCandles(
+                1L,
+                Instant.parse("2026-03-01T00:00:00Z"),
+                Instant.parse("2026-03-01T01:20:00Z")
+        ).size());
+        assertEquals(dbStart, results.get(120).openTime());
+    }
+
+    @Test
+    void reusesAlignedRedisSegmentForSlidingOlderMinuteRequests() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
+
+        service.getCandles(new GetMarketCandlesQuery(
+                "BTCUSDT",
+                "1m",
+                20,
+                Instant.parse("2026-03-01T00:40:00Z")
+        ));
+        service.getCandles(new GetMarketCandlesQuery(
+                "BTCUSDT",
+                "1m",
+                20,
+                Instant.parse("2026-03-01T00:35:00Z")
+        ));
+
+        assertEquals(1, gateway.historicalCallCount);
+    }
+
+    @Test
+    void fallsBackToBitgetWhenDistributedCacheFails() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, new FailingCacheManager());
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
+                "BTCUSDT",
+                "1m",
+                20,
+                Instant.parse("2026-03-01T00:40:00Z")
+        ));
+
+        assertEquals(20, results.size());
+        assertEquals(1, gateway.historicalCallCount);
+    }
+
+    private static GetMarketCandlesService service(InMemoryMarketHistoryRepository repository) {
+        return service(repository, FakeMarketDataGateway.empty(), distributedCacheManager());
+    }
+
+    private static GetMarketCandlesService service(
+            InMemoryMarketHistoryRepository repository,
+            FakeMarketDataGateway gateway,
+            CacheManager cacheManager
+    ) {
+        FakeProviders providers = new FakeProviders(gateway);
+        MarketHistoricalCandleTelemetry telemetry = new MarketHistoricalCandleTelemetry(providers);
+        MarketHistoricalCandleCache cache = new MarketHistoricalCandleCache(
+                new MarketHistoricalCandleSegmentPolicy(),
+                new MarketHistoricalCandleSegmentStore(telemetry, objectProvider(cacheManager)),
+                new MarketHistoricalCandleSegmentFetcher(providers, telemetry)
+        );
+        return new GetMarketCandlesService(repository, cache, providers);
+    }
+
+    private static CacheManager distributedCacheManager() {
+        ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(
+                CoinCacheNames.MARKET_HISTORICAL_CANDLES_DISTRIBUTED_CACHE
+        );
+        cacheManager.setAllowNullValues(false);
+        return cacheManager;
+    }
+
+    private static ObjectProvider<CacheManager> objectProvider(CacheManager cacheManager) {
+        return new ObjectProvider<>() {
+            @Override
+            public CacheManager getObject(Object... args) {
+                return cacheManager;
+            }
+
+            @Override
+            public CacheManager getIfAvailable() {
+                return cacheManager;
+            }
+
+            @Override
+            public CacheManager getIfUnique() {
+                return cacheManager;
+            }
+
+            @Override
+            public CacheManager getObject() {
+                return cacheManager;
+            }
+
+            @Override
+            public Stream<CacheManager> stream() {
+                return Stream.of(cacheManager);
+            }
+
+            @Override
+            public Stream<CacheManager> orderedStream() {
+                return Stream.of(cacheManager);
+            }
+        };
     }
 
     private static MarketHistoryCandle minute(
@@ -331,6 +487,159 @@ class GetMarketCandlesServiceTest {
 
         private String key(long symbolId, Instant openTime) {
             return symbolId + ":" + openTime;
+        }
+    }
+
+    private record FakeProviders(FakeMarketDataGateway marketDataGateway) implements Providers {
+        @Override
+        public AuthProvider auth() {
+            return null;
+        }
+
+        @Override
+        public ConnectorProvider connector() {
+            return () -> marketDataGateway;
+        }
+
+        @Override
+        public TelemetryProvider telemetry() {
+            return new TelemetryProvider() {
+                @Override
+                public void recordUseCase(String useCaseName) {
+                }
+
+                @Override
+                public void recordFailure(String useCaseName, String reason) {
+                }
+            };
+        }
+
+        @Override
+        public FeatureFlagProvider featureFlags() {
+            return null;
+        }
+    }
+
+    private static class FakeMarketDataGateway implements MarketDataGateway {
+        private final boolean hasHistoricalCandles;
+        private int historicalCallCount;
+
+        private FakeMarketDataGateway(boolean hasHistoricalCandles) {
+            this.hasHistoricalCandles = hasHistoricalCandles;
+        }
+
+        static FakeMarketDataGateway empty() {
+            return new FakeMarketDataGateway(false);
+        }
+
+        static FakeMarketDataGateway withHistoricalCandles() {
+            return new FakeMarketDataGateway(true);
+        }
+
+        @Override
+        public List<coin.coinzzickmock.feature.market.domain.MarketSnapshot> loadSupportedMarkets() {
+            return List.of();
+        }
+
+        @Override
+        public coin.coinzzickmock.feature.market.domain.MarketSnapshot loadMarket(String symbol) {
+            return null;
+        }
+
+        @Override
+        public List<MarketHistoricalCandleSnapshot> loadHistoricalCandles(
+                String symbol,
+                MarketCandleInterval interval,
+                Instant fromInclusive,
+                Instant toExclusive,
+                int limit
+        ) {
+            historicalCallCount++;
+            if (!hasHistoricalCandles) {
+                return List.of();
+            }
+
+            List<MarketHistoricalCandleSnapshot> candles = new ArrayList<>();
+            Instant cursor = fromInclusive;
+            while (cursor.isBefore(toExclusive) && candles.size() < limit) {
+                candles.add(new MarketHistoricalCandleSnapshot(
+                        cursor,
+                        cursor.plusSeconds(60),
+                        100,
+                        101,
+                        99,
+                        100.5,
+                        10,
+                        1005
+                ));
+                cursor = cursor.plusSeconds(60);
+            }
+            return candles;
+        }
+    }
+
+    private static class FailingCacheManager implements CacheManager {
+        @Override
+        public Cache getCache(String name) {
+            return new Cache() {
+                @Override
+                public String getName() {
+                    return name;
+                }
+
+                @Override
+                public Object getNativeCache() {
+                    return this;
+                }
+
+                @Override
+                public ValueWrapper get(Object key) {
+                    throw new IllegalStateException("cache read failed");
+                }
+
+                @Override
+                public <T> T get(Object key, Class<T> type) {
+                    throw new IllegalStateException("cache read failed");
+                }
+
+                @Override
+                public <T> T get(Object key, java.util.concurrent.Callable<T> valueLoader) {
+                    throw new IllegalStateException("cache read failed");
+                }
+
+                @Override
+                public void put(Object key, Object value) {
+                    throw new IllegalStateException("cache write failed");
+                }
+
+                @Override
+                public ValueWrapper putIfAbsent(Object key, Object value) {
+                    throw new IllegalStateException("cache write failed");
+                }
+
+                @Override
+                public void evict(Object key) {
+                }
+
+                @Override
+                public boolean evictIfPresent(Object key) {
+                    return false;
+                }
+
+                @Override
+                public void clear() {
+                }
+
+                @Override
+                public boolean invalidate() {
+                    return false;
+                }
+            };
+        }
+
+        @Override
+        public java.util.Collection<String> getCacheNames() {
+            return List.of(CoinCacheNames.MARKET_HISTORICAL_CANDLES_DISTRIBUTED_CACHE);
         }
     }
 }

@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleCache;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
@@ -9,8 +10,11 @@ import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
+import coin.coinzzickmock.providers.Providers;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,14 +30,15 @@ public class GetMarketCandlesService {
     private static final int MAX_LIMIT = 240;
 
     private final MarketHistoryRepository marketHistoryRepository;
+    private final MarketHistoricalCandleCache historicalCandleCache;
+    private final Providers providers;
 
-    @Transactional(readOnly = true)
     public List<MarketCandleResult> getCandles(GetMarketCandlesQuery query) {
         MarketCandleInterval interval = MarketCandleInterval.from(query.interval());
         int limit = normalizeLimit(query.limit());
         long symbolId = resolveSymbolId(query.symbol());
 
-        return switch (interval) {
+        List<MarketCandleResult> persistedCandles = switch (interval) {
             case ONE_MINUTE -> {
                 Instant latestMinuteOpenTime = resolveLatestMinuteOpenTime(symbolId, query.beforeOpenTime());
                 if (latestMinuteOpenTime == null) {
@@ -73,6 +77,10 @@ public class GetMarketCandlesService {
             case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
                     rollupHourlyResults(symbolId, limit, interval, query.beforeOpenTime());
         };
+
+        recordDbLookup(query.symbol(), interval, beforeOrEarliest(query.beforeOpenTime(), persistedCandles),
+                dbLookupResult(persistedCandles, limit));
+        return completeWithHistoricalCache(query.symbol(), interval, query.beforeOpenTime(), limit, persistedCandles);
     }
 
     private int normalizeLimit(Integer requestedLimit) {
@@ -88,6 +96,95 @@ public class GetMarketCandlesService {
             throw new CoreException(ErrorCode.MARKET_NOT_FOUND);
         }
         return symbolId;
+    }
+
+    private List<MarketCandleResult> completeWithHistoricalCache(
+            String symbol,
+            MarketCandleInterval interval,
+            Instant beforeOpenTime,
+            int limit,
+            List<MarketCandleResult> persistedCandles
+    ) {
+        if (persistedCandles.size() >= limit) {
+            return persistedCandles;
+        }
+
+        Instant supplementalToExclusive = persistedCandles.stream()
+                .map(MarketCandleResult::openTime)
+                .min(Instant::compareTo)
+                .orElseGet(() -> beforeOpenTime == null ? Instant.now() : beforeOpenTime);
+        int missingCount = limit - persistedCandles.size();
+
+        List<MarketCandleResult> supplementalCandles = historicalCandleCache.loadOlderCandles(
+                symbol,
+                interval,
+                supplementalToExclusive,
+                missingCount
+        );
+
+        return mergeSupplementalCandles(persistedCandles, supplementalCandles, limit);
+    }
+
+    private List<MarketCandleResult> mergeSupplementalCandles(
+            List<MarketCandleResult> persistedCandles,
+            List<MarketCandleResult> supplementalCandles,
+            int limit
+    ) {
+        Map<Instant, MarketCandleResult> candlesByOpenTime = new LinkedHashMap<>();
+        supplementalCandles.stream()
+                .sorted(java.util.Comparator.comparing(MarketCandleResult::openTime))
+                .forEach(candle -> candlesByOpenTime.put(candle.openTime(), candle));
+        persistedCandles.stream()
+                .sorted(java.util.Comparator.comparing(MarketCandleResult::openTime))
+                .forEach(candle -> candlesByOpenTime.put(candle.openTime(), candle));
+
+        List<MarketCandleResult> merged = candlesByOpenTime.values().stream()
+                .sorted(java.util.Comparator.comparing(MarketCandleResult::openTime))
+                .toList();
+        if (merged.size() <= limit) {
+            return merged;
+        }
+        return merged.subList(merged.size() - limit, merged.size());
+    }
+
+    private void recordDbLookup(
+            String symbol,
+            MarketCandleInterval interval,
+            Instant rangeStart,
+            String result
+    ) {
+        String eventName = "partial".equals(result) ? "market.history.db.miss" : "market.history.db." + result;
+        providers.telemetry().recordEvent(eventName, Map.of(
+                "symbol", symbol,
+                "interval", interval.value(),
+                "range_bucket", rangeBucket(interval, rangeStart),
+                "source", "db",
+                "result", result
+        ));
+    }
+
+    private String dbLookupResult(List<MarketCandleResult> persistedCandles, int limit) {
+        if (persistedCandles.isEmpty()) {
+            return "miss";
+        }
+        if (persistedCandles.size() < limit) {
+            return "partial";
+        }
+        return "hit";
+    }
+
+    private Instant beforeOrEarliest(Instant beforeOpenTime, List<MarketCandleResult> persistedCandles) {
+        return persistedCandles.stream()
+                .map(MarketCandleResult::openTime)
+                .min(Instant::compareTo)
+                .orElseGet(() -> beforeOpenTime == null ? Instant.now() : beforeOpenTime);
+    }
+
+    private String rangeBucket(MarketCandleInterval interval, Instant rangeStart) {
+        if (interval == MarketCandleInterval.ONE_MINUTE || interval == MarketCandleInterval.ONE_HOUR) {
+            return YearMonth.from(rangeStart.atZone(ZoneOffset.UTC)).toString();
+        }
+        return String.valueOf(MarketTime.atStorageZone(rangeStart).getYear());
     }
 
     private Instant resolveLatestMinuteOpenTime(long symbolId, Instant beforeOpenTime) {

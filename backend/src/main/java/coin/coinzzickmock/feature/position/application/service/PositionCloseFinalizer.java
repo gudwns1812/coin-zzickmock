@@ -4,9 +4,11 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -15,6 +17,7 @@ import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProce
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,6 +27,7 @@ public class PositionCloseFinalizer {
     private final AccountRepository accountRepository;
     private final PositionHistoryRepository positionHistoryRepository;
     private final RewardPointGrantProcessor rewardPointGrantProcessor;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public ClosePositionResult close(
             String memberId,
@@ -39,13 +43,14 @@ public class PositionCloseFinalizer {
         }
 
         PositionCloseOutcome closeOutcome = position.close(quantity, markPrice, executionPrice, feeRate);
+        PositionMutationResult mutationResult;
         if (closeOutcome.remainingPosition() == null) {
-            if (!positionRepository.deleteIfOpen(memberId, position.symbol(), position.positionSide(), position.marginMode())) {
-                throw new CoreException(ErrorCode.POSITION_NOT_FOUND);
-            }
+            mutationResult = positionRepository.deleteWithVersion(memberId, position);
+            validateGuardedMutation(mutationResult);
             positionHistoryRepository.save(memberId, toHistory(position, closeOutcome, closeReason));
         } else {
-            positionRepository.save(memberId, closeOutcome.remainingPosition());
+            mutationResult = positionRepository.updateWithVersion(memberId, position, closeOutcome.remainingPosition());
+            validateGuardedMutation(mutationResult);
         }
 
         TradingAccount account = accountRepository.findByMemberId(memberId)
@@ -55,6 +60,7 @@ public class PositionCloseFinalizer {
                 closeOutcome.closeFee(),
                 closeOutcome.releasedMargin()
         ));
+        applicationEventPublisher.publishEvent(new WalletBalanceChangedEvent(memberId));
 
         RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(
                 new GrantProfitPointCommand(memberId, closeOutcome.netRealizedPnl())
@@ -66,6 +72,16 @@ public class PositionCloseFinalizer {
                 closeOutcome.netRealizedPnl(),
                 rewardPointResult.rewardPoint()
         );
+    }
+
+    private void validateGuardedMutation(PositionMutationResult mutationResult) {
+        if (mutationResult.succeeded()) {
+            return;
+        }
+        if (mutationResult.status() == PositionMutationResult.Status.NOT_FOUND) {
+            throw new CoreException(ErrorCode.POSITION_NOT_FOUND);
+        }
+        throw new CoreException(ErrorCode.POSITION_CHANGED);
     }
 
     private PositionHistory toHistory(

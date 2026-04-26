@@ -5,6 +5,8 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
+import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
@@ -28,6 +30,7 @@ public class ClosePositionService {
     private final OrderRepository orderRepository;
     private final Providers providers;
     private final PositionCloseFinalizer positionCloseFinalizer;
+    private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
 
     @Transactional
     public ClosePositionResult close(
@@ -45,7 +48,7 @@ public class ClosePositionService {
 
         MarketSnapshot market = loadMarket(symbol);
         if (ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
-            orderRepository.save(memberId, FuturesOrder.place(
+            FuturesOrder pendingCloseOrder = orderRepository.save(memberId, FuturesOrder.place(
                     UUID.randomUUID().toString(),
                     symbol,
                     positionSide,
@@ -60,6 +63,7 @@ public class ClosePositionService {
                     0,
                     limitPrice == null ? market.lastPrice() : limitPrice
             ));
+            pendingCloseOrderCapReconciler.reconcile(memberId, pendingCloseOrder, position.quantity(), market.lastPrice());
             return new ClosePositionResult(symbol, 0, 0, 0);
         }
 
@@ -114,4 +118,5 @@ public class ClosePositionService {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "지정가 종료 가격을 확인해주세요.");
         }
     }
+
 }

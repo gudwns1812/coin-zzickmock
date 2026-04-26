@@ -139,7 +139,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_close_fee`, `created_at`, `updated_at`
+  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_close_fee`, `version`, `created_at`, `updated_at`
+- 동시성:
+  `version`은 포지션 종료/청산/종료 주문 체결 시 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 정산, 포지션 이력, 리워드, SSE 이벤트를 수행하지 않고 재조회가 필요한 충돌로 처리한다.
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
@@ -248,6 +250,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `MemberCredentialEntity`를 source of truth에 추가하고, 로컬 회원 자격 증명 저장 구조를 문서화했다.
 - 2026-04-16:
   `PositionPersistenceRepository`에 OpenFeign 포크 `querydsl-jpa` 기반 조회를 추가했다.
+- 2026-04-26:
+  `V6__add_open_position_version.sql`로 `open_positions.version`을 추가하고 포지션 종료 계열 mutation의 낙관적 잠금 기준으로 문서화했다.
 
 ## Update Rule
 

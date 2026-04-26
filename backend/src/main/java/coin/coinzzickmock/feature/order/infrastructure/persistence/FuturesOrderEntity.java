@@ -114,6 +114,11 @@ public class FuturesOrderEntity {
         this.status = status;
     }
 
+    public void updateQuantityAndStatus(double quantity, String status) {
+        this.quantity = decimal(quantity);
+        this.status = status;
+    }
+
     private static BigDecimal decimal(double value) {
         return BigDecimal.valueOf(value);
     }

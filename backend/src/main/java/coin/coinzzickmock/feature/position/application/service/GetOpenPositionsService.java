@@ -1,8 +1,10 @@
 package coin.coinzzickmock.feature.position.application.service;
 
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import coin.coinzzickmock.providers.Providers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,12 +15,22 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetOpenPositionsService {
     private final PositionRepository positionRepository;
+    private final Providers providers;
 
     @Transactional(readOnly = true)
     public List<PositionSnapshotResult> getPositions(String memberId) {
         return positionRepository.findOpenPositions(memberId).stream()
+                .map(this::markToMarketForRead)
                 .map(this::toResult)
                 .toList();
+    }
+
+    private PositionSnapshot markToMarketForRead(PositionSnapshot snapshot) {
+        MarketSnapshot market = providers.connector().marketDataGateway().loadMarket(snapshot.symbol());
+        if (market == null) {
+            return snapshot;
+        }
+        return snapshot.markToMarket(market.markPrice());
     }
 
     private PositionSnapshotResult toResult(PositionSnapshot snapshot) {

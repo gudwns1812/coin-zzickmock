@@ -15,6 +15,21 @@ public interface OrderRepository {
 
     List<PendingOrderCandidate> findPendingBySymbol(String symbol);
 
+    default List<FuturesOrder> findPendingCloseOrders(
+            String memberId,
+            String symbol,
+            String positionSide,
+            String marginMode
+    ) {
+        return findByMemberId(memberId).stream()
+                .filter(FuturesOrder::isPending)
+                .filter(FuturesOrder::isClosePositionOrder)
+                .filter(order -> order.symbol().equalsIgnoreCase(symbol))
+                .filter(order -> order.positionSide().equalsIgnoreCase(positionSide))
+                .filter(order -> order.marginMode().equalsIgnoreCase(marginMode))
+                .toList();
+    }
+
     Optional<FuturesOrder> claimPendingFill(
             String memberId,
             String orderId,
@@ -24,4 +39,11 @@ public interface OrderRepository {
     );
 
     FuturesOrder updateStatus(String memberId, String orderId, String status);
+
+    default FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+        if (FuturesOrder.STATUS_CANCELLED.equalsIgnoreCase(status)) {
+            return updateStatus(memberId, orderId, status);
+        }
+        throw new UnsupportedOperationException("Order quantity updates are not implemented");
+    }
 }

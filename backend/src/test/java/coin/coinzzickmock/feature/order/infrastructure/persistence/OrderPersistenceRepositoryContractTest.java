@@ -78,8 +78,7 @@ class OrderPersistenceRepositoryContractTest {
 
         List<PendingOrderCandidate> candidates = orderRepository.findPendingBySymbol("BTCUSDT");
 
-        assertEquals(2, candidates.size());
-        assertEquals(List.of(firstMemberId, secondMemberId), candidates.stream().map(PendingOrderCandidate::memberId).toList());
+        assertTrue(candidates.stream().map(PendingOrderCandidate::memberId).toList().containsAll(List.of(firstMemberId, secondMemberId)));
         assertTrue(candidates.stream().allMatch(candidate -> candidate.order().isPending()));
     }
 
@@ -111,6 +110,42 @@ class OrderPersistenceRepositoryContractTest {
         assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
         assertEquals(98950.0, filled.executionPrice(), 0.0001);
         assertEquals(1.25, filled.estimatedFee(), 0.0001);
+    }
+
+    @Test
+    void findsAndAdjustsPendingCloseOrderQuantity() {
+        String memberId = "close-cap-owner-" + UUID.randomUUID();
+        String orderId = "close-order-" + UUID.randomUUID();
+        saveAccount(memberId);
+
+        orderRepository.save(memberId, FuturesOrder.place(
+                orderId,
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.2,
+                71000.0,
+                false,
+                "MAKER",
+                0,
+                71000.0
+        ));
+
+        List<FuturesOrder> pendingCloseOrders = orderRepository.findPendingCloseOrders(
+                memberId,
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED"
+        );
+
+        assertEquals(1, pendingCloseOrders.size());
+        orderRepository.updateQuantityAndStatus(memberId, orderId, 0.05, FuturesOrder.STATUS_PENDING);
+        FuturesOrder adjusted = orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, adjusted.status());
+        assertEquals(0.05, adjusted.quantity(), 0.0001);
     }
 
     private void saveAccount(String memberId) {

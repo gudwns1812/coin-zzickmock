@@ -67,7 +67,9 @@ class ClosePositionServiceTest {
                         positionRepository,
                         accountRepository,
                         positionHistoryRepository,
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository)
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
+                        event -> {
+                        }
                 )
         );
 
@@ -120,7 +122,9 @@ class ClosePositionServiceTest {
                         positionRepository,
                         accountRepository,
                         positionHistoryRepository,
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository)
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
+                        event -> {
+                        }
                 )
         );
 
@@ -172,7 +176,9 @@ class ClosePositionServiceTest {
                         positionRepository,
                         accountRepository,
                         positionHistoryRepository,
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository)
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
+                        event -> {
+                        }
                 )
         );
 
@@ -224,7 +230,9 @@ class ClosePositionServiceTest {
                         positionRepository,
                         accountRepository,
                         positionHistoryRepository,
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository)
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
+                        event -> {
+                        }
                 )
         );
 
@@ -351,7 +359,9 @@ class ClosePositionServiceTest {
                 positionRepository,
                 accountRepository,
                 positionHistoryRepository,
-                new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository)
+                new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
+                event -> {
+                }
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> finalizer.close(
@@ -391,7 +401,9 @@ class ClosePositionServiceTest {
                         positionRepository,
                         accountRepository,
                         new InMemoryPositionHistoryRepository(),
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository())
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
+                        event -> {
+                        }
                 )
         );
     }

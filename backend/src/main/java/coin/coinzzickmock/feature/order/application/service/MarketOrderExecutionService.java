@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
@@ -136,6 +137,7 @@ public class MarketOrderExecutionService {
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         accountRepository.save(account.reserveForFilledOrder(order.estimatedFee(), initialMargin));
+        publishAfterCommit(new WalletBalanceChangedEvent(memberId));
 
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 memberId,
@@ -241,7 +243,7 @@ public class MarketOrderExecutionService {
         ));
     }
 
-    private void publishAfterCommit(TradingExecutionEvent event) {
+    private void publishAfterCommit(Object event) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             applicationEventPublisher.publishEvent(event);
             return;

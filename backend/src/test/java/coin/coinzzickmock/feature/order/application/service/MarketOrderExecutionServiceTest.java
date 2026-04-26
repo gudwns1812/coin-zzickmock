@@ -267,7 +267,8 @@ class MarketOrderExecutionServiceTest {
                         positionRepository,
                         accountRepository,
                         new InMemoryPositionHistoryRepository(),
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository())
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
+                        eventPublisher
                 ),
                 eventPublisher
         );

@@ -28,6 +28,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -90,7 +92,7 @@ public class MarketOrderExecutionService {
                 applyFilledOrder(candidate.memberId(), filledOrder, market.lastPrice(), market.markPrice());
             }
             pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
-            applicationEventPublisher.publishEvent(TradingExecutionEvent.orderFilled(
+            publishAfterCommit(TradingExecutionEvent.orderFilled(
                     candidate.memberId(),
                     order.orderId(),
                     order.symbol(),
@@ -195,8 +197,6 @@ public class MarketOrderExecutionService {
             IsolatedLiquidationAssessment assessment = liquidationPolicy.assessIsolated(marked, market.markPrice());
             if (assessment.breached()) {
                 liquidate(candidate.memberId(), marked, market.lastPrice(), market.markPrice());
-            } else {
-                positionRepository.save(candidate.memberId(), marked);
             }
         }
     }
@@ -212,19 +212,12 @@ public class MarketOrderExecutionService {
 
         CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(account.availableMargin(), positions);
         if (!assessment.breached()) {
-            saveMarkedPositions(memberId, market, positions);
             return;
         }
 
         assessment.liquidationCandidate()
                 .filter(candidate -> candidate.position().symbol().equalsIgnoreCase(market.symbol()))
                 .ifPresent(candidate -> liquidate(memberId, candidate.position(), market.lastPrice(), market.markPrice()));
-    }
-
-    private void saveMarkedPositions(String memberId, MarketSummaryResult market, List<PositionSnapshot> positions) {
-        positions.stream()
-                .filter(position -> position.symbol().equalsIgnoreCase(market.symbol()))
-                .forEach(position -> positionRepository.save(memberId, position));
     }
 
     private void liquidate(String memberId, PositionSnapshot position, double executionPrice, double markPrice) {
@@ -237,7 +230,7 @@ public class MarketOrderExecutionService {
                 TAKER_FEE_RATE,
                 PositionHistory.CLOSE_REASON_LIQUIDATION
         );
-        applicationEventPublisher.publishEvent(TradingExecutionEvent.positionLiquidated(
+        publishAfterCommit(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),
                 position.positionSide(),
@@ -246,5 +239,19 @@ public class MarketOrderExecutionService {
                 executionPrice,
                 result.realizedPnl()
         ));
+    }
+
+    private void publishAfterCommit(TradingExecutionEvent event) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            applicationEventPublisher.publishEvent(event);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                applicationEventPublisher.publishEvent(event);
+            }
+        });
     }
 }

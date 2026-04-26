@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 class MarketOrderExecutionServiceTest {
     @Test
@@ -70,6 +72,43 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void orderFilledEventPublishesOnlyAfterTransactionCommit() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save("demo-member", new FuturesOrder(
+                "order-after-commit",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                0.1,
+                99.0,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                99
+        ));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                    .onMarketUpdated(new MarketSummaryUpdatedEvent(market(98, 98)));
+
+            assertTrue(eventPublisher.events.isEmpty());
+
+            TransactionSynchronizationUtils.triggerAfterCommit();
+
+            assertEquals(1, eventPublisher.events.size());
+            assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     void liquidatesBreachedIsolatedPositionFromMarketEventAndPublishesSignal() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -97,6 +136,35 @@ class MarketOrderExecutionServiceTest {
         assertTrue(positionRepository.findOpenPositions("demo-member").isEmpty());
         assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
         assertEquals(-20.09, eventPublisher.events.get(0).realizedPnl(), 0.0001);
+    }
+
+    @Test
+    void rolledBackLiquidationDoesNotPublishEvent() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                    .onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
+
+            assertTrue(eventPublisher.events.isEmpty());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        assertTrue(eventPublisher.events.isEmpty());
     }
 
     @Test
@@ -144,6 +212,42 @@ class MarketOrderExecutionServiceTest {
         assertEquals(0.5, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow()
                 .quantity(), 0.0001);
+        assertTrue(eventPublisher.events.isEmpty());
+    }
+
+    @Test
+    void nonBreachedLiquidationAssessmentDoesNotPersistMarkOnlyPositionChanges() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        PositionSnapshot original = PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ).withVersion(7);
+        positionRepository.save("demo-member", original);
+        int savesBeforeMarketEvent = positionRepository.saveCount;
+
+        MarketOrderExecutionService service = service(
+                orderRepository,
+                positionRepository,
+                accountRepository,
+                eventPublisher
+        );
+
+        service.onMarketUpdated(new MarketSummaryUpdatedEvent(market(105, 105)));
+
+        assertEquals(savesBeforeMarketEvent, positionRepository.saveCount);
+        PositionSnapshot persisted = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow();
+        assertEquals(100, persisted.markPrice(), 0.0001);
+        assertEquals(0, persisted.unrealizedPnl(), 0.0001);
+        assertEquals(7, persisted.version());
         assertTrue(eventPublisher.events.isEmpty());
     }
 
@@ -282,6 +386,7 @@ class MarketOrderExecutionServiceTest {
 
     private static class InMemoryPositionRepository implements PositionRepository {
         private final Map<String, OpenPositionCandidate> positions = new LinkedHashMap<>();
+        private int saveCount;
 
         @Override
         public List<PositionSnapshot> findOpenPositions(String memberId) {
@@ -311,6 +416,7 @@ class MarketOrderExecutionServiceTest {
 
         @Override
         public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+            saveCount++;
             positions.put(
                     key(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode()),
                     new OpenPositionCandidate(memberId, positionSnapshot)

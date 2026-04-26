@@ -6,10 +6,12 @@ import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQue
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import coin.coinzzickmock.providers.Providers;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class GetAccountSummaryService {
     private final AccountRepository accountRepository;
     private final RewardPointRepository rewardPointRepository;
     private final PositionRepository positionRepository;
+    private final Providers providers;
 
     @Transactional(readOnly = true)
     public AccountSummaryResult execute(GetAccountSummaryQuery query) {
@@ -28,7 +31,9 @@ public class GetAccountSummaryService {
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         RewardPointWallet rewardPointWallet = rewardPointRepository.findByMemberId(query.memberId())
                 .orElse(RewardPointWallet.empty(query.memberId()));
-        List<PositionSnapshot> positions = positionRepository.findOpenPositions(query.memberId());
+        List<PositionSnapshot> positions = positionRepository.findOpenPositions(query.memberId()).stream()
+                .map(this::markToMarketForRead)
+                .toList();
         double totalUnrealizedPnl = positions.stream()
                 .mapToDouble(PositionSnapshot::unrealizedPnl)
                 .sum();
@@ -47,5 +52,13 @@ public class GetAccountSummaryService {
                 roi,
                 rewardPointWallet.rewardPoint()
         );
+    }
+
+    private PositionSnapshot markToMarketForRead(PositionSnapshot snapshot) {
+        MarketSnapshot market = providers.connector().marketDataGateway().loadMarket(snapshot.symbol());
+        if (market == null) {
+            return snapshot;
+        }
+        return snapshot.markToMarket(market.markPrice());
     }
 }

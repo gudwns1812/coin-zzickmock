@@ -18,7 +18,6 @@ export type LiveCandleBucket = {
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
-const KST_OFFSET_MS = 9 * HOUR_MS;
 
 export function getLiveCandleBucket(
   interval: FuturesCandleInterval,
@@ -37,7 +36,7 @@ export function getLiveCandleBucket(
   }
 
   const durationMs = fixedIntervalDurationMs(interval);
-  const openTimeMs = alignToKstFixedBucket(observedAtMs, durationMs);
+  const openTimeMs = alignToFixedBucket(observedAtMs, durationMs);
 
   return {
     closeTimeMs: openTimeMs + durationMs,
@@ -45,11 +44,8 @@ export function getLiveCandleBucket(
   };
 }
 
-function alignToKstFixedBucket(observedAtMs: number, durationMs: number): number {
-  return (
-    Math.floor((observedAtMs + KST_OFFSET_MS) / durationMs) * durationMs -
-    KST_OFFSET_MS
-  );
+function alignToFixedBucket(observedAtMs: number, durationMs: number): number {
+  return Math.floor(observedAtMs / durationMs) * durationMs;
 }
 
 export function mergeCandlesWithLivePrice(
@@ -127,12 +123,12 @@ function fixedIntervalDurationMs(interval: FuturesCandleInterval): number {
 }
 
 function weeklyBucket(observedAtMs: number): LiveCandleBucket {
-  const observedAt = new Date(observedAtMs + KST_OFFSET_MS);
+  const observedAt = new Date(observedAtMs);
   const dayStartMs = Date.UTC(
     observedAt.getUTCFullYear(),
     observedAt.getUTCMonth(),
     observedAt.getUTCDate()
-  ) - KST_OFFSET_MS;
+  );
   const dayOfWeek = observedAt.getUTCDay();
   const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const openTimeMs = dayStartMs - daysSinceMonday * DAY_MS;
@@ -144,17 +140,17 @@ function weeklyBucket(observedAtMs: number): LiveCandleBucket {
 }
 
 function monthlyBucket(observedAtMs: number): LiveCandleBucket {
-  const observedAt = new Date(observedAtMs + KST_OFFSET_MS);
+  const observedAt = new Date(observedAtMs);
   const openTimeMs = Date.UTC(
     observedAt.getUTCFullYear(),
     observedAt.getUTCMonth(),
     1
-  ) - KST_OFFSET_MS;
+  );
   const closeTimeMs = Date.UTC(
     observedAt.getUTCFullYear(),
     observedAt.getUTCMonth() + 1,
     1
-  ) - KST_OFFSET_MS;
+  );
 
   return {
     closeTimeMs,

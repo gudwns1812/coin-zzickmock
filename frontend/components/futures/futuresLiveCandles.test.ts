@@ -78,24 +78,24 @@ test("live 1h price updates and appends hourly candles on hour boundaries", () =
   assert.equal(appended[1].closePrice, 104);
 });
 
-test("calendar bucket helpers use UTC+9 week and month starts", () => {
+test("calendar bucket helpers use UTC week and month starts", () => {
   assert.deepEqual(getLiveCandleBucket("1W", Date.parse("2026-04-26T12:00:00.000Z")), {
-    closeTimeMs: Date.parse("2026-04-26T15:00:00.000Z"),
-    openTimeMs: Date.parse("2026-04-19T15:00:00.000Z"),
+    closeTimeMs: Date.parse("2026-04-27T00:00:00.000Z"),
+    openTimeMs: Date.parse("2026-04-20T00:00:00.000Z"),
   });
   assert.deepEqual(getLiveCandleBucket("1M", Date.parse("2026-04-24T12:00:00.000Z")), {
-    closeTimeMs: Date.parse("2026-04-30T15:00:00.000Z"),
-    openTimeMs: Date.parse("2026-03-31T15:00:00.000Z"),
+    closeTimeMs: Date.parse("2026-05-01T00:00:00.000Z"),
+    openTimeMs: Date.parse("2026-04-01T00:00:00.000Z"),
   });
 });
 
-test("fixed multi-hour bucket helpers use UTC+9 boundaries", () => {
+test("fixed multi-hour bucket helpers use UTC boundaries", () => {
   assert.deepEqual(getLiveCandleBucket("4h", Date.parse("2026-04-24T16:30:00.000Z")), {
-    closeTimeMs: Date.parse("2026-04-24T19:00:00.000Z"),
-    openTimeMs: Date.parse("2026-04-24T15:00:00.000Z"),
+    closeTimeMs: Date.parse("2026-04-24T20:00:00.000Z"),
+    openTimeMs: Date.parse("2026-04-24T16:00:00.000Z"),
   });
   assert.deepEqual(getLiveCandleBucket("12h", Date.parse("2026-04-24T02:30:00.000Z")), {
-    closeTimeMs: Date.parse("2026-04-24T03:00:00.000Z"),
-    openTimeMs: Date.parse("2026-04-23T15:00:00.000Z"),
+    closeTimeMs: Date.parse("2026-04-24T12:00:00.000Z"),
+    openTimeMs: Date.parse("2026-04-24T00:00:00.000Z"),
   });
 });

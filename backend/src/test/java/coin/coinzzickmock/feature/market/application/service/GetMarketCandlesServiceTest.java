@@ -3,6 +3,10 @@ package coin.coinzzickmock.feature.market.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleCache;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentFetcher;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentPolicy;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentStore;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleTelemetry;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
@@ -26,6 +30,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
@@ -259,6 +264,23 @@ class GetMarketCandlesServiceTest {
         assertEquals(1, gateway.historicalCallCount);
     }
 
+    @Test
+    void fallsBackToBitgetWhenDistributedCacheFails() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, new FailingCacheManager());
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
+                "BTCUSDT",
+                "1m",
+                20,
+                Instant.parse("2026-03-01T00:40:00Z")
+        ));
+
+        assertEquals(20, results.size());
+        assertEquals(1, gateway.historicalCallCount);
+    }
+
     private static GetMarketCandlesService service(InMemoryMarketHistoryRepository repository) {
         return service(repository, FakeMarketDataGateway.empty(), distributedCacheManager());
     }
@@ -269,9 +291,11 @@ class GetMarketCandlesServiceTest {
             CacheManager cacheManager
     ) {
         FakeProviders providers = new FakeProviders(gateway);
+        MarketHistoricalCandleTelemetry telemetry = new MarketHistoricalCandleTelemetry(providers);
         MarketHistoricalCandleCache cache = new MarketHistoricalCandleCache(
-                providers,
-                objectProvider(cacheManager)
+                new MarketHistoricalCandleSegmentPolicy(),
+                new MarketHistoricalCandleSegmentStore(telemetry, objectProvider(cacheManager)),
+                new MarketHistoricalCandleSegmentFetcher(providers, telemetry)
         );
         return new GetMarketCandlesService(repository, cache, providers);
     }
@@ -551,6 +575,71 @@ class GetMarketCandlesServiceTest {
                 cursor = cursor.plusSeconds(60);
             }
             return candles;
+        }
+    }
+
+    private static class FailingCacheManager implements CacheManager {
+        @Override
+        public Cache getCache(String name) {
+            return new Cache() {
+                @Override
+                public String getName() {
+                    return name;
+                }
+
+                @Override
+                public Object getNativeCache() {
+                    return this;
+                }
+
+                @Override
+                public ValueWrapper get(Object key) {
+                    throw new IllegalStateException("cache read failed");
+                }
+
+                @Override
+                public <T> T get(Object key, Class<T> type) {
+                    throw new IllegalStateException("cache read failed");
+                }
+
+                @Override
+                public <T> T get(Object key, java.util.concurrent.Callable<T> valueLoader) {
+                    throw new IllegalStateException("cache read failed");
+                }
+
+                @Override
+                public void put(Object key, Object value) {
+                    throw new IllegalStateException("cache write failed");
+                }
+
+                @Override
+                public ValueWrapper putIfAbsent(Object key, Object value) {
+                    throw new IllegalStateException("cache write failed");
+                }
+
+                @Override
+                public void evict(Object key) {
+                }
+
+                @Override
+                public boolean evictIfPresent(Object key) {
+                    return false;
+                }
+
+                @Override
+                public void clear() {
+                }
+
+                @Override
+                public boolean invalidate() {
+                    return false;
+                }
+            };
+        }
+
+        @Override
+        public java.util.Collection<String> getCacheNames() {
+            return List.of(CoinCacheNames.MARKET_HISTORICAL_CANDLES_DISTRIBUTED_CACHE);
         }
     }
 }

@@ -3,12 +3,14 @@ package coin.coinzzickmock.feature.market.infrastructure.persistence;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     private final MarketSymbolEntityRepository marketSymbolEntityRepository;
     private final MarketCandle1mEntityRepository marketCandle1mEntityRepository;
     private final MarketCandle1hEntityRepository marketCandle1hEntityRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional(readOnly = true)
@@ -120,28 +123,73 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional
     public void saveMinuteCandle(MarketHistoryCandle candle) {
-        MarketCandle1mEntity entity = marketCandle1mEntityRepository
-                .findBySymbolIdAndOpenTime(candle.symbolId(), candle.openTime())
-                .map(existing -> {
-                    existing.apply(candle);
-                    return existing;
-                })
-                .orElseGet(() -> MarketCandle1mEntity.from(candle));
-
-        marketCandle1mEntityRepository.save(entity);
+        jdbcTemplate.update(
+                """
+                        INSERT INTO market_candles_1m (
+                            symbol_id, open_time, close_time, open_price, high_price, low_price,
+                            close_price, volume, quote_volume, created_at, updated_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+                        ON DUPLICATE KEY UPDATE
+                            close_time = VALUES(close_time),
+                            open_price = VALUES(open_price),
+                            high_price = VALUES(high_price),
+                            low_price = VALUES(low_price),
+                            close_price = VALUES(close_price),
+                            volume = VALUES(volume),
+                            quote_volume = VALUES(quote_volume),
+                            updated_at = CURRENT_TIMESTAMP(6)
+                        """,
+                candle.symbolId(),
+                candle.openTime(),
+                candle.closeTime(),
+                decimal(candle.openPrice()),
+                decimal(candle.highPrice()),
+                decimal(candle.lowPrice()),
+                decimal(candle.closePrice()),
+                decimal(candle.volume()),
+                decimal(candle.quoteVolume())
+        );
     }
 
     @Override
     @Transactional
     public void saveHourlyCandle(HourlyMarketCandle candle) {
-        MarketCandle1hEntity entity = marketCandle1hEntityRepository
-                .findBySymbolIdAndOpenTime(candle.symbolId(), candle.openTime())
-                .map(existing -> {
-                    existing.apply(candle);
-                    return existing;
-                })
-                .orElseGet(() -> MarketCandle1hEntity.from(candle));
+        jdbcTemplate.update(
+                """
+                        INSERT INTO market_candles_1h (
+                            symbol_id, open_time, close_time, open_price, high_price, low_price,
+                            close_price, volume, quote_volume, source_minute_open_time,
+                            source_minute_close_time, created_at, updated_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+                        ON DUPLICATE KEY UPDATE
+                            close_time = VALUES(close_time),
+                            open_price = VALUES(open_price),
+                            high_price = VALUES(high_price),
+                            low_price = VALUES(low_price),
+                            close_price = VALUES(close_price),
+                            volume = VALUES(volume),
+                            quote_volume = VALUES(quote_volume),
+                            source_minute_open_time = VALUES(source_minute_open_time),
+                            source_minute_close_time = VALUES(source_minute_close_time),
+                            updated_at = CURRENT_TIMESTAMP(6)
+                        """,
+                candle.symbolId(),
+                candle.openTime(),
+                candle.closeTime(),
+                decimal(candle.openPrice()),
+                decimal(candle.highPrice()),
+                decimal(candle.lowPrice()),
+                decimal(candle.closePrice()),
+                decimal(candle.volume()),
+                decimal(candle.quoteVolume()),
+                candle.sourceMinuteOpenTime(),
+                candle.sourceMinuteCloseTime()
+        );
+    }
 
-        marketCandle1hEntityRepository.save(entity);
+    private BigDecimal decimal(double value) {
+        return BigDecimal.valueOf(value);
     }
 }

@@ -4,9 +4,8 @@ import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRep
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
+import coin.coinzzickmock.feature.market.domain.MarketTime;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -18,8 +17,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class MarketHistoryRecorder {
-    private static final ZoneOffset HISTORY_ZONE = ZoneOffset.UTC;
-
     private final MarketHistoryRepository marketHistoryRepository;
 
     public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(
@@ -91,8 +88,6 @@ public class MarketHistoryRecorder {
     }
 
     private Instant truncate(Instant instant, ChronoUnit unit) {
-        return ZonedDateTime.ofInstant(instant, HISTORY_ZONE)
-                .truncatedTo(unit)
-                .toInstant();
+        return MarketTime.truncate(instant, unit);
     }
 }

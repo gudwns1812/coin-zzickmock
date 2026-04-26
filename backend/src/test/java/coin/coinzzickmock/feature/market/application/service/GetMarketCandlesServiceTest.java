@@ -94,7 +94,69 @@ class GetMarketCandlesServiceTest {
     }
 
     @Test
-    void rollsUpWeeklyCandlesOnCalendarBoundary() {
+    void rollsUpFourHourCandlesOnUtcBoundary() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int hour = 0; hour < 4; hour++) {
+            Instant openTime = Instant.parse("2026-04-24T16:00:00Z").plusSeconds(hour * 3600L);
+            repository.saveHourlyCandle(new HourlyMarketCandle(
+                    1L,
+                    openTime,
+                    openTime.plusSeconds(3600),
+                    100 + hour,
+                    101 + hour,
+                    99 + hour,
+                    100.5 + hour,
+                    10,
+                    1000,
+                    openTime,
+                    openTime.plusSeconds(3600)
+            ));
+        }
+        repository.saveHourlyCandle(hourly(1L, "2026-04-24T20:00:00Z", 300, 301, 299, 300.5, 10));
+
+        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "4h", 2, null));
+
+        assertEquals(1, results.size());
+        assertEquals(Instant.parse("2026-04-24T16:00:00Z"), results.get(0).openTime());
+        assertEquals(103.5, results.get(0).closePrice(), 0.0001);
+        assertEquals(40.0, results.get(0).volume(), 0.0001);
+    }
+
+    @Test
+    void rollsUpDailyCandlesOnUtcCalendarBoundary() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int hour = 0; hour < 24; hour++) {
+            Instant openTime = Instant.parse("2026-04-22T00:00:00Z").plusSeconds(hour * 3600L);
+            repository.saveHourlyCandle(new HourlyMarketCandle(
+                    1L,
+                    openTime,
+                    openTime.plusSeconds(3600),
+                    100 + hour,
+                    101 + hour,
+                    99 + hour,
+                    100.5 + hour,
+                    10,
+                    1000,
+                    openTime,
+                    openTime.plusSeconds(3600)
+            ));
+        }
+        repository.saveHourlyCandle(hourly(1L, "2026-04-23T00:00:00Z", 300, 301, 299, 300.5, 10));
+
+        GetMarketCandlesService service = new GetMarketCandlesService(repository);
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1D", 2, null));
+
+        assertEquals(1, results.size());
+        assertEquals(Instant.parse("2026-04-22T00:00:00Z"), results.get(0).openTime());
+        assertEquals(123.5, results.get(0).closePrice(), 0.0001);
+        assertEquals(240.0, results.get(0).volume(), 0.0001);
+    }
+
+    @Test
+    void rollsUpWeeklyCandlesOnUtcCalendarBoundary() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         for (int hour = 0; hour < 168; hour++) {
             Instant openTime = Instant.parse("2026-04-20T00:00:00Z").plusSeconds(hour * 3600L);

@@ -2,10 +2,9 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
+import coin.coinzzickmock.feature.market.domain.MarketTime;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class MarketHistoryStartupBackfill {
-    private static final ZoneOffset HISTORY_ZONE = ZoneOffset.UTC;
     private static final int MAX_MINUTE_CANDLES_PER_REQUEST = 1000;
 
     private final MarketHistoryRepository marketHistoryRepository;
@@ -111,9 +109,7 @@ public class MarketHistoryStartupBackfill {
     }
 
     private Instant truncate(Instant instant, ChronoUnit unit) {
-        return ZonedDateTime.ofInstant(instant, HISTORY_ZONE)
-                .truncatedTo(unit)
-                .toInstant();
+        return MarketTime.truncate(instant, unit);
     }
 
     private Instant min(Instant left, Instant right) {

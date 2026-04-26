@@ -10,9 +10,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class BitgetMarketDataGateway implements MarketDataGateway {
@@ -36,8 +38,13 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                     .retrieve()
                     .body(BitgetTickerResponse.class);
 
+            if (response == null || response.data() == null || response.data().isEmpty()) {
+                log.warn("Bitget ticker response is empty; using fallback market snapshot. symbol={} code={} message={}",
+                        symbol, responseCode(response), responseMessage(response));
+            }
             return bitgetTickerSnapshotMapper.fromResponse(symbol, response);
-        } catch (Exception ignored) {
+        } catch (Exception exception) {
+            log.warn("Failed to load Bitget ticker; using fallback market snapshot. symbol={}", symbol, exception);
             return bitgetTickerSnapshotMapper.fallback(symbol);
         }
     }
@@ -63,6 +70,10 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                     .body(BitgetCandleResponse.class);
 
             if (response == null || response.data() == null || !"00000".equals(response.code())) {
+                log.warn(
+                        "Bitget candle response is not usable; returning empty history. symbol={} from={} to={} code={} message={}",
+                        symbol, fromInclusive, toExclusive, responseCode(response), responseMessage(response)
+                );
                 return List.of();
             }
 
@@ -73,7 +84,9 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
                     .sorted(Comparator.comparing(MarketMinuteCandleSnapshot::openTime))
                     .toList();
-        } catch (Exception ignored) {
+        } catch (Exception exception) {
+            log.warn("Failed to load Bitget minute candles; returning empty history. symbol={} from={} to={}",
+                    symbol, fromInclusive, toExclusive, exception);
             return List.of();
         }
     }
@@ -98,5 +111,21 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
 
     private double parseDouble(String value) {
         return Double.parseDouble(value);
+    }
+
+    private String responseCode(BitgetTickerResponse response) {
+        return response == null ? null : response.code();
+    }
+
+    private String responseMessage(BitgetTickerResponse response) {
+        return response == null ? null : response.msg();
+    }
+
+    private String responseCode(BitgetCandleResponse response) {
+        return response == null ? null : response.code();
+    }
+
+    private String responseMessage(BitgetCandleResponse response) {
+        return response == null ? null : response.msg();
     }
 }

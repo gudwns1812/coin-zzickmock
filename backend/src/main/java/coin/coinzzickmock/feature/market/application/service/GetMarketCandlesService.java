@@ -8,11 +8,10 @@ import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.feature.market.domain.MarketTime;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -137,7 +136,7 @@ public class GetMarketCandlesService {
             int limit,
             int bucketMinutes
     ) {
-        Instant latestBucketStart = alignToMinuteBucket(latestMinuteOpenTime, bucketMinutes);
+        Instant latestBucketStart = MarketTime.alignToMinuteBucket(latestMinuteOpenTime, bucketMinutes);
         List<MarketHistoryCandle> rawCandles = marketHistoryRepository.findMinuteCandles(
                 symbolId,
                 latestBucketStart.minus((long) bucketMinutes * (limit - 1), ChronoUnit.MINUTES),
@@ -146,7 +145,10 @@ public class GetMarketCandlesService {
 
         Map<Instant, List<MarketHistoryCandle>> grouped = new LinkedHashMap<>();
         for (MarketHistoryCandle candle : rawCandles) {
-            grouped.computeIfAbsent(alignToMinuteBucket(candle.openTime(), bucketMinutes), key -> new ArrayList<>())
+            grouped.computeIfAbsent(
+                    MarketTime.alignToMinuteBucket(candle.openTime(), bucketMinutes),
+                    key -> new ArrayList<>()
+            )
                     .add(candle);
         }
 
@@ -175,7 +177,10 @@ public class GetMarketCandlesService {
 
         Map<Instant, List<HourlyMarketCandle>> grouped = new LinkedHashMap<>();
         for (HourlyMarketCandle candle : rawCandles) {
-            grouped.computeIfAbsent(bucketStart(candle.openTime(), interval), key -> new ArrayList<>())
+            grouped.computeIfAbsent(
+                    MarketTime.bucketStart(candle.openTime(), interval),
+                    key -> new ArrayList<>()
+            )
                     .add(candle);
         }
 
@@ -186,8 +191,8 @@ public class GetMarketCandlesService {
     }
 
     private Instant earliestHourlyBucketStart(Instant latestHourOpenTime, MarketCandleInterval interval, int limit) {
-        Instant latestBucketStart = bucketStart(latestHourOpenTime, interval);
-        ZonedDateTime latestBucket = ZonedDateTime.ofInstant(latestBucketStart, ZoneOffset.UTC);
+        Instant latestBucketStart = MarketTime.bucketStart(latestHourOpenTime, interval);
+        ZonedDateTime latestBucket = MarketTime.atStorageZone(latestBucketStart);
 
         return switch (interval) {
             case FOUR_HOURS -> latestBucket.minusHours(4L * (limit - 1)).toInstant();
@@ -195,33 +200,6 @@ public class GetMarketCandlesService {
             case ONE_DAY -> latestBucket.minusDays(limit - 1L).toInstant();
             case ONE_WEEK -> latestBucket.minusWeeks(limit - 1L).toInstant();
             case ONE_MONTH -> latestBucket.minusMonths(limit - 1L).toInstant();
-            default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
-        };
-    }
-
-    private Instant alignToMinuteBucket(Instant time, int bucketMinutes) {
-        long minuteEpoch = time.getEpochSecond() / 60;
-        long alignedMinuteEpoch = (minuteEpoch / bucketMinutes) * bucketMinutes;
-        return Instant.ofEpochSecond(alignedMinuteEpoch * 60);
-    }
-
-    private Instant bucketStart(Instant time, MarketCandleInterval interval) {
-        ZonedDateTime utcTime = ZonedDateTime.ofInstant(time, ZoneOffset.UTC);
-
-        return switch (interval) {
-            case FOUR_HOURS -> utcTime.truncatedTo(ChronoUnit.HOURS)
-                    .withHour((utcTime.getHour() / 4) * 4)
-                    .toInstant();
-            case TWELVE_HOURS -> utcTime.truncatedTo(ChronoUnit.HOURS)
-                    .withHour((utcTime.getHour() / 12) * 12)
-                    .toInstant();
-            case ONE_DAY -> utcTime.truncatedTo(ChronoUnit.DAYS).toInstant();
-            case ONE_WEEK -> utcTime.truncatedTo(ChronoUnit.DAYS)
-                    .with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-                    .toInstant();
-            case ONE_MONTH -> utcTime.truncatedTo(ChronoUnit.DAYS)
-                    .withDayOfMonth(1)
-                    .toInstant();
             default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
         };
     }
@@ -281,7 +259,7 @@ public class GetMarketCandlesService {
 
         return new MarketCandleResult(
                 bucketStart,
-                bucketClose(bucketStart, interval),
+                MarketTime.bucketClose(bucketStart, interval),
                 first.openPrice(),
                 high,
                 low,
@@ -290,25 +268,15 @@ public class GetMarketCandlesService {
         );
     }
 
-    private Instant bucketClose(Instant bucketStart, MarketCandleInterval interval) {
-        ZonedDateTime utcTime = ZonedDateTime.ofInstant(bucketStart, ZoneOffset.UTC);
-
-        return switch (interval) {
-            case FOUR_HOURS -> utcTime.plusHours(4).toInstant();
-            case TWELVE_HOURS -> utcTime.plusHours(12).toInstant();
-            case ONE_DAY -> utcTime.plusDays(1).toInstant();
-            case ONE_WEEK -> utcTime.plusWeeks(1).toInstant();
-            case ONE_MONTH -> utcTime.plusMonths(1).toInstant();
-            default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
-        };
-    }
-
     private int expectedHourlyBucketSize(Instant bucketStart, MarketCandleInterval interval) {
         return switch (interval) {
             case FOUR_HOURS -> 4;
             case TWELVE_HOURS -> 12;
             case ONE_DAY -> 24;
-            case ONE_WEEK, ONE_MONTH -> (int) ChronoUnit.HOURS.between(bucketStart, bucketClose(bucketStart, interval));
+            case ONE_WEEK, ONE_MONTH -> (int) ChronoUnit.HOURS.between(
+                    bucketStart,
+                    MarketTime.bucketClose(bucketStart, interval)
+            );
             default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
         };
     }

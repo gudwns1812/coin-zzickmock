@@ -1,5 +1,7 @@
 package coin.coinzzickmock.providers.infrastructure.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.CacheManager;
@@ -38,11 +40,28 @@ public class CoinCacheConfiguration {
                 .entryTtl(cacheProperties.getRedis().getDefaultTtl())
                 .computePrefixWith(cacheName -> cacheProperties.getRedis().getKeyPrefix() + cacheName + "::")
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(
-                        new GenericJackson2JsonRedisSerializer()
+                        redisValueSerializer()
                 ));
+
+        RedisCacheConfiguration historicalCandles = defaults.entryTtl(
+                cacheProperties.getRedis().getHistoricalCandleTtl()
+        );
 
         return RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(defaults)
+                .withInitialCacheConfigurations(Map.of(
+                        CoinCacheNames.MARKET_HISTORICAL_CANDLES_DISTRIBUTED_CACHE,
+                        historicalCandles
+                ))
+                .build();
+    }
+
+    static GenericJackson2JsonRedisSerializer redisValueSerializer() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.findAndRegisterModules();
+        return GenericJackson2JsonRedisSerializer.builder()
+                .objectMapper(objectMapper)
+                .defaultTyping(true)
                 .build();
     }
 }

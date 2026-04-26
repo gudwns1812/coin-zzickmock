@@ -3,19 +3,22 @@ package coin.coinzzickmock.feature.order.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
+import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
+import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.service.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -30,6 +33,8 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 class MarketOrderExecutionServiceTest {
     @Test
@@ -70,6 +75,43 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void orderFilledEventPublishesOnlyAfterTransactionCommit() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save("demo-member", new FuturesOrder(
+                "order-after-commit",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                0.1,
+                99.0,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                99
+        ));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                    .onMarketUpdated(new MarketSummaryUpdatedEvent(market(98, 98)));
+
+            assertTrue(eventPublisher.events.isEmpty());
+
+            TransactionSynchronizationUtils.triggerAfterCommit();
+
+            assertEquals(1, eventPublisher.events.size());
+            assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     void liquidatesBreachedIsolatedPositionFromMarketEventAndPublishesSignal() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -97,6 +139,35 @@ class MarketOrderExecutionServiceTest {
         assertTrue(positionRepository.findOpenPositions("demo-member").isEmpty());
         assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
         assertEquals(-20.09, eventPublisher.events.get(0).realizedPnl(), 0.0001);
+    }
+
+    @Test
+    void rolledBackLiquidationDoesNotPublishEvent() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                    .onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
+
+            assertTrue(eventPublisher.events.isEmpty());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        assertTrue(eventPublisher.events.isEmpty());
     }
 
     @Test
@@ -147,26 +218,72 @@ class MarketOrderExecutionServiceTest {
         assertTrue(eventPublisher.events.isEmpty());
     }
 
+    @Test
+    void nonBreachedLiquidationAssessmentDoesNotPersistMarkOnlyPositionChanges() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        PositionSnapshot original = PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ).withVersion(7);
+        positionRepository.save("demo-member", original);
+        int savesBeforeMarketEvent = positionRepository.saveCount;
+
+        MarketOrderExecutionService service = service(
+                orderRepository,
+                positionRepository,
+                accountRepository,
+                eventPublisher
+        );
+
+        service.onMarketUpdated(new MarketSummaryUpdatedEvent(market(105, 105)));
+
+        assertEquals(savesBeforeMarketEvent, positionRepository.saveCount);
+        PositionSnapshot persisted = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow();
+        assertEquals(100, persisted.markPrice(), 0.0001);
+        assertEquals(0, persisted.unrealizedPnl(), 0.0001);
+        assertEquals(7, persisted.version());
+        assertTrue(eventPublisher.events.isEmpty());
+    }
+
     private MarketOrderExecutionService service(
             OrderRepository orderRepository,
             PositionRepository positionRepository,
             AccountRepository accountRepository,
             ApplicationEventPublisher eventPublisher
     ) {
-        return new MarketOrderExecutionService(
-                orderRepository,
+        AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
+        PositionCloseFinalizer positionCloseFinalizer = new PositionCloseFinalizer(
                 positionRepository,
                 accountRepository,
-                new PendingOrderExecutionCache(),
-                new LiquidationPolicy(),
-                new PositionCloseFinalizer(
+                new InMemoryPositionHistoryRepository(),
+                new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
+                afterCommitEventPublisher
+        );
+        return new MarketOrderExecutionService(
+                new PendingOrderFillProcessor(
+                        orderRepository,
                         positionRepository,
                         accountRepository,
-                        new InMemoryPositionHistoryRepository(),
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
-                        eventPublisher
+                        new PendingOrderExecutionCache(),
+                        positionCloseFinalizer,
+                        afterCommitEventPublisher
                 ),
-                eventPublisher
+                new PositionLiquidationProcessor(
+                        positionRepository,
+                        accountRepository,
+                        new LiquidationPolicy(),
+                        positionCloseFinalizer,
+                        afterCommitEventPublisher
+                )
         );
     }
 
@@ -283,6 +400,7 @@ class MarketOrderExecutionServiceTest {
 
     private static class InMemoryPositionRepository implements PositionRepository {
         private final Map<String, OpenPositionCandidate> positions = new LinkedHashMap<>();
+        private int saveCount;
 
         @Override
         public List<PositionSnapshot> findOpenPositions(String memberId) {
@@ -312,6 +430,7 @@ class MarketOrderExecutionServiceTest {
 
         @Override
         public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+            saveCount++;
             positions.put(
                     key(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode()),
                     new OpenPositionCandidate(memberId, positionSnapshot)

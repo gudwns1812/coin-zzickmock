@@ -49,6 +49,24 @@ public class OrderPersistenceRepository implements OrderRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<FuturesOrder> findPendingCloseOrders(
+            String memberId,
+            String symbol,
+            String positionSide,
+            String marginMode
+    ) {
+        return futuresOrderEntityRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
+                .map(FuturesOrderEntity::toDomain)
+                .filter(FuturesOrder::isPending)
+                .filter(FuturesOrder::isClosePositionOrder)
+                .filter(order -> order.symbol().equalsIgnoreCase(symbol))
+                .filter(order -> order.positionSide().equalsIgnoreCase(positionSide))
+                .filter(order -> order.marginMode().equalsIgnoreCase(marginMode))
+                .toList();
+    }
+
+    @Override
     @Transactional
     public Optional<FuturesOrder> claimPendingFill(
             String memberId,
@@ -79,6 +97,15 @@ public class OrderPersistenceRepository implements OrderRepository {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();
         entity.updateStatus(status);
+        return futuresOrderEntityRepository.save(entity).toDomain();
+    }
+
+    @Override
+    @Transactional
+    public FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+        FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
+                .orElseThrow();
+        entity.updateQuantityAndStatus(quantity, status);
         return futuresOrderEntityRepository.save(entity).toDomain();
     }
 }

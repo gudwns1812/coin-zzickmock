@@ -165,4 +165,23 @@ public record FuturesOrder(
                 orderTime
         );
     }
+
+    public FuturesOrder withQuantity(double nextQuantity) {
+        return new FuturesOrder(
+                orderId,
+                symbol,
+                positionSide,
+                orderType,
+                orderPurpose,
+                marginMode,
+                leverage,
+                nextQuantity,
+                limitPrice,
+                status,
+                feeType,
+                estimatedFee,
+                executionPrice,
+                orderTime
+        );
+    }
 }

@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
@@ -28,6 +29,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -90,7 +93,7 @@ public class MarketOrderExecutionService {
                 applyFilledOrder(candidate.memberId(), filledOrder, market.lastPrice(), market.markPrice());
             }
             pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
-            applicationEventPublisher.publishEvent(TradingExecutionEvent.orderFilled(
+            publishAfterCommit(TradingExecutionEvent.orderFilled(
                     candidate.memberId(),
                     order.orderId(),
                     order.symbol(),
@@ -134,6 +137,7 @@ public class MarketOrderExecutionService {
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         accountRepository.save(account.reserveForFilledOrder(order.estimatedFee(), initialMargin));
+        publishAfterCommit(new WalletBalanceChangedEvent(memberId));
 
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 memberId,
@@ -237,7 +241,7 @@ public class MarketOrderExecutionService {
                 TAKER_FEE_RATE,
                 PositionHistory.CLOSE_REASON_LIQUIDATION
         );
-        applicationEventPublisher.publishEvent(TradingExecutionEvent.positionLiquidated(
+        publishAfterCommit(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),
                 position.positionSide(),
@@ -246,5 +250,19 @@ public class MarketOrderExecutionService {
                 executionPrice,
                 result.realizedPnl()
         ));
+    }
+
+    private void publishAfterCommit(Object event) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            applicationEventPublisher.publishEvent(event);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                applicationEventPublisher.publishEvent(event);
+            }
+        });
     }
 }

@@ -41,7 +41,9 @@ class CreateOrderServiceTest {
                 new FakeProviders(),
                 orderRepository,
                 accountRepository,
-                positionRepository
+                positionRepository,
+                event -> {
+                }
         );
 
         CreateOrderResult result = service.execute(new CreateOrderCommand(
@@ -82,7 +84,9 @@ class CreateOrderServiceTest {
                 new FakeProviders(110000, 110000),
                 orderRepository,
                 accountRepository,
-                positionRepository
+                positionRepository,
+                event -> {
+                }
         );
 
         service.execute(new CreateOrderCommand(
@@ -109,7 +113,9 @@ class CreateOrderServiceTest {
                 new FakeProviders(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),
-                new InMemoryPositionRepository()
+                new InMemoryPositionRepository(),
+                event -> {
+                }
         );
 
         OrderPreview preview = service.preview(new CreateOrderCommand(

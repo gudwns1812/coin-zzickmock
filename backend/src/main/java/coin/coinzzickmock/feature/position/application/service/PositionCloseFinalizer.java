@@ -7,6 +7,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -39,13 +40,14 @@ public class PositionCloseFinalizer {
         }
 
         PositionCloseOutcome closeOutcome = position.close(quantity, markPrice, executionPrice, feeRate);
+        PositionMutationResult mutationResult;
         if (closeOutcome.remainingPosition() == null) {
-            if (!positionRepository.deleteIfOpen(memberId, position.symbol(), position.positionSide(), position.marginMode())) {
-                throw new CoreException(ErrorCode.POSITION_NOT_FOUND);
-            }
+            mutationResult = positionRepository.deleteWithVersion(memberId, position);
+            validateGuardedMutation(mutationResult);
             positionHistoryRepository.save(memberId, toHistory(position, closeOutcome, closeReason));
         } else {
-            positionRepository.save(memberId, closeOutcome.remainingPosition());
+            mutationResult = positionRepository.updateWithVersion(memberId, position, closeOutcome.remainingPosition());
+            validateGuardedMutation(mutationResult);
         }
 
         TradingAccount account = accountRepository.findByMemberId(memberId)
@@ -66,6 +68,16 @@ public class PositionCloseFinalizer {
                 closeOutcome.netRealizedPnl(),
                 rewardPointResult.rewardPoint()
         );
+    }
+
+    private void validateGuardedMutation(PositionMutationResult mutationResult) {
+        if (mutationResult.succeeded()) {
+            return;
+        }
+        if (mutationResult.status() == PositionMutationResult.Status.NOT_FOUND) {
+            throw new CoreException(ErrorCode.POSITION_NOT_FOUND);
+        }
+        throw new CoreException(ErrorCode.POSITION_CHANGED);
     }
 
     private PositionHistory toHistory(

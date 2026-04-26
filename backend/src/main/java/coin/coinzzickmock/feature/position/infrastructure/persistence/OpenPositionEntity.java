@@ -74,6 +74,9 @@ public class OpenPositionEntity extends AuditableEntity {
     @Column(name = "accumulated_close_fee", nullable = false, precision = 19, scale = 4)
     private BigDecimal accumulatedCloseFee;
 
+    @Column(name = "version", nullable = false)
+    private long version;
+
     protected OpenPositionEntity() {
     }
 
@@ -100,6 +103,7 @@ public class OpenPositionEntity extends AuditableEntity {
         this.accumulatedExitNotional = decimal(positionSnapshot.accumulatedExitNotional());
         this.accumulatedRealizedPnl = decimal(positionSnapshot.accumulatedRealizedPnl());
         this.accumulatedCloseFee = decimal(positionSnapshot.accumulatedCloseFee());
+        this.version = positionSnapshot.version();
     }
 
     public PositionSnapshot toDomain() {
@@ -118,12 +122,17 @@ public class OpenPositionEntity extends AuditableEntity {
                 accumulatedClosedQuantity.doubleValue(),
                 accumulatedExitNotional.doubleValue(),
                 accumulatedRealizedPnl.doubleValue(),
-                accumulatedCloseFee.doubleValue()
+                accumulatedCloseFee.doubleValue(),
+                version
         );
     }
 
     public String memberId() {
         return memberId;
+    }
+
+    public long version() {
+        return version;
     }
 
     private static BigDecimal decimal(double value) {

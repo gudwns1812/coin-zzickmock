@@ -34,8 +34,11 @@ export type FuturesMarketsResult = {
 export type FuturesAccountSummary = {
   memberId: string;
   memberName: string;
+  usdtBalance: number;
   walletBalance: number;
-  availableMargin: number;
+  available: number;
+  totalUnrealizedPnl: number;
+  roi: number;
   rewardPoint: number;
 };
 
@@ -47,7 +50,10 @@ export type FuturesPosition = {
   quantity: number;
   entryPrice: number;
   markPrice: number;
+  liquidationPrice: number | null;
+  margin: number;
   unrealizedPnl: number;
+  roi: number;
 };
 
 export type FuturesOpenOrder = {
@@ -55,6 +61,7 @@ export type FuturesOpenOrder = {
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";
   orderType: "MARKET" | "LIMIT";
+  orderPurpose: "OPEN_POSITION" | "CLOSE_POSITION";
   marginMode: "ISOLATED" | "CROSS";
   leverage: number;
   quantity: number;
@@ -63,10 +70,26 @@ export type FuturesOpenOrder = {
   feeType: "MAKER" | "TAKER";
   estimatedFee: number;
   executionPrice: number;
+  orderTime: string;
 };
 
 export type FuturesOrderHistory = Omit<FuturesOpenOrder, "status"> & {
   status: "FILLED" | "CANCELLED" | "REJECTED";
+};
+
+export type FuturesPositionHistory = {
+  symbol: MarketSymbol;
+  positionSide: "LONG" | "SHORT";
+  marginMode: "ISOLATED" | "CROSS";
+  leverage: number;
+  openedAt: string;
+  averageEntryPrice: number;
+  averageExitPrice: number;
+  positionSize: number;
+  realizedPnl: number;
+  roi: number;
+  closedAt: string;
+  closeReason: "MANUAL" | "LIMIT_CLOSE" | "LIQUIDATION" | string;
 };
 
 export type FuturesReward = {
@@ -150,8 +173,11 @@ const SHOP_ITEM_FALLBACKS: ShopItem[] = [
 const ACCOUNT_FALLBACK: FuturesAccountSummary = {
   memberId: "test",
   memberName: "demo-trader",
+  usdtBalance: 100_000,
   walletBalance: 100_000,
-  availableMargin: 100_000,
+  available: 100_000,
+  totalUnrealizedPnl: 0,
+  roi: 0,
   rewardPoint: 0,
 };
 
@@ -262,7 +288,22 @@ export async function getFuturesOrderHistory(
     return [];
   }
 
-  return response.filter((order) => isSupportedMarketSymbol(order.symbol));
+  return filterSupportedOrderHistory(response, symbol);
+}
+
+export async function getFuturesPositionHistory(
+  symbol?: MarketSymbol
+): Promise<FuturesPositionHistory[]> {
+  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  const response = await readApi<FuturesPositionHistory[]>(
+    `/api/futures/positions/history${query}`
+  );
+
+  if (!response) {
+    return [];
+  }
+
+  return response.filter((history) => isSupportedMarketSymbol(history.symbol));
 }
 
 export async function getFuturesReward(): Promise<FuturesReward> {
@@ -273,6 +314,15 @@ export async function getFuturesReward(): Promise<FuturesReward> {
 export async function getShopItems(): Promise<ShopItem[]> {
   const response = await readApi<ShopItem[]>("/api/futures/shop/items");
   return response ?? SHOP_ITEM_FALLBACKS;
+}
+
+function filterSupportedOrderHistory(
+  orders: FuturesOrderHistory[],
+  symbol?: MarketSymbol
+): FuturesOrderHistory[] {
+  return orders
+    .filter((order) => isSupportedMarketSymbol(order.symbol))
+    .filter((order) => !symbol || order.symbol === symbol);
 }
 
 async function readApi<T>(path: string): Promise<T | null> {

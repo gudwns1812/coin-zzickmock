@@ -3,8 +3,11 @@ package coin.coinzzickmock.feature.account.application.result;
 public record AccountSummaryResult(
         String memberId,
         String memberName,
+        double usdtBalance,
         double walletBalance,
-        double availableMargin,
+        double available,
+        double totalUnrealizedPnl,
+        double roi,
         double rewardPoint
 ) {
 }

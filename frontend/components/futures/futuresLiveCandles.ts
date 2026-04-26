@@ -36,12 +36,16 @@ export function getLiveCandleBucket(
   }
 
   const durationMs = fixedIntervalDurationMs(interval);
-  const openTimeMs = Math.floor(observedAtMs / durationMs) * durationMs;
+  const openTimeMs = alignToFixedBucket(observedAtMs, durationMs);
 
   return {
     closeTimeMs: openTimeMs + durationMs,
     openTimeMs,
   };
+}
+
+function alignToFixedBucket(observedAtMs: number, durationMs: number): number {
+  return Math.floor(observedAtMs / durationMs) * durationMs;
 }
 
 export function mergeCandlesWithLivePrice(

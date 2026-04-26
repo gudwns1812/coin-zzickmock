@@ -1,10 +1,13 @@
 package coin.coinzzickmock.feature.order.application.result;
 
+import java.time.Instant;
+
 public record OpenOrderResult(
         String orderId,
         String symbol,
         String positionSide,
         String orderType,
+        String orderPurpose,
         String marginMode,
         int leverage,
         double quantity,
@@ -12,6 +15,7 @@ public record OpenOrderResult(
         String status,
         String feeType,
         double estimatedFee,
-        double executionPrice
+        double executionPrice,
+        Instant orderTime
 ) {
 }

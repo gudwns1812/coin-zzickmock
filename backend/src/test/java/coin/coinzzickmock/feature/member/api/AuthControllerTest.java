@@ -122,8 +122,11 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/futures/account/me").cookie(accessTokenCookie(loginResult)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.memberId").value("account-seed-user"))
+                .andExpect(jsonPath("$.data.usdtBalance").value(100000.0))
                 .andExpect(jsonPath("$.data.walletBalance").value(100000.0))
-                .andExpect(jsonPath("$.data.availableMargin").value(100000.0));
+                .andExpect(jsonPath("$.data.available").value(100000.0))
+                .andExpect(jsonPath("$.data.totalUnrealizedPnl").value(0.0))
+                .andExpect(jsonPath("$.data.roi").value(0.0));
     }
 
     @Test

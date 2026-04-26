@@ -33,7 +33,7 @@ export default async function MarketsPage() {
     {
       title: "총 자산",
       value: formatUsd(totalAsset),
-      support: `가용 증거금 ${formatUsd(account.availableMargin)}`,
+      support: `가용 잔고 ${formatUsd(account.available)}`,
       icon: "wallet" as const,
       tone: "accent" as const,
     },
@@ -57,10 +57,12 @@ export default async function MarketsPage() {
   ];
 
   return (
-    <MarketsLandingRealtimeView
-      initialMarkets={[btcMarket, ethMarket]}
-      isMarketDataDegraded={isFallback}
-      summaryCards={summaryCards}
-    />
+    <div className="mx-auto w-full max-w-[1200px]">
+      <MarketsLandingRealtimeView
+        initialMarkets={[btcMarket, ethMarket]}
+        isMarketDataDegraded={isFallback}
+        summaryCards={summaryCards}
+      />
+    </div>
   );
 }

@@ -32,6 +32,7 @@ public class GetOrderHistoryService {
                 order.symbol(),
                 order.positionSide(),
                 order.orderType(),
+                order.orderPurpose(),
                 order.marginMode(),
                 order.leverage(),
                 order.quantity(),
@@ -39,7 +40,8 @@ public class GetOrderHistoryService {
                 order.status(),
                 order.feeType(),
                 order.estimatedFee(),
-                order.executionPrice()
+                order.executionPrice(),
+                order.orderTime()
         );
     }
 }

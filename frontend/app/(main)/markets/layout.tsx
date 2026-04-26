@@ -17,9 +17,8 @@ export default function MarketsLayout({
 }) {
   return (
     <>
-      <div className="flex flex-col gap-10 max-w-[1200px] mx-auto">{children}</div>
+      <div className="flex w-full flex-col gap-10">{children}</div>
       <Footer />
     </>
   );
 }
-

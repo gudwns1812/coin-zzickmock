@@ -8,6 +8,8 @@ import {
   Activity,
   ChartArea,
   ChartLine,
+  ChevronDown,
+  ChevronUp,
   Settings2,
   type LucideIcon,
 } from "lucide-react";
@@ -28,6 +30,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   canEditIndicators,
+  calculateIndicatorValueRows,
   DEFAULT_INDICATOR_CONFIGS,
   getIndicatorFallbackMessage,
   getEnabledIndicatorCount,
@@ -37,6 +40,7 @@ import {
   updateIndicatorPeriod,
   type IndicatorConfig,
   type IndicatorConfigs,
+  type IndicatorValueRow,
   type IndicatorType,
 } from "./futuresChartIndicators";
 import {
@@ -45,6 +49,10 @@ import {
   syncIndicatorSeries,
 } from "./futuresChartIndicatorSeries";
 import { isFreshFuturesHistory } from "./futuresChartHistory";
+import {
+  formatChartTickInKst,
+  formatChartTimeInKst,
+} from "./futuresChartTime";
 import {
   getLiveCandleBucket,
   mergeCandlesWithLivePrice,
@@ -139,9 +147,12 @@ export default function FuturesPriceChart({
   const [selectedInterval, setSelectedInterval] =
     useState<FuturesCandleInterval>("1m");
   const [hoveredOhlc, setHoveredOhlc] = useState<OhlcSnapshot | null>(null);
+  const [hoveredTime, setHoveredTime] = useState<Time | null>(null);
   const [indicatorConfigs, setIndicatorConfigs] = useState<IndicatorConfigs>(() =>
     resetIndicators(DEFAULT_INDICATOR_CONFIGS)
   );
+  const [isIndicatorValuePanelOpen, setIsIndicatorValuePanelOpen] =
+    useState(true);
   const [isIndicatorSettingsOpen, setIsIndicatorSettingsOpen] = useState(false);
   const [isAtLatest, setIsAtLatest] = useState(true);
   const [livePoints, setLivePoints] = useState<LinePoint[]>([
@@ -302,6 +313,17 @@ export default function FuturesPriceChart({
   const indicatorControlsEnabled = canEditIndicators(hasFreshHistory);
   const indicatorFallbackMessage = getIndicatorFallbackMessage(hasFreshHistory);
   const enabledIndicatorCount = getEnabledIndicatorCount(indicatorConfigs);
+  const hoveredIndicatorValues = useMemo(
+    () =>
+      calculateIndicatorValueRows(
+        indicatorCandles,
+        indicatorConfigs,
+        hoveredTime
+      ),
+    [hoveredTime, indicatorCandles, indicatorConfigs]
+  );
+  const canShowIndicatorValues =
+    hasFreshHistory && enabledIndicatorCount > 0 && hasCandleData;
   const ohlcTone = getOhlcTone(displayedOhlc);
 
   useEffect(() => {
@@ -326,6 +348,11 @@ export default function FuturesPriceChart({
       height: CHART_HEIGHT,
       handleScale: true,
       handleScroll: true,
+      localization: {
+        dateFormat: "yyyy-MM-dd",
+        locale: "ko-KR",
+        timeFormatter: formatChartTimeInKst,
+      },
       rightPriceScale: {
         borderColor: CHART_COLORS.grid,
       },
@@ -333,6 +360,7 @@ export default function FuturesPriceChart({
         borderColor: CHART_COLORS.grid,
         timeVisible: true,
         secondsVisible: selectedConfig.secondsVisible,
+        tickMarkFormatter: formatChartTickInKst,
       },
     });
 
@@ -373,15 +401,18 @@ export default function FuturesPriceChart({
     chart.subscribeCrosshairMove((param) => {
       if (!param.point || !param.time) {
         setHoveredOhlc(null);
+        setHoveredTime(null);
         return;
       }
 
       const hoveredData = param.seriesData.get(candleSeries);
       if (!hoveredData || !("open" in hoveredData)) {
         setHoveredOhlc(null);
+        setHoveredTime(null);
         return;
       }
 
+      setHoveredTime(param.time);
       setHoveredOhlc({
         open: hoveredData.open,
         high: hoveredData.high,
@@ -412,6 +443,7 @@ export default function FuturesPriceChart({
     pendingViewportResetRef.current = true;
     liveBucketOpenTimeRef.current = null;
     setHoveredOhlc(null);
+    setHoveredTime(null);
 
     chartRef.current?.applyOptions({
       timeScale: {
@@ -730,6 +762,31 @@ export default function FuturesPriceChart({
                     value={formatOhlc(displayedOhlc?.close)}
                   />
                 </div>
+                {canShowIndicatorValues && (
+                  <div className="mt-2 border-t border-main-light-gray/70 pt-2">
+                    <button
+                      aria-expanded={isIndicatorValuePanelOpen}
+                      className="pointer-events-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-main-dark-gray/60 transition-colors hover:text-main-dark-gray focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-main-dark-gray/20"
+                      onClick={() =>
+                        setIsIndicatorValuePanelOpen((current) => !current)
+                      }
+                      type="button"
+                    >
+                      보조지표 가격
+                      {isIndicatorValuePanelOpen ? (
+                        <ChevronUp aria-hidden="true" size={13} />
+                      ) : (
+                        <ChevronDown aria-hidden="true" size={13} />
+                      )}
+                    </button>
+                    {isIndicatorValuePanelOpen && (
+                      <IndicatorValuePanel
+                        hoveredTime={hoveredTime}
+                        values={hoveredIndicatorValues}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -906,6 +963,53 @@ function IndicatorControl({
           </label>
         )}
       </div>
+    </div>
+  );
+}
+
+function IndicatorValuePanel({
+  hoveredTime,
+  values,
+}: {
+  hoveredTime: Time | null;
+  values: IndicatorValueRow[];
+}) {
+  if (hoveredTime == null) {
+    return (
+      <p className="mt-1 text-[11px] font-medium text-main-dark-gray/45">
+        캔들에 커서를 올리면 표시됩니다.
+      </p>
+    );
+  }
+
+  if (values.length === 0) {
+    return (
+      <p className="mt-1 text-[11px] font-medium text-main-dark-gray/45">
+        해당 캔들에는 계산된 값이 없습니다.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-1 flex max-w-[360px] flex-wrap gap-x-3 gap-y-1">
+      {values.map((value) => (
+        <span
+          className="inline-flex items-center gap-1.5 text-[11px] text-main-dark-gray/70"
+          key={value.id}
+        >
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: value.color }}
+          />
+          <span className="font-semibold text-main-dark-gray/50">
+            {value.label}
+          </span>
+          <span className="font-semibold text-main-dark-gray">
+            {formatOhlc(value.value)}
+          </span>
+        </span>
+      ))}
     </div>
   );
 }

@@ -5,9 +5,11 @@ import ClosePositionButton from "@/components/futures/ClosePositionButton";
 import FuturesPriceChart from "@/components/futures/FuturesPriceChart";
 import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
 import type {
+  FuturesAccountSummary,
   FuturesOpenOrder,
   FuturesOrderHistory,
   FuturesPosition,
+  FuturesPositionHistory,
   FuturesTradingExecutionEvent,
   MarketApiResponse,
 } from "@/lib/futures-api";
@@ -19,23 +21,35 @@ import {
   type MarketSnapshot,
 } from "@/lib/markets";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Props = {
   initialMarket: MarketSnapshot;
   isAuthenticated: boolean;
-  currentOpenOrders: FuturesOpenOrder[];
-  currentPositions: FuturesPosition[];
+  accountSummary: FuturesAccountSummary | null;
+  chartOpenOrders: FuturesOpenOrder[];
+  chartPositions: FuturesPosition[];
+  openOrders: FuturesOpenOrder[];
+  positions: FuturesPosition[];
+  positionHistory: FuturesPositionHistory[];
   orderHistory: FuturesOrderHistory[];
 };
 
-type TradingTab = "POSITIONS" | "HISTORY" | "OPEN_ORDERS";
+type TradingTab =
+  | "POSITIONS"
+  | "POSITION_HISTORY"
+  | "OPEN_ORDERS"
+  | "ORDER_HISTORY";
 
 export default function MarketDetailRealtimeView({
   initialMarket,
   isAuthenticated,
-  currentOpenOrders,
-  currentPositions,
+  accountSummary,
+  chartOpenOrders,
+  chartPositions,
+  openOrders,
+  positions,
+  positionHistory,
   orderHistory,
 }: Props) {
   const router = useRouter();
@@ -91,7 +105,7 @@ export default function MarketDetailRealtimeView({
         }
 
         setExecutionEvents((current) => [data, ...current].slice(0, 4));
-        setActiveTab(data.type === "ORDER_FILLED" ? "HISTORY" : "POSITIONS");
+        setActiveTab(data.type === "ORDER_FILLED" ? "ORDER_HISTORY" : "POSITIONS");
         router.refresh();
       } catch {
         // Keep the stream alive when a malformed event slips through.
@@ -104,14 +118,13 @@ export default function MarketDetailRealtimeView({
   }, [initialMarket.symbol, isAuthenticated, router]);
 
   const unrealizedPnl = useMemo(
-    () =>
-      currentPositions.reduce((sum, position) => sum + position.unrealizedPnl, 0),
-    [currentPositions]
+    () => positions.reduce((sum, position) => sum + position.unrealizedPnl, 0),
+    [positions]
   );
 
   return (
-    <div className="flex flex-col gap-main-2 px-main-2 pb-24">
-      <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-main-2 pt-4">
+    <div className="flex w-full flex-col gap-main-2 px-main-2 pb-24">
+      <section className="grid w-full grid-cols-[minmax(0,1fr)_360px] gap-main-2 pt-4">
         <div className="flex min-w-0 flex-col gap-main-2">
           <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
             <div className="flex items-start justify-between gap-main">
@@ -163,8 +176,8 @@ export default function MarketDetailRealtimeView({
             change24h={market.change24h}
             currentPrice={market.lastPrice}
             currentPriceUpdatedAt={marketUpdatedAt}
-            openOrders={currentOpenOrders}
-            positions={currentPositions}
+            openOrders={chartOpenOrders}
+            positions={chartPositions}
             symbol={market.symbol}
           />
 
@@ -173,9 +186,10 @@ export default function MarketDetailRealtimeView({
           <TradingBlotter
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            openOrders={currentOpenOrders}
+            openOrders={openOrders}
             orderHistory={orderHistory}
-            positions={currentPositions}
+            positions={positions}
+            positionHistory={positionHistory}
             unrealizedPnl={unrealizedPnl}
           />
         </div>
@@ -208,6 +222,7 @@ export default function MarketDetailRealtimeView({
           </div>
 
           <OrderEntryPanel
+            accountSummary={accountSummary}
             currentPrice={market.lastPrice}
             isAuthenticated={isAuthenticated}
             symbol={market.symbol}
@@ -270,6 +285,7 @@ function TradingBlotter({
   openOrders,
   orderHistory,
   positions,
+  positionHistory,
   unrealizedPnl,
 }: {
   activeTab: TradingTab;
@@ -277,12 +293,18 @@ function TradingBlotter({
   openOrders: FuturesOpenOrder[];
   orderHistory: FuturesOrderHistory[];
   positions: FuturesPosition[];
+  positionHistory: FuturesPositionHistory[];
   unrealizedPnl: number;
 }) {
   const tabs: Array<{ label: string; value: TradingTab; count: number }> = [
     { label: "포지션", value: "POSITIONS", count: positions.length },
-    { label: "히스토리", value: "HISTORY", count: orderHistory.length },
+    {
+      label: "포지션 히스토리",
+      value: "POSITION_HISTORY",
+      count: positionHistory.length,
+    },
     { label: "Open orders", value: "OPEN_ORDERS", count: openOrders.length },
+    { label: "Order history", value: "ORDER_HISTORY", count: orderHistory.length },
   ];
 
   return (
@@ -320,8 +342,13 @@ function TradingBlotter({
 
       <div className="min-h-[220px] px-main-2 py-4">
         {activeTab === "POSITIONS" && <PositionsTable positions={positions} />}
-        {activeTab === "HISTORY" && <HistoryTable orders={orderHistory} />}
+        {activeTab === "POSITION_HISTORY" && (
+          <PositionHistoryTable histories={positionHistory} />
+        )}
         {activeTab === "OPEN_ORDERS" && <OpenOrdersTable orders={openOrders} />}
+        {activeTab === "ORDER_HISTORY" && (
+          <OrderHistoryTable orders={orderHistory} />
+        )}
       </div>
     </section>
   );
@@ -329,20 +356,23 @@ function TradingBlotter({
 
 function PositionsTable({ positions }: { positions: FuturesPosition[] }) {
   if (positions.length === 0) {
-    return <EmptyPanelMessage message="현재 이 심볼에 열린 포지션이 없습니다." />;
+    return <EmptyPanelMessage message="현재 열린 포지션이 없습니다." />;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[880px] text-left text-sm-custom">
+    <ScrollableTableFrame>
+      <table className="w-full min-w-[1120px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
             <th className="py-3 font-semibold">Symbol</th>
             <th className="py-3 font-semibold">Side</th>
             <th className="py-3 font-semibold">Size</th>
+            <th className="py-3 font-semibold">Margin</th>
             <th className="py-3 font-semibold">Entry</th>
             <th className="py-3 font-semibold">Mark</th>
+            <th className="py-3 font-semibold">Liq.</th>
             <th className="py-3 font-semibold">PnL</th>
+            <th className="py-3 font-semibold">ROI</th>
             <th className="py-3 text-right font-semibold">Action</th>
           </tr>
         </thead>
@@ -369,10 +399,18 @@ function PositionsTable({ positions }: { positions: FuturesPosition[] }) {
                 {position.quantity.toFixed(3)}
               </td>
               <td className="py-3 text-main-dark-gray/70">
+                {formatUsd(position.margin)}
+              </td>
+              <td className="py-3 text-main-dark-gray/70">
                 {formatUsd(position.entryPrice)}
               </td>
               <td className="py-3 text-main-dark-gray/70">
                 {formatUsd(position.markPrice)}
+              </td>
+              <td className="py-3 text-main-dark-gray/70">
+                {position.liquidationPrice
+                  ? formatUsd(position.liquidationPrice)
+                  : "-"}
               </td>
               <td
                 className={[
@@ -384,11 +422,20 @@ function PositionsTable({ positions }: { positions: FuturesPosition[] }) {
               >
                 {formatSignedUsd(position.unrealizedPnl)}
               </td>
+              <td
+                className={[
+                  "py-3 font-semibold",
+                  position.roi >= 0 ? "text-emerald-600" : "text-rose-600",
+                ].join(" ")}
+              >
+                {formatPercent(position.roi * 100)}
+              </td>
               <td className="py-3 text-right">
                 <ClosePositionButton
                   marginMode={position.marginMode}
                   positionSide={position.positionSide}
                   quantity={position.quantity}
+                  suggestedLimitPrice={position.markPrice}
                   symbol={position.symbol}
                 />
               </td>
@@ -396,86 +443,188 @@ function PositionsTable({ positions }: { positions: FuturesPosition[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollableTableFrame>
   );
 }
 
-function HistoryTable({ orders }: { orders: FuturesOrderHistory[] }) {
-  if (orders.length === 0) {
-    return <EmptyPanelMessage message="아직 이 심볼의 주문 히스토리가 없습니다." />;
+function PositionHistoryTable({
+  histories,
+}: {
+  histories: FuturesPositionHistory[];
+}) {
+  if (histories.length === 0) {
+    return <EmptyPanelMessage message="아직 종료된 포지션 히스토리가 없습니다." />;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-left text-sm-custom">
+    <ScrollableTableFrame>
+      <table className="w-full min-w-[1280px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
-            <th className="py-3 font-semibold">Order</th>
+            <th className="py-3 font-semibold">Open time</th>
+            <th className="py-3 font-semibold">Symbol</th>
             <th className="py-3 font-semibold">Side</th>
-            <th className="py-3 font-semibold">Type</th>
-            <th className="py-3 font-semibold">Qty</th>
-            <th className="py-3 font-semibold">Exec price</th>
-            <th className="py-3 font-semibold">Fee</th>
-            <th className="py-3 text-right font-semibold">Status</th>
+            <th className="py-3 font-semibold">Entry</th>
+            <th className="py-3 font-semibold">Exit</th>
+            <th className="py-3 font-semibold">Size</th>
+            <th className="py-3 font-semibold">PnL</th>
+            <th className="py-3 font-semibold">ROI</th>
+            <th className="py-3 font-semibold">Reason</th>
+            <th className="py-3 text-right font-semibold">Closed</th>
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
+          {histories.map((history) => (
             <tr
               className="border-b border-main-light-gray/70 last:border-b-0"
-              key={order.orderId}
+              key={`${history.symbol}-${history.positionSide}-${history.openedAt}-${history.closedAt}`}
             >
+              <td className="py-3 text-main-dark-gray/70">
+                {formatDateTime(history.openedAt)}
+              </td>
               <td className="py-3 font-semibold text-main-dark-gray">
-                {order.orderId}
+                {history.symbol}
               </td>
               <td
                 className={[
                   "py-3 font-semibold",
-                  order.positionSide === "LONG"
+                  history.positionSide === "LONG"
                     ? "text-emerald-600"
                     : "text-rose-600",
                 ].join(" ")}
               >
-                {order.positionSide}
+                {history.positionSide} · {history.marginMode} · {history.leverage}x
               </td>
               <td className="py-3 text-main-dark-gray/70">
-                {order.orderType} · {order.marginMode} · {order.leverage}x
+                {formatUsd(history.averageEntryPrice)}
               </td>
               <td className="py-3 text-main-dark-gray/70">
-                {order.quantity.toFixed(3)}
+                {formatUsd(history.averageExitPrice)}
               </td>
               <td className="py-3 text-main-dark-gray/70">
-                {formatUsd(order.executionPrice)}
+                {history.positionSize.toFixed(3)}
+              </td>
+              <td
+                className={[
+                  "py-3 font-semibold",
+                  history.realizedPnl >= 0 ? "text-emerald-600" : "text-rose-600",
+                ].join(" ")}
+              >
+                {formatSignedUsd(history.realizedPnl)}
+              </td>
+              <td
+                className={[
+                  "py-3 font-semibold",
+                  history.roi >= 0 ? "text-emerald-600" : "text-rose-600",
+                ].join(" ")}
+              >
+                {formatPercent(history.roi * 100)}
               </td>
               <td className="py-3 text-main-dark-gray/70">
-                {order.feeType} · {formatUsd(order.estimatedFee)}
+                {formatCloseReason(history.closeReason)}
               </td>
-              <td className="py-3 text-right font-semibold text-main-dark-gray">
-                {order.status}
+              <td className="py-3 text-right text-main-dark-gray/70">
+                {formatDateTime(history.closedAt)}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollableTableFrame>
+  );
+}
+
+function OrderHistoryTable({ orders }: { orders: FuturesOrderHistory[] }) {
+  if (orders.length === 0) {
+    return <EmptyPanelMessage message="아직 주문 히스토리가 없습니다." />;
+  }
+
+  return (
+    <ScrollableTableFrame>
+      <table className="w-full min-w-[1040px] text-left text-sm-custom">
+        <thead className="text-xs-custom text-main-dark-gray/50">
+          <tr className="border-b border-main-light-gray">
+            <th className="py-3 font-semibold">Time</th>
+            <th className="py-3 font-semibold">Direction</th>
+            <th className="py-3 font-semibold">Coin</th>
+            <th className="py-3 font-semibold">Order</th>
+            <th className="py-3 font-semibold">Quantity</th>
+            <th className="py-3 font-semibold">Price</th>
+            <th className="py-3 font-semibold">Fee</th>
+            <th className="py-3 text-right font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => {
+            const orderTime = formatOrderHistoryTime(order.orderTime);
+
+            return (
+              <tr
+                className="border-b border-main-light-gray/70 last:border-b-0"
+                key={order.orderId}
+              >
+                <td className="py-3 text-main-dark-gray/70">
+                  <span className="block font-semibold text-main-dark-gray">
+                    {orderTime.date}
+                  </span>
+                  <span className="mt-1 block text-xs-custom">
+                    {orderTime.time}
+                  </span>
+                </td>
+                <td
+                  className={[
+                    "py-3 font-semibold",
+                    order.positionSide === "LONG"
+                      ? "text-emerald-600"
+                      : "text-rose-600",
+                  ].join(" ")}
+                >
+                  {order.positionSide}
+                </td>
+                <td className="py-3 font-semibold text-main-dark-gray">
+                  {order.symbol}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatOrderPurpose(order.orderPurpose)} · {order.orderType}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatOrderQuantity(order)}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatPlainNumber(order.executionPrice)}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatPlainNumber(order.estimatedFee)} USDT
+                </td>
+                <td className="py-3 text-right font-semibold text-main-dark-gray">
+                  {formatOrderStatus(order.status)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </ScrollableTableFrame>
   );
 }
 
 function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
   if (orders.length === 0) {
-    return <EmptyPanelMessage message="현재 이 심볼에 열린 지정가 주문이 없습니다." />;
+    return <EmptyPanelMessage message="현재 열린 지정가 주문이 없습니다." />;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-left text-sm-custom">
+    <ScrollableTableFrame>
+      <table className="w-full min-w-[980px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
+            <th className="py-3 font-semibold">Order time</th>
             <th className="py-3 font-semibold">Order</th>
+            <th className="py-3 font-semibold">Symbol</th>
             <th className="py-3 font-semibold">Side</th>
+            <th className="py-3 font-semibold">Purpose</th>
             <th className="py-3 font-semibold">Limit</th>
             <th className="py-3 font-semibold">Qty</th>
-            <th className="py-3 font-semibold">Fee</th>
             <th className="py-3 text-right font-semibold">Action</th>
           </tr>
         </thead>
@@ -485,8 +634,14 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
               className="border-b border-main-light-gray/70 last:border-b-0"
               key={order.orderId}
             >
+              <td className="py-3 text-main-dark-gray/70">
+                {formatDateTime(order.orderTime)}
+              </td>
               <td className="py-3 font-semibold text-main-dark-gray">
                 {order.orderId}
+              </td>
+              <td className="py-3 font-semibold text-main-dark-gray">
+                {order.symbol}
               </td>
               <td
                 className={[
@@ -499,13 +654,13 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                 {order.positionSide} · {order.marginMode} · {order.leverage}x
               </td>
               <td className="py-3 text-main-dark-gray/70">
+                {formatOrderPurpose(order.orderPurpose)}
+              </td>
+              <td className="py-3 text-main-dark-gray/70">
                 {order.limitPrice ? formatUsd(order.limitPrice) : "-"}
               </td>
               <td className="py-3 text-main-dark-gray/70">
                 {order.quantity.toFixed(3)}
-              </td>
-              <td className="py-3 text-main-dark-gray/70">
-                {order.feeType} · {formatUsd(order.estimatedFee)}
               </td>
               <td className="py-3 text-right">
                 <CancelOrderButton orderId={order.orderId} />
@@ -514,6 +669,18 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
           ))}
         </tbody>
       </table>
+    </ScrollableTableFrame>
+  );
+}
+
+function ScrollableTableFrame({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <div className="futures-table-scroll">
+      {children}
     </div>
   );
 }
@@ -555,4 +722,90 @@ function EmptyPanelMessage({ message }: { message: string }) {
       {message}
     </div>
   );
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatOrderHistoryTime(value: string): { date: string; time: string } {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      date: "-",
+      time: "-",
+    };
+  }
+
+  return {
+    date: new Intl.DateTimeFormat("en-CA", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      hour12: false,
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "Asia/Seoul",
+    }).format(date),
+  };
+}
+
+function formatOrderPurpose(value: FuturesOpenOrder["orderPurpose"]): string {
+  return value === "CLOSE_POSITION" ? "Close" : "Open";
+}
+
+function formatOrderQuantity(order: FuturesOrderHistory): string {
+  return `${formatPlainNumber(order.quantity)} ${getBaseAsset(order.symbol)}`;
+}
+
+function getBaseAsset(symbol: string): string {
+  return symbol.endsWith("USDT") ? symbol.slice(0, -4) : symbol;
+}
+
+function formatPlainNumber(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "-";
+  }
+
+  return value.toFixed(8).replace(/\.?0+$/, "");
+}
+
+function formatOrderStatus(status: FuturesOrderHistory["status"]): string {
+  if (status === "FILLED") {
+    return "Executed";
+  }
+
+  if (status === "CANCELLED") {
+    return "Cancelled";
+  }
+
+  return "Rejected";
+}
+
+function formatCloseReason(reason: string): string {
+  if (reason === "LIMIT_CLOSE") {
+    return "Limit";
+  }
+
+  if (reason === "LIQUIDATION") {
+    return "Liquidation";
+  }
+
+  return "Market";
 }

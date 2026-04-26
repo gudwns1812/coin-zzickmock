@@ -10,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+@Slf4j
 @Component
 public class TradingExecutionSseBroker {
     private final ConcurrentMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -96,13 +98,17 @@ public class TradingExecutionSseBroker {
             unregister(permit.memberId(), emitter);
             emitter.complete();
         });
-        emitter.onError(error -> unregister(permit.memberId(), emitter));
+        emitter.onError(error -> {
+            log.debug("Trading SSE emitter reported an error; closing subscription. memberId={}", permit.memberId(), error);
+            unregister(permit.memberId(), emitter);
+        });
     }
 
     private void send(String memberId, SseEmitter emitter, TradingExecutionEventResponse response) {
         try {
             emitter.send(response);
         } catch (IOException exception) {
+            log.debug("Trading SSE send failed; closing subscription. memberId={}", memberId, exception);
             unregister(memberId, emitter);
             emitter.complete();
         }

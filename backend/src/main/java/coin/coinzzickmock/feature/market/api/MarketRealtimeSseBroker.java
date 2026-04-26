@@ -10,12 +10,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+@Slf4j
 @Component
 public class MarketRealtimeSseBroker {
     private final ConcurrentMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -96,13 +98,17 @@ public class MarketRealtimeSseBroker {
             unregister(permit.symbol(), emitter);
             emitter.complete();
         });
-        emitter.onError(error -> unregister(permit.symbol(), emitter));
+        emitter.onError(error -> {
+            log.debug("Market SSE emitter reported an error; closing subscription. symbol={}", permit.symbol(), error);
+            unregister(permit.symbol(), emitter);
+        });
     }
 
     private void send(String symbol, SseEmitter emitter, MarketSummaryResponse response) {
         try {
             emitter.send(response);
         } catch (IOException exception) {
+            log.debug("Market SSE send failed; closing subscription. symbol={}", symbol, exception);
             unregister(symbol, emitter);
             emitter.complete();
         }

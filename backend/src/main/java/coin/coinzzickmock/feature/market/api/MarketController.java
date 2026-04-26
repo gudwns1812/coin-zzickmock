@@ -10,6 +10,7 @@ import coin.coinzzickmock.feature.market.application.service.GetMarketSummarySer
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/futures/markets")
 public class MarketController {
@@ -102,6 +104,7 @@ public class MarketController {
             emitter.send(toResponse(result));
             return true;
         } catch (IOException exception) {
+            log.debug("Initial market SSE send failed; completing emitter. symbol={}", result.symbol(), exception);
             emitter.complete();
             return false;
         }

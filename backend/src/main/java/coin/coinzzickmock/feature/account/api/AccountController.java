@@ -25,8 +25,11 @@ public class AccountController {
         return ApiResponse.success(new AccountSummaryResponse(
                 result.memberId(),
                 result.memberName(),
+                result.usdtBalance(),
                 result.walletBalance(),
-                result.availableMargin(),
+                result.available(),
+                result.totalUnrealizedPnl(),
+                result.roi(),
                 result.rewardPoint()
         ));
     }

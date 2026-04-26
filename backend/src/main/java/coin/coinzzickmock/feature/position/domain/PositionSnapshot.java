@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.position.domain;
 
+import java.time.Instant;
+
 public record PositionSnapshot(
         String symbol,
         String positionSide,
@@ -9,9 +11,45 @@ public record PositionSnapshot(
         double entryPrice,
         double markPrice,
         Double liquidationPrice,
-        double unrealizedPnl
+        double unrealizedPnl,
+        Instant openedAt,
+        double originalQuantity,
+        double accumulatedClosedQuantity,
+        double accumulatedExitNotional,
+        double accumulatedRealizedPnl,
+        double accumulatedCloseFee
 ) {
     private static final String MARGIN_MODE_CROSS = "CROSS";
+
+    public PositionSnapshot(
+            String symbol,
+            String positionSide,
+            String marginMode,
+            int leverage,
+            double quantity,
+            double entryPrice,
+            double markPrice,
+            Double liquidationPrice,
+            double unrealizedPnl
+    ) {
+        this(
+                symbol,
+                positionSide,
+                marginMode,
+                leverage,
+                quantity,
+                entryPrice,
+                markPrice,
+                liquidationPrice,
+                unrealizedPnl,
+                Instant.now(),
+                quantity,
+                0,
+                0,
+                0,
+                0
+        );
+    }
 
     public static PositionSnapshot open(
             String symbol,
@@ -31,6 +69,12 @@ public record PositionSnapshot(
                 entryPrice,
                 markPrice,
                 liquidationPrice(positionSide, leverage, entryPrice),
+                0,
+                Instant.now(),
+                quantity,
+                0,
+                0,
+                0,
                 0
         );
     }
@@ -45,7 +89,13 @@ public record PositionSnapshot(
                 entryPrice,
                 nextMarkPrice,
                 liquidationPrice,
-                pnl(nextMarkPrice, quantity)
+                pnl(nextMarkPrice, quantity),
+                openedAt,
+                originalQuantity,
+                accumulatedClosedQuantity,
+                accumulatedExitNotional,
+                accumulatedRealizedPnl,
+                accumulatedCloseFee
         );
     }
 
@@ -61,7 +111,13 @@ public record PositionSnapshot(
                 weightedEntryPrice,
                 markPrice,
                 liquidationPrice(positionSide, leverage, weightedEntryPrice),
-                0
+                0,
+                openedAt,
+                originalQuantity + additionalQuantity,
+                accumulatedClosedQuantity,
+                accumulatedExitNotional,
+                accumulatedRealizedPnl,
+                accumulatedCloseFee
         );
     }
 
@@ -77,6 +133,18 @@ public record PositionSnapshot(
         return (entryPrice * quantity) / leverage;
     }
 
+    public double originalInitialMargin() {
+        return (entryPrice * originalQuantity) / leverage;
+    }
+
+    public double roi() {
+        double margin = initialMargin();
+        if (margin == 0) {
+            return 0;
+        }
+        return unrealizedPnl / margin;
+    }
+
     public double unrealizedPnl(double targetMarkPrice) {
         return pnl(targetMarkPrice, quantity);
     }
@@ -87,10 +155,14 @@ public record PositionSnapshot(
 
     public PositionCloseOutcome close(double closeQuantity, double markPrice, double executionPrice, double takerFeeRate) {
         double safeCloseQuantity = Math.min(closeQuantity, quantity);
-        double realizedPnl = pnl(markPrice, safeCloseQuantity);
+        double realizedPnl = pnl(executionPrice, safeCloseQuantity);
         double closeFee = executionPrice * safeCloseQuantity * takerFeeRate;
         double releasedMargin = (entryPrice * safeCloseQuantity) / leverage;
         double remainingQuantity = quantity - safeCloseQuantity;
+        double nextAccumulatedClosedQuantity = accumulatedClosedQuantity + safeCloseQuantity;
+        double nextAccumulatedExitNotional = accumulatedExitNotional + (executionPrice * safeCloseQuantity);
+        double nextAccumulatedRealizedPnl = accumulatedRealizedPnl + realizedPnl;
+        double nextAccumulatedCloseFee = accumulatedCloseFee + closeFee;
 
         PositionSnapshot remainingPosition = remainingQuantity <= 0
                 ? null
@@ -103,7 +175,13 @@ public record PositionSnapshot(
                 entryPrice,
                 markPrice,
                 liquidationPrice,
-                pnl(markPrice, remainingQuantity)
+                pnl(markPrice, remainingQuantity),
+                openedAt,
+                originalQuantity,
+                nextAccumulatedClosedQuantity,
+                nextAccumulatedExitNotional,
+                nextAccumulatedRealizedPnl,
+                nextAccumulatedCloseFee
         );
 
         return new PositionCloseOutcome(
@@ -111,7 +189,14 @@ public record PositionSnapshot(
                 realizedPnl,
                 closeFee,
                 releasedMargin,
-                remainingPosition
+                remainingPosition,
+                openedAt,
+                originalQuantity,
+                entryPrice,
+                nextAccumulatedClosedQuantity,
+                nextAccumulatedExitNotional,
+                nextAccumulatedRealizedPnl,
+                nextAccumulatedCloseFee
         );
     }
 

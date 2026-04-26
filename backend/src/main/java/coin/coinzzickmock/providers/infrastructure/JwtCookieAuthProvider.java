@@ -9,13 +9,14 @@ import coin.coinzzickmock.providers.auth.ActorLookup;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Arrays;
-
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtCookieAuthProvider implements AuthProvider {
@@ -35,6 +36,7 @@ public class JwtCookieAuthProvider implements AuthProvider {
             JwtSessionClaims claims = parseOptionalClaims();
             return claims != null && actorLookup.findByMemberId(claims.memberId()).isPresent();
         } catch (CoreException exception) {
+            log.debug("Optional authentication failed; treating request as anonymous.", exception);
             return false;
         }
     }

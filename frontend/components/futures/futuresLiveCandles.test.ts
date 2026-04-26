@@ -88,3 +88,14 @@ test("calendar bucket helpers use UTC week and month starts", () => {
     openTimeMs: Date.parse("2026-04-01T00:00:00.000Z"),
   });
 });
+
+test("fixed multi-hour bucket helpers use UTC boundaries", () => {
+  assert.deepEqual(getLiveCandleBucket("4h", Date.parse("2026-04-24T16:30:00.000Z")), {
+    closeTimeMs: Date.parse("2026-04-24T20:00:00.000Z"),
+    openTimeMs: Date.parse("2026-04-24T16:00:00.000Z"),
+  });
+  assert.deepEqual(getLiveCandleBucket("12h", Date.parse("2026-04-24T02:30:00.000Z")), {
+    closeTimeMs: Date.parse("2026-04-24T12:00:00.000Z"),
+    openTimeMs: Date.parse("2026-04-24T00:00:00.000Z"),
+  });
+});

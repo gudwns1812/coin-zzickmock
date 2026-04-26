@@ -8,9 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class MarketHistoryPersistenceCoordinator {
@@ -45,21 +47,29 @@ public class MarketHistoryPersistenceCoordinator {
         List<MarketMinuteCandleSnapshot> minuteCandles;
         try {
             minuteCandles = marketDataGateway.loadMinuteCandles(symbol, openTime, closeTime);
-        } catch (Exception ignored) {
+        } catch (Exception exception) {
+            log.warn("Failed to load closed market minute candle history. symbol={} openTime={} closeTime={}",
+                    symbol, openTime, closeTime, exception);
             return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
         }
 
         if (minuteCandles == null || minuteCandles.isEmpty()) {
+            log.debug("Closed market minute candle history is not ready yet. symbol={} openTime={} closeTime={}",
+                    symbol, openTime, closeTime);
             return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.EMPTY);
         }
 
         Map<String, Boolean> saveResults;
         try {
             saveResults = marketHistoryRecorder.recordHistoricalMinuteCandlesBySymbol(Map.of(symbol, minuteCandles));
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException exception) {
+            log.warn("Failed to persist closed market minute candle history. symbol={} openTime={} closeTime={}",
+                    symbol, openTime, closeTime, exception);
             return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
         }
         if (!Boolean.TRUE.equals(saveResults.get(symbol))) {
+            log.warn("Closed market minute candle history was not persisted. symbol={} openTime={} closeTime={}",
+                    symbol, openTime, closeTime);
             return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
         }
 

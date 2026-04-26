@@ -37,7 +37,21 @@ export type BollingerBandSeries = {
   upper: LineData<Time>[];
 };
 
+export type IndicatorValueRow = {
+  color: string;
+  id: string;
+  label: string;
+  value: number;
+};
+
 export const MAX_ACTIVE_INDICATORS = 3;
+
+export const INDICATOR_COLORS = {
+  bollingerBasis: "#94a3b8",
+  bollingerBand: "#2563eb",
+  ema: "#0ea5e9",
+  sma: "#f97316",
+} as const;
 
 export const DEFAULT_INDICATOR_CONFIGS: IndicatorConfigs = {
   EMA: {
@@ -283,7 +297,101 @@ export function calculateBollingerBands(
   return { basis, lower, upper };
 }
 
+export function calculateIndicatorValueRows(
+  candles: IndicatorCandle[],
+  configs: IndicatorConfigs,
+  time: Time | null
+): IndicatorValueRow[] {
+  if (time == null || candles.length === 0) {
+    return [];
+  }
+
+  const rows: IndicatorValueRow[] = [];
+
+  if (configs.EMA.enabled) {
+    const emaValue = findValueAtTime(
+      calculateEmaSeries(candles, configs.EMA.period),
+      time
+    );
+    if (emaValue != null) {
+      rows.push({
+        color: INDICATOR_COLORS.ema,
+        id: "ema",
+        label: `EMA${configs.EMA.period}`,
+        value: emaValue,
+      });
+    }
+  }
+
+  if (configs.SMA.enabled) {
+    const smaValue = findValueAtTime(
+      calculateSmaSeries(candles, configs.SMA.period),
+      time
+    );
+    if (smaValue != null) {
+      rows.push({
+        color: INDICATOR_COLORS.sma,
+        id: "sma",
+        label: `SMA${configs.SMA.period}`,
+        value: smaValue,
+      });
+    }
+  }
+
+  if (configs.BOLLINGER.enabled) {
+    const bands = calculateBollingerBands(
+      candles,
+      configs.BOLLINGER.period,
+      configs.BOLLINGER.stdDev
+    );
+    const basisValue = findValueAtTime(bands.basis, time);
+    const upperValue = findValueAtTime(bands.upper, time);
+    const lowerValue = findValueAtTime(bands.lower, time);
+
+    if (basisValue != null) {
+      rows.push({
+        color: INDICATOR_COLORS.bollingerBasis,
+        id: "bollingerBasis",
+        label: `BB M${configs.BOLLINGER.period}`,
+        value: basisValue,
+      });
+    }
+    if (upperValue != null) {
+      rows.push({
+        color: INDICATOR_COLORS.bollingerBand,
+        id: "bollingerUpper",
+        label: `BB U${configs.BOLLINGER.period}`,
+        value: upperValue,
+      });
+    }
+    if (lowerValue != null) {
+      rows.push({
+        color: INDICATOR_COLORS.bollingerBand,
+        id: "bollingerLower",
+        label: `BB L${configs.BOLLINGER.period}`,
+        value: lowerValue,
+      });
+    }
+  }
+
+  return rows;
+}
+
 function clampInteger(value: number, min: number, max: number): number {
   const normalized = Number.isFinite(value) ? Math.round(value) : min;
   return Math.max(min, Math.min(max, normalized));
+}
+
+function findValueAtTime(series: LineData<Time>[], time: Time): number | null {
+  const targetKey = timeKey(time);
+  const matchedPoint = series.find((point) => timeKey(point.time) === targetKey);
+  return matchedPoint?.value ?? null;
+}
+
+function timeKey(time: Time): string {
+  if (typeof time === "object") {
+    return `${time.year}-${time.month}-${time.day}`;
+  }
+
+  return String(time);
 }

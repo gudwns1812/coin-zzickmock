@@ -47,6 +47,7 @@ public class CreateOrderService {
                         command.symbol(),
                         command.positionSide(),
                         command.orderType(),
+                        FuturesOrder.PURPOSE_OPEN_POSITION,
                         command.marginMode(),
                         command.leverage(),
                         command.quantity(),

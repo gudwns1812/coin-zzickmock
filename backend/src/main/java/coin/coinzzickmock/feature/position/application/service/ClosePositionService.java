@@ -10,6 +10,8 @@ import coin.coinzzickmock.feature.position.application.repository.PositionReposi
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.providers.Providers;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -45,7 +47,7 @@ public class ClosePositionService {
 
         MarketSnapshot market = loadMarket(symbol);
         if (ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
-            orderRepository.save(memberId, FuturesOrder.place(
+            FuturesOrder pendingCloseOrder = orderRepository.save(memberId, FuturesOrder.place(
                     UUID.randomUUID().toString(),
                     symbol,
                     positionSide,
@@ -60,6 +62,7 @@ public class ClosePositionService {
                     0,
                     limitPrice == null ? market.lastPrice() : limitPrice
             ));
+            reconcilePendingCloseOrderCap(memberId, pendingCloseOrder, position.quantity(), market.lastPrice());
             return new ClosePositionResult(symbol, 0, 0, 0);
         }
 
@@ -113,5 +116,57 @@ public class ClosePositionService {
                 && (limitPrice == null || !Double.isFinite(limitPrice) || limitPrice <= 0)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "지정가 종료 가격을 확인해주세요.");
         }
+    }
+
+    private void reconcilePendingCloseOrderCap(
+            String memberId,
+            FuturesOrder submittedOrder,
+            double heldQuantity,
+            double currentPrice
+    ) {
+        List<FuturesOrder> pendingCloseOrders = orderRepository.findPendingCloseOrders(
+                memberId,
+                submittedOrder.symbol(),
+                submittedOrder.positionSide(),
+                submittedOrder.marginMode()
+        );
+
+        double pendingQuantity = pendingCloseOrders.stream()
+                .mapToDouble(FuturesOrder::quantity)
+                .sum();
+        double excessQuantity = pendingQuantity - heldQuantity;
+        if (excessQuantity <= 0) {
+            return;
+        }
+
+        for (FuturesOrder order : pendingCloseOrders.stream()
+                .sorted(leastLikelyToExecuteFirst(submittedOrder.positionSide(), currentPrice))
+                .toList()) {
+            if (excessQuantity <= 0) {
+                return;
+            }
+            double reduction = Math.min(order.quantity(), excessQuantity);
+            double nextQuantity = order.quantity() - reduction;
+            if (nextQuantity <= 0) {
+                orderRepository.updateStatus(memberId, order.orderId(), FuturesOrder.STATUS_CANCELLED);
+            } else {
+                orderRepository.updateQuantityAndStatus(memberId, order.orderId(), nextQuantity, FuturesOrder.STATUS_PENDING);
+            }
+            excessQuantity -= reduction;
+        }
+    }
+
+    private Comparator<FuturesOrder> leastLikelyToExecuteFirst(String positionSide, double currentPrice) {
+        Comparator<FuturesOrder> priceComparator;
+        if ("LONG".equalsIgnoreCase(positionSide)) {
+            priceComparator = Comparator.comparing(
+                    (FuturesOrder order) -> order.limitPrice() == null ? currentPrice : order.limitPrice()
+            ).reversed();
+        } else {
+            priceComparator = Comparator.comparing(
+                    order -> order.limitPrice() == null ? currentPrice : order.limitPrice()
+            );
+        }
+        return priceComparator.thenComparing(Comparator.comparing(FuturesOrder::orderTime).reversed());
     }
 }

@@ -5,6 +5,7 @@ import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
+import coin.coinzzickmock.providers.connector.MarketHistoricalCandleGranularity;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
 import java.time.Instant;
@@ -109,7 +110,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                             .path("/api/v2/mix/market/history-candles")
                             .queryParam("symbol", symbol)
                             .queryParam("productType", "USDT-FUTURES")
-                            .queryParam("granularity", providerGranularity(interval))
+                            .queryParam("granularity", MarketHistoricalCandleGranularity.from(interval).value())
                             .queryParam("startTime", fromInclusive.toEpochMilli())
                             .queryParam("endTime", toExclusive.toEpochMilli())
                             .queryParam("limit", requestLimit)
@@ -188,15 +189,6 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             case ONE_HOUR -> openTime.plus(1, ChronoUnit.HOURS);
             case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
                     MarketTime.bucketClose(openTime, interval);
-        };
-    }
-
-    private String providerGranularity(MarketCandleInterval interval) {
-        return switch (interval) {
-            case ONE_HOUR -> "1H";
-            case FOUR_HOURS -> "4H";
-            case TWELVE_HOURS -> "12H";
-            default -> interval.value();
         };
     }
 

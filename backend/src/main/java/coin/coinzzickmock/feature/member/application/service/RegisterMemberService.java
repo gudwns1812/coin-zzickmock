@@ -1,9 +1,11 @@
 package coin.coinzzickmock.feature.member.application.service;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
 import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
@@ -19,6 +21,7 @@ public class RegisterMemberService {
     private final MemberCredentialRepository memberCredentialRepository;
     private final AccountRepository accountRepository;
     private final MemberPasswordHasher memberPasswordHasher;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     @Transactional
     public MemberProfileResult register(
@@ -56,6 +59,7 @@ public class RegisterMemberService {
                 memberCredential.memberName()
         ));
         memberCredentialRepository.save(memberCredential);
+        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberCredential.memberId()));
         return MemberProfileResult.from(memberCredential);
     }
 }

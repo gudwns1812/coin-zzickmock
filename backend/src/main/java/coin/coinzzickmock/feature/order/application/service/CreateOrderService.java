@@ -1,9 +1,11 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
@@ -28,6 +30,7 @@ public class CreateOrderService {
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
@@ -83,6 +86,7 @@ public class CreateOrderService {
         TradingAccount account = accountRepository.findByMemberId(command.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         accountRepository.save(account.reserveForFilledOrder(preview.estimatedFee(), preview.estimatedInitialMargin()));
+        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(command.memberId()));
 
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 command.memberId(),

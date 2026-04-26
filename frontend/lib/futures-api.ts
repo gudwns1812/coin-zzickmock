@@ -2,6 +2,7 @@ import {
   MARKET_SNAPSHOT_LIST,
   MARKET_SNAPSHOTS,
   SUPPORTED_MARKET_SYMBOLS,
+  type MarketRankingEntry,
   type MarketSnapshot,
   type MarketSymbol,
   isSupportedMarketSymbol,
@@ -95,6 +96,13 @@ export type FuturesPositionHistory = {
 export type FuturesReward = {
   rewardPoint: number;
   tierLabel: string;
+};
+
+export type FuturesLeaderboard = {
+  mode: "profitRate" | "walletBalance";
+  source: "redis" | "database" | "empty";
+  lastRefreshedAt: string | null;
+  entries: MarketRankingEntry[];
 };
 
 export type ShopItem = {
@@ -309,6 +317,19 @@ export async function getFuturesPositionHistory(
 export async function getFuturesReward(): Promise<FuturesReward> {
   const response = await readApi<FuturesReward>("/api/futures/rewards/me");
   return response ?? REWARD_FALLBACK;
+}
+
+export async function getFuturesLeaderboard(): Promise<FuturesLeaderboard> {
+  const response = await readApi<FuturesLeaderboard>(
+    "/api/futures/leaderboard?mode=profitRate&limit=4"
+  );
+
+  return response ?? {
+    mode: "profitRate",
+    source: "empty",
+    lastRefreshedAt: null,
+    entries: [],
+  };
 }
 
 export async function getShopItems(): Promise<ShopItem[]> {

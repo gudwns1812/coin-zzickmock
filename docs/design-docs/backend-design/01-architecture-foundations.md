@@ -110,6 +110,10 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - mapper
 - config
 
+Redis를 쓰는 읽기 모델은 DB를 원천으로 둔 파생 인덱스로 취급한다.
+예를 들어 대시보드 실현 수익률 랭킹은 `trading_accounts.wallet_balance`에서 계산하고 Redis ZSET은 top-N 조회를 빠르게 하기 위한 snapshot/store adapter로만 사용한다.
+랭킹 ZSET은 가입과 지갑 잔고 변경 이벤트가 커밋된 뒤 해당 멤버를 즉시 갱신하고, 스케줄러는 기본 1시간 단위 전체 재집계로 누락과 drift를 보정한다.
+
 금지:
 
 - 도메인 규칙의 원본 소유

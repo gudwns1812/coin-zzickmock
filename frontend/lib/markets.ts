@@ -22,7 +22,7 @@ export type MarketSnapshot = {
 export type MarketRankingEntry = {
   rank: number;
   nickname: string;
-  totalAsset: number;
+  walletBalance: number;
   profitRate: number;
 };
 
@@ -65,26 +65,26 @@ export const MARKET_RANKING_FALLBACKS: MarketRankingEntry[] = [
   {
     rank: 1,
     nickname: "CryptoKing99",
-    totalAsset: 2_450_000,
-    profitRate: 245.8,
+    walletBalance: 123_500,
+    profitRate: 0.235,
   },
   {
     rank: 2,
     nickname: "MoonTrader",
-    totalAsset: 1_890_000,
-    profitRate: 189.3,
+    walletBalance: 117_900,
+    profitRate: 0.179,
   },
   {
     rank: 3,
     nickname: "SolRunner",
-    totalAsset: 1_540_000,
-    profitRate: 152.4,
+    walletBalance: 114_400,
+    profitRate: 0.144,
   },
   {
     rank: 4,
     nickname: "DeltaPulse",
-    totalAsset: 1_210_000,
-    profitRate: 118.6,
+    walletBalance: 111_100,
+    profitRate: 0.111,
   },
 ];
 

@@ -10,7 +10,7 @@ public record TradingAccount(
         double walletBalance,
         double availableMargin
 ) {
-    private static final double INITIAL_WALLET_BALANCE = 100_000d;
+    public static final double INITIAL_WALLET_BALANCE = 100_000d;
     private static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
 
     public static TradingAccount openDefault(String memberId, String memberEmail, String memberName) {

@@ -1,7 +1,9 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
@@ -21,6 +23,9 @@ import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +33,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CreateOrderServiceTest {
     @Test
@@ -41,7 +47,9 @@ class CreateOrderServiceTest {
                 new FakeProviders(),
                 orderRepository,
                 accountRepository,
-                positionRepository
+                positionRepository,
+                new AfterCommitEventPublisher(event -> {
+                })
         );
 
         CreateOrderResult result = service.execute(new CreateOrderCommand(
@@ -82,7 +90,9 @@ class CreateOrderServiceTest {
                 new FakeProviders(110000, 110000),
                 orderRepository,
                 accountRepository,
-                positionRepository
+                positionRepository,
+                new AfterCommitEventPublisher(event -> {
+                })
         );
 
         service.execute(new CreateOrderCommand(
@@ -109,7 +119,9 @@ class CreateOrderServiceTest {
                 new FakeProviders(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),
-                new InMemoryPositionRepository()
+                new InMemoryPositionRepository(),
+                new AfterCommitEventPublisher(event -> {
+                })
         );
 
         OrderPreview preview = service.preview(new CreateOrderCommand(
@@ -126,6 +138,56 @@ class CreateOrderServiceTest {
         assertEquals("MAKER", preview.feeType());
         assertEquals(99900.0, preview.estimatedEntryPrice(), 0.0001);
         assertFalse(preview.executable());
+    }
+
+    @Test
+    void walletBalanceChangedEventPublishesOnlyAfterTransactionCommit() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
+                new FakeProviders(),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                new AfterCommitEventPublisher(eventPublisher)
+        );
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.execute(new CreateOrderCommand(
+                    "demo-member",
+                    "BTCUSDT",
+                    "LONG",
+                    "MARKET",
+                    "ISOLATED",
+                    10,
+                    0.1,
+                    null
+            ));
+
+            assertTrue(eventPublisher.events.isEmpty());
+
+            TransactionSynchronizationUtils.triggerAfterCommit();
+
+            assertEquals(1, eventPublisher.events.size());
+            assertEquals("demo-member", eventPublisher.events.get(0).memberId());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    private static class CapturingEventPublisher implements ApplicationEventPublisher {
+        private final List<WalletBalanceChangedEvent> events = new ArrayList<>();
+
+        @Override
+        public void publishEvent(Object event) {
+            if (event instanceof WalletBalanceChangedEvent walletBalanceChangedEvent) {
+                events.add(walletBalanceChangedEvent);
+            }
+        }
     }
 
     private static class InMemoryAccountRepository implements AccountRepository {

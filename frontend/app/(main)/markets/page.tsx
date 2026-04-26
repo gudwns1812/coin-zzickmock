@@ -1,6 +1,7 @@
 import MarketsLandingRealtimeView from "@/components/router/(main)/markets/MarketsLandingRealtimeView";
 import {
   getFuturesAccountSummary,
+  getFuturesLeaderboard,
   getFuturesMarketsResult,
   getFuturesPositions,
   getFuturesReward,
@@ -14,10 +15,11 @@ import {
 const DEMO_STARTING_BALANCE = 100_000;
 
 export default async function MarketsPage() {
-  const [marketsResult, account, positions, reward] = await Promise.all([
+  const [marketsResult, account, positions, leaderboard, reward] = await Promise.all([
     getFuturesMarketsResult(),
     getFuturesAccountSummary(),
     getFuturesPositions(),
+    getFuturesLeaderboard(),
     getFuturesReward(),
   ]);
   const { markets, isFallback } = marketsResult;
@@ -61,6 +63,7 @@ export default async function MarketsPage() {
       <MarketsLandingRealtimeView
         initialMarkets={[btcMarket, ethMarket]}
         isMarketDataDegraded={isFallback}
+        rankingEntries={leaderboard.entries}
         summaryCards={summaryCards}
       />
     </div>

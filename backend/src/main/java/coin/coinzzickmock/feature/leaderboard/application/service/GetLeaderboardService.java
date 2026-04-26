@@ -1,0 +1,116 @@
+package coin.coinzzickmock.feature.leaderboard.application.service;
+
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardProjectionRepository;
+import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardEntryResult;
+import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
+import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
+import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
+import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.IntStream;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class GetLeaderboardService {
+    private static final int DEFAULT_LIMIT = 5;
+    private static final int MAX_LIMIT = 50;
+    private static final int TIE_SLACK = 20;
+
+    private final LeaderboardProjectionRepository projectionRepository;
+    private final List<LeaderboardSnapshotStore> snapshotStores;
+
+    @Transactional(readOnly = true)
+    public LeaderboardResult get(String modeValue, String limitValue) {
+        LeaderboardMode mode = parseMode(modeValue);
+        int limit = parseLimit(limitValue);
+
+        for (LeaderboardSnapshotStore snapshotStore : snapshotStores) {
+            LeaderboardResult result = snapshotStore.findTop(mode, limit, TIE_SLACK)
+                    .filter(snapshot -> !snapshot.entries().isEmpty())
+                    .map(snapshot -> toResult(mode, "redis", snapshot, limit))
+                    .orElse(null);
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return toResult(
+                mode,
+                "database",
+                new LeaderboardSnapshot(projectionRepository.findAll(), Instant.now()),
+                limit
+        );
+    }
+
+    private LeaderboardMode parseMode(String value) {
+        return LeaderboardMode.parse(value)
+                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST, "지원하지 않는 랭킹 모드입니다."));
+    }
+
+    private int parseLimit(String value) {
+        if (value == null || value.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
+
+        try {
+            int limit = Integer.parseInt(value);
+            if (limit < 1 || limit > MAX_LIMIT) {
+                throw new CoreException(ErrorCode.INVALID_REQUEST, "랭킹 조회 개수는 1~50 사이여야 합니다.");
+            }
+            return limit;
+        } catch (NumberFormatException exception) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "랭킹 조회 개수는 숫자여야 합니다.");
+        }
+    }
+
+    private LeaderboardResult toResult(
+            LeaderboardMode mode,
+            String source,
+            LeaderboardSnapshot snapshot,
+            int limit
+    ) {
+        List<LeaderboardEntryResult> entries = snapshot.entries().stream()
+                .sorted(comparator(mode))
+                .limit(limit)
+                .map(entry -> new LeaderboardEntryResult(
+                        0,
+                        entry.nickname(),
+                        entry.walletBalance(),
+                        entry.profitRate()
+                ))
+                .toList();
+
+        return new LeaderboardResult(
+                mode.value(),
+                source,
+                snapshot.refreshedAt(),
+                IntStream.range(0, entries.size())
+                        .mapToObj(index -> {
+                            LeaderboardEntryResult entry = entries.get(index);
+                            return new LeaderboardEntryResult(
+                                    index + 1,
+                                    entry.nickname(),
+                                    entry.walletBalance(),
+                                    entry.profitRate()
+                            );
+                        })
+                        .toList()
+        );
+    }
+
+    private Comparator<LeaderboardEntry> comparator(LeaderboardMode mode) {
+        return Comparator.comparingDouble((LeaderboardEntry entry) -> mode.score(entry))
+                .reversed()
+                .thenComparing(Comparator.comparingDouble(LeaderboardEntry::walletBalance).reversed())
+                .thenComparing(LeaderboardEntry::nickname)
+                .thenComparing(LeaderboardEntry::memberId);
+    }
+}

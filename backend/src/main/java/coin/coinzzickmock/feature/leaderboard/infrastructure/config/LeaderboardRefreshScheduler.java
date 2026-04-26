@@ -13,7 +13,7 @@ public class LeaderboardRefreshScheduler {
     private final RefreshLeaderboardService refreshLeaderboardService;
 
     @Scheduled(
-            fixedDelayString = "${coin.leaderboard.refresh.delay-ms:30000}",
+            fixedDelayString = "${coin.leaderboard.refresh.delay-ms:3600000}",
             initialDelayString = "${coin.leaderboard.refresh.initial-delay-ms:0}"
     )
     public void refresh() {

@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
@@ -16,7 +17,6 @@ import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.providers.Providers;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +30,7 @@ public class CreateOrderService {
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
@@ -86,7 +86,7 @@ public class CreateOrderService {
         TradingAccount account = accountRepository.findByMemberId(command.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         accountRepository.save(account.reserveForFilledOrder(preview.estimatedFee(), preview.estimatedInitialMargin()));
-        applicationEventPublisher.publishEvent(new WalletBalanceChangedEvent(command.memberId()));
+        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(command.memberId()));
 
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 command.memberId(),

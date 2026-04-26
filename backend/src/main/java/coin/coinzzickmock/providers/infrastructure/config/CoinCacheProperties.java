@@ -14,6 +14,7 @@ public class CoinCacheProperties {
     public static class Redis {
         private boolean enabled = false;
         private Duration defaultTtl = Duration.ofMinutes(5);
+        private Duration historicalCandleTtl = Duration.ofMinutes(30);
         private String keyPrefix = "coinzzickmock::";
 
         public boolean isEnabled() {
@@ -30,6 +31,14 @@ public class CoinCacheProperties {
 
         public void setDefaultTtl(Duration defaultTtl) {
             this.defaultTtl = defaultTtl;
+        }
+
+        public Duration getHistoricalCandleTtl() {
+            return historicalCandleTtl;
+        }
+
+        public void setHistoricalCandleTtl(Duration historicalCandleTtl) {
+            this.historicalCandleTtl = historicalCandleTtl;
         }
 
         public String getKeyPrefix() {

@@ -1,7 +1,11 @@
 package coin.coinzzickmock.providers.infrastructure;
 
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.market.domain.MarketTime;
+import coin.coinzzickmock.providers.connector.MarketHistoricalCandleGranularity;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
 import java.time.Instant;
@@ -91,6 +95,52 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         }
     }
 
+    @Override
+    public List<MarketHistoricalCandleSnapshot> loadHistoricalCandles(
+            String symbol,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive,
+            int limit
+    ) {
+        int requestLimit = Math.min(Math.max(limit, 1), 200);
+        try {
+            BitgetCandleResponse response = bitgetRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v2/mix/market/history-candles")
+                            .queryParam("symbol", symbol)
+                            .queryParam("productType", "USDT-FUTURES")
+                            .queryParam("granularity", MarketHistoricalCandleGranularity.from(interval).value())
+                            .queryParam("startTime", fromInclusive.toEpochMilli())
+                            .queryParam("endTime", toExclusive.toEpochMilli())
+                            .queryParam("limit", requestLimit)
+                            .build())
+                    .retrieve()
+                    .body(BitgetCandleResponse.class);
+
+            if (response == null || response.data() == null || !"00000".equals(response.code())) {
+                log.warn(
+                        "Bitget historical candle response is not usable. symbol={} interval={} from={} to={} code={} message={}",
+                        symbol, interval.value(), fromInclusive, toExclusive, responseCode(response),
+                        responseMessage(response)
+                );
+                return List.of();
+            }
+
+            return response.data().stream()
+                    .map(rawCandle -> toHistoricalCandleSnapshot(rawCandle, interval))
+                    .filter(Objects::nonNull)
+                    .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                    .filter(candle -> candle.openTime().isBefore(toExclusive))
+                    .sorted(Comparator.comparing(MarketHistoricalCandleSnapshot::openTime))
+                    .toList();
+        } catch (Exception exception) {
+            log.warn("Failed to load Bitget historical candles. symbol={} interval={} from={} to={}",
+                    symbol, interval.value(), fromInclusive, toExclusive, exception);
+            return List.of();
+        }
+    }
+
     private MarketMinuteCandleSnapshot toMinuteCandleSnapshot(List<String> rawCandle) {
         if (rawCandle == null || rawCandle.size() < 7) {
             return null;
@@ -107,6 +157,39 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                 parseDouble(rawCandle.get(5)),
                 parseDouble(rawCandle.get(6))
         );
+    }
+
+    private MarketHistoricalCandleSnapshot toHistoricalCandleSnapshot(
+            List<String> rawCandle,
+            MarketCandleInterval interval
+    ) {
+        if (rawCandle == null || rawCandle.size() < 7) {
+            return null;
+        }
+
+        Instant openTime = Instant.ofEpochMilli(Long.parseLong(rawCandle.get(0)));
+        return new MarketHistoricalCandleSnapshot(
+                openTime,
+                closeTime(openTime, interval),
+                parseDouble(rawCandle.get(1)),
+                parseDouble(rawCandle.get(2)),
+                parseDouble(rawCandle.get(3)),
+                parseDouble(rawCandle.get(4)),
+                parseDouble(rawCandle.get(5)),
+                parseDouble(rawCandle.get(6))
+        );
+    }
+
+    private Instant closeTime(Instant openTime, MarketCandleInterval interval) {
+        return switch (interval) {
+            case ONE_MINUTE -> openTime.plus(1, ChronoUnit.MINUTES);
+            case THREE_MINUTES -> openTime.plus(3, ChronoUnit.MINUTES);
+            case FIVE_MINUTES -> openTime.plus(5, ChronoUnit.MINUTES);
+            case FIFTEEN_MINUTES -> openTime.plus(15, ChronoUnit.MINUTES);
+            case ONE_HOUR -> openTime.plus(1, ChronoUnit.HOURS);
+            case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
+                    MarketTime.bucketClose(openTime, interval);
+        };
     }
 
     private double parseDouble(String value) {

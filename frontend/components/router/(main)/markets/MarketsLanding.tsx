@@ -169,11 +169,11 @@ export default function MarketsLanding({
         <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-6">
           <div>
             <h2 className="text-xl-custom font-semibold text-main-dark-gray">
-              수익률 랭킹
+              실현 수익률 랭킹
             </h2>
             <p className="mt-2 text-sm-custom text-main-dark-gray/62 break-keep">
-              서비스 내 상위 트레이더 흐름을 빠르게 살펴보고 현재 계정 화면으로
-              이어질 수 있습니다.
+              실제 지갑 USDT에 반영된 정산 손익과 수수료 기준으로 상위 트레이더를
+              확인합니다.
             </p>
           </div>
           <Link
@@ -344,10 +344,10 @@ function RankingRow({ entry }: { entry: MarketRankingEntry }) {
         {entry.nickname}
       </p>
       <p className="text-sm-custom font-semibold text-main-dark-gray">
-        {formatUsd(entry.totalAsset)}
+        {formatUsd(entry.walletBalance)}
       </p>
       <p className="text-sm-custom font-bold text-[#16a34a]">
-        {formatPercent(entry.profitRate)}
+        {formatPercent(entry.profitRate * 100)}
       </p>
     </div>
   );

@@ -8,6 +8,7 @@ import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
 import type { MarketApiResponse } from "@/lib/futures-api";
 import {
   isSupportedMarketSymbol,
+  type MarketRankingEntry,
   type MarketSnapshot,
   type MarketSymbol,
 } from "@/lib/markets";
@@ -23,6 +24,7 @@ type PriceFlashMetadata = {
 type MarketsLandingRealtimeViewProps = {
   initialMarkets: [MarketSnapshot, MarketSnapshot];
   isMarketDataDegraded: boolean;
+  rankingEntries: MarketRankingEntry[];
   summaryCards: DashboardSummaryCard[];
 };
 
@@ -110,6 +112,7 @@ function computeFlashIntensity(nowMs: number, metadata: PriceFlashMetadata) {
 export default function MarketsLandingRealtimeView({
   initialMarkets,
   isMarketDataDegraded,
+  rankingEntries,
   summaryCards,
 }: MarketsLandingRealtimeViewProps) {
   const [marketMap, setMarketMap] = useState<MarketSnapshotMap>(() =>
@@ -276,6 +279,7 @@ export default function MarketsLandingRealtimeView({
     <MarketsLanding
       isMarketDataDegraded={isStreamDegraded}
       markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
+      rankingEntries={rankingEntries}
       summaryCards={summaryCards}
       priceFlashBySymbol={priceFlashBySymbol}
       lastUpdatedLabel={

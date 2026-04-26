@@ -6,6 +6,7 @@ public enum ErrorCode {
     ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "계정을 찾을 수 없습니다."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원 정보를 찾을 수 없습니다."),
     POSITION_NOT_FOUND(HttpStatus.NOT_FOUND, "포지션을 찾을 수 없습니다."),
+    POSITION_CHANGED(HttpStatus.CONFLICT, "포지션이 변경되었습니다. 다시 조회 후 시도해주세요."),
     MARKET_NOT_FOUND(HttpStatus.NOT_FOUND, "마켓 정보를 찾을 수 없습니다."),
     INSUFFICIENT_AVAILABLE_MARGIN(HttpStatus.BAD_REQUEST, "사용 가능 증거금이 부족합니다."),
     MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),

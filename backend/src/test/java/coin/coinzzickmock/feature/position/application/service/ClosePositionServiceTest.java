@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.position.application.service;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
@@ -8,6 +9,8 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
+import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
@@ -68,9 +71,10 @@ class ClosePositionServiceTest {
                         accountRepository,
                         positionHistoryRepository,
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
-                        event -> {
-                        }
-                )
+                        new AfterCommitEventPublisher(event -> {
+                        })
+                ),
+                new PendingCloseOrderCapReconciler(orderRepository)
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
@@ -123,9 +127,10 @@ class ClosePositionServiceTest {
                         accountRepository,
                         positionHistoryRepository,
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
-                        event -> {
-                        }
-                )
+                        new AfterCommitEventPublisher(event -> {
+                        })
+                ),
+                new PendingCloseOrderCapReconciler(orderRepository)
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
@@ -177,9 +182,10 @@ class ClosePositionServiceTest {
                         accountRepository,
                         positionHistoryRepository,
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
-                        event -> {
-                        }
-                )
+                        new AfterCommitEventPublisher(event -> {
+                        })
+                ),
+                new PendingCloseOrderCapReconciler(orderRepository)
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.2, "MARKET", null);
@@ -231,9 +237,10 @@ class ClosePositionServiceTest {
                         accountRepository,
                         positionHistoryRepository,
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
-                        event -> {
-                        }
-                )
+                        new AfterCommitEventPublisher(event -> {
+                        })
+                ),
+                new PendingCloseOrderCapReconciler(orderRepository)
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 112000.0);
@@ -360,8 +367,8 @@ class ClosePositionServiceTest {
                 accountRepository,
                 positionHistoryRepository,
                 new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
-                event -> {
-                }
+                new AfterCommitEventPublisher(event -> {
+                })
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> finalizer.close(
@@ -402,9 +409,10 @@ class ClosePositionServiceTest {
                         accountRepository,
                         new InMemoryPositionHistoryRepository(),
                         new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
-                        event -> {
-                        }
-                )
+                        new AfterCommitEventPublisher(event -> {
+                        })
+                ),
+                new PendingCloseOrderCapReconciler(orderRepository)
         );
     }
 

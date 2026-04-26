@@ -3,19 +3,22 @@ package coin.coinzzickmock.feature.order.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
+import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
+import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.service.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -257,20 +260,30 @@ class MarketOrderExecutionServiceTest {
             AccountRepository accountRepository,
             ApplicationEventPublisher eventPublisher
     ) {
-        return new MarketOrderExecutionService(
-                orderRepository,
+        AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
+        PositionCloseFinalizer positionCloseFinalizer = new PositionCloseFinalizer(
                 positionRepository,
                 accountRepository,
-                new PendingOrderExecutionCache(),
-                new LiquidationPolicy(),
-                new PositionCloseFinalizer(
+                new InMemoryPositionHistoryRepository(),
+                new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
+                afterCommitEventPublisher
+        );
+        return new MarketOrderExecutionService(
+                new PendingOrderFillProcessor(
+                        orderRepository,
                         positionRepository,
                         accountRepository,
-                        new InMemoryPositionHistoryRepository(),
-                        new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
-                        eventPublisher
+                        new PendingOrderExecutionCache(),
+                        positionCloseFinalizer,
+                        afterCommitEventPublisher
                 ),
-                eventPublisher
+                new PositionLiquidationProcessor(
+                        positionRepository,
+                        accountRepository,
+                        new LiquidationPolicy(),
+                        positionCloseFinalizer,
+                        afterCommitEventPublisher
+                )
         );
     }
 

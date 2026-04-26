@@ -1,9 +1,11 @@
-package coin.coinzzickmock.feature.position.application.service;
+package coin.coinzzickmock.feature.position.application.close;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
@@ -16,15 +18,16 @@ import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProce
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Service
+@Component
 @RequiredArgsConstructor
 public class PositionCloseFinalizer {
     private final PositionRepository positionRepository;
     private final AccountRepository accountRepository;
     private final PositionHistoryRepository positionHistoryRepository;
     private final RewardPointGrantProcessor rewardPointGrantProcessor;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     public ClosePositionResult close(
             String memberId,
@@ -57,6 +60,7 @@ public class PositionCloseFinalizer {
                 closeOutcome.closeFee(),
                 closeOutcome.releasedMargin()
         ));
+        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
 
         RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(
                 new GrantProfitPointCommand(memberId, closeOutcome.netRealizedPnl())

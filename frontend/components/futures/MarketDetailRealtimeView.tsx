@@ -21,7 +21,7 @@ import {
   type MarketSnapshot,
 } from "@/lib/markets";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Props = {
   initialMarket: MarketSnapshot;
@@ -123,8 +123,8 @@ export default function MarketDetailRealtimeView({
   );
 
   return (
-    <div className="flex flex-col gap-main-2 px-main-2 pb-24">
-      <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-main-2 pt-4">
+    <div className="flex w-full flex-col gap-main-2 px-main-2 pb-24">
+      <section className="grid w-full grid-cols-[minmax(0,1fr)_360px] gap-main-2 pt-4">
         <div className="flex min-w-0 flex-col gap-main-2">
           <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
             <div className="flex items-start justify-between gap-main">
@@ -360,7 +360,7 @@ function PositionsTable({ positions }: { positions: FuturesPosition[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollableTableFrame>
       <table className="w-full min-w-[1120px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
@@ -443,7 +443,7 @@ function PositionsTable({ positions }: { positions: FuturesPosition[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollableTableFrame>
   );
 }
 
@@ -457,7 +457,7 @@ function PositionHistoryTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollableTableFrame>
       <table className="w-full min-w-[1280px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
@@ -530,7 +530,7 @@ function PositionHistoryTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollableTableFrame>
   );
 }
 
@@ -540,67 +540,71 @@ function OrderHistoryTable({ orders }: { orders: FuturesOrderHistory[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1080px] text-left text-sm-custom">
+    <ScrollableTableFrame>
+      <table className="w-full min-w-[1040px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
-            <th className="py-3 font-semibold">Order time</th>
+            <th className="py-3 font-semibold">Time</th>
+            <th className="py-3 font-semibold">Direction</th>
+            <th className="py-3 font-semibold">Coin</th>
             <th className="py-3 font-semibold">Order</th>
-            <th className="py-3 font-semibold">Symbol</th>
-            <th className="py-3 font-semibold">Side</th>
-            <th className="py-3 font-semibold">Type</th>
-            <th className="py-3 font-semibold">Qty</th>
-            <th className="py-3 font-semibold">Exec price</th>
+            <th className="py-3 font-semibold">Quantity</th>
+            <th className="py-3 font-semibold">Price</th>
             <th className="py-3 font-semibold">Fee</th>
             <th className="py-3 text-right font-semibold">Status</th>
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
-            <tr
-              className="border-b border-main-light-gray/70 last:border-b-0"
-              key={order.orderId}
-            >
-              <td className="py-3 text-main-dark-gray/70">
-                {formatDateTime(order.orderTime)}
-              </td>
-              <td className="py-3 font-semibold text-main-dark-gray">
-                {order.orderId}
-              </td>
-              <td className="py-3 font-semibold text-main-dark-gray">
-                {order.symbol}
-              </td>
-              <td
-                className={[
-                  "py-3 font-semibold",
-                  order.positionSide === "LONG"
-                    ? "text-emerald-600"
-                    : "text-rose-600",
-                ].join(" ")}
+          {orders.map((order) => {
+            const orderTime = formatOrderHistoryTime(order.orderTime);
+
+            return (
+              <tr
+                className="border-b border-main-light-gray/70 last:border-b-0"
+                key={order.orderId}
               >
-                {order.positionSide}
-              </td>
-              <td className="py-3 text-main-dark-gray/70">
-                {formatOrderPurpose(order.orderPurpose)} · {order.orderType} ·{" "}
-                {order.marginMode} · {order.leverage}x
-              </td>
-              <td className="py-3 text-main-dark-gray/70">
-                {order.quantity.toFixed(3)}
-              </td>
-              <td className="py-3 text-main-dark-gray/70">
-                {formatUsd(order.executionPrice)}
-              </td>
-              <td className="py-3 text-main-dark-gray/70">
-                {order.feeType} · {formatUsd(order.estimatedFee)}
-              </td>
-              <td className="py-3 text-right font-semibold text-main-dark-gray">
-                {order.status}
-              </td>
-            </tr>
-          ))}
+                <td className="py-3 text-main-dark-gray/70">
+                  <span className="block font-semibold text-main-dark-gray">
+                    {orderTime.date}
+                  </span>
+                  <span className="mt-1 block text-xs-custom">
+                    {orderTime.time}
+                  </span>
+                </td>
+                <td
+                  className={[
+                    "py-3 font-semibold",
+                    order.positionSide === "LONG"
+                      ? "text-emerald-600"
+                      : "text-rose-600",
+                  ].join(" ")}
+                >
+                  {order.positionSide}
+                </td>
+                <td className="py-3 font-semibold text-main-dark-gray">
+                  {order.symbol}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatOrderPurpose(order.orderPurpose)} · {order.orderType}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatOrderQuantity(order)}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatPlainNumber(order.executionPrice)}
+                </td>
+                <td className="py-3 text-main-dark-gray/70">
+                  {formatPlainNumber(order.estimatedFee)} USDT
+                </td>
+                <td className="py-3 text-right font-semibold text-main-dark-gray">
+                  {formatOrderStatus(order.status)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
-    </div>
+    </ScrollableTableFrame>
   );
 }
 
@@ -610,7 +614,7 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollableTableFrame>
       <table className="w-full min-w-[980px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
@@ -665,6 +669,18 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
           ))}
         </tbody>
       </table>
+    </ScrollableTableFrame>
+  );
+}
+
+function ScrollableTableFrame({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <div className="futures-table-scroll">
+      {children}
     </div>
   );
 }
@@ -723,8 +739,63 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
+function formatOrderHistoryTime(value: string): { date: string; time: string } {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      date: "-",
+      time: "-",
+    };
+  }
+
+  return {
+    date: new Intl.DateTimeFormat("en-CA", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      hour12: false,
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "Asia/Seoul",
+    }).format(date),
+  };
+}
+
 function formatOrderPurpose(value: FuturesOpenOrder["orderPurpose"]): string {
   return value === "CLOSE_POSITION" ? "Close" : "Open";
+}
+
+function formatOrderQuantity(order: FuturesOrderHistory): string {
+  return `${formatPlainNumber(order.quantity)} ${getBaseAsset(order.symbol)}`;
+}
+
+function getBaseAsset(symbol: string): string {
+  return symbol.endsWith("USDT") ? symbol.slice(0, -4) : symbol;
+}
+
+function formatPlainNumber(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "-";
+  }
+
+  return value.toFixed(8).replace(/\.?0+$/, "");
+}
+
+function formatOrderStatus(status: FuturesOrderHistory["status"]): string {
+  if (status === "FILLED") {
+    return "Executed";
+  }
+
+  if (status === "CANCELLED") {
+    return "Cancelled";
+  }
+
+  return "Rejected";
 }
 
 function formatCloseReason(reason: string): string {

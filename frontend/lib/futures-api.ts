@@ -288,7 +288,7 @@ export async function getFuturesOrderHistory(
     return [];
   }
 
-  return response.filter((order) => isSupportedMarketSymbol(order.symbol));
+  return filterSupportedOrderHistory(response, symbol);
 }
 
 export async function getFuturesPositionHistory(
@@ -314,6 +314,15 @@ export async function getFuturesReward(): Promise<FuturesReward> {
 export async function getShopItems(): Promise<ShopItem[]> {
   const response = await readApi<ShopItem[]>("/api/futures/shop/items");
   return response ?? SHOP_ITEM_FALLBACKS;
+}
+
+function filterSupportedOrderHistory(
+  orders: FuturesOrderHistory[],
+  symbol?: MarketSymbol
+): FuturesOrderHistory[] {
+  return orders
+    .filter((order) => isSupportedMarketSymbol(order.symbol))
+    .filter((order) => !symbol || order.symbol === symbol);
 }
 
 async function readApi<T>(path: string): Promise<T | null> {

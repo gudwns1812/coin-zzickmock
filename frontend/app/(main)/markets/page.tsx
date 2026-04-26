@@ -57,10 +57,12 @@ export default async function MarketsPage() {
   ];
 
   return (
-    <MarketsLandingRealtimeView
-      initialMarkets={[btcMarket, ethMarket]}
-      isMarketDataDegraded={isFallback}
-      summaryCards={summaryCards}
-    />
+    <div className="mx-auto w-full max-w-[1200px]">
+      <MarketsLandingRealtimeView
+        initialMarkets={[btcMarket, ethMarket]}
+        isMarketDataDegraded={isFallback}
+        summaryCards={summaryCards}
+      />
+    </div>
   );
 }

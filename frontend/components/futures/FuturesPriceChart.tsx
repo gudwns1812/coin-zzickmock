@@ -586,16 +586,20 @@ export default function FuturesPriceChart({
     }));
 
     orderPriceLinesRef.current = openOrders
-      .filter((order) => order.limitPrice !== null)
+      .map((order) => ({
+        order,
+        price: order.triggerPrice ?? order.limitPrice,
+      }))
+      .filter((entry): entry is { order: FuturesOpenOrder; price: number } => entry.price !== null && entry.price !== undefined)
       .map((order) => ({
         owner: activeSeries,
         line: activeSeries.createPriceLine({
-          price: order.limitPrice!,
-          color: getOrderPriceLineColor(order),
+          price: order.price,
+          color: getOrderPriceLineColor(order.order),
           lineWidth: 1,
           lineStyle: 2,
           axisLabelVisible: true,
-          title: getOrderPriceLineTitle(order, formatUsd(order.limitPrice!)),
+          title: getOrderPriceLineTitle(order.order, formatUsd(order.price)),
         }),
       }));
   }, [hasCandleData, openOrders, positions]);

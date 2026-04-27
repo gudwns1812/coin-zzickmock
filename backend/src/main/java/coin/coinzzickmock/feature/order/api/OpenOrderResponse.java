@@ -17,7 +17,11 @@ public record OpenOrderResponse(
         String feeType,
         double estimatedFee,
         double executionPrice,
-        Instant orderTime
+        Instant orderTime,
+        Double triggerPrice,
+        String triggerType,
+        String triggerSource,
+        String ocoGroupId
 ) {
     public static OpenOrderResponse from(OpenOrderResult result) {
         return new OpenOrderResponse(
@@ -34,7 +38,11 @@ public record OpenOrderResponse(
                 result.feeType(),
                 result.estimatedFee(),
                 result.executionPrice(),
-                result.orderTime()
+                result.orderTime(),
+                result.triggerPrice(),
+                result.triggerType(),
+                result.triggerSource(),
+                result.ocoGroupId()
         );
     }
 }

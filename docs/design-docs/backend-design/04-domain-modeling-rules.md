@@ -53,6 +53,16 @@
 - 공식은 코드나 테스트만 보고 재추론하지 않도록 문서에 이름, 입력값, 기준 가격, 반올림/절단 기준, 예외 조건을 남긴다.
 - 프론트가 표시용으로 서버 공식을 일부 복제할 때도 원문 공식은 문서에 두고, 프론트 구현은 그 문서를 따르는 파생 구현으로 취급한다.
 
+### Futures TP/SL Order Rule
+
+- TP/SL처럼 사용자가 주문으로 인식하고 취소/이력/체결을 기대하는 실행 의도는 포지션 필드가 아니라 `FuturesOrder`가 source of truth다.
+- TP/SL 조건부 주문은 `orderPurpose == CLOSE_POSITION`에서 reduce-only 의미를 파생한다. 별도 `reduceOnly` 필드를 추가하지 않는다.
+- TP/SL trigger 판단은 `triggerSource = MARK_PRICE`, execution은 latest/last price를 사용한다.
+- Active pending TP/SL uniqueness는 `futures_orders.active_conditional_trigger_type` unique key로 보장한다. 이 컬럼은 pending conditional close order에만 trigger type을 보관하고, filled/cancelled/manual/open order에서는 `NULL`이어야 한다.
+- V9 legacy position TP/SL 컬럼은 V11 migration에서 조건부 close order로 backfill한 뒤 호환 컬럼으로만 남긴다.
+- TP/SL OCO exposure 공식은 `sum(ungrouped pending close quantity) + sum(max(quantity) per ocoGroupId)`이며, 포지션 summary의 `pendingCloseQuantity`와 `closeableQuantity`도 이 공식을 따른다.
+- `open_positions.take_profit_price`, `open_positions.stop_loss_price`는 legacy 호환 컬럼일 뿐 domain/application의 TP/SL read/write/trigger source가 아니다.
+
 도메인에 두지 않는 대상:
 
 - HTTP 요청/응답 처리

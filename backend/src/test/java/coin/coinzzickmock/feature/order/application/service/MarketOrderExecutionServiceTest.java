@@ -317,7 +317,18 @@ class MarketOrderExecutionServiceTest {
                 1,
                 100,
                 100
-        ).withTakeProfitStopLoss(105.0, null));
+        ));
+        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+                "tp-order",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                105,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
         orderRepository.save("demo-member", pendingCloseOrderAt(
                 "close-after-tp",
                 "LONG",
@@ -336,6 +347,54 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void triggeredTakeProfitCancelsOcoStopLossSibling() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+                "tp-order",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                105,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
+        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+                "sl-order",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                95,
+                FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                "oco-1"
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId("demo-member", "tp-order").orElseThrow();
+        FuturesOrder stopLoss = orderRepository.findByMemberIdAndOrderId("demo-member", "sl-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, takeProfit.status());
+        assertEquals(FuturesOrder.STATUS_CANCELLED, stopLoss.status());
+        assertEquals("POSITION_TAKE_PROFIT", eventPublisher.events.get(0).type());
+    }
+
+    @Test
     void stopLossTriggerPublishesOnlyAfterTransactionCommit() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -349,7 +408,18 @@ class MarketOrderExecutionServiceTest {
                 1,
                 100,
                 100
-        ).withTakeProfitStopLoss(null, 104.0));
+        ));
+        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+                "sl-order",
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                1,
+                104,
+                FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                null
+        ));
 
         TransactionSynchronizationManager.initSynchronization();
         try {
@@ -489,6 +559,7 @@ class MarketOrderExecutionServiceTest {
                         afterCommitEventPublisher
                 ),
                 new PositionTakeProfitStopLossProcessor(
+                        orderRepository,
                         positionRepository,
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,

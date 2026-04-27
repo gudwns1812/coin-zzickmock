@@ -97,7 +97,7 @@ public class OrderPersistenceRepository implements OrderRepository {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();
         entity.updateStatus(status);
-        return futuresOrderEntityRepository.save(entity).toDomain();
+        return futuresOrderEntityRepository.saveAndFlush(entity).toDomain();
     }
 
     @Override
@@ -106,6 +106,6 @@ public class OrderPersistenceRepository implements OrderRepository {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();
         entity.updateQuantityAndStatus(quantity, status);
-        return futuresOrderEntityRepository.save(entity).toDomain();
+        return futuresOrderEntityRepository.saveAndFlush(entity).toDomain();
     }
 }

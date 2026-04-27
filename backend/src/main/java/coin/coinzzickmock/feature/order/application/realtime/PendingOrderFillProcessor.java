@@ -81,7 +81,7 @@ public class PendingOrderFillProcessor {
     }
 
     private boolean isExecutableInDirection(FuturesOrder order, MarketPriceMovementDirection direction) {
-        if (!order.isPending() || order.limitPrice() == null) {
+        if (!order.isPending() || order.isConditionalOrder() || order.limitPrice() == null) {
             return false;
         }
         if (direction == MarketPriceMovementDirection.UP) {
@@ -103,7 +103,7 @@ public class PendingOrderFillProcessor {
     private void fillIfExecutable(PendingOrderCandidate candidate, MarketSummaryResult market) {
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(candidate.memberId(), candidate.orderId())
                 .orElse(candidate.order());
-        if (!order.isPending() || order.limitPrice() == null) {
+        if (!order.isPending() || order.isConditionalOrder() || order.limitPrice() == null) {
             pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), candidate.orderId());
             return;
         }

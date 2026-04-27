@@ -13,7 +13,7 @@ export function getPositionPriceLineTitle(
 }
 
 export function getOrderPriceLineColor(
-  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide">
+  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide" | "triggerType">
 ): string {
   return isGreenOrderLabel(order)
     ? TRADE_LABEL_COLORS.green
@@ -21,14 +21,14 @@ export function getOrderPriceLineColor(
 }
 
 export function getOrderPriceLineTitle(
-  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide">,
+  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide" | "triggerType">,
   formattedLimitPrice: string
 ): string {
-  return `${formatOrderPurpose(order.orderPurpose)} ${formatSide(order.positionSide)} ${formattedLimitPrice}`;
+  return `${formatOrderPurpose(order)} ${formatSide(order.positionSide)} ${formattedLimitPrice}`;
 }
 
 function isGreenOrderLabel(
-  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide">
+  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide" | "triggerType">
 ): boolean {
   return (
     (order.orderPurpose === "OPEN_POSITION" && order.positionSide === "LONG") ||
@@ -36,8 +36,18 @@ function isGreenOrderLabel(
   );
 }
 
-function formatOrderPurpose(orderPurpose: FuturesOpenOrder["orderPurpose"]): string {
-  return orderPurpose === "CLOSE_POSITION" ? "Close" : "Open";
+function formatOrderPurpose(
+  order: Pick<FuturesOpenOrder, "orderPurpose" | "triggerType">
+): string {
+  if (order.triggerType === "TAKE_PROFIT") {
+    return "TP Close";
+  }
+
+  if (order.triggerType === "STOP_LOSS") {
+    return "SL Close";
+  }
+
+  return order.orderPurpose === "CLOSE_POSITION" ? "Close" : "Open";
 }
 
 function formatSide(positionSide: FuturesPosition["positionSide"]): string {

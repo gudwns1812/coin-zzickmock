@@ -29,7 +29,7 @@ import {
 } from "@/lib/markets";
 import { Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
@@ -500,7 +500,7 @@ function PositionCard({ position }: { position: FuturesPosition }) {
           marginMode={position.marginMode}
           positionSide={position.positionSide}
           quantity={position.quantity}
-          suggestedLimitPrice={position.markPrice}
+          markPrice={position.markPrice}
           symbol={position.symbol}
         />
       </div>
@@ -610,11 +610,16 @@ function PositionTpslEditor({
     formatEditablePrice(position.stopLossPrice)
   );
   const [isPending, setIsPending] = useState(false);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    setTakeProfitPrice(formatEditablePrice(position.takeProfitPrice));
-    setStopLossPrice(formatEditablePrice(position.stopLossPrice));
+    if (isOpen && !wasOpenRef.current) {
+      setTakeProfitPrice(formatEditablePrice(position.takeProfitPrice));
+      setStopLossPrice(formatEditablePrice(position.stopLossPrice));
+    }
+    wasOpenRef.current = isOpen;
   }, [
+    isOpen,
     position.marginMode,
     position.positionSide,
     position.stopLossPrice,
@@ -874,13 +879,13 @@ function OrderHistoryTable({ orders }: { orders: FuturesOrderHistory[] }) {
                   {order.symbol}
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
-                  {formatOrderPurpose(order.orderPurpose)} · {order.orderType}
+                  {formatOrderPurpose(order)} · {order.orderType}
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
                   {formatOrderQuantity(order)}
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
-                  {formatPlainNumber(order.executionPrice)}
+                  {formatOrderPrice(order)}
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
                   {formatPlainNumber(order.estimatedFee)} USDT
@@ -947,7 +952,7 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
                   <span className="block font-semibold text-main-dark-gray">
-                    {order.orderType}
+                    {formatOrderPurpose(order)}
                   </span>
                   <span className="mt-1 block text-xs-custom">
                     #{order.orderId.slice(0, 8)}
@@ -957,7 +962,7 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                   {formatOrderQuantity(order)}
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
-                  {order.limitPrice ? formatUsd(order.limitPrice) : "-"}
+                  {formatOrderPrice(order)}
                 </td>
                 <td className="py-3 font-semibold text-main-dark-gray">
                   {formatOrderStatus(order.status)}
@@ -1074,8 +1079,18 @@ function formatOrderHistoryTime(value: string): { date: string; time: string } {
   };
 }
 
-function formatOrderPurpose(value: FuturesOpenOrder["orderPurpose"]): string {
-  return value === "CLOSE_POSITION" ? "Close" : "Open";
+function formatOrderPurpose(
+  order: Pick<FuturesOpenOrder, "orderPurpose" | "triggerType">
+): string {
+  if (order.triggerType === "TAKE_PROFIT") {
+    return "TP Close";
+  }
+
+  if (order.triggerType === "STOP_LOSS") {
+    return "SL Close";
+  }
+
+  return order.orderPurpose === "CLOSE_POSITION" ? "Close" : "Open";
 }
 
 function formatOrderQuantity(
@@ -1114,9 +1129,9 @@ function formatOrderStatus(status: FuturesOrderHistory["status"]): string {
 }
 
 function formatOrderDirection(
-  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide">
+  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide" | "triggerType">
 ): string {
-  return `${formatOrderPurpose(order.orderPurpose)} ${
+  return `${formatOrderPurpose(order)} ${
     order.positionSide === "LONG" ? "Long" : "Short"
   }`;
 }
@@ -1128,6 +1143,22 @@ function getOrderDirectionTone(
     (order.orderPurpose === "OPEN_POSITION" && order.positionSide === "LONG") ||
     (order.orderPurpose === "CLOSE_POSITION" && order.positionSide === "SHORT");
   return green ? "text-emerald-600" : "text-rose-600";
+}
+
+function formatOrderPrice(
+  order: Pick<FuturesOrderHistory, "limitPrice" | "triggerPrice" | "executionPrice" | "status">
+): string {
+  if (order.status === "PENDING" || order.status === "OPEN") {
+    const pendingPrice = order.triggerPrice ?? order.limitPrice;
+    return pendingPrice == null ? "-" : formatUsd(pendingPrice);
+  }
+
+  if (order.executionPrice > 0) {
+    return formatPlainNumber(order.executionPrice);
+  }
+
+  const fallbackPrice = order.triggerPrice ?? order.limitPrice;
+  return fallbackPrice == null ? "-" : formatUsd(fallbackPrice);
 }
 
 function formatCloseReason(reason: string): string {

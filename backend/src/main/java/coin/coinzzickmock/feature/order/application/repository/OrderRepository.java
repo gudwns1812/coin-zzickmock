@@ -30,6 +30,25 @@ public interface OrderRepository {
                 .toList();
     }
 
+    default List<FuturesOrder> findPendingConditionalCloseOrders(
+            String memberId,
+            String symbol,
+            String positionSide,
+            String marginMode
+    ) {
+        return findPendingCloseOrders(memberId, symbol, positionSide, marginMode).stream()
+                .filter(FuturesOrder::isConditionalCloseOrder)
+                .toList();
+    }
+
+    default List<FuturesOrder> findPendingConditionalCloseOrdersBySymbol(String symbol) {
+        return findPendingBySymbol(symbol).stream()
+                .map(PendingOrderCandidate::order)
+                .filter(FuturesOrder::isPending)
+                .filter(FuturesOrder::isConditionalCloseOrder)
+                .toList();
+    }
+
     Optional<FuturesOrder> claimPendingFill(
             String memberId,
             String orderId,

@@ -29,3 +29,17 @@ test("TP/SL editor is opened from an edit affordance", () => {
   assert.equal(source.includes("setIsOpen(true)"), true);
   assert.equal(source.includes("isOpen={isOpen}"), true);
 });
+
+test("TP/SL editor and order tables support conditional order semantics", () => {
+  assert.equal(source.includes("wasOpenRef"), true);
+  assert.equal(source.includes('triggerType === "TAKE_PROFIT"'), true);
+  assert.equal(source.includes('return "TP Close"'), true);
+  assert.equal(source.includes('return "SL Close"'), true);
+  assert.equal(source.includes("order.triggerPrice ?? order.limitPrice"), true);
+});
+
+test("TP/SL editor does not default empty fields to mark price", () => {
+  assert.equal(source.includes("setTakeProfitPrice(formatEditablePrice(position.takeProfitPrice))"), true);
+  assert.equal(source.includes("setStopLossPrice(formatEditablePrice(position.stopLossPrice))"), true);
+  assert.equal(source.includes("snapshotPrice"), false);
+});

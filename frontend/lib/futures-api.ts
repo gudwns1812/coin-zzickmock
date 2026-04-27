@@ -81,6 +81,10 @@ export type FuturesOpenOrder = {
   estimatedFee: number;
   executionPrice: number;
   orderTime: string;
+  triggerPrice?: number | null;
+  triggerType?: "TAKE_PROFIT" | "STOP_LOSS" | null;
+  triggerSource?: "MARK_PRICE" | null;
+  ocoGroupId?: string | null;
 };
 
 export type FuturesOrderHistory = Omit<FuturesOpenOrder, "status"> & {

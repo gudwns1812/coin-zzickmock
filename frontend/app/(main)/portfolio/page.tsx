@@ -89,7 +89,7 @@ export default async function PortfolioPage() {
                       positionSide={position.positionSide}
                       marginMode={position.marginMode}
                       quantity={position.quantity}
-                      suggestedLimitPrice={position.markPrice}
+                      markPrice={position.markPrice}
                     />
                   </div>
 

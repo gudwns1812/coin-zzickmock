@@ -64,3 +64,28 @@ test("position labels omit margin mode and order labels include open close inten
     "Close Long $110.00"
   );
 });
+
+test("conditional TP/SL close orders use trigger labels", () => {
+  assert.equal(
+    getOrderPriceLineTitle(
+      {
+        orderPurpose: "CLOSE_POSITION",
+        positionSide: "LONG",
+        triggerType: "TAKE_PROFIT",
+      },
+      "$110.00"
+    ),
+    "TP Close Long $110.00"
+  );
+  assert.equal(
+    getOrderPriceLineTitle(
+      {
+        orderPurpose: "CLOSE_POSITION",
+        positionSide: "SHORT",
+        triggerType: "STOP_LOSS",
+      },
+      "$105.00"
+    ),
+    "SL Close Short $105.00"
+  );
+});

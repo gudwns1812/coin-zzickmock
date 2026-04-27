@@ -61,6 +61,21 @@ public class FuturesOrderEntity {
     @Column(name = "execution_price", nullable = false, precision = 19, scale = 4)
     private BigDecimal executionPrice;
 
+    @Column(name = "trigger_price", precision = 19, scale = 4)
+    private BigDecimal triggerPrice;
+
+    @Column(name = "trigger_type", length = 30)
+    private String triggerType;
+
+    @Column(name = "trigger_source", length = 30)
+    private String triggerSource;
+
+    @Column(name = "oco_group_id", length = 64)
+    private String ocoGroupId;
+
+    @Column(name = "active_conditional_trigger_type", length = 30)
+    private String activeConditionalTriggerType;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -84,6 +99,11 @@ public class FuturesOrderEntity {
         entity.feeType = futuresOrder.feeType();
         entity.estimatedFee = decimal(futuresOrder.estimatedFee());
         entity.executionPrice = decimal(futuresOrder.executionPrice());
+        entity.triggerPrice = futuresOrder.triggerPrice() == null ? null : decimal(futuresOrder.triggerPrice());
+        entity.triggerType = futuresOrder.triggerType();
+        entity.triggerSource = futuresOrder.triggerSource();
+        entity.ocoGroupId = futuresOrder.ocoGroupId();
+        entity.activeConditionalTriggerType = activeConditionalTriggerType(futuresOrder);
         return entity;
     }
 
@@ -102,7 +122,11 @@ public class FuturesOrderEntity {
                 feeType,
                 estimatedFee.doubleValue(),
                 executionPrice.doubleValue(),
-                createdAt
+                createdAt,
+                triggerPrice == null ? null : triggerPrice.doubleValue(),
+                triggerType,
+                triggerSource,
+                ocoGroupId
         );
     }
 
@@ -112,14 +136,32 @@ public class FuturesOrderEntity {
 
     public void updateStatus(String status) {
         this.status = status;
+        this.activeConditionalTriggerType = activeConditionalTriggerType();
     }
 
     public void updateQuantityAndStatus(double quantity, String status) {
         this.quantity = decimal(quantity);
         this.status = status;
+        this.activeConditionalTriggerType = activeConditionalTriggerType();
     }
 
     private static BigDecimal decimal(double value) {
         return BigDecimal.valueOf(value);
+    }
+
+    private static String activeConditionalTriggerType(FuturesOrder order) {
+        if (order.isPending() && order.isConditionalCloseOrder()) {
+            return order.triggerType();
+        }
+        return null;
+    }
+
+    private String activeConditionalTriggerType() {
+        if (FuturesOrder.STATUS_PENDING.equals(status)
+                && FuturesOrder.PURPOSE_CLOSE_POSITION.equals(orderPurpose)
+                && triggerType != null) {
+            return triggerType;
+        }
+        return null;
     }
 }

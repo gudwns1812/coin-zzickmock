@@ -37,7 +37,11 @@ public class GetOpenOrdersService {
                 order.feeType(),
                 order.estimatedFee(),
                 order.executionPrice(),
-                order.orderTime()
+                order.orderTime(),
+                order.triggerPrice(),
+                order.triggerType(),
+                order.triggerSource(),
+                order.ocoGroupId()
         );
     }
 }

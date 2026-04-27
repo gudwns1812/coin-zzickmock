@@ -3,8 +3,11 @@ package coin.coinzzickmock.feature.position.application.close;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -36,8 +39,13 @@ public class PendingCloseOrderCapReconciler {
     }
 
     public double pendingCloseQuantity(String memberId, PositionSnapshot position) {
-        return pendingCloseOrders(memberId, position.symbol(), position.positionSide(), position.marginMode()).stream()
-                .mapToDouble(FuturesOrder::quantity)
+        return exposureBuckets(pendingCloseOrders(
+                memberId,
+                position.symbol(),
+                position.positionSide(),
+                position.marginMode()
+        )).stream()
+                .mapToDouble(CloseExposureBucket::exposureQuantity)
                 .sum();
     }
 
@@ -54,34 +62,53 @@ public class PendingCloseOrderCapReconciler {
             double currentPrice
     ) {
         List<FuturesOrder> pendingCloseOrders = pendingCloseOrders(memberId, symbol, positionSide, marginMode);
-        double pendingQuantity = pendingCloseOrders.stream()
-                .mapToDouble(FuturesOrder::quantity)
+        List<CloseExposureBucket> buckets = exposureBuckets(pendingCloseOrders);
+        double pendingQuantity = buckets.stream()
+                .mapToDouble(CloseExposureBucket::exposureQuantity)
                 .sum();
         double excessQuantity = pendingQuantity - Math.max(0, heldQuantity);
         if (excessQuantity <= 0) {
             return;
         }
 
-        for (FuturesOrder order : pendingCloseOrders.stream()
-                .sorted(leastLikelyToExecuteFirst(positionSide, currentPrice))
+        for (CloseExposureBucket bucket : buckets.stream()
+                .sorted(bucketComparator(positionSide, currentPrice))
                 .toList()) {
             if (excessQuantity <= 0) {
                 return;
             }
-            double reduction = Math.min(order.quantity(), excessQuantity);
-            double nextQuantity = order.quantity() - reduction;
+            double reduction = Math.min(bucket.exposureQuantity(), excessQuantity);
+            double nextQuantity = bucket.exposureQuantity() - reduction;
             if (nextQuantity <= 0) {
-                orderRepository.updateStatus(memberId, order.orderId(), FuturesOrder.STATUS_CANCELLED);
+                bucket.orders().forEach(order ->
+                        orderRepository.updateStatus(memberId, order.orderId(), FuturesOrder.STATUS_CANCELLED));
             } else {
-                orderRepository.updateQuantityAndStatus(
-                        memberId,
-                        order.orderId(),
-                        nextQuantity,
-                        FuturesOrder.STATUS_PENDING
+                bucket.orders().forEach(order -> orderRepository.updateQuantityAndStatus(
+                                memberId,
+                                order.orderId(),
+                                Math.min(order.quantity(), nextQuantity),
+                                FuturesOrder.STATUS_PENDING
+                        )
                 );
             }
             excessQuantity -= reduction;
         }
+    }
+
+    private List<CloseExposureBucket> exposureBuckets(List<FuturesOrder> orders) {
+        List<CloseExposureBucket> buckets = new ArrayList<>();
+        Map<String, List<FuturesOrder>> grouped = orders.stream()
+                .filter(order -> order.ocoGroupId() != null && !order.ocoGroupId().isBlank())
+                .collect(Collectors.groupingBy(FuturesOrder::ocoGroupId));
+
+        orders.stream()
+                .filter(order -> order.ocoGroupId() == null || order.ocoGroupId().isBlank())
+                .map(order -> new CloseExposureBucket(List.of(order)))
+                .forEach(buckets::add);
+        grouped.values().stream()
+                .map(CloseExposureBucket::new)
+                .forEach(buckets::add);
+        return buckets;
     }
 
     private List<FuturesOrder> pendingCloseOrders(
@@ -102,15 +129,53 @@ public class PendingCloseOrderCapReconciler {
         Comparator<FuturesOrder> priceComparator;
         if ("LONG".equalsIgnoreCase(positionSide)) {
             priceComparator = Comparator.comparing(
-                    (FuturesOrder order) -> order.limitPrice() == null ? currentPrice : order.limitPrice()
+                    (FuturesOrder order) -> executionReferencePrice(order, currentPrice)
             ).reversed();
         } else {
             priceComparator = Comparator.comparing(
-                    order -> order.limitPrice() == null ? currentPrice : order.limitPrice()
+                    order -> executionReferencePrice(order, currentPrice)
             );
         }
         return priceComparator
                 .thenComparing(Comparator.comparing(FuturesOrder::orderTime).reversed())
                 .thenComparing(FuturesOrder::orderId);
+    }
+
+    private Comparator<CloseExposureBucket> bucketComparator(String positionSide, double currentPrice) {
+        Comparator<FuturesOrder> orderComparator = leastLikelyToExecuteFirst(positionSide, currentPrice);
+        return (left, right) -> {
+            int byConditional = Boolean.compare(right.isConditional(), left.isConditional());
+            if (byConditional != 0) {
+                return byConditional;
+            }
+            return orderComparator.compare(left.sortOrder(orderComparator), right.sortOrder(orderComparator));
+        };
+    }
+
+    private double executionReferencePrice(FuturesOrder order, double currentPrice) {
+        if (order.limitPrice() != null) {
+            return order.limitPrice();
+        }
+        if (order.triggerPrice() != null) {
+            return order.triggerPrice();
+        }
+        return currentPrice;
+    }
+
+    private record CloseExposureBucket(List<FuturesOrder> orders) {
+        double exposureQuantity() {
+            return orders.stream()
+                    .mapToDouble(FuturesOrder::quantity)
+                    .max()
+                    .orElse(0);
+        }
+
+        boolean isConditional() {
+            return orders.stream().anyMatch(FuturesOrder::isConditionalCloseOrder);
+        }
+
+        FuturesOrder sortOrder(Comparator<FuturesOrder> comparator) {
+            return orders.stream().sorted(comparator).findFirst().orElseThrow();
+        }
     }
 }

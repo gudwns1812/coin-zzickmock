@@ -27,8 +27,9 @@ import org.junit.jupiter.api.Test;
 
 class UpdatePositionTpslServiceTest {
     @Test
-    void updatesTakeProfitAndStopLossWhenPricesAreNotAlreadyBreached() {
+    void createsTakeProfitAndStopLossOrdersWhenPricesAreNotAlreadyBreached() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         positionRepository.save("demo-member", PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
@@ -38,7 +39,7 @@ class UpdatePositionTpslServiceTest {
                 100,
                 100
         ));
-        UpdatePositionTpslService service = service(positionRepository, 101);
+        UpdatePositionTpslService service = service(positionRepository, orderRepository, 101);
 
         PositionSnapshotResult result = service.update(
                 "demo-member",
@@ -53,9 +54,17 @@ class UpdatePositionTpslServiceTest {
         assertEquals(95, result.stopLossPrice(), 0.0001);
         PositionSnapshot persisted = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
-        assertEquals(110, persisted.takeProfitPrice(), 0.0001);
-        assertEquals(95, persisted.stopLossPrice(), 0.0001);
-        assertEquals(1, persisted.version());
+        assertEquals(null, persisted.takeProfitPrice());
+        assertEquals(null, persisted.stopLossPrice());
+        assertEquals(0, persisted.version());
+        List<FuturesOrder> orders = orderRepository.findPendingConditionalCloseOrders(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED"
+        );
+        assertEquals(2, orders.size());
+        assertEquals(1, orders.stream().map(FuturesOrder::ocoGroupId).distinct().count());
     }
 
     @Test
@@ -71,7 +80,7 @@ class UpdatePositionTpslServiceTest {
                 100
         ));
 
-        assertThrows(CoreException.class, () -> service(positionRepository, 101).update(
+        assertThrows(CoreException.class, () -> service(positionRepository, new InMemoryOrderRepository(), 101).update(
                 "demo-member",
                 "BTCUSDT",
                 "LONG",
@@ -94,7 +103,7 @@ class UpdatePositionTpslServiceTest {
                 100
         ));
 
-        assertThrows(CoreException.class, () -> service(positionRepository, 101).update(
+        assertThrows(CoreException.class, () -> service(positionRepository, new InMemoryOrderRepository(), 101).update(
                 "demo-member",
                 "BTCUSDT",
                 "SHORT",
@@ -104,10 +113,15 @@ class UpdatePositionTpslServiceTest {
         ));
     }
 
-    private UpdatePositionTpslService service(InMemoryPositionRepository positionRepository, double markPrice) {
+    private UpdatePositionTpslService service(
+            InMemoryPositionRepository positionRepository,
+            InMemoryOrderRepository orderRepository,
+            double markPrice
+    ) {
         return new UpdatePositionTpslService(
                 positionRepository,
-                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
+                orderRepository,
+                new PendingCloseOrderCapReconciler(orderRepository),
                 new FakeProviders(markPrice)
         );
     }
@@ -169,25 +183,31 @@ class UpdatePositionTpslServiceTest {
         }
     }
 
-    private static class EmptyOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository implements OrderRepository {
+        private final List<FuturesOrder> orders = new ArrayList<>();
+
         @Override
         public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+            orders.add(futuresOrder);
             return futuresOrder;
         }
 
         @Override
         public List<FuturesOrder> findByMemberId(String memberId) {
-            return List.of();
+            return orders;
         }
 
         @Override
         public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
-            return Optional.empty();
+            return orders.stream().filter(order -> order.orderId().equals(orderId)).findFirst();
         }
 
         @Override
         public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
-            return List.of();
+            return orders.stream()
+                    .filter(order -> order.symbol().equals(symbol))
+                    .map(order -> new PendingOrderCandidate("demo-member", order))
+                    .toList();
         }
 
         @Override
@@ -203,7 +223,23 @@ class UpdatePositionTpslServiceTest {
 
         @Override
         public FuturesOrder updateStatus(String memberId, String orderId, String status) {
-            throw new UnsupportedOperationException();
+            FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+            orders.remove(order);
+            FuturesOrder updated = FuturesOrder.STATUS_CANCELLED.equals(status) ? order.cancel() : order;
+            orders.add(updated);
+            return updated;
+        }
+
+        @Override
+        public FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+            FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+            orders.remove(order);
+            FuturesOrder updated = order.withQuantity(quantity);
+            if (FuturesOrder.STATUS_CANCELLED.equals(status)) {
+                updated = updated.cancel();
+            }
+            orders.add(updated);
+            return updated;
         }
     }
 

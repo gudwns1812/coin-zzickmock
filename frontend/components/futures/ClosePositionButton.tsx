@@ -4,7 +4,7 @@ import Button from "@/components/ui/shared/Button";
 import Modal from "@/components/ui/Modal";
 import { formatUsd } from "@/lib/markets";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
   positionSide: "LONG" | "SHORT";
   marginMode: "ISOLATED" | "CROSS";
   quantity: number;
-  suggestedLimitPrice: number;
+  markPrice: number;
   disabled?: boolean;
 };
 
@@ -36,7 +36,7 @@ export default function ClosePositionButton({
   positionSide,
   marginMode,
   quantity,
-  suggestedLimitPrice,
+  markPrice,
   disabled = false,
 }: Props) {
   const router = useRouter();
@@ -44,16 +44,18 @@ export default function ClosePositionButton({
   const [isOpen, setIsOpen] = useState(false);
   const [orderType, setOrderType] = useState<CloseOrderType>("MARKET");
   const [closeQuantity, setCloseQuantity] = useState(quantity.toString());
-  const [limitPrice, setLimitPrice] = useState(suggestedLimitPrice.toFixed(1));
+  const [limitPrice, setLimitPrice] = useState(markPrice.toFixed(1));
+  const [snapshotMarkPrice, setSnapshotMarkPrice] = useState(markPrice);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
+    if (isOpen && !wasOpenRef.current) {
+      setSnapshotMarkPrice(markPrice);
+      setCloseQuantity(quantity.toString());
+      setLimitPrice(markPrice.toFixed(1));
     }
-
-    setCloseQuantity(quantity.toString());
-    setLimitPrice(suggestedLimitPrice.toFixed(1));
-  }, [isOpen, quantity, suggestedLimitPrice]);
+    wasOpenRef.current = isOpen;
+  }, [isOpen, quantity, markPrice]);
 
   async function handleClose() {
     const parsedQuantity = Number.parseFloat(closeQuantity);
@@ -221,7 +223,7 @@ export default function ClosePositionButton({
 
           <div className="mt-5 rounded-main bg-main-light-gray/30 px-main py-3 text-xs-custom text-main-dark-gray/65">
             {orderType === "MARKET"
-              ? `시장가로 즉시 종료합니다. 기준가 ${formatUsd(suggestedLimitPrice)}`
+              ? `시장가로 즉시 종료합니다. 기준가 ${formatUsd(snapshotMarkPrice)}`
               : "지정가 종료 주문은 체결 전까지 Open orders에서 취소할 수 있습니다."}
           </div>
 

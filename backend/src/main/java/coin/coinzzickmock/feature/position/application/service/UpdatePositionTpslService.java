@@ -3,12 +3,16 @@ package coin.coinzzickmock.feature.position.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.providers.Providers;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UpdatePositionTpslService {
     private final PositionRepository positionRepository;
+    private final OrderRepository orderRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final Providers providers;
 
@@ -40,16 +45,11 @@ public class UpdatePositionTpslService {
         validateTargetPrices(current, takeProfitPrice, stopLossPrice, markPrice);
 
         PositionSnapshot marked = current.markToMarket(markPrice);
-        PositionSnapshot next = marked.withTakeProfitStopLoss(takeProfitPrice, stopLossPrice);
-        PositionMutationResult mutationResult = positionRepository.updateWithVersion(memberId, current, next);
-        if (!mutationResult.succeeded()) {
-            if (mutationResult.status() == PositionMutationResult.Status.NOT_FOUND) {
-                throw new CoreException(ErrorCode.POSITION_NOT_FOUND);
-            }
-            throw new CoreException(ErrorCode.POSITION_CHANGED);
-        }
+        cancelExistingTpslOrders(memberId, marked);
+        createReplacementOrders(memberId, marked, takeProfitPrice, stopLossPrice);
+        pendingCloseOrderCapReconciler.reconcile(memberId, marked, marked.quantity(), market.lastPrice());
 
-        return toResult(memberId, mutationResult.updatedSnapshot());
+        return toResult(memberId, marked);
     }
 
     private void validateTargetPrices(
@@ -61,12 +61,10 @@ public class UpdatePositionTpslService {
         validatePositivePrice(takeProfitPrice, "TP 가격을 확인해주세요.");
         validatePositivePrice(stopLossPrice, "SL 가격을 확인해주세요.");
 
-        if (takeProfitPrice != null
-                && position.withTakeProfitStopLoss(takeProfitPrice, null).triggersTakeProfit(markPrice)) {
+        if (takeProfitPrice != null && triggersTakeProfit(position, takeProfitPrice, markPrice)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "이미 발동된 TP 가격은 설정할 수 없습니다.");
         }
-        if (stopLossPrice != null
-                && position.withTakeProfitStopLoss(null, stopLossPrice).triggersStopLoss(markPrice)) {
+        if (stopLossPrice != null && triggersStopLoss(position, stopLossPrice, markPrice)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "이미 발동된 SL 가격은 설정할 수 없습니다.");
         }
     }
@@ -77,7 +75,75 @@ public class UpdatePositionTpslService {
         }
     }
 
+    private boolean triggersTakeProfit(PositionSnapshot position, double takeProfitPrice, double markPrice) {
+        return isLong(position)
+                ? markPrice >= takeProfitPrice
+                : markPrice <= takeProfitPrice;
+    }
+
+    private boolean triggersStopLoss(PositionSnapshot position, double stopLossPrice, double markPrice) {
+        return isLong(position)
+                ? markPrice <= stopLossPrice
+                : markPrice >= stopLossPrice;
+    }
+
+    private boolean isLong(PositionSnapshot position) {
+        return "LONG".equalsIgnoreCase(position.positionSide());
+    }
+
+    private void cancelExistingTpslOrders(String memberId, PositionSnapshot position) {
+        orderRepository.findPendingConditionalCloseOrders(
+                        memberId,
+                        position.symbol(),
+                        position.positionSide(),
+                        position.marginMode()
+                ).stream()
+                .filter(order -> order.isTakeProfitOrder() || order.isStopLossOrder())
+                .forEach(order -> orderRepository.updateStatus(memberId, order.orderId(), FuturesOrder.STATUS_CANCELLED));
+    }
+
+    private void createReplacementOrders(
+            String memberId,
+            PositionSnapshot position,
+            Double takeProfitPrice,
+            Double stopLossPrice
+    ) {
+        String ocoGroupId = takeProfitPrice != null && stopLossPrice != null ? UUID.randomUUID().toString() : null;
+        if (takeProfitPrice != null) {
+            orderRepository.save(memberId, FuturesOrder.conditionalClose(
+                    UUID.randomUUID().toString(),
+                    position.symbol(),
+                    position.positionSide(),
+                    position.marginMode(),
+                    position.leverage(),
+                    position.quantity(),
+                    takeProfitPrice,
+                    FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                    ocoGroupId
+            ));
+        }
+        if (stopLossPrice != null) {
+            orderRepository.save(memberId, FuturesOrder.conditionalClose(
+                    UUID.randomUUID().toString(),
+                    position.symbol(),
+                    position.positionSide(),
+                    position.marginMode(),
+                    position.leverage(),
+                    position.quantity(),
+                    stopLossPrice,
+                    FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                    ocoGroupId
+            ));
+        }
+    }
+
     private PositionSnapshotResult toResult(String memberId, PositionSnapshot snapshot) {
+        List<FuturesOrder> tpslOrders = orderRepository.findPendingConditionalCloseOrders(
+                memberId,
+                snapshot.symbol(),
+                snapshot.positionSide(),
+                snapshot.marginMode()
+        );
         double pendingCloseQuantity = pendingCloseOrderCapReconciler.pendingCloseQuantity(
                 memberId,
                 snapshot
@@ -98,8 +164,16 @@ public class UpdatePositionTpslService {
                 snapshot.accumulatedClosedQuantity(),
                 pendingCloseQuantity,
                 Math.max(0, snapshot.quantity() - pendingCloseQuantity),
-                snapshot.takeProfitPrice(),
-                snapshot.stopLossPrice()
+                triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT),
+                triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_STOP_LOSS)
         );
+    }
+
+    private Double triggerPrice(List<FuturesOrder> orders, String triggerType) {
+        return orders.stream()
+                .filter(order -> triggerType.equalsIgnoreCase(order.triggerType()))
+                .max(Comparator.comparing(FuturesOrder::orderTime))
+                .map(FuturesOrder::triggerPrice)
+                .orElse(null);
     }
 }

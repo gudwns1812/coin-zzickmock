@@ -11,7 +11,7 @@ import Modal from "@/components/ui/Modal";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
@@ -50,16 +50,19 @@ export default function OrderEntryPanel({
   const [quantity, setQuantity] = useState("0.01");
   const [limitPrice, setLimitPrice] = useState(currentPrice.toFixed(1));
   const [isLimitPriceDirty, setIsLimitPriceDirty] = useState(false);
+  const priceSnapshotSymbolRef = useRef(symbol);
   const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
   const [preview, setPreview] = useState<OrderPreviewResponse | null>(null);
   const [isPreviewPending, setIsPreviewPending] = useState(false);
   const [isSubmitPending, setIsSubmitPending] = useState(false);
 
   useEffect(() => {
-    if (!isLimitPriceDirty) {
+    if (priceSnapshotSymbolRef.current !== symbol) {
+      priceSnapshotSymbolRef.current = symbol;
       setLimitPrice(currentPrice.toFixed(1));
+      setIsLimitPriceDirty(false);
     }
-  }, [currentPrice, isLimitPriceDirty]);
+  }, [currentPrice, symbol]);
 
   const orderPayload = useMemo(
     () =>

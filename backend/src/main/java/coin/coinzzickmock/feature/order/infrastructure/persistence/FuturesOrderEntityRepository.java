@@ -22,7 +22,8 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
                set order.status = :filledStatus,
                    order.feeType = :feeType,
                    order.estimatedFee = :estimatedFee,
-                   order.executionPrice = :executionPrice
+                   order.executionPrice = :executionPrice,
+                   order.activeConditionalTriggerType = null
              where order.memberId = :memberId
                and order.orderId = :orderId
                and order.status = :pendingStatus

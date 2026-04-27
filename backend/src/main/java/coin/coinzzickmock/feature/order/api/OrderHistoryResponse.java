@@ -17,7 +17,11 @@ public record OrderHistoryResponse(
         String feeType,
         double estimatedFee,
         double executionPrice,
-        Instant orderTime
+        Instant orderTime,
+        Double triggerPrice,
+        String triggerType,
+        String triggerSource,
+        String ocoGroupId
 ) {
     public static OrderHistoryResponse from(OrderHistoryResult result) {
         return new OrderHistoryResponse(
@@ -34,7 +38,11 @@ public record OrderHistoryResponse(
                 result.feeType(),
                 result.estimatedFee(),
                 result.executionPrice(),
-                result.orderTime()
+                result.orderTime(),
+                result.triggerPrice(),
+                result.triggerType(),
+                result.triggerSource(),
+                result.ocoGroupId()
         );
     }
 }

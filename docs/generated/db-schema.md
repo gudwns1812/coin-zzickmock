@@ -47,6 +47,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
   [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql)
   [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql)
+  [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql)
+  [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -130,11 +132,17 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `order_id`, `member_id`, `symbol`, `position_side`, `order_type`, `order_purpose`, `margin_mode`, `leverage`, `quantity`, `limit_price`, `status`, `fee_type`, `estimated_fee`, `execution_price`, `created_at`
+  `order_id`, `member_id`, `symbol`, `position_side`, `order_type`, `order_purpose`, `margin_mode`, `leverage`, `quantity`, `limit_price`, `status`, `fee_type`, `estimated_fee`, `execution_price`, `trigger_price`, `trigger_type`, `trigger_source`, `oco_group_id`, `active_conditional_trigger_type`, `created_at`
+- 조건부 주문:
+  TP/SL은 pending `CLOSE_POSITION` 주문으로 저장한다. `trigger_source`는 `MARK_PRICE`, `trigger_type`은 `TAKE_PROFIT` 또는 `STOP_LOSS`다. TP/SL sibling은 같은 `oco_group_id`를 공유할 수 있다.
+- 조건부 주문 유일성:
+  `active_conditional_trigger_type`은 pending conditional close order일 때만 `trigger_type`을 복사하고, 그 외 주문/상태에서는 `NULL`이다. `uk_futures_orders_active_conditional_close`는 같은 `member_id + symbol + position_side + margin_mode` 안에서 active pending TP와 SL을 trigger type별 하나씩만 허용한다.
 - 관련 엔티티/모듈:
   `feature.order`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql),
+  [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql),
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
 
 ### `open_positions`
@@ -145,6 +153,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `id` (auto increment)
 - 주요 컬럼:
   `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_open_fee`, `accumulated_close_fee`, `accumulated_funding_cost`, `take_profit_price`, `stop_loss_price`, `version`, `created_at`, `updated_at`
+- legacy 컬럼:
+  `take_profit_price`, `stop_loss_price`는 V9 호환 컬럼으로 남아 있지만 TP/SL의 source of truth가 아니다. 현재 TP/SL read/write/trigger path는 `futures_orders`의 조건부 close order를 사용한다.
 - 동시성:
   `version`은 포지션 종료/청산/종료 주문 체결 시 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 정산, 포지션 이력, 리워드, SSE 이벤트를 수행하지 않고 재조회가 필요한 충돌로 처리한다.
 - 관련 엔티티/모듈:
@@ -265,6 +275,10 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V6__add_open_position_version.sql`로 `open_positions.version`을 추가하고 포지션 종료 계열 mutation의 낙관적 잠금 기준으로 문서화했다.
 - 2026-04-27:
   `V9__add_position_take_profit_stop_loss.sql`로 `open_positions.take_profit_price`, `open_positions.stop_loss_price`를 추가하고 포지션 단위 TP/SL 트리거 저장 위치를 문서화했다.
+- 2026-04-28:
+  `V10__add_futures_order_conditional_trigger_fields.sql`로 `futures_orders.trigger_price`, `trigger_type`, `trigger_source`, `oco_group_id`를 추가했다. TP/SL source of truth는 open position 컬럼에서 pending conditional close order로 이동했다.
+- 2026-04-28:
+  `V11__backfill_and_constrain_conditional_close_orders.sql`로 V9 legacy `open_positions.take_profit_price`, `stop_loss_price`를 pending conditional close order로 backfill하고, active conditional TP/SL 중복을 막는 unique index를 추가했다.
 
 ## Update Rule
 

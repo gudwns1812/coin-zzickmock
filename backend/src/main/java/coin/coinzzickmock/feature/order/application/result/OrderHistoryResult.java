@@ -16,6 +16,10 @@ public record OrderHistoryResult(
         String feeType,
         double estimatedFee,
         double executionPrice,
-        Instant orderTime
+        Instant orderTime,
+        Double triggerPrice,
+        String triggerType,
+        String triggerSource,
+        String ocoGroupId
 ) {
 }

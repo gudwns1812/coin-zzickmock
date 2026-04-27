@@ -1,11 +1,14 @@
 package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.providers.Providers;
+import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetOpenPositionsService {
     private final PositionRepository positionRepository;
+    private final OrderRepository orderRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final Providers providers;
 
@@ -36,6 +40,12 @@ public class GetOpenPositionsService {
     }
 
     private PositionSnapshotResult toResult(String memberId, PositionSnapshot snapshot) {
+        List<FuturesOrder> tpslOrders = orderRepository.findPendingConditionalCloseOrders(
+                memberId,
+                snapshot.symbol(),
+                snapshot.positionSide(),
+                snapshot.marginMode()
+        );
         double pendingCloseQuantity = pendingCloseOrderCapReconciler.pendingCloseQuantity(
                 memberId,
                 snapshot
@@ -56,8 +66,16 @@ public class GetOpenPositionsService {
                 snapshot.accumulatedClosedQuantity(),
                 pendingCloseQuantity,
                 Math.max(0, snapshot.quantity() - pendingCloseQuantity),
-                snapshot.takeProfitPrice(),
-                snapshot.stopLossPrice()
+                triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT),
+                triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_STOP_LOSS)
         );
+    }
+
+    private Double triggerPrice(List<FuturesOrder> orders, String triggerType) {
+        return orders.stream()
+                .filter(order -> triggerType.equalsIgnoreCase(order.triggerType()))
+                .max(Comparator.comparing(FuturesOrder::orderTime))
+                .map(FuturesOrder::triggerPrice)
+                .orElse(null);
     }
 }

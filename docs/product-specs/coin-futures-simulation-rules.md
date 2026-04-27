@@ -118,9 +118,10 @@ mark-to-market을 프론트엔드에서 중복 계산할 수 있다. 이 중복 
 - LONG limit 종료: 최신 체결가가 지정가 이상이 되면 체결 대상으로 본다
 - SHORT limit 종료: 최신 체결가가 지정가 이하가 되면 체결 대상으로 본다
 - Limit 종료 주문은 체결 전까지 미체결 주문으로 남고 취소할 수 있다
-- 동일 계정/심볼/방향/마진 모드의 pending 종료 주문 수량 합계는 최종 정합화 이후 현재 열린 포지션 수량을 초과할 수 없다
+- 동일 계정/심볼/방향/마진 모드의 pending 종료 주문 수량 합계는 OCO-aware effective exposure 기준으로 최종 정합화 이후 현재 열린 포지션 수량을 초과할 수 없다
 - 새 종료 주문은 기존 pending 종료 주문 합계가 이미 현재 열린 포지션 수량과 같거나 더 큰 상태에서도 접수할 수 있다. 접수 후 같은 트랜잭션 흐름에서 cap reconciliation을 수행해 전체 pending 종료 주문 수량을 현재 열린 포지션 수량 이하로 맞춘다.
-- 초과 시 새 주문, market close 이후 남은 주문, pending 종료 주문 체결 이후 남은 주문, liquidation 이후 남은 주문을 모두 포함해 실행 가능성이 낮은 종료 주문부터 줄이거나 취소한다
+- pending 종료 주문의 effective exposure 공식은 `sum(ungrouped pending CLOSE_POSITION quantity) + sum(max(quantity) per ocoGroupId)`이다. scope는 `memberId + symbol + positionSide + marginMode`이고 `FILLED`, `CANCELLED` 주문은 제외한다.
+- 초과 시 새 주문, market close 이후 남은 주문, pending 종료 주문 체결 이후 남은 주문, liquidation 이후 남은 주문을 모두 포함해 실행 가능성이 낮은 종료 주문부터 줄이거나 취소한다. 단, manual close 주문은 TP/SL OCO bucket보다 우선 보존한다.
   - LONG 종료 주문은 현재가보다 더 높은 지정가가 덜 실행되기 쉬우므로 지정가 내림차순으로 줄인다. 예: 현재가 `105`, close long `112`, `108`이 있으면 `112`를 먼저 줄인다.
   - SHORT 종료 주문은 현재가보다 더 낮은 지정가가 덜 실행되기 쉬우므로 지정가 오름차순으로 줄인다. 예: 현재가 `95`, close short `88`, `92`가 있으면 `88`을 먼저 줄인다.
   - 같은 지정가에서는 기존 주문 우선권을 보존하기 위해 더 나중에 생성된 주문을 먼저 줄이고, 생성 시각까지 같으면 `orderId` 오름차순으로 결정한다.
@@ -128,24 +129,29 @@ mark-to-market을 프론트엔드에서 중복 계산할 수 있다. 이 중복 
 - 이 cap은 포지션을 늘리는 `OPEN_POSITION` 주문에는 적용하지 않는다
 - 새 종료 주문 요청은 기존 pending 종료 주문 합계가 열린 포지션 수량을 이미 덮고 있어도 보유 수량 이하이면 우선 접수한 뒤 같은 cap reconciliation 규칙으로 pending 주문 총량을 조정한다.
 - 포지션 API는 누적 종료 체결 수량인 `accumulatedClosedQuantity`를 내려주며, 화면의 `Close amount` 라벨은 이 값만 의미한다.
-- 포지션 API는 호환 필드로 같은 포지션의 pending 종료 주문 합계인 `pendingCloseQuantity`와 `closeableQuantity = max(0, quantity - pendingCloseQuantity)`도 내려준다. 두 필드는 예약/입력 안내용이며 `Close amount`로 표시하지 않는다.
+- 포지션 API는 호환 필드로 같은 포지션의 pending 종료 주문 effective exposure인 `pendingCloseQuantity`와 `closeableQuantity = max(0, quantity - pendingCloseQuantity)`도 내려준다. 두 필드는 예약/입력 안내용이며 `Close amount`로 표시하지 않는다.
 
 포지션 종료, pending 종료 주문 체결, 청산 종료는 열린 포지션의 `version`을 조건으로 하는 낙관적 잠금 mutation이다.
 이미 다른 요청이 포지션을 변경했다면 계정 정산, 포지션 이력, 리워드 지급, 응답용 체결 이벤트 발행 전에 충돌로 중단한다.
 
 ### 포지션 TP/SL
 
-열린 포지션은 선택 값인 `takeProfitPrice`, `stopLossPrice`를 가질 수 있다.
-TP/SL 편집 API는 최신 mark price를 읽고, 저장 직후 이미 발동되는 값을 거절한다.
+TP/SL은 열린 포지션 컬럼이 아니라 pending conditional `CLOSE_POSITION` 주문으로 관리한다.
+`open_positions.take_profit_price`, `open_positions.stop_loss_price`는 legacy 호환 컬럼이며 application/domain read/write/trigger path의 source of truth가 아니다.
+TP/SL 편집 API는 최신 mark price를 읽고, 저장 직후 이미 발동되는 값을 거절한 뒤 같은 포지션 scope의 기존 pending TP/SL 조건부 주문을 취소하고 새 주문을 만든다.
 
-- LONG TP: `markPrice >= takeProfitPrice`
-- LONG SL: `markPrice <= stopLossPrice`
-- SHORT TP: `markPrice <= takeProfitPrice`
-- SHORT SL: `markPrice >= stopLossPrice`
-- null TP/SL은 평가하지 않는다
+- TP/SL 주문 계약: `orderPurpose = CLOSE_POSITION`, `status = PENDING`, `triggerPrice != null`, `triggerType in (TAKE_PROFIT, STOP_LOSS)`, `triggerSource = MARK_PRICE`, `limitPrice = null`, `orderType = MARKET`
+- 같은 `memberId + symbol + positionSide + marginMode + triggerType`에는 active pending TP/SL 주문이 하나만 존재한다. DB는 active pending conditional close order에만 채워지는 `active_conditional_trigger_type` unique key로 이 중복을 방지한다.
+- TP와 SL이 함께 저장되면 같은 `ocoGroupId`를 공유하고, 둘 중 하나가 체결되면 sibling은 `CANCELLED`가 된다
+- V9의 legacy `open_positions.take_profit_price`, `open_positions.stop_loss_price` 값은 V11 migration에서 pending conditional close order로 backfill한다. 이후 legacy 컬럼은 읽기/트리거 source가 아니다.
+- 수동 취소는 선택한 TP 또는 SL 주문 하나만 취소하고 sibling을 자동 취소하지 않는다
+- LONG TP: `markPrice >= triggerPrice`
+- LONG SL: `markPrice <= triggerPrice`
+- SHORT TP: `markPrice <= triggerPrice`
+- SHORT SL: `markPrice >= triggerPrice`
 - TP/SL 체결 가격은 market close와 같은 taker 성격으로 최신 체결가를 사용하고, 트리거 기준은 mark price다
 - 같은 market event 안에서는 pending limit 체결, liquidation 평가, TP/SL 평가 순서로 처리한다. liquidation이 먼저 포지션을 종료하면 TP/SL은 더 이상 평가하지 않는다.
-- TP/SL 종료도 포지션 전체 종료로 처리하며, 같은 포지션의 pending close 주문은 모두 cap reconciliation 대상이 된다
+- TP/SL 종료도 조건부 close order fill로 처리하며, 같은 포지션의 pending close 주문은 모두 OCO-aware cap reconciliation 대상이 된다
 - TP/SL 종료 이벤트는 관련 저장 transaction이 commit된 이후 `POSITION_TAKE_PROFIT` 또는 `POSITION_STOP_LOSS`로 발행한다
 
 ### 부분 체결
@@ -450,4 +456,4 @@ type PositionSnapshot = {
 - **Close amount**: the `Close amount` label means accumulated closed quantity (`accumulatedClosedQuantity`) for the still-open position. It starts at `0` for a new position and increases only after partial close execution.
 - **Pending and closeable quantity**: `pendingCloseQuantity` is the sum of pending close orders, and `closeableQuantity` is retained as compatibility data. Neither field is displayed as `Close amount`.
 - **Close order acceptance and reconciliation**: a new close request is validated against held position quantity, not closeable quantity. The backend may accept a new close order before reconciling pending close caps; after submission, pending close orders are reduced or cancelled so total pending close quantity does not exceed the remaining held quantity. LONG close reconciliation reduces/cancels higher limit-price orders first; SHORT reduces/cancels lower limit-price orders first; ties reduce newer orders before older orders.
-- **TP/SL editing**: position-level TP/SL values are displayed on the position card, but inputs are hidden by default and opened via the `Position TP/SL` edit action. Save and clear use the existing `/api/futures/positions/tpsl` contract.
+- **TP/SL editing**: position-level TP/SL values are displayed on the position card, but inputs are hidden by default and opened via the `Position TP/SL` edit action. Save and clear use `/api/futures/positions/tpsl`, whose persistence source is pending conditional close orders, not `open_positions` TP/SL columns.

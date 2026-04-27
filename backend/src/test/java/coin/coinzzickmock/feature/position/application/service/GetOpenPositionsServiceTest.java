@@ -38,6 +38,7 @@ class GetOpenPositionsServiceTest {
         ).withVersion(3));
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
+                new EmptyOrderRepository(),
                 new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
                 new FakeProviders(110)
         );
@@ -74,6 +75,7 @@ class GetOpenPositionsServiceTest {
         ));
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
+                new EmptyOrderRepository(),
                 new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
                 new FakeProviders(100)
         );
@@ -96,9 +98,11 @@ class GetOpenPositionsServiceTest {
                 100,
                 100
         ));
+        PendingCloseOrderRepository orderRepository = new PendingCloseOrderRepository();
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
-                new PendingCloseOrderCapReconciler(new PendingCloseOrderRepository()),
+                orderRepository,
+                new PendingCloseOrderCapReconciler(orderRepository),
                 new FakeProviders(100)
         );
 
@@ -108,6 +112,34 @@ class GetOpenPositionsServiceTest {
         assertEquals(0.4, result.pendingCloseQuantity(), 0.0001);
         assertEquals(0.6, result.closeableQuantity(), 0.0001);
     }
+
+    @Test
+    void countsTpslOcoGroupAsSingleCloseExposure() {
+        ReadOnlyPositionRepository positionRepository = new ReadOnlyPositionRepository(PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        TpslOcoOrderRepository orderRepository = new TpslOcoOrderRepository();
+        GetOpenPositionsService service = new GetOpenPositionsService(
+                positionRepository,
+                orderRepository,
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new FakeProviders(100)
+        );
+
+        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+
+        assertEquals(1, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(0, result.closeableQuantity(), 0.0001);
+        assertEquals(110, result.takeProfitPrice(), 0.0001);
+        assertEquals(95, result.stopLossPrice(), 0.0001);
+    }
+
 
     @Test
     void partiallyClosedRemainingPositionIncludesAccumulatedClosedQuantity() {
@@ -135,6 +167,7 @@ class GetOpenPositionsServiceTest {
         ));
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
+                new EmptyOrderRepository(),
                 new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
                 new FakeProviders(100)
         );
@@ -242,6 +275,36 @@ class GetOpenPositionsServiceTest {
                     0,
                     120
             ));
+        }
+    }
+
+    private static class TpslOcoOrderRepository extends EmptyOrderRepository {
+        @Override
+        public List<FuturesOrder> findByMemberId(String memberId) {
+            return List.of(
+                    FuturesOrder.conditionalClose(
+                            "tp",
+                            "BTCUSDT",
+                            "LONG",
+                            "ISOLATED",
+                            10,
+                            1,
+                            110,
+                            FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                            "oco-1"
+                    ),
+                    FuturesOrder.conditionalClose(
+                            "sl",
+                            "BTCUSDT",
+                            "LONG",
+                            "ISOLATED",
+                            10,
+                            1,
+                            95,
+                            FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                            "oco-1"
+                    )
+            );
         }
     }
 

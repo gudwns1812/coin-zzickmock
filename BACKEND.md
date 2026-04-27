@@ -97,6 +97,7 @@
 - 영속성 기본 스택은 `Spring Data JPA`와 OpenFeign 포크 `QueryDSL`로 통일한다.
 - 복잡한 native query가 필요할 때만 `JdbcTemplate` 사용을 허용한다.
 - 클래스 이름에는 `Jpa`, `SpringData`, `MyBatis`, `Redis` 같은 기술명을 넣지 않고 역할 이름을 먼저 드러낸다.
+- 같은 기능을 구현 기술만 다르게 제공해야 하면 기술명을 클래스명에 붙이지 말고 역할 중심 인터페이스와 bean 조립으로 선택한다.
 - 스프링이 관리하는 클래스가 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
 - DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
   본다.

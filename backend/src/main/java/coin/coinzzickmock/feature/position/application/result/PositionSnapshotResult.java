@@ -11,6 +11,8 @@ public record PositionSnapshotResult(
         Double liquidationPrice,
         double unrealizedPnl,
         double margin,
-        double roi
+        double roi,
+        double pendingCloseQuantity,
+        double closeableQuantity
 ) {
 }

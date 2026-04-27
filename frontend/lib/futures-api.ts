@@ -58,6 +58,8 @@ export type FuturesPosition = {
   margin: number;
   unrealizedPnl: number;
   roi: number;
+  pendingCloseQuantity?: number;
+  closeableQuantity?: number;
 };
 
 export type FuturesOpenOrder = {

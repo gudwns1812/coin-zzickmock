@@ -12,6 +12,7 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
@@ -33,6 +34,7 @@ public class PendingOrderFillProcessor {
     private final AccountRepository accountRepository;
     private final PendingOrderExecutionCache pendingOrderExecutionCache;
     private final PositionCloseFinalizer positionCloseFinalizer;
+    private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     public void fillExecutablePendingOrders(MarketSummaryUpdatedEvent event) {
@@ -99,8 +101,10 @@ public class PendingOrderFillProcessor {
     }
 
     private void fillIfExecutable(PendingOrderCandidate candidate, MarketSummaryResult market) {
-        FuturesOrder order = candidate.order();
+        FuturesOrder order = orderRepository.findByMemberIdAndOrderId(candidate.memberId(), candidate.orderId())
+                .orElse(candidate.order());
         if (!order.isPending() || order.limitPrice() == null) {
+            pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), candidate.orderId());
             return;
         }
         if (order.isClosePositionOrder() && !hasEnoughOpenPosition(candidate.memberId(), order)) {
@@ -202,6 +206,12 @@ public class PendingOrderFillProcessor {
                 executionPrice,
                 MAKER_FEE_RATE,
                 PositionHistory.CLOSE_REASON_LIMIT_CLOSE
+        );
+        pendingCloseOrderCapReconciler.reconcile(
+                memberId,
+                existing,
+                Math.max(0, existing.quantity() - order.quantity()),
+                executionPrice
         );
     }
 }

@@ -232,6 +232,8 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 현재 포지션이 있으면 부분 종료 또는 전체 종료 액션 제공
 - 포지션 종료 버튼은 모달을 열고, 사용자는 `Market` 즉시 종료 또는 `Limit` 종료 주문을 선택한다
 - `Limit` 종료 주문은 체결 전까지 Open orders에 남고 취소할 수 있다
+- 포지션 응답은 `pendingCloseQuantity`와 `closeableQuantity`를 제공한다. `pendingCloseQuantity`는 같은 심볼/방향/마진 모드의 미체결 close 주문 수량 합계이고, `closeableQuantity = max(0, quantity - pendingCloseQuantity)`이다.
+- market close, limit close 체결, liquidation으로 포지션 수량이 줄어들면 같은 포지션의 pending close 주문 합계가 남은 포지션 수량을 넘지 않도록 가장 체결 가능성이 낮은 주문부터 줄이거나 취소한다. LONG close는 지정가가 높은 주문부터, SHORT close는 지정가가 낮은 주문부터 줄이며, 같은 지정가에서는 더 나중에 생성된 주문을 먼저 줄여 기존 주문 우선권을 보존한다.
 - Open orders와 Order history는 주문 시간을 가장 왼쪽 컬럼에 둔다
 - Open orders에서는 예상 증거금과 예상 수수료를 표시하지 않는다
 - 포지션 히스토리는 심볼, Long/Short, 레버리지, Cross/Isolated, 오픈 시간, 평균 진입/탈출 가격, 포지션 규모, PnL, ROI, 종료 시간을 표시한다
@@ -256,6 +258,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 열린 포지션과 미체결 주문을 놓치지 않는다
 - 포지션 히스토리는 완전 종료 시점에만 생성된다
 - 포지션 히스토리 PnL은 trading fee와 funding cost를 반영한 net PnL이다.
+- pending close 주문이 있는 상태에서 포지션을 종료해도 같은 포지션의 stale close 주문이 체결 가능한 상태로 남지 않는다.
 
 ## 화면 5. 포트폴리오 `/portfolio`
 

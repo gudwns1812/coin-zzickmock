@@ -16,6 +16,7 @@ import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
@@ -220,6 +221,88 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void filledCloseLimitReducesOtherPendingCloseOrdersToRemainingPositionQuantity() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save("demo-member", pendingCloseOrderAt("fill-close", "LONG", 0.6, 105, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save("demo-member", pendingCloseOrderAt("other-close", "LONG", 0.6, 106, Instant.parse("2026-04-27T00:00:01Z")));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(100, 105, 105));
+
+        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId("demo-member", "fill-close").orElseThrow();
+        FuturesOrder reduced = orderRepository.findByMemberIdAndOrderId("demo-member", "other-close").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
+        assertEquals(FuturesOrder.STATUS_PENDING, reduced.status());
+        assertEquals(0.4, reduced.quantity(), 0.0001);
+    }
+
+    @Test
+    void sameTickCloseLimitUsesReconciledQuantityForLaterCandidate() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save("demo-member", pendingCloseOrderAt("first-close", "LONG", 0.6, 105, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save("demo-member", pendingCloseOrderAt("second-close", "LONG", 0.6, 106, Instant.parse("2026-04-27T00:00:01Z")));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(100, 106, 106));
+
+        FuturesOrder first = orderRepository.findByMemberIdAndOrderId("demo-member", "first-close").orElseThrow();
+        FuturesOrder second = orderRepository.findByMemberIdAndOrderId("demo-member", "second-close").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, first.status());
+        assertEquals(0.6, first.quantity(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_FILLED, second.status());
+        assertEquals(0.4, second.quantity(), 0.0001);
+        assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isEmpty());
+    }
+
+    @Test
+    void liquidationCancelsSamePositionPendingCloseOrders() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ));
+        orderRepository.save("demo-member", pendingCloseOrderAt("close-before-liquidation", "LONG", 0.5, 105, Instant.parse("2026-04-27T00:00:00Z")));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
+
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "close-before-liquidation").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
+    }
+
+    @Test
     void nonBreachedLiquidationAssessmentDoesNotPersistMarkOnlyPositionChanges() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -321,6 +404,7 @@ class MarketOrderExecutionServiceTest {
                 new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
                 afterCommitEventPublisher
         );
+        PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
         return new MarketOrderExecutionService(
                 new PendingOrderFillProcessor(
                         orderRepository,
@@ -328,6 +412,7 @@ class MarketOrderExecutionServiceTest {
                         accountRepository,
                         new PendingOrderExecutionCache(),
                         positionCloseFinalizer,
+                        pendingCloseOrderCapReconciler,
                         afterCommitEventPublisher
                 ),
                 new PositionLiquidationProcessor(
@@ -335,6 +420,7 @@ class MarketOrderExecutionServiceTest {
                         accountRepository,
                         new LiquidationPolicy(),
                         positionCloseFinalizer,
+                        pendingCloseOrderCapReconciler,
                         afterCommitEventPublisher
                 )
         );
@@ -366,6 +452,31 @@ class MarketOrderExecutionServiceTest {
                 "ISOLATED",
                 10,
                 0.1,
+                limitPrice,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                limitPrice,
+                orderTime
+        );
+    }
+
+    private FuturesOrder pendingCloseOrderAt(
+            String orderId,
+            String positionSide,
+            double quantity,
+            double limitPrice,
+            Instant orderTime
+    ) {
+        return new FuturesOrder(
+                orderId,
+                "BTCUSDT",
+                positionSide,
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                quantity,
                 limitPrice,
                 FuturesOrder.STATUS_PENDING,
                 "MAKER",
@@ -465,6 +576,17 @@ class MarketOrderExecutionServiceTest {
             FuturesOrder updated = status.equals(FuturesOrder.STATUS_CANCELLED)
                     ? candidate.order().cancel()
                     : candidate.order();
+            orders.put(key(memberId, orderId), new PendingOrderCandidate(memberId, updated));
+            return updated;
+        }
+
+        @Override
+        public FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+            PendingOrderCandidate candidate = orders.get(key(memberId, orderId));
+            FuturesOrder updated = candidate.order().withQuantity(quantity);
+            if (FuturesOrder.STATUS_CANCELLED.equals(status)) {
+                updated = updated.cancel();
+            }
             orders.put(key(memberId, orderId), new PendingOrderCandidate(memberId, updated));
             return updated;
         }

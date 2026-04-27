@@ -21,6 +21,9 @@ export type MarketApiResponse = {
   markPrice: number;
   indexPrice: number;
   fundingRate: number;
+  nextFundingAt?: string | null;
+  fundingIntervalHours?: number | null;
+  serverTime?: string | null;
   change24h: number;
   volume24h?: number;
   marketCap?: number;
@@ -419,6 +422,10 @@ function mergeMarketSnapshot(
     markPrice: apiMarket.markPrice,
     indexPrice: apiMarket.indexPrice,
     fundingRate: apiMarket.fundingRate,
+    nextFundingAt: apiMarket.nextFundingAt ?? fallback.nextFundingAt,
+    fundingIntervalHours:
+      apiMarket.fundingIntervalHours ?? fallback.fundingIntervalHours,
+    serverTime: apiMarket.serverTime ?? fallback.serverTime,
     change24h: apiMarket.change24h,
     volume24h,
     marketCap,

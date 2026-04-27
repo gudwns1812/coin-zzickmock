@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
@@ -13,8 +14,10 @@ import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +29,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(
@@ -47,6 +51,9 @@ class MarketRealtimeFeedCacheTest {
     @Qualifier("localCacheManager")
     private CacheManager localCacheManager;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void setUp() {
         marketDataGateway.replaceSnapshots(List.of(
@@ -59,6 +66,17 @@ class MarketRealtimeFeedCacheTest {
         }
     }
 
+    @AfterEach
+    void resetFundingScheduleMetadata() {
+        jdbcTemplate.update("""
+                UPDATE market_symbols
+                SET funding_interval_hours = 8,
+                    funding_anchor_hour = 1,
+                    funding_time_zone = 'Asia/Seoul'
+                WHERE symbol = 'ETHUSDT'
+                """);
+    }
+
     @Test
     void storesLatestSnapshotsInLocalSpringCacheWhenMarketsRefresh() {
         marketRealtimeFeed.refreshSupportedMarkets();
@@ -69,6 +87,28 @@ class MarketRealtimeFeedCacheTest {
         assertThat(cache.get("BTCUSDT", MarketSummaryResult.class)).isNotNull();
         assertThat(cache.get("ETHUSDT", MarketSummaryResult.class)).isNotNull();
         assertThat(cache.get("BTCUSDT", MarketSummaryResult.class).lastPrice()).isEqualTo(101000);
+    }
+
+    @Test
+    void appliesPersistedFundingScheduleMetadataWhenMarketsRefresh() {
+        int updatedRows = jdbcTemplate.update("""
+                UPDATE market_symbols
+                SET funding_interval_hours = 4,
+                    funding_anchor_hour = 2,
+                    funding_time_zone = 'Asia/Seoul'
+                WHERE symbol = 'ETHUSDT'
+                """);
+        assertThat(updatedRows).isGreaterThan(0);
+
+        marketRealtimeFeed.refreshSupportedMarkets();
+
+        Cache cache = localCacheManager.getCache(CoinCacheNames.MARKET_SNAPSHOT_LOCAL_CACHE);
+        assertThat(cache).isNotNull();
+        MarketSummaryResult eth = cache.get("ETHUSDT", MarketSummaryResult.class);
+        assertThat(eth).isNotNull();
+        FundingSchedule schedule = new FundingSchedule(4, 2, ZoneId.of("Asia/Seoul"));
+        assertThat(eth.fundingIntervalHours()).isEqualTo(4);
+        assertThat(eth.nextFundingAt()).isEqualTo(schedule.nextFundingAt(eth.serverTime()));
     }
 
     private static MarketSnapshot snapshot(

@@ -139,6 +139,30 @@ class MarketControllerTest {
     }
 
     @Test
+    void mapsFundingScheduleFieldsToMarketSummaryResponse() {
+        Instant serverTime = Instant.parse("2026-04-26T23:59:30Z");
+        Instant nextFundingAt = Instant.parse("2026-04-27T00:00:00Z");
+        MarketSummaryResult market = new MarketSummaryResult(
+                "BTCUSDT",
+                "Bitcoin Perpetual",
+                74000,
+                74010,
+                74005,
+                0.0001,
+                0.2,
+                serverTime,
+                nextFundingAt,
+                8
+        );
+
+        MarketSummaryResponse response = MarketSummaryResponse.from(market);
+
+        assertTrue(response.serverTime().equals(serverTime));
+        assertTrue(response.nextFundingAt().equals(nextFundingAt));
+        assertTrue(response.fundingIntervalHours() == 8);
+    }
+
+    @Test
     void passesBeforeCursorToCandleQuery() {
         GetMarketSummaryService summaryService = mock(GetMarketSummaryService.class);
         GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);

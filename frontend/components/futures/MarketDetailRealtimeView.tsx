@@ -13,6 +13,7 @@ import type {
   FuturesTradingExecutionEvent,
   MarketApiResponse,
 } from "@/lib/futures-api";
+import { formatFundingCountdown } from "@/lib/funding-countdown";
 import {
   formatCompactUsd,
   formatPercent,
@@ -55,6 +56,9 @@ export default function MarketDetailRealtimeView({
   const router = useRouter();
   const [market, setMarket] = useState(initialMarket);
   const [marketUpdatedAt, setMarketUpdatedAt] = useState(() => Date.now());
+  const [fundingCountdownNow, setFundingCountdownNow] = useState(() =>
+    Date.now()
+  );
   const [activeTab, setActiveTab] = useState<TradingTab>("POSITIONS");
   const [executionEvents, setExecutionEvents] = useState<
     FuturesTradingExecutionEvent[]
@@ -68,6 +72,7 @@ export default function MarketDetailRealtimeView({
     stream.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as MarketApiResponse;
+        const receivedAt = Date.now();
 
         setMarket((current) => ({
           ...current,
@@ -76,9 +81,14 @@ export default function MarketDetailRealtimeView({
           markPrice: data.markPrice,
           indexPrice: data.indexPrice,
           fundingRate: data.fundingRate,
+          nextFundingAt: data.nextFundingAt ?? current.nextFundingAt,
+          fundingIntervalHours:
+            data.fundingIntervalHours ?? current.fundingIntervalHours,
+          serverTime: data.serverTime ?? current.serverTime,
           change24h: data.change24h,
         }));
-        setMarketUpdatedAt(Date.now());
+        setMarketUpdatedAt(receivedAt);
+        setFundingCountdownNow(receivedAt);
       } catch {
         // Keep the last known snapshot when the stream sends malformed data.
       }
@@ -117,9 +127,33 @@ export default function MarketDetailRealtimeView({
     };
   }, [initialMarket.symbol, isAuthenticated, router]);
 
+  useEffect(() => {
+    if (!market.nextFundingAt) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setFundingCountdownNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [market.nextFundingAt]);
+
   const unrealizedPnl = useMemo(
     () => positions.reduce((sum, position) => sum + position.unrealizedPnl, 0),
     [positions]
+  );
+  const fundingCountdown = useMemo(
+    () =>
+      formatFundingCountdown(
+        market.nextFundingAt,
+        fundingCountdownNow,
+        market.serverTime,
+        marketUpdatedAt
+      ),
+    [fundingCountdownNow, market.nextFundingAt, market.serverTime, marketUpdatedAt]
   );
 
   return (
@@ -167,6 +201,7 @@ export default function MarketDetailRealtimeView({
                 label="Funding"
                 tone={market.fundingRate >= 0 ? "positive" : "negative"}
                 value={formatPercent(market.fundingRate * 100)}
+                subValue={`Next ${fundingCountdown}`}
               />
               <Stat label="24h 거래량" value={formatCompactUsd(market.volume24h)} />
             </div>
@@ -688,10 +723,12 @@ function ScrollableTableFrame({
 function Stat({
   label,
   value,
+  subValue,
   tone = "neutral",
 }: {
   label: string;
   value: string;
+  subValue?: string;
   tone?: "positive" | "negative" | "neutral";
 }) {
   const toneClassName =
@@ -707,6 +744,11 @@ function Stat({
       <p className={`mt-2 text-lg-custom font-semibold ${toneClassName}`}>
         {value}
       </p>
+      {subValue ? (
+        <p className="mt-1 text-xs-custom text-main-dark-gray/55">
+          {subValue}
+        </p>
+      ) : null}
     </div>
   );
 }

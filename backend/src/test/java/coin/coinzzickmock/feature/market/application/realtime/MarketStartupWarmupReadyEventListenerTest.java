@@ -1,7 +1,10 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.market.infrastructure.config.MarketStartupWarmupReadyEventListener;
 import coin.coinzzickmock.providers.Providers;
@@ -33,7 +36,8 @@ class MarketStartupWarmupReadyEventListenerTest {
         MarketSupportedMarketRefresher marketSupportedMarketRefresher = new MarketSupportedMarketRefresher(
                 new FakeProviders(marketDataGateway),
                 marketSnapshotStore,
-                applicationEventPublisher
+                applicationEventPublisher,
+                defaultFundingScheduleLookup()
         );
         MarketStartupWarmupReadyEventListener listener =
                 new MarketStartupWarmupReadyEventListener(marketSupportedMarketRefresher);
@@ -43,6 +47,13 @@ class MarketStartupWarmupReadyEventListenerTest {
         assertEquals(1, marketDataGateway.supportedMarketLoadCalls());
         assertEquals(1, marketSnapshotStore.getSupportedMarkets().size());
         assertEquals(1, applicationEventPublisher.events().size());
+    }
+
+    private static MarketFundingScheduleLookup defaultFundingScheduleLookup() {
+        MarketFundingScheduleLookup provider = mock(MarketFundingScheduleLookup.class);
+        when(provider.scheduleFor(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(FundingSchedule.defaultUsdtPerpetual());
+        return provider;
     }
 
     private static MarketSnapshot snapshot(

@@ -17,6 +17,15 @@ public class MarketSymbolEntity {
     @Column(name = "symbol", nullable = false, length = 30)
     private String symbol;
 
+    @Column(name = "funding_interval_hours", nullable = false)
+    private int fundingIntervalHours;
+
+    @Column(name = "funding_anchor_hour", nullable = false)
+    private int fundingAnchorHour;
+
+    @Column(name = "funding_time_zone", nullable = false, length = 40)
+    private String fundingTimeZone;
+
     protected MarketSymbolEntity() {
     }
 
@@ -26,5 +35,17 @@ public class MarketSymbolEntity {
 
     public String symbol() {
         return symbol;
+    }
+
+    public int fundingIntervalHours() {
+        return fundingIntervalHours;
+    }
+
+    public int fundingAnchorHour() {
+        return fundingAnchorHour;
+    }
+
+    public String fundingTimeZone() {
+        return fundingTimeZone;
     }
 }

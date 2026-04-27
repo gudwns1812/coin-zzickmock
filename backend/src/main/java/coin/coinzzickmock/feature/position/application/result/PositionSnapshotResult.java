@@ -13,6 +13,7 @@ public record PositionSnapshotResult(
         double realizedPnl,
         double margin,
         double roi,
+        double accumulatedClosedQuantity,
         double pendingCloseQuantity,
         double closeableQuantity,
         Double takeProfitPrice,

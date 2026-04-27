@@ -95,6 +95,7 @@ public class PositionController {
                 result.realizedPnl(),
                 result.margin(),
                 result.roi(),
+                result.accumulatedClosedQuantity(),
                 result.pendingCloseQuantity(),
                 result.closeableQuantity(),
                 result.takeProfitPrice(),

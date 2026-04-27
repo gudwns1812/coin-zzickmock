@@ -3,7 +3,12 @@
 import CancelOrderButton from "@/components/futures/CancelOrderButton";
 import ClosePositionButton from "@/components/futures/ClosePositionButton";
 import FuturesPriceChart from "@/components/futures/FuturesPriceChart";
+import {
+  deriveLivePositionDisplay,
+  getAccumulatedClosedQuantity,
+} from "@/components/futures/livePositionDisplay";
 import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
+import Modal from "@/components/ui/Modal";
 import type {
   FuturesAccountSummary,
   FuturesOpenOrder,
@@ -16,11 +21,13 @@ import type {
 import { formatFundingCountdown } from "@/lib/funding-countdown";
 import {
   formatCompactUsd,
+  SUPPORTED_MARKET_SYMBOLS,
   formatPercent,
   formatSignedUsd,
   formatUsd,
   type MarketSnapshot,
 } from "@/lib/markets";
+import { Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
@@ -148,9 +155,24 @@ export default function MarketDetailRealtimeView({
     };
   }, [market.nextFundingAt]);
 
+  const displayedPositions = useMemo(
+    () =>
+      positions.map((position) =>
+        deriveLivePositionDisplay(position, market)
+      ),
+    [market, positions]
+  );
+  const displayedChartPositions = useMemo(
+    () =>
+      chartPositions.map((position) =>
+        deriveLivePositionDisplay(position, market)
+      ),
+    [chartPositions, market]
+  );
   const unrealizedPnl = useMemo(
-    () => positions.reduce((sum, position) => sum + position.unrealizedPnl, 0),
-    [positions]
+    () =>
+      displayedPositions.reduce((sum, position) => sum + position.unrealizedPnl, 0),
+    [displayedPositions]
   );
   const fundingCountdown = useMemo(
     () =>
@@ -170,6 +192,7 @@ export default function MarketDetailRealtimeView({
           <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
             <div className="flex items-start justify-between gap-main">
               <div className="min-w-0">
+                <SymbolSelector activeSymbol={market.symbol} />
                 <p className="text-xs-custom uppercase text-main-dark-gray/50">
                   {market.symbol}
                 </p>
@@ -219,7 +242,7 @@ export default function MarketDetailRealtimeView({
             currentPrice={market.lastPrice}
             currentPriceUpdatedAt={marketUpdatedAt}
             openOrders={chartOpenOrders}
-            positions={chartPositions}
+            positions={displayedChartPositions}
             symbol={market.symbol}
           />
 
@@ -230,7 +253,7 @@ export default function MarketDetailRealtimeView({
             onTabChange={setActiveTab}
             openOrders={openOrders}
             orderHistory={orderHistory}
-            positions={positions}
+            positions={displayedPositions}
             positionHistory={positionHistory}
             unrealizedPnl={unrealizedPnl}
           />
@@ -271,6 +294,38 @@ export default function MarketDetailRealtimeView({
           />
         </aside>
       </section>
+    </div>
+  );
+}
+
+function SymbolSelector({ activeSymbol }: { activeSymbol: MarketSnapshot["symbol"] }) {
+  const router = useRouter();
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-2" aria-label="Futures symbol selector">
+      {SUPPORTED_MARKET_SYMBOLS.map((symbol) => {
+        const active = symbol === activeSymbol;
+        return (
+          <button
+            className={[
+              "rounded-full border px-3 py-1.5 text-xs-custom font-bold transition-colors",
+              active
+                ? "border-main-dark-gray bg-main-dark-gray text-white"
+                : "border-main-light-gray bg-white text-main-dark-gray/60 hover:text-main-dark-gray",
+            ].join(" ")}
+            key={symbol}
+            onClick={() => {
+              if (!active) {
+                router.push(`/markets/${symbol}`);
+              }
+            }}
+            aria-current={active ? "page" : undefined}
+            type="button"
+          >
+            {symbol}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -414,7 +469,7 @@ function PositionsTable({ positions }: { positions: FuturesPosition[] }) {
 }
 
 function PositionCard({ position }: { position: FuturesPosition }) {
-  const closeableQuantity = getCloseableQuantity(position);
+  const closeAmount = getAccumulatedClosedQuantity(position);
   const realizedPnl = position.realizedPnl ?? 0;
   const sideTone =
     position.positionSide === "LONG" ? "text-emerald-600" : "text-rose-600";
@@ -442,10 +497,9 @@ function PositionCard({ position }: { position: FuturesPosition }) {
           </div>
         </div>
         <ClosePositionButton
-          disabled={closeableQuantity <= 0}
           marginMode={position.marginMode}
           positionSide={position.positionSide}
-          quantity={closeableQuantity}
+          quantity={position.quantity}
           suggestedLimitPrice={position.markPrice}
           symbol={position.symbol}
         />
@@ -478,20 +532,43 @@ function PositionCard({ position }: { position: FuturesPosition }) {
         />
         <PositionMetric
           label="Close amount"
-          value={`${formatPlainNumber(closeableQuantity)} / ${formatPlainNumber(
-            position.quantity
-          )} ${getBaseAsset(position.symbol)}`}
+          value={`${formatPlainNumber(closeAmount)} ${getBaseAsset(position.symbol)}`}
         />
-        <PositionMetric
-          label="Position TP/SL"
-          value={`${formatOptionalUsd(position.takeProfitPrice)} / ${formatOptionalUsd(
-            position.stopLossPrice
-          )}`}
-        />
+        <PositionTpslMetric position={position} />
       </div>
-
-      <PositionTpslEditor position={position} />
     </article>
+  );
+}
+
+function PositionTpslMetric({ position }: { position: FuturesPosition }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-2">
+        <p className="text-xs-custom font-semibold text-main-dark-gray/50">
+          Position TP/SL
+        </p>
+        <button
+          aria-label="Edit Position TP/SL"
+          className="flex size-6 items-center justify-center rounded-full border border-main-light-gray text-main-dark-gray/60 hover:text-main-dark-gray"
+          onClick={() => setIsOpen(true)}
+          type="button"
+        >
+          <Pencil aria-hidden="true" size={13} strokeWidth={2.2} />
+        </button>
+      </div>
+      <p className="mt-1 truncate text-sm-custom font-bold text-main-dark-gray">
+        {`${formatOptionalUsd(position.takeProfitPrice)} / ${formatOptionalUsd(
+          position.stopLossPrice
+        )}`}
+      </p>
+      <PositionTpslEditor
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        position={position}
+      />
+    </div>
   );
 }
 
@@ -516,7 +593,15 @@ function PositionMetric({
   );
 }
 
-function PositionTpslEditor({ position }: { position: FuturesPosition }) {
+function PositionTpslEditor({
+  isOpen,
+  onClose,
+  position,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  position: FuturesPosition;
+}) {
   const router = useRouter();
   const [takeProfitPrice, setTakeProfitPrice] = useState(() =>
     formatEditablePrice(position.takeProfitPrice)
@@ -570,6 +655,7 @@ function PositionTpslEditor({ position }: { position: FuturesPosition }) {
       }
 
       toast.success("TP/SL이 저장되었습니다.");
+      onClose();
       router.refresh();
     } catch (error) {
       toast.error(
@@ -581,32 +667,40 @@ function PositionTpslEditor({ position }: { position: FuturesPosition }) {
   }
 
   return (
-    <div className="mt-5 grid gap-main sm:grid-cols-2">
-      <TpslInput
-        label="TP"
-        onChange={setTakeProfitPrice}
-        value={takeProfitPrice}
-      />
-      <TpslInput label="SL" onChange={setStopLossPrice} value={stopLossPrice} />
-      <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:w-40">
-        <button
-          className="rounded-main bg-main-dark-gray px-3 py-2 text-xs-custom font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isPending}
-          onClick={() => submit(takeProfitPrice, stopLossPrice)}
-          type="button"
-        >
-          Save
-        </button>
-        <button
-          className="rounded-main border border-main-light-gray px-3 py-2 text-xs-custom font-bold text-main-dark-gray/70 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isPending}
-          onClick={() => submit("", "")}
-          type="button"
-        >
-          Clear
-        </button>
+    <Modal hasBackdropBlur={false} isEscapeClose isOpen={isOpen} onClose={onClose}>
+      <div className="w-[min(440px,calc(100vw-48px))] pr-6">
+        <p className="text-lg-custom font-bold text-main-dark-gray">Position TP/SL</p>
+        <p className="mt-2 text-sm-custom text-main-dark-gray/60">
+          {position.symbol} · {position.positionSide} · {position.marginMode}
+        </p>
+        <div className="mt-5 grid gap-main sm:grid-cols-2">
+          <TpslInput
+            label="TP"
+            onChange={setTakeProfitPrice}
+            value={takeProfitPrice}
+          />
+          <TpslInput label="SL" onChange={setStopLossPrice} value={stopLossPrice} />
+          <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+            <button
+              className="rounded-main bg-main-dark-gray px-3 py-2 text-xs-custom font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isPending}
+              onClick={() => submit(takeProfitPrice, stopLossPrice)}
+              type="button"
+            >
+              Save
+            </button>
+            <button
+              className="rounded-main border border-main-light-gray px-3 py-2 text-xs-custom font-bold text-main-dark-gray/70 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isPending}
+              onClick={() => submit("", "")}
+              type="button"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -990,9 +1084,6 @@ function formatOrderQuantity(
   return `${formatPlainNumber(order.quantity)} ${getBaseAsset(order.symbol)}`;
 }
 
-function getCloseableQuantity(position: FuturesPosition): number {
-  return position.closeableQuantity ?? position.quantity;
-}
 
 function getBaseAsset(symbol: string): string {
   return symbol.endsWith("USDT") ? symbol.slice(0, -4) : symbol;

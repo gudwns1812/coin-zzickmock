@@ -59,6 +59,7 @@ export type FuturesPosition = {
   unrealizedPnl: number;
   realizedPnl?: number;
   roi: number;
+  accumulatedClosedQuantity?: number;
   pendingCloseQuantity?: number;
   closeableQuantity?: number;
   takeProfitPrice?: number | null;

@@ -174,6 +174,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 상단 헤더
 
+- `BTCUSDT`, `ETHUSDT` 심볼 selector. 현재 심볼은 선택 상태로 표시하고, 다른 심볼을 누르면 `/markets/{symbol}`로 이동한다.
 - 심볼명
 - 현재가
 - 24h 변화율
@@ -230,11 +231,15 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - indicator는 fresh candle history가 있을 때만 렌더링되고, stale/missing history에서는 config만 유지한 채 표시를 숨긴다
 - 지정가 주문은 현재 체결 가능 여부에 따라 `Maker` 또는 `Taker` 예상 배지 표시
 - 현재 포지션이 있으면 부분 종료 또는 전체 종료 액션 제공
+- 선택된 심볼과 같은 포지션의 `Mark Price`, `Unrealized PnL`, `ROE`, 계정 영역의 전체 미실현 손익은 실시간 market snapshot의 mark price로 표시용 값을 재계산한다. LONG 미실현 손익은 `(markPrice - entryPrice) * quantity`, SHORT 미실현 손익은 `(entryPrice - markPrice) * quantity`, ROE는 `unrealizedPnl / margin`이다. margin이 0이거나 유한하지 않으면 `NaN`을 표시하지 않는다. 서버 조회값은 새로고침/체결 이벤트 이후의 authoritative snapshot이고, 프론트 재계산은 저장/정산에 쓰지 않는 display-only 값이다.
 - 포지션 종료 버튼은 모달을 열고, 사용자는 `Market` 즉시 종료 또는 `Limit` 종료 주문을 선택한다
 - `Limit` 종료 주문은 체결 전까지 Open orders에 남고 취소할 수 있다
-- 포지션 응답은 `pendingCloseQuantity`와 `closeableQuantity`를 제공한다. `pendingCloseQuantity`는 같은 심볼/방향/마진 모드의 미체결 close 주문 수량 합계이고, `closeableQuantity = max(0, quantity - pendingCloseQuantity)`이다.
-- market close, limit close 체결, liquidation으로 포지션 수량이 줄어들면 같은 포지션의 pending close 주문 합계가 남은 포지션 수량을 넘지 않도록 가장 체결 가능성이 낮은 주문부터 줄이거나 취소한다. LONG close는 지정가가 높은 주문부터, SHORT close는 지정가가 낮은 주문부터 줄이며, 같은 지정가에서는 더 나중에 생성된 주문을 먼저 줄여 기존 주문 우선권을 보존한다.
-- 포지션은 `takeProfitPrice`, `stopLossPrice`를 가질 수 있다. 사용자가 TP/SL을 수정하면 백엔드는 현재 mark price 기준으로 이미 발동된 가격을 거절하고, 저장된 TP/SL은 이후 mark price 이벤트에서 포지션 전체 종료 트리거로 평가된다.
+- 선택 심볼 포지션의 `Mark Price`, `Unrealized PnL`, `ROE`, 총 미실현 손익은 market SSE의 최신 `markPrice`로 표시 전용 재계산을 할 수 있다. 공식 식은 simulation rules의 `unrealizedPnl = (markPrice - entryPrice) * quantity`(LONG), `(entryPrice - markPrice) * quantity`(SHORT), `roi = unrealizedPnl / margin`이며, `margin`이 0 또는 non-finite이면 화면 ROE는 `0`으로 처리한다.
+- 포지션 응답은 `accumulatedClosedQuantity`, `pendingCloseQuantity`, `closeableQuantity`를 제공한다. 화면의 `Close amount`는 누적 종료 체결 수량인 `accumulatedClosedQuantity`만 의미한다.
+- `pendingCloseQuantity`는 같은 심볼/방향/마진 모드의 미체결 close 주문 수량 합계이고, `closeableQuantity = max(0, quantity - pendingCloseQuantity)`이다. 두 값은 예약 상태/호환 필드이며 `Close amount` 라벨로 표시하지 않는다.
+- close 입력의 최대값과 클라이언트 검증은 `closeableQuantity`가 아니라 현재 보유 `quantity` 기준이다. pending close 수량이 보유 수량과 같아도 새 close 주문은 제출할 수 있고, 백엔드는 접수 후 pending close cap을 조정한다.
+- market close, limit close 체결, liquidation, 새 close 주문 접수로 포지션 수량 또는 pending close 총량이 cap을 넘으면 같은 포지션의 pending close 주문 합계가 남은 포지션 수량을 넘지 않도록 가장 체결 가능성이 낮은 주문부터 줄이거나 취소한다. LONG close는 지정가가 높은 주문부터, SHORT close는 지정가가 낮은 주문부터 줄이며, 같은 지정가에서는 더 나중에 생성된 주문을 먼저 줄여 기존 주문 우선권을 보존한다.
+- 포지션은 `takeProfitPrice`, `stopLossPrice`를 가질 수 있다. 화면은 `Position TP/SL` 값을 기본 표시만 하고, edit icon을 눌렀을 때 편집기를 연다. 사용자가 TP/SL을 수정하면 백엔드는 현재 mark price 기준으로 이미 발동된 가격을 거절하고, 저장된 TP/SL은 이후 mark price 이벤트에서 포지션 전체 종료 트리거로 평가된다.
 - TP/SL로 포지션이 종료되면 기존 market close/liquidation과 동일하게 같은 포지션의 pending close 주문을 줄이거나 취소한다.
 - Open orders와 Order history는 주문 시간을 가장 왼쪽 컬럼에 둔다
 - Open orders에서는 예상 증거금과 예상 수수료를 표시하지 않는다
@@ -261,7 +266,9 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 포지션 히스토리는 완전 종료 시점에만 생성된다
 - 포지션 히스토리 PnL은 trading fee와 funding cost를 반영한 net PnL이다.
 - pending close 주문이 있는 상태에서 포지션을 종료해도 같은 포지션의 stale close 주문이 체결 가능한 상태로 남지 않는다.
-- TP/SL 편집은 현재 mark price 기준으로 즉시 발동될 값을 저장하지 않으며, 발동 시 `TAKE_PROFIT` 또는 `STOP_LOSS` 종료 사유와 함께 포지션 히스토리에 남는다.
+- TP/SL 편집은 `Position TP/SL` 편집 아이콘을 통해서만 열리고, 현재 mark price 기준으로 즉시 발동될 값을 저장하지 않으며, 발동 시 `TAKE_PROFIT` 또는 `STOP_LOSS` 종료 사유와 함께 포지션 히스토리에 남는다.
+- `Close amount`는 pending close나 closeable quantity가 아니라 누적 체결 종료 수량이다. 신규 포지션에서는 0이고, 부분 종료 체결 후에만 증가한다.
+- pending close 주문이 이미 보유 수량 전체를 덮어도 추가 close 주문 제출 UI/API를 막지 않으며, 접수 후 cap reconciliation으로 pending close 총량을 정리한다.
 
 ## 화면 5. 포트폴리오 `/portfolio`
 

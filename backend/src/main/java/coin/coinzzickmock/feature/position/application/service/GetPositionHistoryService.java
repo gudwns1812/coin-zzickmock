@@ -31,6 +31,12 @@ public class GetPositionHistoryService {
                 history.averageExitPrice(),
                 history.positionSize(),
                 history.realizedPnl(),
+                history.grossRealizedPnl(),
+                history.openFee(),
+                history.closeFee(),
+                history.totalFee(),
+                history.fundingCost(),
+                history.netRealizedPnl(),
                 history.roi(),
                 history.closedAt(),
                 history.closeReason()

@@ -175,14 +175,15 @@ public class PendingOrderFillProcessor {
                     order.leverage(),
                     order.quantity(),
                     executionPrice,
-                    markPrice
+                    markPrice,
+                    order.estimatedFee()
             ));
             return;
         }
 
         positionRepository.save(
                 memberId,
-                existing.increase(order.leverage(), order.quantity(), executionPrice, markPrice)
+                existing.increase(order.leverage(), order.quantity(), executionPrice, markPrice, order.estimatedFee())
         );
     }
 

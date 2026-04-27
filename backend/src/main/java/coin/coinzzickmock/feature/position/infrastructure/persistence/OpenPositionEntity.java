@@ -71,8 +71,14 @@ public class OpenPositionEntity extends AuditableEntity {
     @Column(name = "accumulated_realized_pnl", nullable = false, precision = 19, scale = 4)
     private BigDecimal accumulatedRealizedPnl;
 
+    @Column(name = "accumulated_open_fee", nullable = false, precision = 19, scale = 4)
+    private BigDecimal accumulatedOpenFee;
+
     @Column(name = "accumulated_close_fee", nullable = false, precision = 19, scale = 4)
     private BigDecimal accumulatedCloseFee;
+
+    @Column(name = "accumulated_funding_cost", nullable = false, precision = 19, scale = 4)
+    private BigDecimal accumulatedFundingCost;
 
     @Column(name = "version", nullable = false)
     private long version;
@@ -102,7 +108,9 @@ public class OpenPositionEntity extends AuditableEntity {
         this.accumulatedClosedQuantity = decimal(positionSnapshot.accumulatedClosedQuantity());
         this.accumulatedExitNotional = decimal(positionSnapshot.accumulatedExitNotional());
         this.accumulatedRealizedPnl = decimal(positionSnapshot.accumulatedRealizedPnl());
+        this.accumulatedOpenFee = decimal(positionSnapshot.accumulatedOpenFee());
         this.accumulatedCloseFee = decimal(positionSnapshot.accumulatedCloseFee());
+        this.accumulatedFundingCost = decimal(positionSnapshot.accumulatedFundingCost());
         this.version = positionSnapshot.version();
     }
 
@@ -122,7 +130,9 @@ public class OpenPositionEntity extends AuditableEntity {
                 accumulatedClosedQuantity.doubleValue(),
                 accumulatedExitNotional.doubleValue(),
                 accumulatedRealizedPnl.doubleValue(),
+                accumulatedOpenFee.doubleValue(),
                 accumulatedCloseFee.doubleValue(),
+                accumulatedFundingCost.doubleValue(),
                 version
         );
     }

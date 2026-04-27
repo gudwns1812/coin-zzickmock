@@ -91,6 +91,12 @@ export type FuturesPositionHistory = {
   averageExitPrice: number;
   positionSize: number;
   realizedPnl: number;
+  grossRealizedPnl: number;
+  openFee: number;
+  closeFee: number;
+  totalFee: number;
+  fundingCost: number;
+  netRealizedPnl: number;
   roi: number;
   closedAt: string;
   closeReason: "MANUAL" | "LIMIT_CLOSE" | "LIQUIDATION" | string;

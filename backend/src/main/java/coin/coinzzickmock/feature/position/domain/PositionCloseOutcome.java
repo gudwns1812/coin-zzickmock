@@ -4,7 +4,7 @@ import java.time.Instant;
 
 public record PositionCloseOutcome(
         double closedQuantity,
-        double realizedPnl,
+        double grossRealizedPnl,
         double closeFee,
         double releasedMargin,
         PositionSnapshot remainingPosition,
@@ -13,11 +13,25 @@ public record PositionCloseOutcome(
         double averageEntryPrice,
         double accumulatedClosedQuantity,
         double accumulatedExitNotional,
-        double accumulatedRealizedPnl,
-        double accumulatedCloseFee
+        double accumulatedGrossRealizedPnl,
+        double accumulatedOpenFee,
+        double accumulatedCloseFee,
+        double accumulatedFundingCost
 ) {
     public double netRealizedPnl() {
-        return realizedPnl - closeFee;
+        return eventNetRealizedPnl();
+    }
+
+    public double eventNetRealizedPnl() {
+        return grossRealizedPnl - closeFee;
+    }
+
+    public double positionNetRealizedPnl() {
+        return accumulatedGrossRealizedPnl - totalFee() - accumulatedFundingCost;
+    }
+
+    public double totalFee() {
+        return accumulatedOpenFee + accumulatedCloseFee;
     }
 
     public boolean fullyClosed() {
@@ -40,6 +54,6 @@ public record PositionCloseOutcome(
         if (margin == 0) {
             return 0;
         }
-        return accumulatedRealizedPnl / margin;
+        return positionNetRealizedPnl() / margin;
     }
 }

@@ -103,14 +103,21 @@ public class CreateOrderService {
                     command.leverage(),
                     command.quantity(),
                     marketSnapshot.lastPrice(),
-                    marketSnapshot.markPrice()
+                    marketSnapshot.markPrice(),
+                    preview.estimatedFee()
             ));
             return;
         }
 
         positionRepository.save(
                 command.memberId(),
-                existing.increase(command.leverage(), command.quantity(), marketSnapshot.lastPrice(), marketSnapshot.markPrice())
+                existing.increase(
+                        command.leverage(),
+                        command.quantity(),
+                        marketSnapshot.lastPrice(),
+                        marketSnapshot.markPrice(),
+                        preview.estimatedFee()
+                )
         );
     }
 

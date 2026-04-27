@@ -37,13 +37,13 @@ public record TradingAccount(
         );
     }
 
-    public TradingAccount settlePositionClose(double realizedPnl, double closeFee, double releasedMargin) {
+    public TradingAccount settlePositionClose(double grossRealizedPnl, double closeFee, double releasedMargin) {
         return new TradingAccount(
                 memberId,
                 memberEmail,
                 memberName,
-                walletBalance + realizedPnl - closeFee,
-                availableMargin + releasedMargin + realizedPnl - closeFee
+                walletBalance + grossRealizedPnl - closeFee,
+                availableMargin + releasedMargin + grossRealizedPnl - closeFee
         );
     }
 }

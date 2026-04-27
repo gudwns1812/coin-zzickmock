@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -15,13 +16,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetOpenPositionsService {
     private final PositionRepository positionRepository;
+    private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final Providers providers;
 
     @Transactional(readOnly = true)
     public List<PositionSnapshotResult> getPositions(String memberId) {
         return positionRepository.findOpenPositions(memberId).stream()
                 .map(this::markToMarketForRead)
-                .map(this::toResult)
+                .map(snapshot -> toResult(memberId, snapshot))
                 .toList();
     }
 
@@ -33,7 +35,11 @@ public class GetOpenPositionsService {
         return snapshot.markToMarket(market.markPrice());
     }
 
-    private PositionSnapshotResult toResult(PositionSnapshot snapshot) {
+    private PositionSnapshotResult toResult(String memberId, PositionSnapshot snapshot) {
+        double pendingCloseQuantity = pendingCloseOrderCapReconciler.pendingCloseQuantity(
+                memberId,
+                snapshot
+        );
         return new PositionSnapshotResult(
                 snapshot.symbol(),
                 snapshot.positionSide(),
@@ -45,7 +51,9 @@ public class GetOpenPositionsService {
                 snapshot.liquidationPrice(),
                 snapshot.unrealizedPnl(),
                 snapshot.initialMargin(),
-                snapshot.roi()
+                snapshot.roi(),
+                pendingCloseQuantity,
+                Math.max(0, snapshot.quantity() - pendingCloseQuantity)
         );
     }
 }

@@ -6,6 +6,7 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
@@ -29,6 +30,7 @@ public class PositionLiquidationProcessor {
     private final AccountRepository accountRepository;
     private final LiquidationPolicy liquidationPolicy;
     private final PositionCloseFinalizer positionCloseFinalizer;
+    private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     public void liquidateBreachedPositions(MarketSummaryResult market) {
@@ -80,6 +82,7 @@ public class PositionLiquidationProcessor {
                 TAKER_FEE_RATE,
                 PositionHistory.CLOSE_REASON_LIQUIDATION
         );
+        pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),

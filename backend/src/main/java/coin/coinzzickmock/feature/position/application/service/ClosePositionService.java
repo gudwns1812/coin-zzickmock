@@ -84,7 +84,7 @@ public class ClosePositionService {
                 market.lastPrice()
         ));
 
-        return positionCloseFinalizer.close(
+        ClosePositionResult result = positionCloseFinalizer.close(
                 memberId,
                 position,
                 quantity,
@@ -93,6 +93,13 @@ public class ClosePositionService {
                 TAKER_FEE_RATE,
                 PositionHistory.CLOSE_REASON_MANUAL
         );
+        pendingCloseOrderCapReconciler.reconcile(
+                memberId,
+                position,
+                Math.max(0, position.quantity() - quantity),
+                market.lastPrice()
+        );
+        return result;
     }
 
     private MarketSnapshot loadMarket(String symbol) {

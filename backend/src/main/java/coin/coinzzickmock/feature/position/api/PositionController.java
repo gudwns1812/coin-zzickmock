@@ -77,7 +77,9 @@ public class PositionController {
                 result.liquidationPrice(),
                 result.unrealizedPnl(),
                 result.margin(),
-                result.roi()
+                result.roi(),
+                result.pendingCloseQuantity(),
+                result.closeableQuantity()
         );
     }
 }

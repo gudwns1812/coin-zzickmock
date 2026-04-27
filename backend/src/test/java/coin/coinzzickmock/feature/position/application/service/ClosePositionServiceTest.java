@@ -214,6 +214,98 @@ class ClosePositionServiceTest {
     }
 
     @Test
+    void fullMarketCloseCancelsExistingPendingCloseOrders() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100000,
+                100000
+        ));
+        orderRepository.save("demo-member", FuturesOrder.place(
+                "existing-close",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.5,
+                110000.0,
+                false,
+                "MAKER",
+                0,
+                110000
+        ));
+        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(105000, 105000));
+
+        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 1, "MARKET", null);
+
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "existing-close").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
+        assertFalse(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
+    }
+
+    @Test
+    void partialMarketCloseReducesPendingCloseOrdersToRemainingPositionQuantity() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100000,
+                100000
+        ));
+        orderRepository.save("demo-member", FuturesOrder.place(
+                "closer",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.3,
+                106000.0,
+                false,
+                "MAKER",
+                0,
+                106000
+        ));
+        orderRepository.save("demo-member", FuturesOrder.place(
+                "farther",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.5,
+                112000.0,
+                false,
+                "MAKER",
+                0,
+                112000
+        ));
+        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(105000, 105000));
+
+        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.6, "MARKET", null);
+
+        FuturesOrder closer = orderRepository.findByMemberIdAndOrderId("demo-member", "closer").orElseThrow();
+        FuturesOrder reducedFarther = orderRepository.findByMemberIdAndOrderId("demo-member", "farther").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, closer.status());
+        assertEquals(0.3, closer.quantity(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_PENDING, reducedFarther.status());
+        assertEquals(0.1, reducedFarther.quantity(), 0.0001);
+    }
+
+    @Test
     void limitCloseCreatesPendingCloseOrderWithoutClosingPosition() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
                 new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)

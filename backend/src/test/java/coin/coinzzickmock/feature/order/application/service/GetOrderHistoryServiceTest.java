@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 class GetOrderHistoryServiceTest {
     @Test
-    void returnsOnlyNonPendingOrdersForRequestedSymbol() {
+    void returnsCreatedOrdersIncludingPendingForRequestedSymbol() {
         GetOrderHistoryService service = new GetOrderHistoryService(new InMemoryOrderRepository(
                 order("1", "BTCUSDT", "LONG", "LIMIT", "ISOLATED", 10, 0.1, 99000.0, "PENDING"),
                 order("2", "BTCUSDT", "SHORT", "LIMIT", "ISOLATED", 10, 0.2, 101000.0, "CANCELLED"),
@@ -22,9 +22,11 @@ class GetOrderHistoryServiceTest {
 
         List<OrderHistoryResult> results = service.getOrderHistory("demo-member", "BTCUSDT");
 
-        assertEquals(2, results.size());
-        assertEquals("2", results.get(0).orderId());
-        assertEquals("3", results.get(1).orderId());
+        assertEquals(3, results.size());
+        assertEquals("1", results.get(0).orderId());
+        assertEquals("PENDING", results.get(0).status());
+        assertEquals("2", results.get(1).orderId());
+        assertEquals("3", results.get(2).orderId());
     }
 
     private static FuturesOrder order(

@@ -5,8 +5,11 @@ import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -29,8 +32,18 @@ public class MarketSupportedMarketRefresher {
             return List.of();
         }
 
+        Map<String, MarketSummaryUpdatedEvent> events = refreshedMarkets.stream()
+                .collect(Collectors.toMap(
+                        MarketSummaryResult::symbol,
+                        result -> MarketSummaryUpdatedEvent.from(
+                                marketSnapshotStore.getMarket(result.symbol()).orElse(null),
+                                result
+                        ),
+                        (first, second) -> second,
+                        LinkedHashMap::new
+                ));
         marketSnapshotStore.putSupportedMarkets(refreshedMarkets);
-        refreshedMarkets.forEach(result -> applicationEventPublisher.publishEvent(new MarketSummaryUpdatedEvent(result)));
+        refreshedMarkets.forEach(result -> applicationEventPublisher.publishEvent(events.get(result.symbol())));
         return refreshedMarkets;
     }
 

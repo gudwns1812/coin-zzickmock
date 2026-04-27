@@ -837,6 +837,10 @@ function formatOrderStatus(status: FuturesOrderHistory["status"]): string {
     return "Cancelled";
   }
 
+  if (status === "PENDING" || status === "OPEN") {
+    return "Pending";
+  }
+
   return "Rejected";
 }
 

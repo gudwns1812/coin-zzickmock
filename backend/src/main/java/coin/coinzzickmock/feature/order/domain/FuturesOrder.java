@@ -128,6 +128,26 @@ public record FuturesOrder(
         return PURPOSE_CLOSE_POSITION.equalsIgnoreCase(orderPurpose);
     }
 
+    public boolean isOpenPositionOrder() {
+        return PURPOSE_OPEN_POSITION.equalsIgnoreCase(orderPurpose);
+    }
+
+    public boolean isBuySideLimitOrder() {
+        if (limitPrice == null) {
+            return false;
+        }
+        return (isOpenPositionOrder() && "LONG".equalsIgnoreCase(positionSide))
+                || (isClosePositionOrder() && "SHORT".equalsIgnoreCase(positionSide));
+    }
+
+    public boolean isSellSideLimitOrder() {
+        if (limitPrice == null) {
+            return false;
+        }
+        return (isOpenPositionOrder() && "SHORT".equalsIgnoreCase(positionSide))
+                || (isClosePositionOrder() && "LONG".equalsIgnoreCase(positionSide));
+    }
+
     public FuturesOrder fill(double executionPrice, String feeType, double estimatedFee) {
         return new FuturesOrder(
                 orderId,

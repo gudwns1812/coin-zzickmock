@@ -6,6 +6,8 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
+import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
@@ -14,6 +16,7 @@ import coin.coinzzickmock.feature.position.application.close.PositionCloseFinali
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -32,10 +35,18 @@ public class PendingOrderFillProcessor {
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
 
-    public void fillExecutablePendingOrders(MarketSummaryResult market) {
-        List<PendingOrderCandidate> candidates = pendingOrderExecutionCache.refresh(
-                market.symbol(),
-                orderRepository.findPendingBySymbol(market.symbol())
+    public void fillExecutablePendingOrders(MarketSummaryUpdatedEvent event) {
+        if (!event.hasPriceMovement()) {
+            return;
+        }
+
+        MarketSummaryResult market = event.result();
+        List<PendingOrderCandidate> candidates = executableCandidates(
+                event,
+                pendingOrderExecutionCache.refresh(
+                        market.symbol(),
+                        orderRepository.findPendingBySymbol(market.symbol())
+                )
         );
 
         for (PendingOrderCandidate candidate : candidates) {
@@ -43,9 +54,53 @@ public class PendingOrderFillProcessor {
         }
     }
 
+    private List<PendingOrderCandidate> executableCandidates(
+            MarketSummaryUpdatedEvent event,
+            List<PendingOrderCandidate> candidates
+    ) {
+        MarketSummaryResult market = event.result();
+        return candidates.stream()
+                .filter(candidate -> isExecutableInDirection(candidate.order(), event.direction()))
+                .filter(candidate -> isInsideMove(candidate.order(), event.previousLastPrice(), market.lastPrice()))
+                .sorted(candidateComparator(event.direction()))
+                .toList();
+    }
+
+    private Comparator<PendingOrderCandidate> candidateComparator(MarketPriceMovementDirection direction) {
+        Comparator<PendingOrderCandidate> byPrice = Comparator.comparingDouble(
+                candidate -> candidate.order().limitPrice()
+        );
+        if (direction == MarketPriceMovementDirection.DOWN) {
+            byPrice = byPrice.reversed();
+        }
+        return byPrice
+                .thenComparing(candidate -> candidate.order().orderTime())
+                .thenComparing(PendingOrderCandidate::orderId);
+    }
+
+    private boolean isExecutableInDirection(FuturesOrder order, MarketPriceMovementDirection direction) {
+        if (!order.isPending() || order.limitPrice() == null) {
+            return false;
+        }
+        if (direction == MarketPriceMovementDirection.UP) {
+            return order.isSellSideLimitOrder();
+        }
+        if (direction == MarketPriceMovementDirection.DOWN) {
+            return order.isBuySideLimitOrder();
+        }
+        return false;
+    }
+
+    private boolean isInsideMove(FuturesOrder order, double previousLastPrice, double currentLastPrice) {
+        double lower = Math.min(previousLastPrice, currentLastPrice);
+        double upper = Math.max(previousLastPrice, currentLastPrice);
+        double limitPrice = order.limitPrice();
+        return limitPrice >= lower && limitPrice <= upper;
+    }
+
     private void fillIfExecutable(PendingOrderCandidate candidate, MarketSummaryResult market) {
         FuturesOrder order = candidate.order();
-        if (!isExecutable(order, market.lastPrice())) {
+        if (!order.isPending() || order.limitPrice() == null) {
             return;
         }
         if (order.isClosePositionOrder() && !hasEnoughOpenPosition(candidate.memberId(), order)) {
@@ -54,11 +109,12 @@ public class PendingOrderFillProcessor {
             return;
         }
 
-        double estimatedFee = market.lastPrice() * order.quantity() * MAKER_FEE_RATE;
+        double executionPrice = order.limitPrice();
+        double estimatedFee = executionPrice * order.quantity() * MAKER_FEE_RATE;
         Optional<FuturesOrder> claimed = orderRepository.claimPendingFill(
                 candidate.memberId(),
                 order.orderId(),
-                market.lastPrice(),
+                executionPrice,
                 FEE_TYPE_MAKER,
                 estimatedFee
         );
@@ -70,9 +126,9 @@ public class PendingOrderFillProcessor {
 
         FuturesOrder filledOrder = claimed.orElseThrow();
         if (filledOrder.isClosePositionOrder()) {
-            applyFilledCloseOrder(candidate.memberId(), filledOrder, market.lastPrice(), market.markPrice());
+            applyFilledCloseOrder(candidate.memberId(), filledOrder, executionPrice, market.markPrice());
         } else {
-            applyFilledOpenOrder(candidate.memberId(), filledOrder, market.lastPrice(), market.markPrice());
+            applyFilledOpenOrder(candidate.memberId(), filledOrder, executionPrice, market.markPrice());
         }
         pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
         afterCommitEventPublisher.publish(TradingExecutionEvent.orderFilled(
@@ -82,24 +138,8 @@ public class PendingOrderFillProcessor {
                 filledOrder.positionSide(),
                 filledOrder.marginMode(),
                 filledOrder.quantity(),
-                market.lastPrice()
+                executionPrice
         ));
-    }
-
-    private boolean isExecutable(FuturesOrder order, double lastPrice) {
-        if (!order.isPending() || order.limitPrice() == null) {
-            return false;
-        }
-        if (order.isClosePositionOrder()) {
-            if ("LONG".equalsIgnoreCase(order.positionSide())) {
-                return lastPrice >= order.limitPrice();
-            }
-            return lastPrice <= order.limitPrice();
-        }
-        if ("LONG".equalsIgnoreCase(order.positionSide())) {
-            return lastPrice <= order.limitPrice();
-        }
-        return lastPrice >= order.limitPrice();
     }
 
     private boolean hasEnoughOpenPosition(String memberId, FuturesOrder order) {

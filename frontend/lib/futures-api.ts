@@ -78,7 +78,7 @@ export type FuturesOpenOrder = {
 };
 
 export type FuturesOrderHistory = Omit<FuturesOpenOrder, "status"> & {
-  status: "FILLED" | "CANCELLED" | "REJECTED";
+  status: "PENDING" | "OPEN" | "FILLED" | "CANCELLED" | "REJECTED";
 };
 
 export type FuturesPositionHistory = {

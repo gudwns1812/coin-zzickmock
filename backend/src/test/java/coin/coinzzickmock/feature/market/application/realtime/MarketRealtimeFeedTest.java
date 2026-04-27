@@ -133,6 +133,8 @@ class MarketRealtimeFeedTest {
 
         assertEquals(1, events.size());
         assertEquals(102500, events.get(0).result().lastPrice(), 0.0001);
+        assertEquals(101000, events.get(0).previousLastPrice(), 0.0001);
+        assertEquals(MarketPriceMovementDirection.UP, events.get(0).direction());
         assertEquals(102400, events.get(0).result().indexPrice(), 0.0001);
     }
 

@@ -19,7 +19,7 @@ public class MarketOrderExecutionService {
     @Transactional
     public void onMarketUpdated(MarketSummaryUpdatedEvent event) {
         MarketSummaryResult market = event.result();
-        pendingOrderFillProcessor.fillExecutablePendingOrders(market);
+        pendingOrderFillProcessor.fillExecutablePendingOrders(event);
         positionLiquidationProcessor.liquidateBreachedPositions(market);
     }
 }

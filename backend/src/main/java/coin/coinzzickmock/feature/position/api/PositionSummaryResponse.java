@@ -10,6 +10,7 @@ public record PositionSummaryResponse(
         double markPrice,
         Double liquidationPrice,
         double unrealizedPnl,
+        double realizedPnl,
         double margin,
         double roi,
         double pendingCloseQuantity,

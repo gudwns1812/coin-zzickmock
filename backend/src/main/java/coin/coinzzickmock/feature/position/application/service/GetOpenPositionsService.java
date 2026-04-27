@@ -50,6 +50,7 @@ public class GetOpenPositionsService {
                 snapshot.markPrice(),
                 snapshot.liquidationPrice(),
                 snapshot.unrealizedPnl(),
+                snapshot.realizedPnl(),
                 snapshot.initialMargin(),
                 snapshot.roi(),
                 pendingCloseQuantity,

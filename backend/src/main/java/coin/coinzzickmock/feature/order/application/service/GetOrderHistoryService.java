@@ -16,7 +16,6 @@ public class GetOrderHistoryService {
     @Transactional(readOnly = true)
     public List<OrderHistoryResult> getOrderHistory(String memberId, String symbol) {
         return orderRepository.findByMemberId(memberId).stream()
-                .filter(order -> !"PENDING".equals(order.status()))
                 .filter(order -> matchesSymbol(order, symbol))
                 .map(this::toResult)
                 .toList();

@@ -26,6 +26,7 @@ import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProce
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointPolicy;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,11 +66,11 @@ class MarketOrderExecutionServiceTest {
                 eventPublisher
         );
 
-        service.onMarketUpdated(new MarketSummaryUpdatedEvent(market(98, 98)));
+        service.onMarketUpdated(marketEvent(101, 98, 98));
 
         FuturesOrder filled = orderRepository.findByMemberIdAndOrderId("demo-member", "order-1").orElseThrow();
         assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
-        assertEquals(98, filled.executionPrice(), 0.0001);
+        assertEquals(99, filled.executionPrice(), 0.0001);
         assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
         assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
     }
@@ -98,7 +99,7 @@ class MarketOrderExecutionServiceTest {
         TransactionSynchronizationManager.initSynchronization();
         try {
             service(orderRepository, positionRepository, accountRepository, eventPublisher)
-                    .onMarketUpdated(new MarketSummaryUpdatedEvent(market(98, 98)));
+                    .onMarketUpdated(marketEvent(101, 98, 98));
 
             assertTrue(eventPublisher.events.isEmpty());
 
@@ -208,7 +209,7 @@ class MarketOrderExecutionServiceTest {
                 eventPublisher
         );
 
-        service.onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+        service.onMarketUpdated(marketEvent(100, 106, 106));
 
         FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "order-close-1").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
@@ -254,6 +255,55 @@ class MarketOrderExecutionServiceTest {
         assertTrue(eventPublisher.events.isEmpty());
     }
 
+    @Test
+    void risingPriceFillsSellSideLimitsByPathPriceBeforeCreationTime() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save("demo-member", pendingOpenOrderAt("later-price", "SHORT", 103, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save("demo-member", pendingOpenOrderAt("same-price-second", "SHORT", 102, Instant.parse("2026-04-27T00:00:02Z")));
+        orderRepository.save("demo-member", pendingOpenOrderAt("same-price-first", "SHORT", 102, Instant.parse("2026-04-27T00:00:01Z")));
+        orderRepository.save("demo-member", pendingOpenOrderAt("buy-side-ignored", "LONG", 101, Instant.parse("2026-04-27T00:00:03Z")));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(100, 104, 104));
+
+        assertEquals(3, eventPublisher.events.size());
+        assertEquals("same-price-first", eventPublisher.events.get(0).orderId());
+        assertEquals(102, eventPublisher.events.get(0).executionPrice(), 0.0001);
+        assertEquals("same-price-second", eventPublisher.events.get(1).orderId());
+        assertEquals(102, eventPublisher.events.get(1).executionPrice(), 0.0001);
+        assertEquals("later-price", eventPublisher.events.get(2).orderId());
+        assertEquals(103, eventPublisher.events.get(2).executionPrice(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId("demo-member", "buy-side-ignored")
+                .orElseThrow()
+                .status());
+    }
+
+    @Test
+    void fallingPriceFillsBuySideLimitsFromHigherPriceToLowerPrice() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save("demo-member", pendingOpenOrderAt("lower-price", "LONG", 97, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save("demo-member", pendingOpenOrderAt("higher-price", "LONG", 99, Instant.parse("2026-04-27T00:00:01Z")));
+        orderRepository.save("demo-member", pendingOpenOrderAt("sell-side-ignored", "SHORT", 98, Instant.parse("2026-04-27T00:00:02Z")));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(100, 96, 96));
+
+        assertEquals(2, eventPublisher.events.size());
+        assertEquals("higher-price", eventPublisher.events.get(0).orderId());
+        assertEquals(99, eventPublisher.events.get(0).executionPrice(), 0.0001);
+        assertEquals("lower-price", eventPublisher.events.get(1).orderId());
+        assertEquals(97, eventPublisher.events.get(1).executionPrice(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId("demo-member", "sell-side-ignored")
+                .orElseThrow()
+                .status());
+    }
+
     private MarketOrderExecutionService service(
             OrderRepository orderRepository,
             PositionRepository positionRepository,
@@ -296,6 +346,29 @@ class MarketOrderExecutionServiceTest {
                 markPrice,
                 0.0001,
                 0.1
+        );
+    }
+
+    private MarketSummaryUpdatedEvent marketEvent(double previousLastPrice, double lastPrice, double markPrice) {
+        return MarketSummaryUpdatedEvent.from(market(previousLastPrice, previousLastPrice), market(lastPrice, markPrice));
+    }
+
+    private FuturesOrder pendingOpenOrderAt(String orderId, String positionSide, double limitPrice, Instant orderTime) {
+        return new FuturesOrder(
+                orderId,
+                "BTCUSDT",
+                positionSide,
+                "LIMIT",
+                FuturesOrder.PURPOSE_OPEN_POSITION,
+                "ISOLATED",
+                10,
+                0.1,
+                limitPrice,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                limitPrice,
+                orderTime
         );
     }
 

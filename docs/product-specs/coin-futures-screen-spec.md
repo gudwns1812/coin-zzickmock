@@ -234,9 +234,11 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `Limit` 종료 주문은 체결 전까지 Open orders에 남고 취소할 수 있다
 - 포지션 응답은 `pendingCloseQuantity`와 `closeableQuantity`를 제공한다. `pendingCloseQuantity`는 같은 심볼/방향/마진 모드의 미체결 close 주문 수량 합계이고, `closeableQuantity = max(0, quantity - pendingCloseQuantity)`이다.
 - market close, limit close 체결, liquidation으로 포지션 수량이 줄어들면 같은 포지션의 pending close 주문 합계가 남은 포지션 수량을 넘지 않도록 가장 체결 가능성이 낮은 주문부터 줄이거나 취소한다. LONG close는 지정가가 높은 주문부터, SHORT close는 지정가가 낮은 주문부터 줄이며, 같은 지정가에서는 더 나중에 생성된 주문을 먼저 줄여 기존 주문 우선권을 보존한다.
+- 포지션은 `takeProfitPrice`, `stopLossPrice`를 가질 수 있다. 사용자가 TP/SL을 수정하면 백엔드는 현재 mark price 기준으로 이미 발동된 가격을 거절하고, 저장된 TP/SL은 이후 mark price 이벤트에서 포지션 전체 종료 트리거로 평가된다.
+- TP/SL로 포지션이 종료되면 기존 market close/liquidation과 동일하게 같은 포지션의 pending close 주문을 줄이거나 취소한다.
 - Open orders와 Order history는 주문 시간을 가장 왼쪽 컬럼에 둔다
 - Open orders에서는 예상 증거금과 예상 수수료를 표시하지 않는다
-- 포지션 히스토리는 심볼, Long/Short, 레버리지, Cross/Isolated, 오픈 시간, 평균 진입/탈출 가격, 포지션 규모, PnL, ROI, 종료 시간을 표시한다
+- 포지션 히스토리는 심볼, Long/Short, 레버리지, Cross/Isolated, 오픈 시간, 평균 진입/탈출 가격, 포지션 규모, PnL, ROI, 종료 시간, 종료 사유를 표시한다
 - 포지션 히스토리의 `PnL`/`realizedPnl`은 gross PnL이 아니라 오픈 수수료, 종료 수수료, funding cost를 반영한 최종 순손익이다. 백엔드는 `grossRealizedPnl`, `openFee`, `closeFee`, `totalFee`, `fundingCost`, `netRealizedPnl`을 함께 내려줄 수 있다.
 
 ### 빈 상태
@@ -259,6 +261,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 포지션 히스토리는 완전 종료 시점에만 생성된다
 - 포지션 히스토리 PnL은 trading fee와 funding cost를 반영한 net PnL이다.
 - pending close 주문이 있는 상태에서 포지션을 종료해도 같은 포지션의 stale close 주문이 체결 가능한 상태로 남지 않는다.
+- TP/SL 편집은 현재 mark price 기준으로 즉시 발동될 값을 저장하지 않으며, 발동 시 `TAKE_PROFIT` 또는 `STOP_LOSS` 종료 사유와 함께 포지션 히스토리에 남는다.
 
 ## 화면 5. 포트폴리오 `/portfolio`
 
@@ -295,6 +298,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 수량
 - 미실현 손익
 - 액션
+- TP/SL 가격
 
 ### 핵심 상호작용
 

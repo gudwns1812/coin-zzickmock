@@ -20,6 +20,8 @@ public record PositionSnapshot(
         double accumulatedOpenFee,
         double accumulatedCloseFee,
         double accumulatedFundingCost,
+        Double takeProfitPrice,
+        Double stopLossPrice,
         long version
 ) {
     private static final String MARGIN_MODE_CROSS = "CROSS";
@@ -59,6 +61,8 @@ public record PositionSnapshot(
                 0,
                 accumulatedCloseFee,
                 0,
+                null,
+                null,
                 0
         );
     }
@@ -100,6 +104,8 @@ public record PositionSnapshot(
                 accumulatedOpenFee,
                 accumulatedCloseFee,
                 accumulatedFundingCost,
+                null,
+                null,
                 0
         );
     }
@@ -133,6 +139,8 @@ public record PositionSnapshot(
                 0,
                 0,
                 0,
+                null,
+                null,
                 0
         );
     }
@@ -177,6 +185,8 @@ public record PositionSnapshot(
                 openFee,
                 0,
                 0,
+                null,
+                null,
                 0
         );
     }
@@ -200,6 +210,8 @@ public record PositionSnapshot(
                 accumulatedOpenFee,
                 accumulatedCloseFee,
                 accumulatedFundingCost,
+                takeProfitPrice,
+                stopLossPrice,
                 version
         );
     }
@@ -235,6 +247,8 @@ public record PositionSnapshot(
                 accumulatedOpenFee + openFee,
                 accumulatedCloseFee,
                 accumulatedFundingCost,
+                takeProfitPrice,
+                stopLossPrice,
                 version
         );
     }
@@ -258,7 +272,34 @@ public record PositionSnapshot(
                 accumulatedOpenFee,
                 accumulatedCloseFee,
                 accumulatedFundingCost,
+                takeProfitPrice,
+                stopLossPrice,
                 nextVersion
+        );
+    }
+
+    public PositionSnapshot withTakeProfitStopLoss(Double nextTakeProfitPrice, Double nextStopLossPrice) {
+        return new PositionSnapshot(
+                symbol,
+                positionSide,
+                marginMode,
+                leverage,
+                quantity,
+                entryPrice,
+                markPrice,
+                liquidationPrice,
+                unrealizedPnl,
+                openedAt,
+                originalQuantity,
+                accumulatedClosedQuantity,
+                accumulatedExitNotional,
+                accumulatedRealizedPnl,
+                accumulatedOpenFee,
+                accumulatedCloseFee,
+                accumulatedFundingCost,
+                nextTakeProfitPrice,
+                nextStopLossPrice,
+                version
         );
     }
 
@@ -294,6 +335,34 @@ public record PositionSnapshot(
         return String.join(":", symbol, positionSide, marginMode);
     }
 
+    public boolean triggersTakeProfit(double targetMarkPrice) {
+        if (takeProfitPrice == null) {
+            return false;
+        }
+        return isLong()
+                ? targetMarkPrice >= takeProfitPrice
+                : targetMarkPrice <= takeProfitPrice;
+    }
+
+    public boolean triggersStopLoss(double targetMarkPrice) {
+        if (stopLossPrice == null) {
+            return false;
+        }
+        return isLong()
+                ? targetMarkPrice <= stopLossPrice
+                : targetMarkPrice >= stopLossPrice;
+    }
+
+    public String triggeredCloseReason(double targetMarkPrice) {
+        if (triggersTakeProfit(targetMarkPrice)) {
+            return PositionHistory.CLOSE_REASON_TAKE_PROFIT;
+        }
+        if (triggersStopLoss(targetMarkPrice)) {
+            return PositionHistory.CLOSE_REASON_STOP_LOSS;
+        }
+        return null;
+    }
+
     public PositionCloseOutcome close(double closeQuantity, double markPrice, double executionPrice, double takerFeeRate) {
         double safeCloseQuantity = Math.min(closeQuantity, quantity);
         double realizedPnl = pnl(executionPrice, safeCloseQuantity);
@@ -325,6 +394,8 @@ public record PositionSnapshot(
                 accumulatedOpenFee,
                 nextAccumulatedCloseFee,
                 accumulatedFundingCost,
+                takeProfitPrice,
+                stopLossPrice,
                 version
         );
 

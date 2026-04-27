@@ -180,6 +180,10 @@ public class PositionPersistenceRepository implements PositionRepository {
                 .set(position.get("accumulatedOpenFee", BigDecimal.class), decimal(positionSnapshot.accumulatedOpenFee()))
                 .set(position.get("accumulatedCloseFee", BigDecimal.class), decimal(positionSnapshot.accumulatedCloseFee()))
                 .set(position.get("accumulatedFundingCost", BigDecimal.class), decimal(positionSnapshot.accumulatedFundingCost()))
+                .set(position.get("takeProfitPrice", BigDecimal.class),
+                        positionSnapshot.takeProfitPrice() == null ? null : decimal(positionSnapshot.takeProfitPrice()))
+                .set(position.get("stopLossPrice", BigDecimal.class),
+                        positionSnapshot.stopLossPrice() == null ? null : decimal(positionSnapshot.stopLossPrice()))
                 .set(position.getNumber("version", Long.class), positionSnapshot.version());
     }
 

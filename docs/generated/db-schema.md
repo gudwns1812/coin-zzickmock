@@ -169,11 +169,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `symbol`, `display_name`, `base_asset`, `quote_asset`, `price_scale`, `quantity_scale`, `price_step`, `quantity_step`, `max_leverage`, `active`, `created_at`, `updated_at`
+  `symbol`, `display_name`, `base_asset`, `quote_asset`, `price_scale`, `quantity_scale`, `price_step`, `quantity_step`, `max_leverage`, `active`, `funding_interval_hours`, `funding_anchor_hour_kst`, `funding_time_zone`, `created_at`, `updated_at`
 - 관련 엔티티/모듈:
-  현재는 전용 JPA entity가 없고 `feature.market`의 향후 영속성 기준 테이블로 예약되어 있다.
+  `feature.market.infrastructure.persistence.MarketSymbolEntity`가 심볼과 funding schedule metadata를 읽는다.
 - 관련 migration 또는 schema 파일:
-  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
+  [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
 - 초기 시드:
   `BTCUSDT`, `ETHUSDT`
 

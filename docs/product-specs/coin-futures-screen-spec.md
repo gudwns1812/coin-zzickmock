@@ -180,7 +180,9 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - mark price
 - index price
 - funding rate
-- 다음 funding 시각
+- 다음 funding 시각 또는 남은 시간
+
+다음 funding 정보는 백엔드 market summary의 `nextFundingAt`에서 온다. 프론트엔드는 해당 timestamp를 기준으로 표시용 카운트다운만 갱신하며, KST 01:00/09:00/17:00 경계 규칙을 화면 코드에 하드코딩하지 않는다.
 
 ### 중앙 차트 영역
 
@@ -317,6 +319,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 사용자 watchlist
 - 각 심볼의 최신 ticker
 - funding rate
+- 다음 funding timestamp
 - 현재 포지션 보유 여부
 
 ## 화면 7. 상점 `/shop`

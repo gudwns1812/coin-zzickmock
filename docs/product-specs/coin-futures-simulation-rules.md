@@ -253,6 +253,9 @@ MVP 1차는 아래 순서로 단순화한다.
 
 - 8시간마다 배치 정산
 - 해당 시점에 열려 있는 포지션만 대상
+- 심볼별 funding schedule은 `market_symbols`의 메타데이터로 관리한다.
+- BTCUSDT/USDT 선물 MVP 기본값은 KST 01:00, 09:00, 17:00이며, `funding_anchor_hour_kst = 1`과 `funding_interval_hours = 8`에서 계산한다.
+- 트레이딩 화면은 백엔드가 내려주는 `nextFundingAt`을 기준으로 남은 시간을 표시한다. 프론트엔드는 funding 경계 시각을 직접 계산하지 않고 표시용 카운트다운만 갱신한다.
 
 ## 포인트 규칙
 

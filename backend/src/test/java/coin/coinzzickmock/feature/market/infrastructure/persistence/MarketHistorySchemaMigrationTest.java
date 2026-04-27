@@ -52,6 +52,29 @@ class MarketHistorySchemaMigrationTest {
         assertThat(columnsOf("MARKET_CANDLES_1H")).doesNotContain("TRADE_COUNT");
     }
 
+    @Test
+    void addsFundingScheduleColumnsToMarketSymbols() throws SQLException {
+        assertThat(columnsOf("MARKET_SYMBOLS"))
+                .contains("FUNDING_INTERVAL_HOURS", "FUNDING_ANCHOR_HOUR_KST", "FUNDING_TIME_ZONE");
+    }
+
+    @Test
+    void seedsDefaultFundingScheduleMetadataForSymbols() throws SQLException {
+        try (var connection = dataSource.getConnection();
+             var statement = connection.prepareStatement("""
+                     SELECT funding_interval_hours, funding_anchor_hour_kst, funding_time_zone
+                     FROM market_symbols
+                     WHERE symbol = 'BTCUSDT'
+                     """)) {
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getInt("funding_interval_hours")).isEqualTo(8);
+                assertThat(result.getInt("funding_anchor_hour_kst")).isEqualTo(1);
+                assertThat(result.getString("funding_time_zone")).isEqualTo("Asia/Seoul");
+            }
+        }
+    }
+
     private boolean tableExists(String tableName) throws SQLException {
         try (var connection = dataSource.getConnection();
              ResultSet tables = connection.getMetaData().getTables(null, null, tableName, new String[]{"TABLE"})) {

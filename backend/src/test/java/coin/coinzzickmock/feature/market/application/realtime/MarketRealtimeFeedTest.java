@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -356,7 +359,8 @@ class MarketRealtimeFeedTest {
                 new MarketSupportedMarketRefresher(
                         new FakeProviders(marketDataGateway),
                         marketSnapshotStore,
-                        applicationEventPublisher
+                        applicationEventPublisher,
+                        defaultFundingScheduleLookup()
                 ),
                 marketSnapshotStore
         );
@@ -376,7 +380,8 @@ class MarketRealtimeFeedTest {
                 new MarketSupportedMarketRefresher(
                         new FakeProviders(marketDataGateway),
                         marketSnapshotStore,
-                        applicationEventPublisher
+                        applicationEventPublisher,
+                        defaultFundingScheduleLookup()
                 ),
                 marketSnapshotStore
         );
@@ -405,6 +410,13 @@ class MarketRealtimeFeedTest {
                 CoinCacheNames.MARKET_SNAPSHOT_LOCAL_CACHE,
                 CoinCacheNames.MARKET_SUPPORTED_SYMBOLS_LOCAL_CACHE
         ));
+    }
+
+    private static MarketFundingScheduleLookup defaultFundingScheduleLookup() {
+        MarketFundingScheduleLookup provider = mock(MarketFundingScheduleLookup.class);
+        when(provider.scheduleFor(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(FundingSchedule.defaultUsdtPerpetual());
+        return provider;
     }
 
     private static class FakeMarketDataGateway implements MarketDataGateway {

@@ -31,6 +31,7 @@ class PositionSnapshotTest {
         assertEquals(0.06, partial.accumulatedCloseFee(), 0.0001);
         assertEquals(0, partial.accumulatedFundingCost(), 0.0001);
         assertEquals(2.94, partial.positionNetRealizedPnl(), 0.0001);
+        assertEquals(8.94, partial.remainingPosition().realizedPnl(), 0.0001);
         assertFalse(partial.fullyClosed());
 
         PositionCloseOutcome full = partial.remainingPosition().close(1, 120, 120, 0.0005);

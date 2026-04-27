@@ -402,6 +402,7 @@ type PositionSnapshot = {
   markPrice: number;
   liquidationPrice: number | null;
   unrealizedPnl: number;
+  realizedPnl: number;
   pendingCloseQuantity: number;
   closeableQuantity: number;
   takeProfitPrice: number | null;

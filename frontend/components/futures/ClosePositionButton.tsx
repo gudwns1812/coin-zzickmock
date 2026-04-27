@@ -13,6 +13,7 @@ type Props = {
   marginMode: "ISOLATED" | "CROSS";
   quantity: number;
   suggestedLimitPrice: number;
+  disabled?: boolean;
 };
 
 type CloseOrderType = "MARKET" | "LIMIT";
@@ -36,6 +37,7 @@ export default function ClosePositionButton({
   marginMode,
   quantity,
   suggestedLimitPrice,
+  disabled = false,
 }: Props) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
@@ -118,8 +120,12 @@ export default function ClosePositionButton({
 
   return (
     <>
-      <Button disabled={isPending} onClick={() => setIsOpen(true)} variant="danger">
-        {isPending ? "종료 중..." : "포지션 종료"}
+      <Button
+        disabled={disabled || isPending}
+        onClick={() => setIsOpen(true)}
+        variant="danger"
+      >
+        {isPending ? "종료 중..." : disabled ? "종료 불가" : "포지션 종료"}
       </Button>
 
       <Modal

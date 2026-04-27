@@ -65,6 +65,11 @@ import {
   isViewingLatestRange,
   type FuturesCandleInterval,
 } from "./futuresChartViewport";
+import {
+  getOrderPriceLineColor,
+  getOrderPriceLineTitle,
+  getPositionPriceLineTitle,
+} from "./futuresChartTradeLabels";
 
 type Props = {
   symbol: MarketSymbol;
@@ -115,7 +120,6 @@ type OwnedPriceLine = {
 const CHART_COLORS = {
   down: "#ef4444",
   grid: "#e5e7eb",
-  order: "#f59e0b",
   surface: "#ffffff",
   text: "#475569",
   up: "#10b981",
@@ -574,7 +578,10 @@ export default function FuturesPriceChart({
             : CHART_COLORS.down,
         lineWidth: 2,
         axisLabelVisible: true,
-        title: `${position.positionSide} ${position.marginMode} ${formatUsd(position.entryPrice)}`,
+        title: getPositionPriceLineTitle(
+          position,
+          formatUsd(position.entryPrice)
+        ),
       }),
     }));
 
@@ -584,11 +591,11 @@ export default function FuturesPriceChart({
         owner: activeSeries,
         line: activeSeries.createPriceLine({
           price: order.limitPrice!,
-          color: CHART_COLORS.order,
+          color: getOrderPriceLineColor(order),
           lineWidth: 1,
           lineStyle: 2,
           axisLabelVisible: true,
-          title: `ORDER ${order.positionSide} ${formatUsd(order.limitPrice!)}`,
+          title: getOrderPriceLineTitle(order, formatUsd(order.limitPrice!)),
         }),
       }));
   }, [hasCandleData, openOrders, positions]);

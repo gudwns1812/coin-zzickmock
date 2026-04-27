@@ -57,6 +57,7 @@ export type FuturesPosition = {
   liquidationPrice: number | null;
   margin: number;
   unrealizedPnl: number;
+  realizedPnl?: number;
   roi: number;
   pendingCloseQuantity?: number;
   closeableQuantity?: number;

@@ -331,11 +331,6 @@ export default function OrderEntryPanel({
         />
       </div>
 
-      <label className="flex items-center gap-2 text-xs-custom font-semibold text-main-dark-gray/70">
-        <input className="accent-main-blue" disabled type="checkbox" />
-        TP/SL
-      </label>
-
       <div className="grid grid-cols-2 gap-2">
         {isAuthenticated ? (
           <>

@@ -95,6 +95,7 @@ public class UpdatePositionTpslService {
                 snapshot.realizedPnl(),
                 snapshot.initialMargin(),
                 snapshot.roi(),
+                snapshot.accumulatedClosedQuantity(),
                 pendingCloseQuantity,
                 Math.max(0, snapshot.quantity() - pendingCloseQuantity),
                 snapshot.takeProfitPrice(),

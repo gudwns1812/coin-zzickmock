@@ -443,6 +443,90 @@ class ClosePositionServiceTest {
     }
 
     @Test
+    void limitCloseSucceedsWhenPendingCloseAlreadyCoversHeldQuantityAndReconcilesToCap() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                70000,
+                70000
+        ));
+        orderRepository.save("demo-member", closeOrder(
+                "existing-low",
+                "LONG",
+                1,
+                71000.0,
+                java.time.Instant.parse("2026-04-27T00:00:00Z")
+        ));
+        orderRepository.save("demo-member", closeOrder(
+                "existing-high",
+                "LONG",
+                1,
+                73000.0,
+                java.time.Instant.parse("2026-04-27T00:01:00Z")
+        ));
+        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(70000, 70000));
+
+        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 1, "LIMIT", 72000.0);
+
+        List<FuturesOrder> pendingCloseOrders = orderRepository.findPendingCloseOrders(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED"
+        );
+        assertEquals(2, pendingCloseOrders.stream().mapToDouble(FuturesOrder::quantity).sum(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_CANCELLED, orderRepository.findByMemberIdAndOrderId("demo-member", "existing-high")
+                .orElseThrow()
+                .status());
+        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberId("demo-member").stream()
+                .filter(order -> order.limitPrice() != null && order.limitPrice() == 72000.0)
+                .findFirst()
+                .orElseThrow()
+                .status());
+    }
+
+    @Test
+    void pendingCloseCapReducesNewerOrderFirstWhenLikelihoodTies() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                70000,
+                70000
+        ));
+        orderRepository.save("demo-member", closeOrder(
+                "older-close",
+                "LONG",
+                0.8,
+                72000.0,
+                java.time.Instant.parse("2026-04-27T00:00:00Z")
+        ));
+        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(70000, 70000));
+
+        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.5, "LIMIT", 72000.0);
+
+        FuturesOrder older = orderRepository.findByMemberIdAndOrderId("demo-member", "older-close").orElseThrow();
+        FuturesOrder newer = orderRepository.findByMemberId("demo-member").stream()
+                .filter(order -> order.limitPrice() != null && order.limitPrice() == 72000.0)
+                .filter(order -> !order.orderId().equals("older-close"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0.8, older.quantity(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_PENDING, older.status());
+        assertEquals(0.2, newer.quantity(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_PENDING, newer.status());
+    }
+
+    @Test
     void staleCloseFailsBeforeAccountHistoryOrRewardSideEffects() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
                 new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
@@ -490,6 +574,25 @@ class ClosePositionServiceTest {
                 .quantity(), 0.0001);
     }
 
+    private static FuturesOrder closeOrderWithTime(String orderId, double quantity, double limitPrice, String orderTime) {
+        return new FuturesOrder(
+                orderId,
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                quantity,
+                limitPrice,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                limitPrice,
+                java.time.Instant.parse(orderTime)
+        );
+    }
+
     private ClosePositionService closeService(
             InMemoryPositionRepository positionRepository,
             InMemoryOrderRepository orderRepository,
@@ -511,6 +614,31 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository)
+        );
+    }
+
+    private static FuturesOrder closeOrder(
+            String orderId,
+            String positionSide,
+            double quantity,
+            Double limitPrice,
+            java.time.Instant orderTime
+    ) {
+        return new FuturesOrder(
+                orderId,
+                "BTCUSDT",
+                positionSide,
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                quantity,
+                limitPrice,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                limitPrice == null ? 70000 : limitPrice,
+                orderTime
         );
     }
 

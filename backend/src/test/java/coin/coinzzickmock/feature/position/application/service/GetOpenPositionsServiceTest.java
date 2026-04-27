@@ -21,6 +21,7 @@ import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 class GetOpenPositionsServiceTest {
@@ -45,10 +46,43 @@ class GetOpenPositionsServiceTest {
 
         assertEquals(110, result.markPrice(), 0.0001);
         assertEquals(20, result.unrealizedPnl(), 0.0001);
+        assertEquals(0, result.accumulatedClosedQuantity(), 0.0001);
         assertEquals(0, result.pendingCloseQuantity(), 0.0001);
         assertEquals(2, result.closeableQuantity(), 0.0001);
         assertEquals(3, positionRepository.position.version());
         assertEquals(100, positionRepository.position.markPrice(), 0.0001);
+    }
+
+    @Test
+    void includesAccumulatedClosedQuantityForPartiallyClosedRemainingPosition() {
+        ReadOnlyPositionRepository positionRepository = new ReadOnlyPositionRepository(new PositionSnapshot(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1.25,
+                100,
+                100,
+                90.0,
+                0,
+                Instant.now(),
+                2,
+                0.75,
+                82.5,
+                7.5,
+                0.04
+        ));
+        GetOpenPositionsService service = new GetOpenPositionsService(
+                positionRepository,
+                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
+                new FakeProviders(100)
+        );
+
+        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+
+        assertEquals(0.75, result.accumulatedClosedQuantity(), 0.0001);
+        assertEquals(0, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(1.25, result.closeableQuantity(), 0.0001);
     }
 
     @Test
@@ -70,8 +104,46 @@ class GetOpenPositionsServiceTest {
 
         PositionSnapshotResult result = service.getPositions("demo-member").get(0);
 
+        assertEquals(0, result.accumulatedClosedQuantity(), 0.0001);
         assertEquals(0.4, result.pendingCloseQuantity(), 0.0001);
         assertEquals(0.6, result.closeableQuantity(), 0.0001);
+    }
+
+    @Test
+    void partiallyClosedRemainingPositionIncludesAccumulatedClosedQuantity() {
+        ReadOnlyPositionRepository positionRepository = new ReadOnlyPositionRepository(new PositionSnapshot(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1.5,
+                100,
+                100,
+                90.0,
+                0,
+                java.time.Instant.now(),
+                2.0,
+                0.5,
+                55.0,
+                5.0,
+                0,
+                0.02,
+                0,
+                null,
+                null,
+                0
+        ));
+        GetOpenPositionsService service = new GetOpenPositionsService(
+                positionRepository,
+                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
+                new FakeProviders(100)
+        );
+
+        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+
+        assertEquals(0.5, result.accumulatedClosedQuantity(), 0.0001);
+        assertEquals(0, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(1.5, result.closeableQuantity(), 0.0001);
     }
 
     private static class ReadOnlyPositionRepository implements PositionRepository {

@@ -235,6 +235,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - Open orders와 Order history는 주문 시간을 가장 왼쪽 컬럼에 둔다
 - Open orders에서는 예상 증거금과 예상 수수료를 표시하지 않는다
 - 포지션 히스토리는 심볼, Long/Short, 레버리지, Cross/Isolated, 오픈 시간, 평균 진입/탈출 가격, 포지션 규모, PnL, ROI, 종료 시간을 표시한다
+- 포지션 히스토리의 `PnL`/`realizedPnl`은 gross PnL이 아니라 오픈 수수료, 종료 수수료, funding cost를 반영한 최종 순손익이다. 백엔드는 `grossRealizedPnl`, `openFee`, `closeFee`, `totalFee`, `fundingCost`, `netRealizedPnl`을 함께 내려줄 수 있다.
 
 ### 빈 상태
 
@@ -254,6 +255,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 사용자는 제출 전에 비용과 위험을 읽을 수 있다
 - 열린 포지션과 미체결 주문을 놓치지 않는다
 - 포지션 히스토리는 완전 종료 시점에만 생성된다
+- 포지션 히스토리 PnL은 trading fee와 funding cost를 반영한 net PnL이다.
 
 ## 화면 5. 포트폴리오 `/portfolio`
 

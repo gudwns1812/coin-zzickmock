@@ -139,13 +139,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_close_fee`, `version`, `created_at`, `updated_at`
+  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_open_fee`, `accumulated_close_fee`, `accumulated_funding_cost`, `version`, `created_at`, `updated_at`
 - 동시성:
   `version`은 포지션 종료/청산/종료 주문 체결 시 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 정산, 포지션 이력, 리워드, SSE 이벤트를 수행하지 않고 재조회가 필요한 충돌로 처리한다.
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
 
 ### `position_history`
@@ -155,11 +156,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `opened_at`, `average_entry_price`, `average_exit_price`, `position_size`, `realized_pnl`, `roi`, `closed_at`, `close_reason`, `created_at`
+  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `opened_at`, `average_entry_price`, `average_exit_price`, `position_size`, `realized_pnl`, `gross_realized_pnl`, `open_fee`, `close_fee`, `total_fee`, `funding_cost`, `net_realized_pnl`, `roi`, `closed_at`, `close_reason`, `created_at`
+- 손익 의미:
+  `realized_pnl`은 API 호환용 net PnL이며 `net_realized_pnl`과 같은 값을 저장한다. `gross_realized_pnl`은 수수료/funding 차감 전 종료 손익이다.
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
   [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql),
+  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
   [PositionHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionHistoryEntity.java)
 
 ### `market_symbols`

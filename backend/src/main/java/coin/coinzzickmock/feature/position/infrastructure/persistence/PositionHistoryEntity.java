@@ -48,6 +48,24 @@ public class PositionHistoryEntity {
     @Column(name = "realized_pnl", nullable = false, precision = 19, scale = 4)
     private BigDecimal realizedPnl;
 
+    @Column(name = "gross_realized_pnl", nullable = false, precision = 19, scale = 4)
+    private BigDecimal grossRealizedPnl;
+
+    @Column(name = "open_fee", nullable = false, precision = 19, scale = 4)
+    private BigDecimal openFee;
+
+    @Column(name = "close_fee", nullable = false, precision = 19, scale = 4)
+    private BigDecimal closeFee;
+
+    @Column(name = "total_fee", nullable = false, precision = 19, scale = 4)
+    private BigDecimal totalFee;
+
+    @Column(name = "funding_cost", nullable = false, precision = 19, scale = 4)
+    private BigDecimal fundingCost;
+
+    @Column(name = "net_realized_pnl", nullable = false, precision = 19, scale = 4)
+    private BigDecimal netRealizedPnl;
+
     @Column(name = "roi", nullable = false, precision = 19, scale = 8)
     private BigDecimal roi;
 
@@ -76,6 +94,12 @@ public class PositionHistoryEntity {
         entity.averageExitPrice = decimal(history.averageExitPrice());
         entity.positionSize = decimal(history.positionSize());
         entity.realizedPnl = decimal(history.realizedPnl());
+        entity.grossRealizedPnl = decimal(history.grossRealizedPnl());
+        entity.openFee = decimal(history.openFee());
+        entity.closeFee = decimal(history.closeFee());
+        entity.totalFee = decimal(history.totalFee());
+        entity.fundingCost = decimal(history.fundingCost());
+        entity.netRealizedPnl = decimal(history.netRealizedPnl());
         entity.roi = decimal(history.roi());
         entity.closedAt = history.closedAt();
         entity.closeReason = history.closeReason();
@@ -93,6 +117,12 @@ public class PositionHistoryEntity {
                 averageExitPrice.doubleValue(),
                 positionSize.doubleValue(),
                 realizedPnl.doubleValue(),
+                grossRealizedPnl.doubleValue(),
+                openFee.doubleValue(),
+                closeFee.doubleValue(),
+                totalFee.doubleValue(),
+                fundingCost.doubleValue(),
+                netRealizedPnl.doubleValue(),
                 roi.doubleValue(),
                 closedAt,
                 closeReason

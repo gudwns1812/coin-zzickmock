@@ -17,7 +17,9 @@ public record PositionSnapshot(
         double accumulatedClosedQuantity,
         double accumulatedExitNotional,
         double accumulatedRealizedPnl,
+        double accumulatedOpenFee,
         double accumulatedCloseFee,
+        double accumulatedFundingCost,
         long version
 ) {
     private static final String MARGIN_MODE_CROSS = "CROSS";
@@ -54,7 +56,50 @@ public record PositionSnapshot(
                 accumulatedClosedQuantity,
                 accumulatedExitNotional,
                 accumulatedRealizedPnl,
+                0,
                 accumulatedCloseFee,
+                0,
+                0
+        );
+    }
+
+    public PositionSnapshot(
+            String symbol,
+            String positionSide,
+            String marginMode,
+            int leverage,
+            double quantity,
+            double entryPrice,
+            double markPrice,
+            Double liquidationPrice,
+            double unrealizedPnl,
+            Instant openedAt,
+            double originalQuantity,
+            double accumulatedClosedQuantity,
+            double accumulatedExitNotional,
+            double accumulatedRealizedPnl,
+            double accumulatedOpenFee,
+            double accumulatedCloseFee,
+            double accumulatedFundingCost
+    ) {
+        this(
+                symbol,
+                positionSide,
+                marginMode,
+                leverage,
+                quantity,
+                entryPrice,
+                markPrice,
+                liquidationPrice,
+                unrealizedPnl,
+                openedAt,
+                originalQuantity,
+                accumulatedClosedQuantity,
+                accumulatedExitNotional,
+                accumulatedRealizedPnl,
+                accumulatedOpenFee,
+                accumulatedCloseFee,
+                accumulatedFundingCost,
                 0
         );
     }
@@ -86,6 +131,8 @@ public record PositionSnapshot(
                 0,
                 0,
                 0,
+                0,
+                0,
                 0
         );
     }
@@ -98,6 +145,19 @@ public record PositionSnapshot(
             double quantity,
             double entryPrice,
             double markPrice
+    ) {
+        return open(symbol, positionSide, marginMode, leverage, quantity, entryPrice, markPrice, 0);
+    }
+
+    public static PositionSnapshot open(
+            String symbol,
+            String positionSide,
+            String marginMode,
+            int leverage,
+            double quantity,
+            double entryPrice,
+            double markPrice,
+            double openFee
     ) {
         return new PositionSnapshot(
                 symbol,
@@ -113,6 +173,8 @@ public record PositionSnapshot(
                 quantity,
                 0,
                 0,
+                0,
+                openFee,
                 0,
                 0,
                 0
@@ -135,12 +197,24 @@ public record PositionSnapshot(
                 accumulatedClosedQuantity,
                 accumulatedExitNotional,
                 accumulatedRealizedPnl,
+                accumulatedOpenFee,
                 accumulatedCloseFee,
+                accumulatedFundingCost,
                 version
         );
     }
 
     public PositionSnapshot increase(int leverage, double additionalQuantity, double executionPrice, double markPrice) {
+        return increase(leverage, additionalQuantity, executionPrice, markPrice, 0);
+    }
+
+    public PositionSnapshot increase(
+            int leverage,
+            double additionalQuantity,
+            double executionPrice,
+            double markPrice,
+            double openFee
+    ) {
         double totalQuantity = quantity + additionalQuantity;
         double weightedEntryPrice = ((entryPrice * quantity) + (executionPrice * additionalQuantity)) / totalQuantity;
         return new PositionSnapshot(
@@ -158,7 +232,9 @@ public record PositionSnapshot(
                 accumulatedClosedQuantity,
                 accumulatedExitNotional,
                 accumulatedRealizedPnl,
+                accumulatedOpenFee + openFee,
                 accumulatedCloseFee,
+                accumulatedFundingCost,
                 version
         );
     }
@@ -179,7 +255,9 @@ public record PositionSnapshot(
                 accumulatedClosedQuantity,
                 accumulatedExitNotional,
                 accumulatedRealizedPnl,
+                accumulatedOpenFee,
                 accumulatedCloseFee,
+                accumulatedFundingCost,
                 nextVersion
         );
     }
@@ -244,7 +322,9 @@ public record PositionSnapshot(
                 nextAccumulatedClosedQuantity,
                 nextAccumulatedExitNotional,
                 nextAccumulatedRealizedPnl,
+                accumulatedOpenFee,
                 nextAccumulatedCloseFee,
+                accumulatedFundingCost,
                 version
         );
 
@@ -260,7 +340,9 @@ public record PositionSnapshot(
                 nextAccumulatedClosedQuantity,
                 nextAccumulatedExitNotional,
                 nextAccumulatedRealizedPnl,
-                nextAccumulatedCloseFee
+                accumulatedOpenFee,
+                nextAccumulatedCloseFee,
+                accumulatedFundingCost
         );
     }
 

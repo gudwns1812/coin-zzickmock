@@ -203,8 +203,14 @@ class ClosePositionServiceTest {
         assertEquals(100000, history.averageEntryPrice(), 0.0001);
         assertEquals(110000, history.averageExitPrice(), 0.0001);
         assertEquals(0.2, history.positionSize(), 0.0001);
-        assertEquals(2000, history.realizedPnl(), 0.0001);
-        assertEquals(1.0, history.roi(), 0.0001);
+        assertEquals(1989, history.realizedPnl(), 0.0001);
+        assertEquals(2000, history.grossRealizedPnl(), 0.0001);
+        assertEquals(0, history.openFee(), 0.0001);
+        assertEquals(11, history.closeFee(), 0.0001);
+        assertEquals(11, history.totalFee(), 0.0001);
+        assertEquals(0, history.fundingCost(), 0.0001);
+        assertEquals(1989, history.netRealizedPnl(), 0.0001);
+        assertEquals(0.9945, history.roi(), 0.0001);
     }
 
     @Test

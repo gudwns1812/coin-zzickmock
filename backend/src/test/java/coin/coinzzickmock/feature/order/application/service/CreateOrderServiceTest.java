@@ -65,6 +65,7 @@ class CreateOrderServiceTest {
 
         assertEquals("FILLED", result.status());
         assertEquals(1, positionRepository.findOpenPositions("demo-member").size());
+        assertEquals(5, positionRepository.findOpenPositions("demo-member").get(0).accumulatedOpenFee(), 0.0001);
         assertEquals(98995, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
     }
 
@@ -110,6 +111,7 @@ class CreateOrderServiceTest {
                 .orElseThrow();
         assertEquals(105000.0, updated.entryPrice(), 0.0001);
         assertEquals(94500.0, updated.liquidationPrice(), 0.0001);
+        assertEquals(5.5, updated.accumulatedOpenFee(), 0.0001);
     }
 
     @Test

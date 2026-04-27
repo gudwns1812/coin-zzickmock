@@ -56,7 +56,7 @@ public class PositionCloseFinalizer {
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         accountRepository.save(account.settlePositionClose(
-                closeOutcome.realizedPnl(),
+                closeOutcome.grossRealizedPnl(),
                 closeOutcome.closeFee(),
                 closeOutcome.releasedMargin()
         ));
@@ -98,7 +98,13 @@ public class PositionCloseFinalizer {
                 closeOutcome.averageEntryPrice(),
                 closeOutcome.averageExitPrice(),
                 closeOutcome.positionSize(),
-                closeOutcome.accumulatedRealizedPnl(),
+                closeOutcome.positionNetRealizedPnl(),
+                closeOutcome.accumulatedGrossRealizedPnl(),
+                closeOutcome.accumulatedOpenFee(),
+                closeOutcome.accumulatedCloseFee(),
+                closeOutcome.totalFee(),
+                closeOutcome.accumulatedFundingCost(),
+                closeOutcome.positionNetRealizedPnl(),
                 closeOutcome.roi(position.leverage()),
                 Instant.now(),
                 closeReason

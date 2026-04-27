@@ -177,7 +177,9 @@ public class PositionPersistenceRepository implements PositionRepository {
                 .set(position.get("accumulatedClosedQuantity", BigDecimal.class), decimal(positionSnapshot.accumulatedClosedQuantity()))
                 .set(position.get("accumulatedExitNotional", BigDecimal.class), decimal(positionSnapshot.accumulatedExitNotional()))
                 .set(position.get("accumulatedRealizedPnl", BigDecimal.class), decimal(positionSnapshot.accumulatedRealizedPnl()))
+                .set(position.get("accumulatedOpenFee", BigDecimal.class), decimal(positionSnapshot.accumulatedOpenFee()))
                 .set(position.get("accumulatedCloseFee", BigDecimal.class), decimal(positionSnapshot.accumulatedCloseFee()))
+                .set(position.get("accumulatedFundingCost", BigDecimal.class), decimal(positionSnapshot.accumulatedFundingCost()))
                 .set(position.getNumber("version", Long.class), positionSnapshot.version());
     }
 

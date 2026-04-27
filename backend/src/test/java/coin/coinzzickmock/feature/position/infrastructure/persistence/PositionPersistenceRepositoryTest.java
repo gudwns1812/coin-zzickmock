@@ -7,10 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -23,6 +26,9 @@ import org.springframework.test.context.ActiveProfiles;
 class PositionPersistenceRepositoryTest {
     @Autowired
     private PositionRepository positionRepository;
+
+    @Autowired
+    private PositionHistoryRepository positionHistoryRepository;
 
     @Autowired
     private AccountRepository accountRepository;
@@ -48,6 +54,8 @@ class PositionPersistenceRepositoryTest {
                 .orElseThrow();
 
         assertEquals(0.15, loaded.quantity(), 0.000001);
+        assertEquals(0, loaded.accumulatedOpenFee(), 0.000001);
+        assertEquals(0, loaded.accumulatedFundingCost(), 0.000001);
         assertEquals(0, loaded.version());
         assertEquals(1, positionRepository.findOpenPositions(memberId).size());
     }
@@ -137,6 +145,42 @@ class PositionPersistenceRepositoryTest {
         assertTrue(positionRepository.deleteIfOpen(memberId, "BTCUSDT", "LONG", "CROSS"));
         assertFalse(positionRepository.deleteIfOpen(memberId, "BTCUSDT", "LONG", "CROSS"));
         assertTrue(positionRepository.findOpenPosition(memberId, "BTCUSDT", "LONG", "CROSS").isEmpty());
+    }
+
+    @Test
+    void savesAndLoadsPositionHistoryNetPnlAccountingFieldsThroughH2() {
+        String memberId = "position-owner-" + UUID.randomUUID();
+        saveAccount(memberId);
+        PositionHistory saved = positionHistoryRepository.save(memberId, new PositionHistory(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                Instant.parse("2026-04-27T00:00:00Z"),
+                100000,
+                110000,
+                0.2,
+                1987.5,
+                2000,
+                1.5,
+                11,
+                12.5,
+                0,
+                1987.5,
+                0.99375,
+                Instant.parse("2026-04-27T01:00:00Z"),
+                PositionHistory.CLOSE_REASON_MANUAL
+        ));
+
+        PositionHistory loaded = positionHistoryRepository.findByMemberId(memberId, "BTCUSDT").get(0);
+
+        assertEquals(saved.realizedPnl(), loaded.realizedPnl(), 0.0001);
+        assertEquals(2000, loaded.grossRealizedPnl(), 0.0001);
+        assertEquals(1.5, loaded.openFee(), 0.0001);
+        assertEquals(11, loaded.closeFee(), 0.0001);
+        assertEquals(12.5, loaded.totalFee(), 0.0001);
+        assertEquals(0, loaded.fundingCost(), 0.0001);
+        assertEquals(1987.5, loaded.netRealizedPnl(), 0.0001);
     }
 
     private void saveAccount(String memberId) {

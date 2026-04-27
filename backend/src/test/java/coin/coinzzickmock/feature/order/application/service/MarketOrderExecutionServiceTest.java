@@ -276,6 +276,9 @@ class MarketOrderExecutionServiceTest {
         assertEquals(102, eventPublisher.events.get(1).executionPrice(), 0.0001);
         assertEquals("later-price", eventPublisher.events.get(2).orderId());
         assertEquals(103, eventPublisher.events.get(2).executionPrice(), 0.0001);
+        PositionSnapshot opened = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "SHORT", "ISOLATED")
+                .orElseThrow();
+        assertEquals(0.004605, opened.accumulatedOpenFee(), 0.000001);
         assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId("demo-member", "buy-side-ignored")
                 .orElseThrow()
                 .status());

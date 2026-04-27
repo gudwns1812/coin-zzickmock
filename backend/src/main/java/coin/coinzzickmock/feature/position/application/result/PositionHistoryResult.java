@@ -12,6 +12,12 @@ public record PositionHistoryResult(
         double averageExitPrice,
         double positionSize,
         double realizedPnl,
+        double grossRealizedPnl,
+        double openFee,
+        double closeFee,
+        double totalFee,
+        double fundingCost,
+        double netRealizedPnl,
         double roi,
         Instant closedAt,
         String closeReason

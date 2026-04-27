@@ -25,11 +25,22 @@ public class MarketFundingSchedulePersistenceLookup implements MarketFundingSche
     }
 
     private FundingSchedule toSchedule(MarketSymbolEntity symbol) {
-        return new FundingSchedule(
-                symbol.fundingIntervalHours(),
-                symbol.fundingAnchorHour(),
-                toZoneId(symbol)
-        );
+        try {
+            return new FundingSchedule(
+                    symbol.fundingIntervalHours(),
+                    symbol.fundingAnchorHour(),
+                    toZoneId(symbol)
+            );
+        } catch (IllegalArgumentException exception) {
+            log.warn(
+                    "Invalid funding schedule for symbol {}; interval={}, anchorHour={}; falling back to default",
+                    symbol.symbol(),
+                    symbol.fundingIntervalHours(),
+                    symbol.fundingAnchorHour(),
+                    exception
+            );
+            return FundingSchedule.defaultUsdtPerpetual();
+        }
     }
 
     private ZoneId toZoneId(MarketSymbolEntity symbol) {

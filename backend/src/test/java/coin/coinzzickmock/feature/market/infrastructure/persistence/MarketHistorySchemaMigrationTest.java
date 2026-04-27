@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
@@ -72,6 +73,24 @@ class MarketHistorySchemaMigrationTest {
                 assertThat(result.getInt("funding_anchor_hour")).isEqualTo(1);
                 assertThat(result.getString("funding_time_zone")).isEqualTo("Asia/Seoul");
             }
+        }
+    }
+
+    @Test
+    void rejectsInvalidFundingScheduleMetadata() throws SQLException {
+        try (var connection = dataSource.getConnection();
+             var invalidInterval = connection.prepareStatement("""
+                     UPDATE market_symbols
+                     SET funding_interval_hours = 0
+                     WHERE symbol = 'BTCUSDT'
+                     """);
+             var invalidAnchor = connection.prepareStatement("""
+                     UPDATE market_symbols
+                     SET funding_anchor_hour = 24
+                     WHERE symbol = 'BTCUSDT'
+                     """)) {
+            assertThatThrownBy(invalidInterval::executeUpdate).isInstanceOf(SQLException.class);
+            assertThatThrownBy(invalidAnchor::executeUpdate).isInstanceOf(SQLException.class);
         }
     }
 

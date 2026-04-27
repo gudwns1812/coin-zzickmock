@@ -169,7 +169,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `symbol`, `display_name`, `base_asset`, `quote_asset`, `price_scale`, `quantity_scale`, `price_step`, `quantity_step`, `max_leverage`, `active`, `funding_interval_hours`, `funding_anchor_hour_kst`, `funding_time_zone`, `created_at`, `updated_at`
+  `symbol`, `display_name`, `base_asset`, `quote_asset`, `price_scale`, `quantity_scale`, `price_step`, `quantity_step`, `max_leverage`, `active`, `funding_interval_hours`, `funding_anchor_hour`, `funding_time_zone`, `created_at`, `updated_at`
 - 관련 엔티티/모듈:
   `feature.market.infrastructure.persistence.MarketSymbolEntity`가 심볼과 funding schedule metadata를 읽는다.
 - 관련 migration 또는 schema 파일:

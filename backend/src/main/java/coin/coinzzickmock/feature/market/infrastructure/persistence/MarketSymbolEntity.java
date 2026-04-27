@@ -20,8 +20,8 @@ public class MarketSymbolEntity {
     @Column(name = "funding_interval_hours", nullable = false)
     private int fundingIntervalHours;
 
-    @Column(name = "funding_anchor_hour_kst", nullable = false)
-    private int fundingAnchorHourKst;
+    @Column(name = "funding_anchor_hour", nullable = false)
+    private int fundingAnchorHour;
 
     @Column(name = "funding_time_zone", nullable = false, length = 40)
     private String fundingTimeZone;
@@ -41,8 +41,8 @@ public class MarketSymbolEntity {
         return fundingIntervalHours;
     }
 
-    public int fundingAnchorHourKst() {
-        return fundingAnchorHourKst;
+    public int fundingAnchorHour() {
+        return fundingAnchorHour;
     }
 
     public String fundingTimeZone() {

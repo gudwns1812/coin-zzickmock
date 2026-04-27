@@ -4,21 +4,22 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Objects;
 
 public record FundingSchedule(
         int intervalHours,
-        int anchorHourKst,
+        int anchorHour,
         ZoneId zoneId
 ) {
     public static final int DEFAULT_INTERVAL_HOURS = 8;
-    public static final int DEFAULT_ANCHOR_HOUR_KST = 1;
+    public static final int DEFAULT_ANCHOR_HOUR = 1;
     public static final ZoneId DEFAULT_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     public FundingSchedule {
         if (intervalHours <= 0 || intervalHours > 24) {
             throw new IllegalArgumentException("Funding interval must be between 1 and 24 hours");
         }
-        if (anchorHourKst < 0 || anchorHourKst > 23) {
+        if (anchorHour < 0 || anchorHour > 23) {
             throw new IllegalArgumentException("Funding anchor hour must be between 0 and 23");
         }
         if (zoneId == null) {
@@ -27,13 +28,14 @@ public record FundingSchedule(
     }
 
     public static FundingSchedule defaultUsdtPerpetual() {
-        return new FundingSchedule(DEFAULT_INTERVAL_HOURS, DEFAULT_ANCHOR_HOUR_KST, DEFAULT_ZONE_ID);
+        return new FundingSchedule(DEFAULT_INTERVAL_HOURS, DEFAULT_ANCHOR_HOUR, DEFAULT_ZONE_ID);
     }
 
     public Instant nextFundingAt(Instant serverTime) {
+        Objects.requireNonNull(serverTime, "Funding server time is required");
         ZonedDateTime current = serverTime.atZone(zoneId);
         ZonedDateTime next = current.toLocalDate()
-                .atTime(anchorHourKst, 0)
+                .atTime(anchorHour, 0)
                 .atZone(zoneId);
         while (!next.isAfter(current)) {
             next = next.plusHours(intervalHours);

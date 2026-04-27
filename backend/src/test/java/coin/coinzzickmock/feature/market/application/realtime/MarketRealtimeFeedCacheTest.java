@@ -14,9 +14,10 @@ import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.ZoneId;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,6 +66,17 @@ class MarketRealtimeFeedCacheTest {
         }
     }
 
+    @AfterEach
+    void resetFundingScheduleMetadata() {
+        jdbcTemplate.update("""
+                UPDATE market_symbols
+                SET funding_interval_hours = 8,
+                    funding_anchor_hour = 1,
+                    funding_time_zone = 'Asia/Seoul'
+                WHERE symbol = 'ETHUSDT'
+                """);
+    }
+
     @Test
     void storesLatestSnapshotsInLocalSpringCacheWhenMarketsRefresh() {
         marketRealtimeFeed.refreshSupportedMarkets();
@@ -79,18 +91,21 @@ class MarketRealtimeFeedCacheTest {
 
     @Test
     void appliesPersistedFundingScheduleMetadataWhenMarketsRefresh() {
-        jdbcTemplate.update("""
+        int updatedRows = jdbcTemplate.update("""
                 UPDATE market_symbols
                 SET funding_interval_hours = 4,
-                    funding_anchor_hour_kst = 2,
+                    funding_anchor_hour = 2,
                     funding_time_zone = 'Asia/Seoul'
                 WHERE symbol = 'ETHUSDT'
                 """);
+        assertThat(updatedRows).isGreaterThan(0);
 
         marketRealtimeFeed.refreshSupportedMarkets();
 
         Cache cache = localCacheManager.getCache(CoinCacheNames.MARKET_SNAPSHOT_LOCAL_CACHE);
+        assertThat(cache).isNotNull();
         MarketSummaryResult eth = cache.get("ETHUSDT", MarketSummaryResult.class);
+        assertThat(eth).isNotNull();
         FundingSchedule schedule = new FundingSchedule(4, 2, ZoneId.of("Asia/Seoul"));
         assertThat(eth.fundingIntervalHours()).isEqualTo(4);
         assertThat(eth.nextFundingAt()).isEqualTo(schedule.nextFundingAt(eth.serverTime()));

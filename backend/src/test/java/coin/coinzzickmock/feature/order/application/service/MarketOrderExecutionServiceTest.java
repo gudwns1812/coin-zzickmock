@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
+import coin.coinzzickmock.feature.order.application.realtime.PositionTakeProfitStopLossProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
@@ -303,6 +304,70 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void takeProfitTriggerClosesPositionAndCancelsPendingCloseOrders() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ).withTakeProfitStopLoss(105.0, null));
+        orderRepository.save("demo-member", pendingCloseOrderAt(
+                "close-after-tp",
+                "LONG",
+                0.5,
+                110,
+                Instant.parse("2026-04-27T00:00:00Z")
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+
+        assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isEmpty());
+        assertEquals("POSITION_TAKE_PROFIT", eventPublisher.events.get(0).type());
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "close-after-tp").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
+    }
+
+    @Test
+    void stopLossTriggerPublishesOnlyAfterTransactionCommit() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ).withTakeProfitStopLoss(null, 104.0));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                    .onMarketUpdated(new MarketSummaryUpdatedEvent(market(105, 105)));
+
+            assertTrue(eventPublisher.events.isEmpty());
+
+            TransactionSynchronizationUtils.triggerAfterCommit();
+
+            assertEquals(1, eventPublisher.events.size());
+            assertEquals("POSITION_STOP_LOSS", eventPublisher.events.get(0).type());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     void nonBreachedLiquidationAssessmentDoesNotPersistMarkOnlyPositionChanges() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -419,6 +484,12 @@ class MarketOrderExecutionServiceTest {
                         positionRepository,
                         accountRepository,
                         new LiquidationPolicy(),
+                        positionCloseFinalizer,
+                        pendingCloseOrderCapReconciler,
+                        afterCommitEventPublisher
+                ),
+                new PositionTakeProfitStopLossProcessor(
+                        positionRepository,
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
                         afterCommitEventPublisher

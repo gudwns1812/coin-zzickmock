@@ -63,4 +63,52 @@ class PositionSnapshotTest {
         assertEquals(9.91, outcome.positionNetRealizedPnl(), 0.0001);
         assertEquals(10.09, outcome.totalFee(), 0.0001);
     }
+
+    @Test
+    void takeProfitAndStopLossTriggerByPositionDirection() {
+        PositionSnapshot longPosition = PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ).withTakeProfitStopLoss(110.0, 95.0);
+        PositionSnapshot shortPosition = PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ).withTakeProfitStopLoss(90.0, 105.0);
+
+        assertTrue(longPosition.triggersTakeProfit(110));
+        assertTrue(longPosition.triggersStopLoss(95));
+        assertFalse(longPosition.triggersTakeProfit(109.99));
+        assertFalse(longPosition.triggersStopLoss(95.01));
+
+        assertTrue(shortPosition.triggersTakeProfit(90));
+        assertTrue(shortPosition.triggersStopLoss(105));
+        assertFalse(shortPosition.triggersTakeProfit(90.01));
+        assertFalse(shortPosition.triggersStopLoss(104.99));
+    }
+
+    @Test
+    void nullTakeProfitAndStopLossNeverTrigger() {
+        PositionSnapshot position = PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        );
+
+        assertFalse(position.triggersTakeProfit(1000));
+        assertFalse(position.triggersStopLoss(1));
+    }
 }

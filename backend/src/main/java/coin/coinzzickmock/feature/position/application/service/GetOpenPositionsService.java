@@ -53,7 +53,9 @@ public class GetOpenPositionsService {
                 snapshot.initialMargin(),
                 snapshot.roi(),
                 pendingCloseQuantity,
-                Math.max(0, snapshot.quantity() - pendingCloseQuantity)
+                Math.max(0, snapshot.quantity() - pendingCloseQuantity),
+                snapshot.takeProfitPrice(),
+                snapshot.stopLossPrice()
         );
     }
 }

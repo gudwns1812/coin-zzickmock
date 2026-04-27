@@ -6,9 +6,11 @@ import coin.coinzzickmock.feature.position.application.result.PositionSnapshotRe
 import coin.coinzzickmock.feature.position.application.service.ClosePositionService;
 import coin.coinzzickmock.feature.position.application.service.GetOpenPositionsService;
 import coin.coinzzickmock.feature.position.application.service.GetPositionHistoryService;
+import coin.coinzzickmock.feature.position.application.service.UpdatePositionTpslService;
 import coin.coinzzickmock.providers.Providers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +26,7 @@ public class PositionController {
     private final GetOpenPositionsService getOpenPositionsService;
     private final GetPositionHistoryService getPositionHistoryService;
     private final ClosePositionService closePositionService;
+    private final UpdatePositionTpslService updatePositionTpslService;
     private final Providers providers;
 
     @GetMapping("/me")
@@ -65,6 +68,19 @@ public class PositionController {
         ));
     }
 
+    @PatchMapping("/tpsl")
+    public ApiResponse<PositionSummaryResponse> updateTpsl(@RequestBody UpdatePositionTpslRequest request) {
+        PositionSnapshotResult result = updatePositionTpslService.update(
+                providers.auth().currentActor().memberId(),
+                request.symbol(),
+                request.positionSide(),
+                request.marginMode(),
+                request.takeProfitPrice(),
+                request.stopLossPrice()
+        );
+        return ApiResponse.success(toResponse(result));
+    }
+
     private PositionSummaryResponse toResponse(PositionSnapshotResult result) {
         return new PositionSummaryResponse(
                 result.symbol(),
@@ -79,7 +95,9 @@ public class PositionController {
                 result.margin(),
                 result.roi(),
                 result.pendingCloseQuantity(),
-                result.closeableQuantity()
+                result.closeableQuantity(),
+                result.takeProfitPrice(),
+                result.stopLossPrice()
         );
     }
 }

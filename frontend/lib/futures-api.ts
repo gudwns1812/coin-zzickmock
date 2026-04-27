@@ -60,6 +60,8 @@ export type FuturesPosition = {
   roi: number;
   pendingCloseQuantity?: number;
   closeableQuantity?: number;
+  takeProfitPrice?: number | null;
+  stopLossPrice?: number | null;
 };
 
 export type FuturesOpenOrder = {
@@ -154,7 +156,11 @@ export type OrderExecutionResponse = {
 };
 
 export type FuturesTradingExecutionEvent = {
-  type: "ORDER_FILLED" | "POSITION_LIQUIDATED";
+  type:
+    | "ORDER_FILLED"
+    | "POSITION_LIQUIDATED"
+    | "POSITION_TAKE_PROFIT"
+    | "POSITION_STOP_LOSS";
   orderId: string | null;
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";

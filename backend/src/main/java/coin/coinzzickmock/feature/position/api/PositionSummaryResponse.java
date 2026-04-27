@@ -13,6 +13,8 @@ public record PositionSummaryResponse(
         double margin,
         double roi,
         double pendingCloseQuantity,
-        double closeableQuantity
+        double closeableQuantity,
+        Double takeProfitPrice,
+        Double stopLossPrice
 ) {
 }

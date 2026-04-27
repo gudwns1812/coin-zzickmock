@@ -48,7 +48,7 @@ class PositionPersistenceRepositoryTest {
                 100250,
                 90000.0,
                 37.5
-        ));
+        ).withTakeProfitStopLoss(110000.0, 95000.0));
 
         PositionSnapshot loaded = positionRepository.findOpenPosition(memberId, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
@@ -56,6 +56,8 @@ class PositionPersistenceRepositoryTest {
         assertEquals(0.15, loaded.quantity(), 0.000001);
         assertEquals(0, loaded.accumulatedOpenFee(), 0.000001);
         assertEquals(0, loaded.accumulatedFundingCost(), 0.000001);
+        assertEquals(110000, loaded.takeProfitPrice(), 0.000001);
+        assertEquals(95000, loaded.stopLossPrice(), 0.000001);
         assertEquals(0, loaded.version());
         assertEquals(1, positionRepository.findOpenPositions(memberId).size());
     }

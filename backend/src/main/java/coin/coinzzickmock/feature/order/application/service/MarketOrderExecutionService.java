@@ -4,6 +4,7 @@ import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdat
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
+import coin.coinzzickmock.feature.order.application.realtime.PositionTakeProfitStopLossProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MarketOrderExecutionService {
     private final PendingOrderFillProcessor pendingOrderFillProcessor;
     private final PositionLiquidationProcessor positionLiquidationProcessor;
+    private final PositionTakeProfitStopLossProcessor positionTakeProfitStopLossProcessor;
 
     @EventListener
     @Transactional
@@ -21,5 +23,6 @@ public class MarketOrderExecutionService {
         MarketSummaryResult market = event.result();
         pendingOrderFillProcessor.fillExecutablePendingOrders(event);
         positionLiquidationProcessor.liquidateBreachedPositions(market);
+        positionTakeProfitStopLossProcessor.closeTriggeredPositions(market);
     }
 }

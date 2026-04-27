@@ -25,4 +25,6 @@ public record PositionHistory(
     public static final String CLOSE_REASON_MANUAL = "MANUAL";
     public static final String CLOSE_REASON_LIMIT_CLOSE = "LIMIT_CLOSE";
     public static final String CLOSE_REASON_LIQUIDATION = "LIQUIDATION";
+    public static final String CLOSE_REASON_TAKE_PROFIT = "TAKE_PROFIT";
+    public static final String CLOSE_REASON_STOP_LOSS = "STOP_LOSS";
 }

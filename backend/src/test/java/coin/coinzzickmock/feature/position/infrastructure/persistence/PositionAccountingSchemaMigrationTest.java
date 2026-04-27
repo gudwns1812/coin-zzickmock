@@ -27,6 +27,12 @@ class PositionAccountingSchemaMigrationTest {
     }
 
     @Test
+    void addsOpenPositionTakeProfitAndStopLossPrices() throws SQLException {
+        assertThat(columnsOf("OPEN_POSITIONS"))
+                .contains("TAKE_PROFIT_PRICE", "STOP_LOSS_PRICE");
+    }
+
+    @Test
     void addsGrossNetFeeAndFundingFieldsToPositionHistory() throws SQLException {
         assertThat(columnsOf("POSITION_HISTORY"))
                 .contains(

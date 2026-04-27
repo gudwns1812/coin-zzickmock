@@ -42,6 +42,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql)
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql)
+  [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql)
+  [V6__add_open_position_version.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V6__add_open_position_version.sql)
+  [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
+  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql)
+  [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -139,7 +144,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_open_fee`, `accumulated_close_fee`, `accumulated_funding_cost`, `version`, `created_at`, `updated_at`
+  `member_id`, `symbol`, `position_side`, `margin_mode`, `leverage`, `quantity`, `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `opened_at`, `original_quantity`, `accumulated_closed_quantity`, `accumulated_exit_notional`, `accumulated_realized_pnl`, `accumulated_open_fee`, `accumulated_close_fee`, `accumulated_funding_cost`, `take_profit_price`, `stop_loss_price`, `version`, `created_at`, `updated_at`
 - 동시성:
   `version`은 포지션 종료/청산/종료 주문 체결 시 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 정산, 포지션 이력, 리워드, SSE 이벤트를 수행하지 않고 재조회가 필요한 충돌로 처리한다.
 - 관련 엔티티/모듈:
@@ -147,6 +152,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
+  [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql),
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
 
 ### `position_history`
@@ -257,6 +263,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `PositionPersistenceRepository`에 OpenFeign 포크 `querydsl-jpa` 기반 조회를 추가했다.
 - 2026-04-26:
   `V6__add_open_position_version.sql`로 `open_positions.version`을 추가하고 포지션 종료 계열 mutation의 낙관적 잠금 기준으로 문서화했다.
+- 2026-04-27:
+  `V9__add_position_take_profit_stop_loss.sql`로 `open_positions.take_profit_price`, `open_positions.stop_loss_price`를 추가하고 포지션 단위 TP/SL 트리거 저장 위치를 문서화했다.
 
 ## Update Rule
 

@@ -195,7 +195,7 @@ MVP에서는 기본 리스트와 요약 카드 중심으로 시작한다.
 - `/mypage`:
   사용자 기본 정보, 지갑 잔고, 사용 가능 잔고, 열린 포지션 수, 포인트
 - `/mypage/assets`:
-  assets 스타일 총자산 패널, 사용 가능 잔고, KST 일별 net realized PnL 캘린더
+  앱 톤에 맞춘 총자산 패널, wallet history 기반 30일 잔고 선 차트, 사용 가능 잔고, KST 일별 net realized PnL 캘린더
 - `/mypage/points`:
   현재 포인트와 point history
 

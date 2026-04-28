@@ -20,23 +20,32 @@ export async function createRewardRedemption(
   });
 }
 
-export async function markRewardRedemptionSent(
+export async function approveRewardRedemption(
   requestId: string,
   memo: string
 ): Promise<RewardRedemption> {
   return writeFuturesApi<RewardRedemption>(
-    `/admin/reward-redemptions/${encodeURIComponent(requestId)}/send`,
+    `/admin/reward-redemptions/${encodeURIComponent(requestId)}/approve`,
     { memo: memo.trim() || null }
   );
 }
 
-export async function cancelRewardRedemption(
+export async function rejectRewardRedemption(
   requestId: string,
   memo: string
 ): Promise<RewardRedemption> {
   return writeFuturesApi<RewardRedemption>(
-    `/admin/reward-redemptions/${encodeURIComponent(requestId)}/cancel`,
+    `/admin/reward-redemptions/${encodeURIComponent(requestId)}/reject`,
     { memo: memo.trim() || null }
+  );
+}
+
+export async function cancelOwnRewardRedemption(
+  requestId: string
+): Promise<RewardRedemption> {
+  return writeFuturesApi<RewardRedemption>(
+    `/shop/redemptions/${encodeURIComponent(requestId)}/cancel`,
+    {}
   );
 }
 

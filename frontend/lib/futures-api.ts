@@ -211,6 +211,12 @@ export type AdminRewardRedemptionsResult = {
   message: string | null;
 };
 
+export type RewardRedemptionsResult = {
+  redemptions: RewardRedemption[];
+  unavailable: boolean;
+  message: string | null;
+};
+
 export type OrderPreviewRequest = {
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";
@@ -439,6 +445,18 @@ export async function getRewardPointHistory(): Promise<RewardPointHistory[]> {
     "/api/futures/rewards/history"
   );
   return response ?? [];
+}
+
+export async function getRewardRedemptions(): Promise<RewardRedemptionsResult> {
+  const response = await readApiResult<RewardRedemption[]>(
+    "/api/futures/shop/redemptions"
+  );
+
+  return {
+    redemptions: response.data ?? [],
+    unavailable: !response.ok,
+    message: response.message,
+  };
 }
 
 export async function getAdminRewardRedemptions(

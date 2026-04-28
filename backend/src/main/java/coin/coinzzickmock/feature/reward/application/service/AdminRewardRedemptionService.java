@@ -2,18 +2,11 @@ package coin.coinzzickmock.feature.reward.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
-import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import coin.coinzzickmock.feature.reward.application.refund.RewardRedemptionRefundProcessor;
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
-import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
-import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
-import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
-import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
-import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
-import coin.coinzzickmock.feature.reward.domain.RewardShopMemberItemUsage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminRewardRedemptionService {
     private final RewardRedemptionRequestRepository rewardRedemptionRequestRepository;
-    private final RewardShopItemRepository rewardShopItemRepository;
-    private final RewardShopMemberItemUsageRepository rewardShopMemberItemUsageRepository;
-    private final RewardPointRepository rewardPointRepository;
-    private final RewardPointHistoryRepository rewardPointHistoryRepository;
+    private final RewardRedemptionRefundProcessor rewardRedemptionRefundProcessor;
 
     @Transactional(readOnly = true)
     public List<RewardRedemptionResult> list(RewardRedemptionStatus status) {
@@ -39,63 +29,56 @@ public class AdminRewardRedemptionService {
 
     @Transactional
     public RewardRedemptionResult markSent(String requestId, String adminMemberId, String adminMemo) {
-        RewardRedemptionRequest request = findPendingRequest(requestId);
-        RewardRedemptionRequest sent = transition(() -> request.markSent(adminMemberId, adminMemo, Instant.now()));
-        return RewardRedemptionResult.from(rewardRedemptionRequestRepository.save(sent));
+        return approve(requestId, adminMemberId, adminMemo);
+    }
+
+    @Transactional
+    public RewardRedemptionResult approve(String requestId, String adminMemberId, String adminMemo) {
+        int claimed = rewardRedemptionRequestRepository.claimPendingAsApproved(
+                requestId,
+                adminMemberId,
+                adminMemo,
+                Instant.now()
+        );
+        if (claimed == 0) {
+            throw mapAdminClaimFailure(requestId);
+        }
+        return RewardRedemptionResult.from(findRequestForUpdate(requestId));
     }
 
     @Transactional
     public RewardRedemptionResult cancelAndRefund(String requestId, String adminMemberId, String adminMemo) {
-        RewardRedemptionRequest request = findPendingRequest(requestId);
-        RewardShopItem item = rewardShopItemRepository.findByIdForUpdate(request.shopItemId())
-                .orElseThrow(() -> invalid("상점 상품을 찾을 수 없습니다."));
-        RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
-                .findByMemberIdAndShopItemIdForUpdate(request.memberId(), request.shopItemId())
-                .orElseThrow(() -> invalid("구매 제한 사용량을 찾을 수 없습니다."));
-        RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(request.memberId())
-                .orElse(RewardPointWallet.empty(request.memberId()));
-
-        RewardRedemptionRequest cancelled = transition(() -> request.cancelRefunded(adminMemberId, adminMemo, Instant.now()));
-        RewardShopItem releasedItem = transition(item::releaseOne);
-        RewardShopMemberItemUsage releasedUsage = transition(usage::decrement);
-        RewardPointWallet refundedWallet = transition(() -> wallet.refund(request.pointAmount()));
-
-        rewardShopItemRepository.save(releasedItem);
-        rewardShopMemberItemUsageRepository.save(releasedUsage);
-        RewardPointWallet savedWallet = rewardPointRepository.save(refundedWallet);
-        RewardRedemptionRequest savedRequest = rewardRedemptionRequestRepository.save(cancelled);
-        rewardPointHistoryRepository.save(RewardPointHistory.redemptionRefund(
-                request.memberId(),
-                request.pointAmount(),
-                savedWallet.rewardPoint(),
-                request.requestId()
-        ));
-        return RewardRedemptionResult.from(savedRequest);
+        return rejectAndRefund(requestId, adminMemberId, adminMemo);
     }
 
-    private RewardRedemptionRequest findPendingRequest(String requestId) {
-        RewardRedemptionRequest request = rewardRedemptionRequestRepository.findByRequestIdForUpdate(requestId)
-                .orElseThrow(() -> invalid("교환권 요청을 찾을 수 없습니다."));
-        if (request.status() != RewardRedemptionStatus.PENDING) {
-            throw invalid("대기 중인 교환권 요청만 처리할 수 있습니다.");
+    @Transactional
+    public RewardRedemptionResult rejectAndRefund(String requestId, String adminMemberId, String adminMemo) {
+        int claimed = rewardRedemptionRequestRepository.claimPendingAsRejected(
+                requestId,
+                adminMemberId,
+                adminMemo,
+                Instant.now()
+        );
+        if (claimed == 0) {
+            throw mapAdminClaimFailure(requestId);
         }
-        return request;
+        RewardRedemptionRequest request = findRequestForUpdate(requestId);
+        rewardRedemptionRefundProcessor.refundReservation(request);
+        return RewardRedemptionResult.from(request);
     }
 
-    private <T> T transition(Transition<T> transition) {
-        try {
-            return transition.run();
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw invalid(exception.getMessage());
-        }
+    private RewardRedemptionRequest findRequestForUpdate(String requestId) {
+        return rewardRedemptionRequestRepository.findByRequestIdForUpdate(requestId)
+                .orElseThrow(() -> new CoreException(ErrorCode.REWARD_REDEMPTION_NOT_FOUND));
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException mapAdminClaimFailure(String requestId) {
+        return rewardRedemptionRequestRepository.findByRequestId(requestId)
+                .map(request -> new CoreException(
+                        ErrorCode.REWARD_REDEMPTION_CONFLICT,
+                        "대기 중인 교환권 요청만 처리할 수 있습니다."
+                ))
+                .orElseGet(() -> new CoreException(ErrorCode.REWARD_REDEMPTION_NOT_FOUND));
     }
 
-    @FunctionalInterface
-    private interface Transition<T> {
-        T run();
-    }
 }

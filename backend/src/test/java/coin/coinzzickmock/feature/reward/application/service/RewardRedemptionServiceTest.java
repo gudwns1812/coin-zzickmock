@@ -48,6 +48,12 @@ class RewardRedemptionServiceTest {
     private AdminRewardRedemptionService adminRewardRedemptionService;
 
     @Autowired
+    private GetRewardRedemptionHistoryService getRewardRedemptionHistoryService;
+
+    @Autowired
+    private CancelRewardRedemptionService cancelRewardRedemptionService;
+
+    @Autowired
     private GetShopItemsService getShopItemsService;
 
     @Autowired
@@ -115,17 +121,17 @@ class RewardRedemptionServiceTest {
     }
 
     @Test
-    void cancelRefundsExactlyOnceAndReleasesStockAndLimit() {
+    void adminRejectRefundsExactlyOnceAndReleasesStockAndLimit() {
         rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 200));
         RewardRedemptionResult created = createRewardRedemptionService.create(MEMBER_ID, ITEM_CODE, "010-1234-5678");
 
-        RewardRedemptionResult cancelled = adminRewardRedemptionService.cancelAndRefund(
+        RewardRedemptionResult rejected = adminRewardRedemptionService.rejectAndRefund(
                 created.requestId(),
                 ADMIN_ID,
-                "manual cancel"
+                "manual reject"
         );
 
-        assertEquals(RewardRedemptionStatus.CANCELLED_REFUNDED, cancelled.status());
+        assertEquals(RewardRedemptionStatus.REJECTED, rejected.status());
         assertEquals(200, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
         RewardShopItem item = rewardShopItemRepository.findByCode(ITEM_CODE).orElseThrow();
         assertEquals(0, item.soldQuantity());
@@ -136,23 +142,65 @@ class RewardRedemptionServiceTest {
         List<RewardPointHistory> histories = rewardPointHistoryRepository.findByMemberId(MEMBER_ID);
         assertEquals(RewardPointHistoryType.REDEMPTION_REFUND, histories.get(0).historyType());
 
-        CoreException secondCancel = assertThrows(CoreException.class,
-                () -> adminRewardRedemptionService.cancelAndRefund(created.requestId(), ADMIN_ID, "again"));
-        assertEquals(ErrorCode.INVALID_REQUEST, secondCancel.errorCode());
+        CoreException secondReject = assertThrows(CoreException.class,
+                () -> adminRewardRedemptionService.rejectAndRefund(created.requestId(), ADMIN_ID, "again"));
+        assertEquals(ErrorCode.REWARD_REDEMPTION_CONFLICT, secondReject.errorCode());
         assertEquals(200, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
     }
 
     @Test
-    void sentRequestCannotBeCancelled() {
+    void ownerCancelRefundsOwnPendingRequestAndHistoryListsIt() {
         rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 200));
         RewardRedemptionResult created = createRewardRedemptionService.create(MEMBER_ID, ITEM_CODE, "010-1234-5678");
 
-        adminRewardRedemptionService.markSent(created.requestId(), ADMIN_ID, "sent");
+        RewardRedemptionResult cancelled = cancelRewardRedemptionService.cancel(MEMBER_ID, created.requestId());
+
+        assertEquals(RewardRedemptionStatus.CANCELLED, cancelled.status());
+        assertEquals(200, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
+        assertEquals(1, getRewardRedemptionHistoryService.get(MEMBER_ID).size());
+        CoreException secondCancel = assertThrows(CoreException.class,
+                () -> cancelRewardRedemptionService.cancel(MEMBER_ID, created.requestId()));
+        assertEquals(ErrorCode.REWARD_REDEMPTION_CONFLICT, secondCancel.errorCode());
+    }
+
+    @Test
+    void ownerCancelMapsOtherMemberRequestToForbidden() {
+        rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 200));
+        RewardRedemptionResult created = createRewardRedemptionService.create(MEMBER_ID, ITEM_CODE, "010-1234-5678");
 
         CoreException thrown = assertThrows(CoreException.class,
-                () -> adminRewardRedemptionService.cancelAndRefund(created.requestId(), ADMIN_ID, "too late"));
-        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+                () -> cancelRewardRedemptionService.cancel("other-member", created.requestId()));
+
+        assertEquals(ErrorCode.FORBIDDEN, thrown.errorCode());
+    }
+
+    @Test
+    void ownerCancelMapsMissingRequestToNotFound() {
+        CoreException thrown = assertThrows(CoreException.class,
+                () -> cancelRewardRedemptionService.cancel(MEMBER_ID, "missing-request"));
+
+        assertEquals(ErrorCode.REWARD_REDEMPTION_NOT_FOUND, thrown.errorCode());
+    }
+
+    @Test
+    void approvedRequestCannotBeRejected() {
+        rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 200));
+        RewardRedemptionResult created = createRewardRedemptionService.create(MEMBER_ID, ITEM_CODE, "010-1234-5678");
+
+        adminRewardRedemptionService.approve(created.requestId(), ADMIN_ID, "approved");
+
+        CoreException thrown = assertThrows(CoreException.class,
+                () -> adminRewardRedemptionService.rejectAndRefund(created.requestId(), ADMIN_ID, "too late"));
+        assertEquals(ErrorCode.REWARD_REDEMPTION_CONFLICT, thrown.errorCode());
         assertEquals(100, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
         assertEquals(1, rewardShopItemRepository.findByCode(ITEM_CODE).orElseThrow().soldQuantity());
+    }
+
+    @Test
+    void adminApproveMapsMissingRequestToNotFound() {
+        CoreException thrown = assertThrows(CoreException.class,
+                () -> adminRewardRedemptionService.approve("missing-request", ADMIN_ID, "missing"));
+
+        assertEquals(ErrorCode.REWARD_REDEMPTION_NOT_FOUND, thrown.errorCode());
     }
 }

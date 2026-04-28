@@ -379,8 +379,8 @@ MVP 1차는 아래 순서로 단순화한다.
 - 사용자의 포인트 잔액이 상품 가격 이상
 
 `sold_quantity`는 item-level 재고 소진 수량이다.
-유저별 제한은 `purchase_count`로 추적하며, `PENDING`과 `SENT` 요청만 카운트한다.
-`CANCELLED_REFUNDED` 요청은 재고와 유저 구매 카운트를 정확히 한 번 복구한다.
+유저별 제한은 `purchase_count`로 추적하며, `PENDING`과 `APPROVED` 요청만 카운트한다.
+`REJECTED`와 `CANCELLED` 요청은 재고와 유저 구매 카운트를 정확히 한 번 복구한다.
 판매 가능성 검증과 재고/구매 카운트/포인트 차감은 같은 트랜잭션에서 수행해 검증 시점과 저장 시점이 갈라지지 않게 한다.
 
 ### 교환권 신청
@@ -393,12 +393,15 @@ MVP 1차는 아래 순서로 단순화한다.
 
 ### 관리자 처리
 
-- `PENDING -> SENT`:
-  관리자가 발송 완료 처리한다. 이미 발송된 요청은 환불할 수 없다.
-- `PENDING -> CANCELLED_REFUNDED`:
+- `PENDING -> APPROVED`:
+  관리자가 승인 완료 처리한다. 승인된 요청은 환불할 수 없다.
+- `PENDING -> REJECTED`:
+  관리자가 반려 처리한다. 포인트를 환불하고, 환불 이력을 남기며, 상품 `sold_quantity`와 유저 `purchase_count`를 guarded decrement로 복구한다.
+- `PENDING -> CANCELLED`:
+  사용자가 승인 전 요청을 취소한다.
   포인트를 환불하고, 환불 이력을 남기며, 상품 `sold_quantity`와 유저 `purchase_count`를 guarded decrement로 복구한다.
 - guarded decrement는 현재 값이 0이면 더 줄이지 않아 음수 재고와 음수 구매 카운트를 방지한다.
-- 중복 취소는 `PENDING -> CANCELLED_REFUNDED` 전이가 한 번만 성공하기 때문에 포인트/재고/구매 카운트를 두 번 복구하지 않는다.
+- 중복 반려/취소는 `PENDING`에서 terminal 상태로 가는 전이가 한 번만 성공하기 때문에 포인트/재고/구매 카운트를 두 번 복구하지 않는다.
 
 ### 알림
 

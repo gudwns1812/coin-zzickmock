@@ -1,5 +1,9 @@
 # 03. Rollout And Rollback
 
+## Reward Redemption Status Migration
+
+`V14__rename_reward_redemption_statuses.sql` is forward-only unless a compensating data migration is applied first. See [reward-redemption-status-migration-runbook.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/reward-redemption-status-migration-runbook.md) before rolling back an app version across that migration.
+
 ## Purpose
 
 이 문서는 `coin-zzickmock`의 롤아웃 순서, 호환성 원칙, 롤백과 장애 대응 기준을 정의한다.

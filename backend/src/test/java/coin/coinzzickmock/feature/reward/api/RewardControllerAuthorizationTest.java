@@ -3,7 +3,6 @@ package coin.coinzzickmock.feature.reward.api;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.domain.MemberRole;
-import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
@@ -25,12 +24,14 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 providers(new Actor("demo-member", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
         );
 
         CoreException thrown = assertThrows(
                 CoreException.class,
-                () -> controller.adminRedemptions(RewardRedemptionStatus.PENDING)
+                () -> controller.adminRedemptions("PENDING")
         );
 
         assertEquals(ErrorCode.FORBIDDEN, thrown.errorCode());
@@ -39,6 +40,8 @@ class RewardControllerAuthorizationTest {
     @Test
     void adminShopItemApisRejectNonAdminActorBeforeCallingServices() {
         RewardController controller = new RewardController(
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -59,6 +62,8 @@ class RewardControllerAuthorizationTest {
     @Test
     void adminShopItemWritesRejectMissingBodyBeforeCallingServices() {
         RewardController controller = new RewardController(
+                null,
+                null,
                 null,
                 null,
                 null,

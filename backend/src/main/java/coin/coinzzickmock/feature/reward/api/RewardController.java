@@ -10,9 +10,11 @@ import coin.coinzzickmock.feature.reward.application.result.ShopItemResult;
 import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
 import coin.coinzzickmock.feature.reward.application.service.AdminRewardShopItemService;
 import coin.coinzzickmock.feature.reward.application.service.AdminRewardRedemptionService;
+import coin.coinzzickmock.feature.reward.application.service.CancelRewardRedemptionService;
 import coin.coinzzickmock.feature.reward.application.service.CreateRewardRedemptionService;
 import coin.coinzzickmock.feature.reward.application.service.GetRewardPointHistoryService;
 import coin.coinzzickmock.feature.reward.application.service.GetRewardPointService;
+import coin.coinzzickmock.feature.reward.application.service.GetRewardRedemptionHistoryService;
 import coin.coinzzickmock.feature.reward.application.service.GetShopItemsService;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
 import coin.coinzzickmock.providers.auth.Actor;
@@ -36,6 +38,8 @@ public class RewardController {
     private final GetRewardPointHistoryService getRewardPointHistoryService;
     private final GetShopItemsService getShopItemsService;
     private final CreateRewardRedemptionService createRewardRedemptionService;
+    private final GetRewardRedemptionHistoryService getRewardRedemptionHistoryService;
+    private final CancelRewardRedemptionService cancelRewardRedemptionService;
     private final AdminRewardRedemptionService adminRewardRedemptionService;
     private final AdminRewardShopItemService adminRewardShopItemService;
     private final Providers providers;
@@ -73,12 +77,27 @@ public class RewardController {
         return ApiResponse.success(RewardRedemptionResponse.from(result));
     }
 
+    @GetMapping("/shop/redemptions")
+    public ApiResponse<List<RewardRedemptionResponse>> redemptionHistory() {
+        Actor actor = providers.auth().currentActor();
+        return ApiResponse.success(getRewardRedemptionHistoryService.get(actor.memberId()).stream()
+                .map(RewardRedemptionResponse::from)
+                .toList());
+    }
+
+    @PostMapping("/shop/redemptions/{requestId}/cancel")
+    public ApiResponse<RewardRedemptionResponse> cancelOwnRedemption(@PathVariable String requestId) {
+        Actor actor = providers.auth().currentActor();
+        RewardRedemptionResult result = cancelRewardRedemptionService.cancel(actor.memberId(), requestId);
+        return ApiResponse.success(RewardRedemptionResponse.from(result));
+    }
+
     @GetMapping("/admin/reward-redemptions")
     public ApiResponse<List<RewardRedemptionResponse>> adminRedemptions(
-            @RequestParam(defaultValue = "PENDING") RewardRedemptionStatus status
+            @RequestParam(defaultValue = "PENDING") String status
     ) {
         requireAdmin();
-        return ApiResponse.success(adminRewardRedemptionService.list(status).stream()
+        return ApiResponse.success(adminRewardRedemptionService.list(parseStatus(status)).stream()
                 .map(RewardRedemptionResponse::from)
                 .toList());
     }
@@ -97,6 +116,20 @@ public class RewardController {
         return ApiResponse.success(RewardRedemptionResponse.from(result));
     }
 
+    @PostMapping("/admin/reward-redemptions/{requestId}/approve")
+    public ApiResponse<RewardRedemptionResponse> approveRedemption(
+            @PathVariable String requestId,
+            @RequestBody(required = false) AdminRedemptionActionRequest request
+    ) {
+        Actor actor = requireAdmin();
+        RewardRedemptionResult result = adminRewardRedemptionService.approve(
+                requestId,
+                actor.memberId(),
+                request == null ? null : request.memo()
+        );
+        return ApiResponse.success(RewardRedemptionResponse.from(result));
+    }
+
     @PostMapping("/admin/reward-redemptions/{requestId}/cancel")
     public ApiResponse<RewardRedemptionResponse> cancelRedemption(
             @PathVariable String requestId,
@@ -104,6 +137,20 @@ public class RewardController {
     ) {
         Actor actor = requireAdmin();
         RewardRedemptionResult result = adminRewardRedemptionService.cancelAndRefund(
+                requestId,
+                actor.memberId(),
+                request == null ? null : request.memo()
+        );
+        return ApiResponse.success(RewardRedemptionResponse.from(result));
+    }
+
+    @PostMapping("/admin/reward-redemptions/{requestId}/reject")
+    public ApiResponse<RewardRedemptionResponse> rejectRedemption(
+            @PathVariable String requestId,
+            @RequestBody(required = false) AdminRedemptionActionRequest request
+    ) {
+        Actor actor = requireAdmin();
+        RewardRedemptionResult result = adminRewardRedemptionService.rejectAndRefund(
                 requestId,
                 actor.memberId(),
                 request == null ? null : request.memo()
@@ -149,6 +196,23 @@ public class RewardController {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         return actor;
+    }
+
+    private RewardRedemptionStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return RewardRedemptionStatus.PENDING;
+        }
+        return switch (status) {
+            case "SENT" -> RewardRedemptionStatus.APPROVED;
+            case "CANCELLED_REFUNDED" -> RewardRedemptionStatus.REJECTED;
+            default -> {
+                try {
+                    yield RewardRedemptionStatus.valueOf(status);
+                } catch (IllegalArgumentException exception) {
+                    throw new CoreException(ErrorCode.INVALID_REQUEST, "지원하지 않는 교환권 요청 상태입니다.");
+                }
+            }
+        };
     }
 
     private AdminRewardShopItemService.AdminShopItemCommand toAdminShopItemCommand(AdminShopItemRequest request) {

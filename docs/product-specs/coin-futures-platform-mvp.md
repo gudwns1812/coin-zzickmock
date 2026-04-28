@@ -293,10 +293,10 @@ MVP에서는 기본 리스트와 요약 카드 중심으로 시작한다.
 - 포인트 지급 규칙은 악용 방지를 위해 실현 손익 기준으로만 계산한다
 - 포인트는 정수 단위로 저장하고 차감/환불도 정수 단위로 처리한다
 - 교환권 신청은 포인트를 즉시 차감하고 point history에 `REDEMPTION_DEDUCT`를 남긴다
-- 발송 전 취소/환불은 포인트를 정확히 한 번 복구하고 `REDEMPTION_REFUND`를 남긴다
+- 관리자 반려 또는 사용자 취소는 포인트를 정확히 한 번 복구하고 `REDEMPTION_REFUND`를 남긴다
 - 교환권 요청의 `request_id`는 차감/환불 이력의 source reference로 사용한다
-- 관리자 환불은 잠근 요청이 `PENDING`일 때만 진행하며, 요청 상태 변경과 포인트 환불, 환불 이력, 재고/구매 카운트 복구를 한 트랜잭션에 묶는다
-- 이미 `SENT` 또는 `CANCELLED_REFUNDED`인 요청은 재처리하지 않아 환불이 중복 적용되지 않는다
+- 관리자 반려와 사용자 취소는 요청이 `PENDING`일 때만 진행하며, 요청 상태 변경과 포인트 환불, 환불 이력, 재고/구매 카운트 복구를 한 트랜잭션에 묶는다
+- 이미 `APPROVED`, `REJECTED`, `CANCELLED`인 요청은 재처리하지 않아 환불이 중복 적용되지 않는다
 - 알림 실패는 DB 트랜잭션을 되돌리지 않으며, 관리자 페이지의 `PENDING` 요청 목록을 운영 기준 데이터로 삼는다
 
 상세 수식과 예외 규칙은 [coin-futures-simulation-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-simulation-rules.md)를 원문으로 삼는다.

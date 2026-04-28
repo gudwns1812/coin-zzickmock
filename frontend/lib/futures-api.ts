@@ -182,6 +182,9 @@ export type RewardPointHistory = {
 
 export type RewardRedemptionStatus =
   | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELLED"
   | "SENT"
   | "CANCELLED_REFUNDED";
 

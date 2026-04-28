@@ -19,7 +19,7 @@
 ## Current Specs
 
 - [coin-futures-platform-mvp.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-platform-mvp.md)
-  코인 선물 모의투자 플랫폼의 첫 제품 설계 초안. 목표, MVP 범위, 도메인 모델, 시스템 구조, 프론트 재사용 전략을 담는다.
+  코인 선물 모의투자 플랫폼의 제품 기준. 목표, MVP 범위, 도메인 모델, 시스템 구조, 프론트 재사용 전략을 담는다.
 - [coin-futures-screen-spec.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-screen-spec.md)
   회원가입, 마켓, 심볼 상세, 포트폴리오, 상점까지 MVP 화면을 더 작은 블록으로 나눈 화면 명세.
 - [coin-futures-simulation-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-simulation-rules.md)

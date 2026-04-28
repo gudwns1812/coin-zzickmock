@@ -10,7 +10,7 @@
 - `backend/`는 Spring Boot 기반 서비스이며, 장기적으로 도메인 규칙과 데이터의 최종 출처가 되어야 한다.
 - 루트는 제품 기능을 직접 담기보다 workspace 실행, 문서, 모듈 연결을 담당한다.
 - `docs/`는 런타임 코드가 아니라 제품 맥락, 계획, 참고 자료를 보관하는 공간이다.
-- 이전 주식 화면/타입/컴포넌트가 일부 남아 있지만, 새 주요 흐름은 코인 선물 `markets`, `portfolio`, `watchlist`, `shop`으로 수렴 중이다.
+- 이전 주식 화면/타입/컴포넌트가 일부 남아 있지만, 새 주요 흐름은 코인 선물 `markets`, `portfolio`, `mypage`, `watchlist`, `shop`, 관리자 보상 처리로 수렴 중이다.
 
 ## Repository Map
 
@@ -18,9 +18,10 @@
 coin-zzickmock/
 ├── frontend/        # 현재 사용자 경험의 중심인 Next.js 앱
 ├── backend/         # Spring Boot 서비스
-├── docs/            # 제품 문서, 계획, 참고 자료
+├── docs/            # 제품 문서, 설계 기준, 계획, 참고 자료
 ├── FRONTEND.md      # 프론트 작업 기준과 읽기 순서
 ├── BACKEND.md       # 백엔드 작업 기준과 읽기 순서
+├── RELEASE.md       # 배포/릴리즈 작업 기준과 읽기 순서
 ├── README.md        # 저장소 입구와 실행 방법
 └── ARCHITECTURE.md  # 최상위 구조와 책임 경계
 ```
@@ -84,7 +85,7 @@ backend/src/main/java/coin/coinzzickmock/
 - 인증, 커넥터, 텔레메트리, 기능 플래그 같은 교차 관심사는 `providers/Providers.java` 경계 뒤로 모은다.
 - 인터페이스는 기본값이 아니며, 실제 외부 경계나 다중 구현이 있을 때만 둔다.
 
-현재 주요 feature는 `market`, `order`, `position`, `account`, `member`, `reward`다.
+현재 주요 feature는 `market`, `order`, `position`, `account`, `member`, `reward`, `leaderboard`다.
 
 ### Data And Integration Shape
 
@@ -145,6 +146,7 @@ Spring Boot 기반 서비스다.
 런타임 바깥의 기억 장치다.
 
 - `docs/product-specs/`: 제품 요구사항과 기능 사양
+- `docs/design-docs/`: 백엔드/UI 설계 기준
 - `docs/references/`: 조사 내용과 외부 참고 자료
 - `docs/exec-plans/`: 구현 계획과 진행 기록
 - `docs/release-docs/`: 배포, 릴리즈, 롤백 운영 문서
@@ -184,7 +186,7 @@ Spring Boot 기반 서비스다.
 
 백엔드 내부에서는 기능별 수직 분리와 고정 레이어를 동시에 유지한다.
 
-- 기능 경계: `feature/market`, `feature/order`, `feature/position`, `feature/account`, `feature/member`, `feature/reward`
+- 기능 경계: `feature/market`, `feature/order`, `feature/position`, `feature/account`, `feature/member`, `feature/reward`, `feature/leaderboard`
 - 진입 경계: `api`
 - 유스케이스 경계: `application`
 - 비즈니스 의미와 상태 전이: `domain`
@@ -215,7 +217,7 @@ Spring Boot 기반 서비스다.
 ## Where To Start
 
 - 저장소 실행과 전체 맥락: [README.md](/Users/hj.park/projects/coin-zzickmock/README.md)
-- 설계 문서 구조와 배치 기준: [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)
+- 설계 문서 구조와 배치 기준: [docs/design-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/README.md)
 - 배포와 릴리즈 운영 기준: [RELEASE.md](/Users/hj.park/projects/coin-zzickmock/RELEASE.md)
 - 프론트 구조와 실제 진입점: [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
 - 백엔드 작업 기준: [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)

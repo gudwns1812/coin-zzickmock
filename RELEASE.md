@@ -20,19 +20,19 @@
 ### 새 배포 환경이나 자동화 파이프라인을 설계할 때
 
 1. [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
-2. [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
-3. [docs/release-docs/01-environments-and-artifacts.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/01-environments-and-artifacts.md)
+2. [docs/release-docs/01-environments-and-artifacts.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/01-environments-and-artifacts.md)
+3. [.github/workflows/ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml)
 
 ### 정기 릴리즈나 수동 배포를 실행할 때
 
 1. [docs/release-docs/02-release-checklist.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/02-release-checklist.md)
 2. [docs/release-docs/03-rollout-and-rollback.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/03-rollout-and-rollback.md)
-3. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
+3. [.github/workflows/ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml)
 
 ### 장애 대응이나 롤백 판단이 필요할 때
 
 1. [docs/release-docs/03-rollout-and-rollback.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/03-rollout-and-rollback.md)
-2. [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
+2. [docs/release-docs/01-environments-and-artifacts.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/01-environments-and-artifacts.md)
 3. 관련 워크스페이스 기준 문서
 
 ## Current Reality
@@ -40,7 +40,7 @@
 현재 저장소의 배포/릴리즈 현실은 아래와 같다.
 
 - `.github/workflows/ci.yml`는 프론트엔드 빌드와 백엔드 `check`까지만 검증한다.
-- 전용 CD 워크플로, 태그 기반 릴리즈, 환경별 프로모션 문서는 아직 없다.
+- 전용 CD 워크플로, 태그 기반 릴리즈, 환경별 프로모션 문서는 현재 저장소 표준으로 고정되어 있지 않다.
 - 따라서 현재 기본 원칙은 "CI를 통과한 커밋을 기준으로 하는 검증된 수동 릴리즈"다.
 - 자동화가 추가되더라도, 이 문서와 `docs/release-docs/`에 먼저 계약을 적고 구현한다.
 

@@ -297,11 +297,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `id` (auto increment)
 - 주요 컬럼:
   `symbol_id`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `created_at`, `updated_at`
+- 시간 기준:
+  `open_time`, `close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
   현재는 전용 JPA entity가 없고 `feature.market`의 향후 시계열 영속성 기준 테이블로 예약되어 있다.
 - 관련 migration 또는 schema 파일:
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
-  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql)
+  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
+  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
 - 인덱스:
   `uk_market_candles_1m_symbol_open_time`로 심볼별 시각 중복을 막고,
   `idx_market_candles_1m_open_time_symbol`로 시간 구간 기준 롤업 조회를 빠르게 한다.
@@ -314,11 +317,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `id` (auto increment)
 - 주요 컬럼:
   `symbol_id`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`
+- 시간 기준:
+  `open_time`, `close_time`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
   현재는 전용 JPA entity가 없고 `feature.market`의 향후 롤업 영속성 기준 테이블로 예약되어 있다.
 - 관련 migration 또는 schema 파일:
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
-  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql)
+  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
+  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
 - 인덱스:
   `uk_market_candles_1h_symbol_open_time`로 심볼별 시각 중복을 막고,
   `idx_market_candles_1h_open_time_symbol`로 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.

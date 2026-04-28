@@ -3,11 +3,10 @@
 ## Purpose
 
 이 문서는 `coin-zzickmock` 백엔드 작업의 입구 문서다.
-예전처럼 상세 설계 원문까지 이 파일 하나에 몰아넣지 않고, 작업 기준과 읽기 순서를 짧게 정리한다.
+상세 설계 원문을 반복하지 않고, 작업 기준과 읽기 순서를 짧게 정리한다.
 
 상세 설계는 아래 문서로 분리한다.
 
-- [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)
 - [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
 - [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
 - [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
@@ -36,7 +35,6 @@
 3. [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
 4. [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 5. [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
-6. 보안이 걸리면 [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
 
 ### 도메인 모델이나 정책, 상태 전이를 설계할 때
 
@@ -134,5 +132,4 @@
   추가하고 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 갱신했다.
 - `./gradlew architectureLint`를 통과했다.
 - `./gradlew check`를 통과했다.
-- 리뷰 게이트와 PR/CI 흐름은 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)와 이 저장소의 review 관련 스킬,
-  그리고 [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md) 기준을 따른다.
+- 리뷰 게이트와 PR/CI 흐름은 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)와 [.github/workflows/ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml) 기준을 따른다.

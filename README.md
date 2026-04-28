@@ -17,6 +17,8 @@ coin-zzickmock/
 ├── backend/                  # Spring Boot 백엔드
 ├── FRONTEND.md               # 프론트 작업 기준 문서
 ├── BACKEND.md                # 백엔드 아키텍처 기준 문서
+├── RELEASE.md                # 배포/릴리즈 기준 문서
+├── ARCHITECTURE.md           # 저장소 구조와 책임 경계
 └── README.md
 ```
 
@@ -85,11 +87,6 @@ npm run lint
 
 - 백엔드 아키텍처 기준: [BACKEND.md](BACKEND.md)
 - 프론트 작업 기준: [FRONTEND.md](FRONTEND.md)
+- 저장소 구조와 책임 경계: [ARCHITECTURE.md](ARCHITECTURE.md)
 - 배포/릴리즈 상세 문서: [docs/release-docs/README.md](docs/release-docs/README.md)
 - 상세 설계 루트: [docs/design-docs/README.md](docs/design-docs/README.md)
-
-## 현재 상태
-
-- 프론트엔드: npm workspace 기반으로 실행
-- 백엔드: Gradle 기반 단독 실행
-- 백엔드 구조는 객체지향 리팩토링과 응답/예외 통일화를 진행 중이며, `BACKEND.md` 기준으로 계속 정리합니다.

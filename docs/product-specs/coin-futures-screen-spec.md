@@ -3,7 +3,7 @@
 ## 목적
 
 이 문서는 코인 선물 모의투자 플랫폼 MVP의 화면 구조와 각 화면이 요구하는 데이터, 상호작용, 상태 처리를 정의한다.
-제품 설계 초안이 "무엇을 만들지"를 정했다면, 이 문서는 "어떤 화면을 어떤 책임으로 나눌지"를 고정하는 데 목적이 있다.
+제품 기준이 "무엇을 만들지"를 정했다면, 이 문서는 "어떤 화면을 어떤 책임으로 나눌지"를 고정하는 데 목적이 있다.
 
 이 문서는 아래 기준을 따른다.
 
@@ -65,7 +65,6 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 보조
 
-- `/learn`
 - `/only-desktop`
 
 ## 화면 1. 회원가입 `/signup`
@@ -189,8 +188,10 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 - 캔들 차트
 - 기간 전환 (`1m`, `3m`, `5m`, `15m`, `1h`, `4h`, `12h`, `1D`, `1W`, `1M`)
+- 사용자가 선택한 차트 기간은 브라우저에 저장되어 심볼 이동이나 화면 재진입 후에도 이어서 사용한다.
 - 거래량 보조 표시
 - 차트를 왼쪽으로 이동하면 더 오래된 캔들을 서버에서 이어서 로드
+- 최초 진입 시에만 로드된 캔들의 가장 빠른 timestamp부터 가장 늦은 timestamp까지를 `setVisibleRange`로 한 번 정하고, 이후 live/refetch/사용자 이동/"최신 보기"는 차트를 계속 고정하지 않는다. 오른쪽 여백은 차트 `rightOffset` 설정으로 유지한다.
 - 차트 헤더에 심볼과 커서가 가리키는 캔들의 `open/high/low/close` 표시
 - 보조지표가 켜져 있으면 차트 헤더에서 커서가 가리키는 캔들의 보조지표 가격을 접었다 펼칠 수 있어야 한다
 - 차트가 자동으로 최신 시각으로 복귀하지 않고, 헤더 우측 "최신 보기" 버튼으로만 최신 위치 복귀
@@ -235,6 +236,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 선택된 심볼과 같은 포지션의 `Mark Price`, `Unrealized PnL`, `ROE`, 계정 영역의 전체 미실현 손익은 실시간 market snapshot의 mark price로 표시용 값을 재계산한다. LONG 미실현 손익은 `(markPrice - entryPrice) * quantity`, SHORT 미실현 손익은 `(entryPrice - markPrice) * quantity`, ROE는 `unrealizedPnl / margin`이다. margin이 0이거나 유한하지 않으면 `NaN`을 표시하지 않는다. 서버 조회값은 새로고침/체결 이벤트 이후의 authoritative snapshot이고, 프론트 재계산은 저장/정산에 쓰지 않는 display-only 값이다.
 - 포지션 종료 버튼은 모달을 열고, 사용자는 `Market` 즉시 종료 또는 `Limit` 종료 주문을 선택한다
 - `Limit` 종료 주문은 체결 전까지 Open orders에 남고 취소할 수 있다
+- 열린 포지션 카드는 현재 보유 수량인 `Size = quantity + base asset`을 표시한다. `Size`는 아직 열린 수량이고, `Close amount`는 누적 종료 체결 수량이므로 서로 대체하지 않는다.
 - 선택 심볼 포지션의 `Mark Price`, `Unrealized PnL`, `ROE`, 총 미실현 손익은 market SSE의 최신 `markPrice`로 표시 전용 재계산을 할 수 있다. 공식 식은 simulation rules의 `unrealizedPnl = (markPrice - entryPrice) * quantity`(LONG), `(entryPrice - markPrice) * quantity`(SHORT), `roi = unrealizedPnl / margin`이며, `margin`이 0 또는 non-finite이면 화면 ROE는 `0`으로 처리한다.
 - 포지션 응답은 `accumulatedClosedQuantity`, `pendingCloseQuantity`, `closeableQuantity`를 제공한다. 화면의 `Close amount`는 누적 종료 체결 수량인 `accumulatedClosedQuantity`만 의미한다.
 - `pendingCloseQuantity`는 같은 심볼/방향/마진 모드의 미체결 close 주문 effective exposure이고, `closeableQuantity = max(0, quantity - pendingCloseQuantity)`이다. OCO group이 있는 TP/SL sibling은 group별 `max(quantity)`로 한 번만 계산한다. 두 값은 예약 상태/호환 필드이며 `Close amount` 라벨로 표시하지 않는다.
@@ -432,23 +434,6 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 신청 결과가 즉시 계정과 관리자 페이지에 반영된다
 - 환불은 정확히 한 번만 발생한다
 
-## 화면 9. 학습 보조 `/learn`
-
-### 목표
-
-입문형 사용자가 선물 용어를 몰라도 서비스 사용을 포기하지 않게 만든다.
-
-### MVP 구성
-
-- `LONG`, `SHORT`
-- `ISOLATED`, `CROSS`
-- `Mark Price`
-- `Funding Rate`
-- `Liquidation`
-- `Maker`, `Taker`
-
-전용 페이지 또는 주문 패널의 도움말 모달로 시작할 수 있다.
-
 ## 공통 컴포넌트 후보
 
 아래 컴포넌트는 여러 화면에서 반복 사용될 가능성이 높다.
@@ -470,26 +455,20 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 재사용 우선
 
-- [frontend/app/(main)/layout.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/layout.tsx)
+- [frontend/app/(main)/layout.tsx](</Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/layout.tsx>)
 - [frontend/components/ui/Sidebar.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/components/ui/Sidebar.tsx)
 - [frontend/components/ui/shared/header/Header.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/components/ui/shared/header/Header.tsx)
 
 ### 교체 우선
 
-- [frontend/app/(main)/stock/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/page.tsx)
-- [frontend/app/(main)/stock/[code]/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/[code]/page.tsx)
-- [frontend/app/(main)/portfolio/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/portfolio/page.tsx)
-- [frontend/app/(main)/mypage/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/mypage/page.tsx)
-- [frontend/app/(main)/mypage/assets/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/mypage/assets/page.tsx)
-- [frontend/app/(main)/mypage/points/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/mypage/points/page.tsx)
+- [frontend/app/(main)/stock/page.tsx](</Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/page.tsx>)
+- [frontend/app/(main)/stock/[code]/page.tsx](</Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/[code]/page.tsx>)
+- [frontend/app/(main)/portfolio/page.tsx](</Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/portfolio/page.tsx>)
 - [frontend/api/stocks.ts](/Users/hj.park/projects/coin-zzickmock/frontend/api/stocks.ts)
 - [frontend/hooks/useRealTimeStock.ts](/Users/hj.park/projects/coin-zzickmock/frontend/hooks/useRealTimeStock.ts)
 
-## 다음 상세화 대상
+## 유지보수 기준
 
-이 문서 다음에는 아래 순서로 더 쪼개면 된다.
-
-1. 주문 패널 인터랙션 명세
-2. 포지션/미체결 주문 테이블 컬럼 상세
-3. 회원가입/로그인 API 명세
-4. shop 아이템과 포인트 UX 상세
+- 주문/포지션/미체결 주문의 계산 규칙은 [coin-futures-simulation-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-simulation-rules.md)에 둔다.
+- 화면 구조가 바뀌면 이 문서에서 route, 필수 섹션, 수용 기준을 함께 갱신한다.
+- 실제 구현 순서와 완료 기록은 `docs/exec-plans/`에서 관리한다.

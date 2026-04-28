@@ -3,11 +3,10 @@
 ## Purpose
 
 이 문서는 `coin-zzickmock` 프론트엔드 작업의 입구 문서다.
-예전처럼 UI 상세 설계와 구현 규칙을 한 파일에 모두 쌓기보다, 작업 기준과 읽기 순서를 짧게 정리한다.
+UI 상세 설계와 구현 규칙을 반복하지 않고, 작업 기준과 읽기 순서를 짧게 정리한다.
 
 상세 설계와 구조 문서는 아래로 분리한다.
 
-- [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)
 - [docs/design-docs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/README.md)
 - [docs/design-docs/ui-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/README.md)
 - [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
@@ -28,7 +27,6 @@
 
 1. [docs/design-docs/ui-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/README.md)
 2. [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
-3. 보안이 걸리면 [SECURITY.md](/Users/hj.park/projects/coin-zzickmock/SECURITY.md)
 
 ### 상태, 데이터 패칭, 컴포넌트 배치를 바꿀 때
 
@@ -40,9 +38,8 @@
 ### 프론트 검증 기준을 확인할 때
 
 1. 이 문서의 `Runtime Verification`
-2. [CI_WORKFLOW.md](/Users/hj.park/projects/coin-zzickmock/CI_WORKFLOW.md)
-3.
-필요하면 [docs/design-docs/ui-design/05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
+2. [.github/workflows/ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml)
+3. 필요하면 [docs/design-docs/ui-design/05-motion-states-accessibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/ui-design/05-motion-states-accessibility.md)
 
 ## Current Reality
 

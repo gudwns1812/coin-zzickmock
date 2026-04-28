@@ -27,6 +27,8 @@
 - `/portfolio`
 - `/watchlist`
 - `/shop`
+- `/admin/reward-redemptions`
+- `/admin/shop-items`
 - `/login`
 - `/signup`
 - `/only-desktop`
@@ -34,7 +36,7 @@
 ## Key Entry Points
 
 - `app/layout.tsx`
-  전역 앱 셸입니다. Query Client, MSW, Sentry, Toast, 투자 설문 provider를 조립합니다.
+  전역 앱 셸입니다. Query Client, MSW, Sentry, Toast를 조립합니다.
 - `app/page.tsx`
   루트 진입점입니다. 현재는 `/markets` 쪽 흐름으로 보냅니다.
 - `app/(main)/layout.tsx`
@@ -52,6 +54,7 @@
 - `app/(main)/portfolio/`: 선물 계정 흐름
 - `app/(main)/watchlist/`: 관심 심볼 흐름
 - `app/(main)/shop/`: 포인트 상점 흐름
+- `app/(main)/admin/`: 관리자 상점 아이템과 교환권 처리 흐름
 - `app/login/`: 로그인 페이지
 - `app/signup/`: 회원가입 흐름
 - `app/only-desktop/`: 모바일 차단 화면

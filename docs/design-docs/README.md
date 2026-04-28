@@ -5,7 +5,7 @@
 
 ## How To Use
 
-- 먼저 루트의 [DESIGN.md](/Users/hj.park/projects/coin-zzickmock/DESIGN.md)를 읽는다.
+- 먼저 루트의 [README.md](/Users/hj.park/projects/coin-zzickmock/README.md)와 [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)로 전체 구조를 확인한다.
 - 그다음 주제별 상세 설계 디렉터리로 이동한다.
 - 실제 구현 전에는 관련 기준 문서와 상세 설계를 함께 본다.
 

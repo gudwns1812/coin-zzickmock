@@ -24,6 +24,7 @@ export async function middleware(req: NextRequest) {
   if (
     (pathname.startsWith("/portfolio") ||
       pathname.startsWith("/watchlist") ||
+      pathname.startsWith("/admin") ||
       pathname.startsWith("/shop")) &&
     !token
   ) {

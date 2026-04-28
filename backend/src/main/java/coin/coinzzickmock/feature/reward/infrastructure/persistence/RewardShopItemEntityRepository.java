@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RewardShopItemEntityRepository extends JpaRepository<RewardShopItemEntity, Long> {
+    List<RewardShopItemEntity> findAllByOrderBySortOrderAscCodeAsc();
+
     List<RewardShopItemEntity> findByActiveTrueOrderBySortOrderAscCodeAsc();
 
     Optional<RewardShopItemEntity> findByCode(String code);

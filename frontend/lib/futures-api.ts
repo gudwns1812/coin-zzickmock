@@ -137,6 +137,29 @@ export type ShopItem = {
   remainingPurchaseLimit: number | null;
 };
 
+export type AdminShopItem = Omit<ShopItem, "remainingPurchaseLimit"> & {
+  itemType: string;
+  sortOrder: number;
+};
+
+export type AdminShopItemInput = {
+  code: string | null;
+  name: string;
+  description: string;
+  itemType: string;
+  price: number;
+  active: boolean;
+  totalStock: number | null;
+  perMemberPurchaseLimit: number | null;
+  sortOrder: number;
+};
+
+export type AdminShopItemsResult = {
+  items: AdminShopItem[];
+  unavailable: boolean;
+  message: string | null;
+};
+
 export type RewardPointHistoryType =
   | "GRANT"
   | "REDEMPTION_DEDUCT"
@@ -415,6 +438,18 @@ export async function getAdminRewardRedemptions(
 
   return {
     redemptions: response.data ?? [],
+    unavailable: !response.ok,
+    message: response.message,
+  };
+}
+
+export async function getAdminShopItems(): Promise<AdminShopItemsResult> {
+  const response = await readApiResult<AdminShopItem[]>(
+    "/api/futures/admin/shop-items"
+  );
+
+  return {
+    items: response.data ?? [],
     unavailable: !response.ok,
     message: response.message,
   };

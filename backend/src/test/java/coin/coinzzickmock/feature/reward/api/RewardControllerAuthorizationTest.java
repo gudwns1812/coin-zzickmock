@@ -24,6 +24,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
+                null,
                 providers(new Actor("demo-member", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
         );
 
@@ -33,6 +34,46 @@ class RewardControllerAuthorizationTest {
         );
 
         assertEquals(ErrorCode.FORBIDDEN, thrown.errorCode());
+    }
+
+    @Test
+    void adminShopItemApisRejectNonAdminActorBeforeCallingServices() {
+        RewardController controller = new RewardController(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                providers(new Actor("demo-member", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
+        );
+
+        CoreException thrown = assertThrows(
+                CoreException.class,
+                controller::adminShopItems
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, thrown.errorCode());
+    }
+
+    @Test
+    void adminShopItemWritesRejectMissingBodyBeforeCallingServices() {
+        RewardController controller = new RewardController(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                providers(new Actor("admin", "admin@coinzzickmock.dev", "Admin", MemberRole.ADMIN))
+        );
+
+        CoreException thrown = assertThrows(
+                CoreException.class,
+                () -> controller.createAdminShopItem(null)
+        );
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
     }
 
     private Providers providers(Actor actor) {

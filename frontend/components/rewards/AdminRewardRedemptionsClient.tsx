@@ -71,13 +71,23 @@ export default function AdminRewardRedemptionsClient({
   return (
     <div className="px-main-2 pb-24 pt-4">
       <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
-        <p className="text-sm-custom text-main-dark-gray/60">Admin</p>
-        <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
-          교환권 신청 관리
-        </h1>
-        <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
-          대기 중인 커피 교환권 신청을 발송 완료하거나 취소/환불 처리합니다.
-        </p>
+        <div className="flex items-start justify-between gap-main-2">
+          <div>
+            <p className="text-sm-custom text-main-dark-gray/60">Admin</p>
+            <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
+              교환권 신청 관리
+            </h1>
+            <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
+              대기 중인 커피 교환권 신청을 발송 완료하거나 취소/환불 처리합니다.
+            </p>
+          </div>
+          <Link
+            className="rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
+            href="/admin/shop-items"
+          >
+            상품 관리
+          </Link>
+        </div>
       </section>
 
       <div className="mt-main-2 flex items-center gap-2">

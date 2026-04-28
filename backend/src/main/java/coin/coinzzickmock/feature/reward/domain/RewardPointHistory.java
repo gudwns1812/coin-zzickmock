@@ -36,4 +36,32 @@ public record RewardPointHistory(
                 sourceReference
         );
     }
+
+    public static RewardPointHistory redemptionDeduct(String memberId, int amount, int balanceAfter, String requestId) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("차감 포인트는 0보다 커야 합니다.");
+        }
+        return new RewardPointHistory(
+                memberId,
+                RewardPointHistoryType.REDEMPTION_DEDUCT,
+                -amount,
+                balanceAfter,
+                "REDEMPTION_REQUEST",
+                requestId
+        );
+    }
+
+    public static RewardPointHistory redemptionRefund(String memberId, int amount, int balanceAfter, String requestId) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("환급 포인트는 0보다 커야 합니다.");
+        }
+        return new RewardPointHistory(
+                memberId,
+                RewardPointHistoryType.REDEMPTION_REFUND,
+                amount,
+                balanceAfter,
+                "REDEMPTION_REQUEST",
+                requestId
+        );
+    }
 }

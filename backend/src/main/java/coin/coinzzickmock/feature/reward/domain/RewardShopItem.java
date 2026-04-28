@@ -55,6 +55,47 @@ public record RewardShopItem(
         return Math.max(0, totalStock - soldQuantity);
     }
 
+    public RewardShopItem reserveOne() {
+        if (!active) {
+            throw new IllegalStateException("비활성 상품은 구매할 수 없습니다.");
+        }
+        if (soldOut()) {
+            throw new IllegalStateException("품절된 상품입니다.");
+        }
+        return new RewardShopItem(
+                id,
+                code,
+                name,
+                description,
+                itemType,
+                price,
+                active,
+                totalStock,
+                soldQuantity + 1,
+                perMemberPurchaseLimit,
+                sortOrder
+        );
+    }
+
+    public RewardShopItem releaseOne() {
+        if (soldQuantity == 0) {
+            throw new IllegalStateException("판매 수량은 음수로 복구할 수 없습니다.");
+        }
+        return new RewardShopItem(
+                id,
+                code,
+                name,
+                description,
+                itemType,
+                price,
+                active,
+                totalStock,
+                soldQuantity - 1,
+                perMemberPurchaseLimit,
+                sortOrder
+        );
+    }
+
     public boolean hasPurchaseLimit() {
         return perMemberPurchaseLimit != null;
     }

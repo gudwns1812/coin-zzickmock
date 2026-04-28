@@ -18,7 +18,8 @@ public class MemberActorLookup implements ActorLookup {
                 .map(memberCredential -> new Actor(
                         memberCredential.memberId(),
                         memberCredential.memberEmail(),
-                        memberCredential.memberName()
+                        memberCredential.memberName(),
+                        memberCredential.role()
                 ));
     }
 }

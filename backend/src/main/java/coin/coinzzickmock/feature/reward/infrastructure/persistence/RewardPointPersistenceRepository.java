@@ -22,6 +22,13 @@ public class RewardPointPersistenceRepository implements RewardPointRepository {
 
     @Override
     @Transactional
+    public Optional<RewardPointWallet> findByMemberIdForUpdate(String memberId) {
+        return rewardPointWalletEntityRepository.findWithLockingByMemberId(memberId)
+                .map(RewardPointWalletEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
     public RewardPointWallet save(RewardPointWallet rewardPointWallet) {
         RewardPointWalletEntity entity = rewardPointWalletEntityRepository.findById(rewardPointWallet.memberId())
                 .map(existing -> {

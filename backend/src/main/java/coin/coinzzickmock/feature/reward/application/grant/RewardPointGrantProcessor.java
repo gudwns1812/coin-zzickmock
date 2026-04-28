@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Component
 public class RewardPointGrantProcessor {
     private final RewardPointPolicy rewardPointPolicy;
@@ -41,7 +43,17 @@ public class RewardPointGrantProcessor {
     }
 
     private static RewardPointHistoryRepository discardingHistoryRepository() {
-        return history -> history;
+        return new RewardPointHistoryRepository() {
+            @Override
+            public RewardPointHistory save(RewardPointHistory history) {
+                return history;
+            }
+
+            @Override
+            public List<RewardPointHistory> findByMemberId(String memberId) {
+                return List.of();
+            }
+        };
     }
 
     @Transactional

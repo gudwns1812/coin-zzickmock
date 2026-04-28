@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.reward.infrastructure.persistence;
 
 import coin.coinzzickmock.common.persistence.AuditableEntity;
+import coin.coinzzickmock.feature.reward.domain.RewardShopMemberItemUsage;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -36,6 +37,10 @@ public class RewardShopMemberItemUsageEntity extends AuditableEntity {
     protected RewardShopMemberItemUsageEntity() {
     }
 
+    public static RewardShopMemberItemUsageEntity from(RewardShopMemberItemUsage usage, RewardShopItemEntity shopItem) {
+        return new RewardShopMemberItemUsageEntity(usage.memberId(), shopItem, usage.purchaseCount());
+    }
+
     public RewardShopMemberItemUsageEntity(String memberId, RewardShopItemEntity shopItem, int purchaseCount) {
         if (purchaseCount < 0) {
             throw new IllegalArgumentException("구매 수량은 음수일 수 없습니다.");
@@ -54,6 +59,19 @@ public class RewardShopMemberItemUsageEntity extends AuditableEntity {
             throw new IllegalStateException("구매 수량은 음수로 복구할 수 없습니다.");
         }
         purchaseCount--;
+    }
+
+    public void apply(RewardShopMemberItemUsage usage, RewardShopItemEntity shopItem) {
+        if (usage.purchaseCount() < 0) {
+            throw new IllegalArgumentException("구매 수량은 음수일 수 없습니다.");
+        }
+        this.memberId = usage.memberId();
+        this.shopItem = shopItem;
+        this.purchaseCount = usage.purchaseCount();
+    }
+
+    public RewardShopMemberItemUsage toDomain() {
+        return new RewardShopMemberItemUsage(id, memberId, shopItem.getId(), purchaseCount);
     }
 
     public Long getId() {

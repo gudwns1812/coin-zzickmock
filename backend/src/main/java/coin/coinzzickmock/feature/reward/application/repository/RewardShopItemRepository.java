@@ -9,4 +9,10 @@ public interface RewardShopItemRepository {
     List<RewardShopItem> findActiveItems();
 
     Optional<RewardShopItem> findByCode(String code);
+
+    Optional<RewardShopItem> findByCodeForUpdate(String code);
+
+    Optional<RewardShopItem> findByIdForUpdate(Long id);
+
+    RewardShopItem save(RewardShopItem item);
 }

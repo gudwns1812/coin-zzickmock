@@ -93,13 +93,12 @@
 
 - `useDebounce`, `useOutsideClick`: UI 상호작용 보조
 - `useRealTimeStock`: 기존 종목 상세의 실시간 폴링 경계
-- `useTokenExpire`: 로그인 만료 반영
+- `useSessionActivityRefresh`: 사용자 활동 기반의 조용한 로그인 refresh
 
 ### `store/`
 
 Zustand 기반 공유 상태를 둡니다.
 
-- `sidebarStore.ts`: 순수 UI 상태
 - `useActiveStockSetStore.ts`: 활성 종목 집합
 - `usePortfolio.ts`, `useInterestStore.ts`, `useRecentViewStore.ts`: 사용자 중심 상태
 

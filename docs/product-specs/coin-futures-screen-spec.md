@@ -461,8 +461,9 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 ### 재사용 우선
 
 - [frontend/app/(main)/layout.tsx](</Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/layout.tsx>)
-- [frontend/components/ui/Sidebar.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/components/ui/Sidebar.tsx)
 - [frontend/components/ui/shared/header/Header.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/components/ui/shared/header/Header.tsx)
+- 로그인 이후 공통 레이아웃은 전체 폭을 사용하며, 레거시 주식 프로젝트의 우측 `내 투자`/`관심`/`최근 본` 사이드바를 렌더링하지 않는다.
+- 헤더는 세션 만료 카운트다운이나 수동 `세션 초기화` 버튼을 노출하지 않고, 사용자의 화면 활동을 기준으로 인증 refresh를 조용히 시도한다.
 
 ### 교체 우선
 

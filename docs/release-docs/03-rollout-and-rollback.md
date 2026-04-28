@@ -2,7 +2,7 @@
 
 ## Reward Redemption Status Migration
 
-`V14__rename_reward_redemption_statuses.sql` is forward-only unless a compensating data migration is applied first. See [reward-redemption-status-migration-runbook.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/reward-redemption-status-migration-runbook.md) before rolling back an app version across that migration.
+`V14__rename_reward_redemption_statuses.sql` is forward-only unless a compensating data migration is applied first. See [reward-redemption-status-migration-runbook.md](./reward-redemption-status-migration-runbook.md) before rolling back an app version across that migration.
 
 ## Purpose
 

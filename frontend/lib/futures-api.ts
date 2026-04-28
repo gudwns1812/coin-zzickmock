@@ -180,6 +180,8 @@ export type RewardPointHistory = {
   sourceReference: string;
 };
 
+// Canonical lifecycle is PENDING -> APPROVED / REJECTED / CANCELLED.
+// SENT and CANCELLED_REFUNDED are temporary legacy aliases accepted during the PR rollout.
 export type RewardRedemptionStatus =
   | "PENDING"
   | "APPROVED"

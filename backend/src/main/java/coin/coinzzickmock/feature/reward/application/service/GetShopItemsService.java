@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.reward.application.service;
 
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
+import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.ShopItemResult;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import lombok.RequiredArgsConstructor;
@@ -12,14 +13,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetShopItemsService {
     private final RewardShopItemRepository rewardShopItemRepository;
+    private final RewardShopMemberItemUsageRepository rewardShopMemberItemUsageRepository;
 
-    public List<ShopItemResult> getItems() {
+    public List<ShopItemResult> getItems(String memberId) {
         return rewardShopItemRepository.findActiveItems().stream()
-                .map(this::toResult)
+                .map(item -> toResult(memberId, item))
                 .toList();
     }
 
-    private ShopItemResult toResult(RewardShopItem item) {
+    private ShopItemResult toResult(String memberId, RewardShopItem item) {
+        int purchaseCount = rewardShopMemberItemUsageRepository.findByMemberIdAndShopItemId(memberId, item.id())
+                .map(usage -> usage.purchaseCount())
+                .orElse(0);
         return new ShopItemResult(
                 item.code(),
                 item.name(),
@@ -30,7 +35,7 @@ public class GetShopItemsService {
                 item.soldQuantity(),
                 item.remainingStock(),
                 item.perMemberPurchaseLimit(),
-                item.remainingPurchaseLimit(0)
+                item.remainingPurchaseLimit(purchaseCount)
         );
     }
 }

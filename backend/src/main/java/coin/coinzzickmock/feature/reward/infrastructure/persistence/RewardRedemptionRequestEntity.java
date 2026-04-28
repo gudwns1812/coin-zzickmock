@@ -1,6 +1,8 @@
 package coin.coinzzickmock.feature.reward.infrastructure.persistence;
 
 import coin.coinzzickmock.common.persistence.AuditableEntity;
+import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
+import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -74,32 +76,48 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
     protected RewardRedemptionRequestEntity() {
     }
 
-    public static RewardRedemptionRequestEntity create(
-            String requestId,
-            String memberId,
-            RewardShopItemEntity shopItem,
-            String itemCode,
-            String itemName,
-            int itemPrice,
-            int pointAmount,
-            String submittedPhoneNumber,
-            String normalizedPhoneNumber,
-            String status,
-            Instant requestedAt
-    ) {
+    public static RewardRedemptionRequestEntity from(RewardRedemptionRequest request, RewardShopItemEntity shopItem) {
         RewardRedemptionRequestEntity entity = new RewardRedemptionRequestEntity();
-        entity.requestId = requestId;
-        entity.memberId = memberId;
-        entity.shopItem = shopItem;
-        entity.itemCode = itemCode;
-        entity.itemName = itemName;
-        entity.itemPrice = itemPrice;
-        entity.pointAmount = pointAmount;
-        entity.submittedPhoneNumber = submittedPhoneNumber;
-        entity.normalizedPhoneNumber = normalizedPhoneNumber;
-        entity.status = status;
-        entity.requestedAt = requestedAt;
+        entity.apply(request, shopItem);
         return entity;
+    }
+
+    public void apply(RewardRedemptionRequest request, RewardShopItemEntity shopItem) {
+        this.requestId = request.requestId();
+        this.memberId = request.memberId();
+        this.shopItem = shopItem;
+        this.itemCode = request.itemCode();
+        this.itemName = request.itemName();
+        this.itemPrice = request.itemPrice();
+        this.pointAmount = request.pointAmount();
+        this.submittedPhoneNumber = request.submittedPhoneNumber();
+        this.normalizedPhoneNumber = request.normalizedPhoneNumber();
+        this.status = request.status().name();
+        this.requestedAt = request.requestedAt();
+        this.sentAt = request.sentAt();
+        this.cancelledAt = request.cancelledAt();
+        this.adminMemberId = request.adminMemberId();
+        this.adminMemo = request.adminMemo();
+    }
+
+    public RewardRedemptionRequest toDomain() {
+        return new RewardRedemptionRequest(
+                requestId,
+                memberId,
+                shopItem.getId(),
+                itemCode,
+                itemName,
+                itemPrice,
+                pointAmount,
+                submittedPhoneNumber,
+                normalizedPhoneNumber,
+                RewardRedemptionStatus.valueOf(status),
+                requestedAt,
+                sentAt,
+                cancelledAt,
+                adminMemberId,
+                adminMemo
+        );
     }
 
     public Long getId() {

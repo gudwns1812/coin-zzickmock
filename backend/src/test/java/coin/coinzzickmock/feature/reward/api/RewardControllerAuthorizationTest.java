@@ -1,0 +1,71 @@
+package coin.coinzzickmock.feature.reward.api;
+
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.member.domain.MemberRole;
+import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
+import coin.coinzzickmock.providers.Providers;
+import coin.coinzzickmock.providers.auth.Actor;
+import coin.coinzzickmock.providers.auth.AuthProvider;
+import coin.coinzzickmock.providers.connector.ConnectorProvider;
+import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
+import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class RewardControllerAuthorizationTest {
+    @Test
+    void adminApisRejectNonAdminActorBeforeCallingServices() {
+        RewardController controller = new RewardController(
+                null,
+                null,
+                null,
+                null,
+                null,
+                providers(new Actor("demo-member", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
+        );
+
+        CoreException thrown = assertThrows(
+                CoreException.class,
+                () -> controller.adminRedemptions(RewardRedemptionStatus.PENDING)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, thrown.errorCode());
+    }
+
+    private Providers providers(Actor actor) {
+        return new Providers() {
+            @Override
+            public AuthProvider auth() {
+                return new AuthProvider() {
+                    @Override
+                    public Actor currentActor() {
+                        return actor;
+                    }
+
+                    @Override
+                    public boolean isAuthenticated() {
+                        return true;
+                    }
+                };
+            }
+
+            @Override
+            public ConnectorProvider connector() {
+                return null;
+            }
+
+            @Override
+            public TelemetryProvider telemetry() {
+                return null;
+            }
+
+            @Override
+            public FeatureFlagProvider featureFlags() {
+                return null;
+            }
+        };
+    }
+}

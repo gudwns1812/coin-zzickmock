@@ -35,6 +35,10 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
+  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
+  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
+  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
+  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
 - Query layer 기준:
   [PositionPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionPersistenceRepository.java)
 - migration 파일:
@@ -42,7 +46,6 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql)
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql)
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql)
   [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql)
   [V6__add_open_position_version.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V6__add_open_position_version.sql)
   [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
@@ -50,6 +53,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql)
   [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql)
   [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql)
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -202,6 +206,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `item_code`, `item_name`, `item_price`, `point_amount`는 요청 시점의 상품/가격 스냅샷이다.
 - 상태:
   MVP 상태는 `PENDING`, `SENT`, `CANCELLED_REFUNDED`다.
+- 처리 규칙:
+  `PENDING` 요청은 포인트와 재고/구매 카운트를 이미 소비한 상태다. `SENT`는 최종 발송 상태이며, `CANCELLED_REFUNDED`는 발송 전 취소와 정확히 한 번의 포인트/재고/구매 카운트 복구를 뜻한다.
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:

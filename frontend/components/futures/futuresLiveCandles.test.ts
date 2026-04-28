@@ -33,6 +33,19 @@ test("live 1m price updates the current minute candle close high and low", () =>
   assert.equal(merged[0].volume, 7);
 });
 
+test("live price can update the current candle volume when supplied", () => {
+  const merged = mergeCandlesWithLivePrice(
+    [baseCandle],
+    "1m",
+    103,
+    Date.parse("2026-04-24T02:12:40.000Z"),
+    12
+  );
+
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].volume, 12);
+});
+
 test("live 1m price appends a new candle after the minute boundary", () => {
   const merged = mergeCandlesWithLivePrice(
     [baseCandle],
@@ -48,6 +61,7 @@ test("live 1m price appends a new candle after the minute boundary", () => {
   assert.equal(merged[1].closePrice, 102);
   assert.equal(merged[1].highPrice, 102);
   assert.equal(merged[1].lowPrice, 100);
+  assert.equal(merged[1].volume, 0);
 });
 
 test("live 1h price updates and appends hourly candles on hour boundaries", () => {

@@ -52,7 +52,8 @@ export function mergeCandlesWithLivePrice(
   candles: FuturesLiveCandle[],
   interval: FuturesCandleInterval,
   livePrice: number,
-  observedAtMs: number
+  observedAtMs: number,
+  liveVolume?: number
 ): FuturesLiveCandle[] {
   if (!Number.isFinite(livePrice)) {
     return candles;
@@ -75,6 +76,7 @@ export function mergeCandlesWithLivePrice(
       closeTime: new Date(bucket.closeTimeMs).toISOString(),
       highPrice: Math.max(existing.highPrice, livePrice),
       lowPrice: Math.min(existing.lowPrice, livePrice),
+      volume: normalizeLiveVolume(liveVolume, existing.volume),
     };
     return sortedCandles;
   }
@@ -90,12 +92,20 @@ export function mergeCandlesWithLivePrice(
     lowPrice: Math.min(openPrice, livePrice),
     openPrice,
     openTime: bucketOpenTime,
-    volume: 0,
+    volume: normalizeLiveVolume(liveVolume, 0),
   };
 
   return [...sortedCandles, liveCandle].sort(
     (left, right) => Date.parse(left.openTime) - Date.parse(right.openTime)
   );
+}
+
+function normalizeLiveVolume(liveVolume: number | undefined, fallback: number): number {
+  if (!Number.isFinite(liveVolume) || liveVolume === undefined) {
+    return fallback;
+  }
+
+  return Math.max(liveVolume, 0);
 }
 
 function fixedIntervalDurationMs(interval: FuturesCandleInterval): number {

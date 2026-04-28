@@ -9,7 +9,7 @@ import type {
   RewardRedemptionStatus,
 } from "@/lib/futures-api";
 import clsx from "clsx";
-import { Check, Loader2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, Loader2, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -81,12 +81,21 @@ export default function AdminRewardRedemptionsClient({
               대기 중인 커피 교환권 신청을 발송 완료하거나 취소/환불 처리합니다.
             </p>
           </div>
-          <Link
-            className="rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
-            href="/admin/shop-items"
-          >
-            상품 관리
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              className="flex items-center gap-2 rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
+              href="/mypage"
+            >
+              <ArrowLeft size={15} />
+              계정으로
+            </Link>
+            <Link
+              className="rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
+              href="/admin/shop-items"
+            >
+              상품 관리
+            </Link>
+          </div>
         </div>
       </section>
 

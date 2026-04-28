@@ -6,10 +6,19 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(path.join(__dirname, "MarketDetailRealtimeView.tsx"), "utf8");
+const detailPageSource = readFileSync(
+  path.join(__dirname, "../../app/(main)/markets/[symbol]/page.tsx"),
+  "utf8"
+);
 
 test("symbol selector renders supported BTCUSDT and ETHUSDT markets", () => {
   assert.equal(source.includes("SUPPORTED_MARKET_SYMBOLS.map"), true);
   assert.equal(source.includes("router.push(`/markets/${symbol}`)"), true);
+});
+
+test("market detail remounts when the route symbol changes", () => {
+  assert.equal(source.includes("prevSymbol"), false);
+  assert.equal(detailPageSource.includes("key={market.symbol}"), true);
 });
 
 test("close position button uses held quantity instead of closeable quantity gating", () => {
@@ -22,6 +31,16 @@ test("Close amount displays accumulated closed quantity, not closeable quantity"
   assert.equal(source.includes("getAccumulatedClosedQuantity(position)"), true);
   assert.equal(source.includes('label="Close amount"'), true);
   assert.equal(source.includes("value={`${formatPlainNumber(closeableQuantity)"), false);
+});
+
+test("position cards display held position size", () => {
+  assert.equal(source.includes('label="Size"'), true);
+  assert.equal(
+    source.includes(
+      "value={`${formatPlainNumber(position.quantity)} ${getBaseAsset(position.symbol)}`}"
+    ),
+    true
+  );
 });
 
 test("TP/SL editor is opened from an edit affordance", () => {

@@ -13,7 +13,14 @@ import {
   type AdminShopItemForm,
 } from "@/lib/admin-shop-item-ui";
 import clsx from "clsx";
-import { Edit3, Loader2, PackagePlus, Power, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit3,
+  Loader2,
+  PackagePlus,
+  Power,
+  Save,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -110,12 +117,21 @@ export default function AdminShopItemsClient({
               상점 상품 관리
             </h1>
           </div>
-          <Link
-            className="rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
-            href="/admin/reward-redemptions"
-          >
-            교환권 신청
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              className="flex items-center gap-2 rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
+              href="/mypage"
+            >
+              <ArrowLeft size={15} />
+              계정으로
+            </Link>
+            <Link
+              className="rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
+              href="/admin/reward-redemptions"
+            >
+              교환권 신청
+            </Link>
+          </div>
         </div>
       </section>
 

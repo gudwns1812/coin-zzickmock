@@ -51,10 +51,7 @@ public class AuthController {
                 request.address().addressDetail()
         );
 
-        return ApiResponse.success(new AuthUserResponse(
-                memberProfile.memberId(),
-                memberProfile.memberName()
-        ));
+        return ApiResponse.success(AuthUserResponse.from(memberProfile));
     }
 
     @PostMapping("/duplicate")
@@ -69,10 +66,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthUserResponse>> login(@RequestBody LoginRequest request) {
         MemberProfileResult memberProfile = authenticateMemberService.authenticate(request.account(), request.password());
-        return withAccessToken(ApiResponse.success(new AuthUserResponse(
-                memberProfile.memberId(),
-                memberProfile.memberName()
-        )), memberProfile.memberId(), memberProfile.memberName(), memberProfile.memberEmail());
+        return withAccessToken(ApiResponse.success(AuthUserResponse.from(memberProfile)), memberProfile);
     }
 
     @PostMapping("/logout")
@@ -86,10 +80,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthUserResponse>> refresh() {
         Actor actor = providers.auth().currentActor();
         MemberProfileResult memberProfile = getMemberProfileService.get(actor.memberId());
-        return withAccessToken(ApiResponse.success(new AuthUserResponse(
-                memberProfile.memberId(),
-                memberProfile.memberName()
-        )), memberProfile.memberId(), memberProfile.memberName(), memberProfile.memberEmail());
+        return withAccessToken(ApiResponse.success(AuthUserResponse.from(memberProfile)), memberProfile);
     }
 
     @DeleteMapping("/withdraw")
@@ -103,13 +94,16 @@ public class AuthController {
 
     private ResponseEntity<ApiResponse<AuthUserResponse>> withAccessToken(
             ApiResponse<AuthUserResponse> body,
-            String memberId,
-            String memberName,
-            String email
+            MemberProfileResult memberProfile
     ) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.buildAccessTokenCookie(
-                        jwtAccessTokenManager.issue(memberId, memberName, email)
+                        jwtAccessTokenManager.issue(
+                                memberProfile.memberId(),
+                                memberProfile.memberName(),
+                                memberProfile.memberEmail(),
+                                memberProfile.role()
+                        )
                 ).toString())
                 .body(body);
     }

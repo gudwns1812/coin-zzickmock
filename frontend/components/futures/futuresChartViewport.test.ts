@@ -7,6 +7,7 @@ const viewportModule: typeof import("./futuresChartViewport") = await import(
 const {
   getIntervalConfig,
   getLatestVisibleLogicalRange,
+  getRenderedCandleVisibleTimeRange,
   getViewportScaleOptions,
   INTERVAL_OPTIONS,
 } = viewportModule;
@@ -144,6 +145,42 @@ test("viewport scale caps sparse histories to prevent oversized refresh candles"
   assert.deepEqual(getViewportScaleOptions(180, config), {
     maxBarSpacing: 0,
   });
+});
+
+test("rendered candle visible time range uses earliest and latest timestamps", () => {
+  assert.deepEqual(
+    getRenderedCandleVisibleTimeRange([
+      { time: 1_720_000_120 as never },
+      { time: 1_720_000_000 as never },
+      { time: 1_720_000_060 as never },
+    ]),
+    {
+      from: 1_720_000_000,
+      to: 1_720_000_120,
+    }
+  );
+});
+
+test("rendered candle visible time range spans the loaded candle timestamps", () => {
+  const candles = Array.from({ length: 180 }, (_, index) => ({
+    time: (1_720_000_000 + index * 60) as never,
+  }));
+
+  assert.deepEqual(
+    getRenderedCandleVisibleTimeRange(candles),
+    {
+      from: 1_720_000_000,
+      to: 1_720_000_000 + 179 * 60,
+    }
+  );
+});
+
+test("rendered candle visible time range ignores invalid non-timestamp times", () => {
+  assert.equal(getRenderedCandleVisibleTimeRange([]), null);
+  assert.equal(
+    getRenderedCandleVisibleTimeRange([{ time: "2026-04-28" as never }]),
+    null
+  );
 });
 
 test("latest-range detection rejects zoomed-out views anchored near realtime", () => {

@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.member.infrastructure.security;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.member.domain.MemberRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -38,7 +39,7 @@ public class JwtAccessTokenManager {
         this.secureCookie = secureCookie;
     }
 
-    public String issue(String memberId, String memberName, String email) {
+    public String issue(String memberId, String memberName, String email, MemberRole role) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(accessTokenExpirationSeconds);
 
@@ -49,6 +50,7 @@ public class JwtAccessTokenManager {
                 .claim("memberId", memberId)
                 .claim("memberName", memberName)
                 .claim("email", email)
+                .claim("role", (role == null ? MemberRole.USER : role).name())
                 .signWith(secretKey)
                 .compact();
     }
@@ -68,7 +70,8 @@ public class JwtAccessTokenManager {
             return new JwtSessionClaims(
                     claims.get("memberId", String.class),
                     claims.get("memberName", String.class),
-                    claims.get("email", String.class)
+                    claims.get("email", String.class),
+                    parseRole(claims.get("role", String.class))
             );
         } catch (JwtException | IllegalArgumentException exception) {
             throw new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
@@ -97,6 +100,17 @@ public class JwtAccessTokenManager {
 
     public String accessTokenCookieName() {
         return ACCESS_TOKEN_COOKIE_NAME;
+    }
+
+    private MemberRole parseRole(String role) {
+        if (role == null || role.isBlank()) {
+            return MemberRole.USER;
+        }
+        try {
+            return MemberRole.valueOf(role);
+        } catch (IllegalArgumentException exception) {
+            return MemberRole.USER;
+        }
     }
 
     private String resolveJwtSecret(String jwtSecret, Environment environment) {

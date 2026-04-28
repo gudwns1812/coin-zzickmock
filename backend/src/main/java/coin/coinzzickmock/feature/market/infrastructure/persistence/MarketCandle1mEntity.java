@@ -10,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "market_candles_1m")
@@ -21,11 +23,11 @@ public class MarketCandle1mEntity extends AuditableEntity {
     @Column(name = "symbol_id", nullable = false)
     private Long symbolId;
 
-    @Column(name = "open_time", nullable = false)
-    private Instant openTime;
+    @Column(name = "open_time", nullable = false, columnDefinition = "DATETIME(6)")
+    private LocalDateTime openTime;
 
-    @Column(name = "close_time", nullable = false)
-    private Instant closeTime;
+    @Column(name = "close_time", nullable = false, columnDefinition = "DATETIME(6)")
+    private LocalDateTime closeTime;
 
     @Column(name = "open_price", nullable = false, precision = 19, scale = 4)
     private BigDecimal openPrice;
@@ -58,8 +60,8 @@ public class MarketCandle1mEntity extends AuditableEntity {
 
     public void apply(MarketHistoryCandle candle) {
         this.symbolId = candle.symbolId();
-        this.openTime = candle.openTime();
-        this.closeTime = candle.closeTime();
+        this.openTime = utcDateTime(candle.openTime());
+        this.closeTime = utcDateTime(candle.closeTime());
         this.openPrice = decimal(candle.openPrice());
         this.highPrice = decimal(candle.highPrice());
         this.lowPrice = decimal(candle.lowPrice());
@@ -71,8 +73,8 @@ public class MarketCandle1mEntity extends AuditableEntity {
     public MarketHistoryCandle toDomain() {
         return new MarketHistoryCandle(
                 symbolId,
-                openTime,
-                closeTime,
+                utcInstant(openTime),
+                utcInstant(closeTime),
                 openPrice.doubleValue(),
                 highPrice.doubleValue(),
                 lowPrice.doubleValue(),
@@ -84,5 +86,13 @@ public class MarketCandle1mEntity extends AuditableEntity {
 
     private static BigDecimal decimal(double value) {
         return BigDecimal.valueOf(value);
+    }
+
+    private static LocalDateTime utcDateTime(Instant instant) {
+        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+    }
+
+    private static Instant utcInstant(LocalDateTime dateTime) {
+        return dateTime.toInstant(ZoneOffset.UTC);
     }
 }

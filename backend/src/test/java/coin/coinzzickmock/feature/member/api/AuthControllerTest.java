@@ -42,6 +42,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.memberId").value("test"))
                 .andExpect(jsonPath("$.data.memberName").value("demo-trader"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"))
+                .andExpect(jsonPath("$.data.admin").value(true))
                 .andReturn();
 
         Cookie accessTokenCookie = accessTokenCookie(loginResult);
@@ -75,7 +77,9 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.memberId").value("new-user"))
-                .andExpect(jsonPath("$.data.memberName").value("new-user-name"));
+                .andExpect(jsonPath("$.data.memberName").value("new-user-name"))
+                .andExpect(jsonPath("$.data.role").value("USER"))
+                .andExpect(jsonPath("$.data.admin").value(false));
 
         mockMvc.perform(post("/api/futures/auth/duplicate")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -172,12 +176,15 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.memberId").value("trimmed-user"))
                 .andExpect(jsonPath("$.data.memberName").value("trimmed-name"))
+                .andExpect(jsonPath("$.data.admin").value(false))
                 .andReturn();
 
         mockMvc.perform(get("/api/futures/auth/refresh").cookie(accessTokenCookie(loginResult)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.memberId").value("trimmed-user"))
-                .andExpect(jsonPath("$.data.memberName").value("trimmed-name"));
+                .andExpect(jsonPath("$.data.memberName").value("trimmed-name"))
+                .andExpect(jsonPath("$.data.role").value("USER"))
+                .andExpect(jsonPath("$.data.admin").value(false));
     }
 
     @Test

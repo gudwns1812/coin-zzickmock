@@ -79,17 +79,19 @@ class MarketStartupReadyEventIntegrationTest {
                     INSERT INTO market_candles_1m (
                         symbol_id, open_time, close_time, open_price, high_price, low_price, close_price,
                         volume, quote_volume, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     1L,
-                    Instant.parse("2026-04-17T06:00:00Z"),
-                    Instant.parse("2026-04-17T06:01:00Z"),
+                    "2026-04-17 06:00:00.000000",
+                    "2026-04-17 06:01:00.000000",
                     101000.0,
                     101000.0,
                     101000.0,
                     101000.0,
                     0.0,
-                    0.0
+                    0.0,
+                    "2026-04-17 06:01:00.000000",
+                    "2026-04-17 06:01:00.000000"
             );
         }
 

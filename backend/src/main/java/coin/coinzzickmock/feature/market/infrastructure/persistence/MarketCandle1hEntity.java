@@ -10,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "market_candles_1h")
@@ -21,11 +23,11 @@ public class MarketCandle1hEntity extends AuditableEntity {
     @Column(name = "symbol_id", nullable = false)
     private Long symbolId;
 
-    @Column(name = "open_time", nullable = false)
-    private Instant openTime;
+    @Column(name = "open_time", nullable = false, columnDefinition = "DATETIME(6)")
+    private LocalDateTime openTime;
 
-    @Column(name = "close_time", nullable = false)
-    private Instant closeTime;
+    @Column(name = "close_time", nullable = false, columnDefinition = "DATETIME(6)")
+    private LocalDateTime closeTime;
 
     @Column(name = "open_price", nullable = false, precision = 19, scale = 4)
     private BigDecimal openPrice;
@@ -45,11 +47,11 @@ public class MarketCandle1hEntity extends AuditableEntity {
     @Column(name = "quote_volume", precision = 19, scale = 4)
     private BigDecimal quoteVolume;
 
-    @Column(name = "source_minute_open_time", nullable = false)
-    private Instant sourceMinuteOpenTime;
+    @Column(name = "source_minute_open_time", nullable = false, columnDefinition = "DATETIME(6)")
+    private LocalDateTime sourceMinuteOpenTime;
 
-    @Column(name = "source_minute_close_time", nullable = false)
-    private Instant sourceMinuteCloseTime;
+    @Column(name = "source_minute_close_time", nullable = false, columnDefinition = "DATETIME(6)")
+    private LocalDateTime sourceMinuteCloseTime;
 
     protected MarketCandle1hEntity() {
     }
@@ -64,35 +66,43 @@ public class MarketCandle1hEntity extends AuditableEntity {
 
     public void apply(HourlyMarketCandle candle) {
         this.symbolId = candle.symbolId();
-        this.openTime = candle.openTime();
-        this.closeTime = candle.closeTime();
+        this.openTime = utcDateTime(candle.openTime());
+        this.closeTime = utcDateTime(candle.closeTime());
         this.openPrice = decimal(candle.openPrice());
         this.highPrice = decimal(candle.highPrice());
         this.lowPrice = decimal(candle.lowPrice());
         this.closePrice = decimal(candle.closePrice());
         this.volume = decimal(candle.volume());
         this.quoteVolume = decimal(candle.quoteVolume());
-        this.sourceMinuteOpenTime = candle.sourceMinuteOpenTime();
-        this.sourceMinuteCloseTime = candle.sourceMinuteCloseTime();
+        this.sourceMinuteOpenTime = utcDateTime(candle.sourceMinuteOpenTime());
+        this.sourceMinuteCloseTime = utcDateTime(candle.sourceMinuteCloseTime());
     }
 
     public HourlyMarketCandle toDomain() {
         return new HourlyMarketCandle(
                 symbolId,
-                openTime,
-                closeTime,
+                utcInstant(openTime),
+                utcInstant(closeTime),
                 openPrice.doubleValue(),
                 highPrice.doubleValue(),
                 lowPrice.doubleValue(),
                 closePrice.doubleValue(),
                 volume.doubleValue(),
                 quoteVolume == null ? 0.0 : quoteVolume.doubleValue(),
-                sourceMinuteOpenTime,
-                sourceMinuteCloseTime
+                utcInstant(sourceMinuteOpenTime),
+                utcInstant(sourceMinuteCloseTime)
         );
     }
 
     private static BigDecimal decimal(double value) {
         return BigDecimal.valueOf(value);
+    }
+
+    private static LocalDateTime utcDateTime(Instant instant) {
+        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+    }
+
+    private static Instant utcInstant(LocalDateTime dateTime) {
+        return dateTime.toInstant(ZoneOffset.UTC);
     }
 }

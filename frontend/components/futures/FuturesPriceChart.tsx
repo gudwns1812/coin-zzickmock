@@ -58,13 +58,18 @@ import {
   mergeCandlesWithLivePrice,
 } from "./futuresLiveCandles";
 import {
-  focusLatestCandles,
   getIntervalConfig,
+  getRenderedCandleVisibleTimeRange,
   getViewportScaleOptions,
   INTERVAL_OPTIONS,
   isViewingLatestRange,
   type FuturesCandleInterval,
 } from "./futuresChartViewport";
+import {
+  DEFAULT_FUTURES_CHART_INTERVAL,
+  readStoredFuturesChartInterval,
+  writeStoredFuturesChartInterval,
+} from "./futuresChartIntervalPreference";
 import {
   getOrderPriceLineColor,
   getOrderPriceLineTitle,
@@ -146,10 +151,12 @@ export default function FuturesPriceChart({
   const indicatorSeriesRefs = useRef(createIndicatorSeriesRefs());
   const positionPriceLinesRef = useRef<OwnedPriceLine[]>([]);
   const orderPriceLinesRef = useRef<OwnedPriceLine[]>([]);
-  const pendingViewportResetRef = useRef(true);
+  const initialViewportAppliedRef = useRef(false);
   const liveBucketOpenTimeRef = useRef<number | null>(null);
   const [selectedInterval, setSelectedInterval] =
-    useState<FuturesCandleInterval>("1m");
+    useState<FuturesCandleInterval>(DEFAULT_FUTURES_CHART_INTERVAL);
+  const [isIntervalPreferenceHydrated, setIsIntervalPreferenceHydrated] =
+    useState(false);
   const [hoveredOhlc, setHoveredOhlc] = useState<OhlcSnapshot | null>(null);
   const [hoveredTime, setHoveredTime] = useState<Time | null>(null);
   const [indicatorConfigs, setIndicatorConfigs] = useState<IndicatorConfigs>(() =>
@@ -168,6 +175,15 @@ export default function FuturesPriceChart({
 
   const selectedConfig = getIntervalConfig(selectedInterval);
 
+  useEffect(() => {
+    const storedInterval = readStoredFuturesChartInterval();
+
+    if (storedInterval && storedInterval !== selectedInterval) {
+      setSelectedInterval(storedInterval);
+    }
+    setIsIntervalPreferenceHydrated(true);
+  }, []);
+
   const historyQuery = useInfiniteQuery<CandleResponse[], Error>({
     queryKey: [
       "futures-candles",
@@ -175,6 +191,7 @@ export default function FuturesPriceChart({
       selectedInterval,
       selectedConfig.limit,
     ],
+    enabled: isIntervalPreferenceHydrated,
     initialPageParam: undefined,
     queryFn: async ({ pageParam }) => {
       const response = await fetch(
@@ -195,6 +212,14 @@ export default function FuturesPriceChart({
       if (!response.ok || !payload.success || !payload.data) {
         throw new Error(payload.message ?? "차트 데이터를 불러오지 못했습니다.");
       }
+
+      console.log("[FuturesPriceChart] fetched candles", {
+        before: typeof pageParam === "string" ? pageParam : null,
+        count: payload.data.length,
+        interval: selectedInterval,
+        limit: selectedConfig.limit,
+        symbol,
+      });
 
       return payload.data;
     },
@@ -444,17 +469,17 @@ export default function FuturesPriceChart({
   }, []);
 
   useEffect(() => {
-    pendingViewportResetRef.current = true;
     liveBucketOpenTimeRef.current = null;
     setHoveredOhlc(null);
     setHoveredTime(null);
 
     chartRef.current?.applyOptions({
       timeScale: {
+        rightOffset: selectedConfig.rightOffset,
         secondsVisible: selectedConfig.secondsVisible,
       },
     });
-  }, [selectedConfig.secondsVisible, selectedInterval, symbol]);
+  }, [selectedConfig.rightOffset, selectedConfig.secondsVisible]);
 
   useEffect(() => {
     if (!hasFreshHistory) {
@@ -476,17 +501,10 @@ export default function FuturesPriceChart({
     void queryClient.invalidateQueries({
       queryKey: ["futures-candles", symbol, selectedInterval],
     });
-
-    if (isAtLatest && chartRef.current) {
-      focusLatestCandles(chartRef.current, candlestickData.length, selectedConfig);
-    }
   }, [
-    candlestickData.length,
     currentPriceUpdatedAt,
     hasFreshHistory,
-    isAtLatest,
     queryClient,
-    selectedConfig,
     selectedInterval,
     symbol,
   ]);
@@ -511,28 +529,36 @@ export default function FuturesPriceChart({
       liveSeries.setData([]);
       candleSeries.setData(candlestickData);
       volumeSeries.setData(volumeData);
-      chart.timeScale().applyOptions(
-        getViewportScaleOptions(candlestickData.length, selectedConfig)
-      );
     } else {
       candleSeries.setData([]);
       volumeSeries.setData([]);
       liveSeries.setData(livePoints);
-      chart.timeScale().applyOptions({ maxBarSpacing: 0 });
     }
 
-    if (pendingViewportResetRef.current) {
-      if (hasCandleData) {
-        focusLatestCandles(chart, candlestickData.length, selectedConfig);
-      } else {
-        chart.timeScale().fitContent();
-      }
-      pendingViewportResetRef.current = false;
-      setIsAtLatest(isViewingLatestRange(chart, candlestickData.length, selectedConfig));
+    if (
+      initialViewportAppliedRef.current ||
+      !hasCandleData ||
+      historyStatus !== "ready"
+    ) {
+      return;
+    }
+
+    const visibleRange = getRenderedCandleVisibleTimeRange(candlestickData);
+
+    if (visibleRange) {
+      const timeScale = chart.timeScale();
+      timeScale.applyOptions({
+        ...getViewportScaleOptions(candlestickData.length, selectedConfig),
+        rightOffset: selectedConfig.rightOffset,
+      });
+      timeScale.setVisibleRange(visibleRange);
+      initialViewportAppliedRef.current = true;
+      setIsAtLatest(true);
     }
   }, [
     candlestickData,
     hasCandleData,
+    historyStatus,
     livePoints,
     selectedConfig,
     volumeData,
@@ -685,7 +711,10 @@ export default function FuturesPriceChart({
                   : "border-main-light-gray text-main-dark-gray/70 hover:border-main-dark-gray/30 hover:bg-main-light-gray/30",
               ].join(" ")}
               key={option.value}
-              onClick={() => setSelectedInterval(option.value)}
+              onClick={() => {
+                setSelectedInterval(option.value);
+                writeStoredFuturesChartInterval(option.value);
+              }}
               type="button"
             >
               {option.label}
@@ -817,15 +846,7 @@ export default function FuturesPriceChart({
                       : "border-emerald-300 bg-emerald-50 text-emerald-700",
                   ].join(" ")}
                   onClick={() => {
-                    if (hasCandleData && chartRef.current) {
-                      focusLatestCandles(
-                        chartRef.current,
-                        candlestickData.length,
-                        selectedConfig
-                      );
-                    } else {
-                      chartRef.current?.timeScale().scrollToRealTime();
-                    }
+                    chartRef.current?.timeScale().scrollToRealTime();
                     setIsAtLatest(true);
                   }}
                   type="button"

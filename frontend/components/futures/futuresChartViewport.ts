@@ -1,4 +1,9 @@
-import type { HorzScaleOptions, IChartApi } from "lightweight-charts";
+import type {
+  HorzScaleOptions,
+  IChartApi,
+  Time,
+  UTCTimestamp,
+} from "lightweight-charts";
 
 export type FuturesCandleInterval =
   | "1m"
@@ -109,6 +114,15 @@ export type LogicalRange = {
   to: number;
 };
 
+export type VisibleTimeRange = {
+  from: UTCTimestamp;
+  to: UTCTimestamp;
+};
+
+export type RenderedCandleTime = {
+  time: Time;
+};
+
 export type ViewportScaleOptions = Partial<Pick<
   HorzScaleOptions,
   "barSpacing" | "maxBarSpacing"
@@ -152,19 +166,30 @@ export function getViewportScaleOptions(
   };
 }
 
-export function focusLatestCandles(
-  chart: IChartApi,
-  totalBars: number,
-  config: Pick<FuturesChartIntervalConfig, "visibleBars" | "rightOffset">
-): void {
-  const range = getLatestVisibleLogicalRange(totalBars, config);
+export function getRenderedCandleVisibleTimeRange(
+  candles: RenderedCandleTime[]
+): VisibleTimeRange | null {
+  const numericTimes = candles
+    .map((candle) => toTimestamp(candle.time))
+    .filter((time): time is UTCTimestamp => time !== null)
+    .sort((left, right) => left - right);
 
-  if (!range) {
-    chart.timeScale().scrollToRealTime();
-    return;
+  if (numericTimes.length === 0) {
+    return null;
   }
 
-  chart.timeScale().setVisibleLogicalRange(range);
+  return {
+    from: numericTimes[0],
+    to: numericTimes[numericTimes.length - 1],
+  };
+}
+
+function toTimestamp(time: Time): UTCTimestamp | null {
+  if (typeof time === "number" && Number.isFinite(time)) {
+    return time as UTCTimestamp;
+  }
+
+  return null;
 }
 
 export function isViewingLatestRange(

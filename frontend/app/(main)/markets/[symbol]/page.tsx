@@ -56,6 +56,7 @@ export default async function MarketDetailPage({
     <MarketDetailRealtimeView
       initialMarket={market}
       isAuthenticated={user !== null}
+      key={market.symbol}
       accountSummary={accountSummary}
       chartOpenOrders={openOrders.filter((order) => order.symbol === symbol)}
       chartPositions={positions.filter((position) => position.symbol === symbol)}

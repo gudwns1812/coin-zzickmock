@@ -2,6 +2,8 @@ export interface JwtToken {
   memberId: string;
   memberName: string;
   email: string;
+  role?: "USER" | "ADMIN";
+  admin?: boolean;
   sub: string; // "ACCESS_TOKEN"
   iat: number;
   exp: number;

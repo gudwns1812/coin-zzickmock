@@ -125,3 +125,21 @@ test("indicator state remains local to FuturesPriceChart", () => {
   assert.equal(source.includes("zustand"), false);
   assert.equal(source.includes("createJSONStorage"), false);
 });
+
+test("chart initial viewport uses timestamp range while preserving free scrolling", () => {
+  const source = readFileSync(
+    path.join(__dirname, "FuturesPriceChart.tsx"),
+    "utf8"
+  );
+  const visibleRangeCallCount =
+    source.match(/setVisibleRange\(visibleRange\)/g)?.length ?? 0;
+
+  assert.equal(source.includes("initialViewportAppliedRef"), true);
+  assert.equal(source.includes("getRenderedCandleVisibleTimeRange"), true);
+  assert.equal(visibleRangeCallCount, 1);
+  assert.equal(source.includes("!hasCandleData ||\n      historyStatus !== \"ready\""), true);
+  assert.equal(source.includes("activeViewportResetKeyRef"), false);
+  assert.equal(source.includes("scrollToRealTime()"), true);
+  assert.equal(source.includes("subscribeVisibleLogicalRangeChange"), true);
+  assert.equal(source.includes("barsInLogicalRange(logicalRange)"), true);
+});

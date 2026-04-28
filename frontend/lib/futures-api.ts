@@ -14,6 +14,13 @@ type ApiResponse<T> = {
   message: string | null;
 };
 
+export type AuthUser = {
+  memberId: string;
+  memberName: string;
+  role: "USER" | "ADMIN";
+  admin: boolean;
+};
+
 export type MarketApiResponse = {
   symbol: string;
   displayName: string;
@@ -453,6 +460,11 @@ export async function getAdminShopItems(): Promise<AdminShopItemsResult> {
     unavailable: !response.ok,
     message: response.message,
   };
+}
+
+export async function getAuthUser(): Promise<AuthUser | null> {
+  const response = await readApiResult<AuthUser>("/api/futures/auth/refresh");
+  return response.ok ? response.data : null;
 }
 
 function filterSupportedOrderHistory(

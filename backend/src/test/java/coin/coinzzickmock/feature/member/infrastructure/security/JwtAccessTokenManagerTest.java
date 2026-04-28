@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import coin.coinzzickmock.feature.member.domain.MemberRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
@@ -21,12 +22,13 @@ class JwtAccessTokenManagerTest {
         environment.setActiveProfiles("test");
 
         JwtAccessTokenManager manager = new JwtAccessTokenManager("", 3600, true, environment);
-        String token = manager.issue("demo-member", "Demo User", "demo@example.com");
+        String token = manager.issue("demo-member", "Demo User", "demo@example.com", MemberRole.ADMIN);
 
         JwtSessionClaims claims = manager.parse(token);
         assertEquals("demo-member", claims.memberId());
         assertEquals("Demo User", claims.memberName());
         assertEquals("demo@example.com", claims.email());
+        assertEquals(MemberRole.ADMIN, claims.role());
     }
 
     @Test

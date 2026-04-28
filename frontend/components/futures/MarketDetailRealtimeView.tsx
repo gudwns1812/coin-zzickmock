@@ -506,6 +506,10 @@ function PositionCard({ position }: { position: FuturesPosition }) {
       </div>
 
       <div className="mt-5 grid gap-x-main gap-y-4 border-y border-main-light-gray py-4 sm:grid-cols-2 xl:grid-cols-3">
+        <PositionMetric
+          label="Size"
+          value={`${formatPlainNumber(position.quantity)} ${getBaseAsset(position.symbol)}`}
+        />
         <PositionMetric label="Entry Price" value={formatUsd(position.entryPrice)} />
         <PositionMetric label="Margin" value={formatUsd(position.margin)} />
         <PositionMetric

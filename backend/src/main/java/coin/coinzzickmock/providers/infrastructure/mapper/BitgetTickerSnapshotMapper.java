@@ -10,8 +10,12 @@ import java.util.Map;
 @Component
 public class BitgetTickerSnapshotMapper {
     private final Map<String, MarketSnapshot> fallbackSnapshots = Map.of(
-            "BTCUSDT", new MarketSnapshot("BTCUSDT", "Bitcoin Perpetual", 102450, 102418, 102401, 0.0001, 2.84),
-            "ETHUSDT", new MarketSnapshot("ETHUSDT", "Ethereum Perpetual", 3280, 3276, 3274, 0.00008, 1.72)
+            "BTCUSDT", new MarketSnapshot(
+                    "BTCUSDT", "Bitcoin Perpetual", 102450, 102418, 102401, 0.0001, 2.84, 1_280_000_000
+            ),
+            "ETHUSDT", new MarketSnapshot(
+                    "ETHUSDT", "Ethereum Perpetual", 3280, 3276, 3274, 0.00008, 1.72, 640_000_000
+            )
     );
 
     public MarketSnapshot fromResponse(String symbol, BitgetTickerResponse response) {
@@ -20,6 +24,7 @@ public class BitgetTickerSnapshotMapper {
         }
 
         BitgetTickerData data = response.data().get(0);
+        MarketSnapshot fallback = fallback(symbol);
         return new MarketSnapshot(
                 symbol,
                 displayName(symbol),
@@ -27,7 +32,8 @@ public class BitgetTickerSnapshotMapper {
                 Double.parseDouble(data.markPrice()),
                 Double.parseDouble(data.indexPrice()),
                 Double.parseDouble(data.fundingRate()),
-                Double.parseDouble(data.change24h())
+                Double.parseDouble(data.change24h()),
+                parseOptional(data.usdtVolume(), fallback == null ? 0.0 : fallback.turnover24hUsdt())
         );
     }
 
@@ -41,5 +47,12 @@ public class BitgetTickerSnapshotMapper {
             case "ETHUSDT" -> "Ethereum Perpetual";
             default -> symbol;
         };
+    }
+
+    private double parseOptional(String value, double fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return Double.parseDouble(value);
     }
 }

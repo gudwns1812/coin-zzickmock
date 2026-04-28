@@ -78,6 +78,7 @@ class MarketRealtimeFeedTest {
         assertEquals(2, markets.size());
         assertEquals(101000, feed.getMarket("BTCUSDT").lastPrice(), 0.0001);
         assertEquals(100900, feed.getMarket("BTCUSDT").indexPrice(), 0.0001);
+        assertEquals(1_010_000_000, feed.getMarket("BTCUSDT").turnover24hUsdt(), 0.0001);
         assertEquals(2, applicationEventPublisher.events().size());
         assertInstanceOf(MarketSummaryUpdatedEvent.class, applicationEventPublisher.events().get(0));
     }
@@ -98,6 +99,7 @@ class MarketRealtimeFeedTest {
         List<MarketSummaryResult> markets = feed.getSupportedMarkets();
 
         assertEquals(1, markets.size());
+        assertEquals(1_010_000_000, markets.get(0).turnover24hUsdt(), 0.0001);
         assertEquals(1, applicationEventPublisher.events().size());
         assertEquals(0, marketHistoryRepository.minuteCandleCount());
         assertEquals(0, marketHistoryRepository.hourlyCandleCount());
@@ -136,6 +138,7 @@ class MarketRealtimeFeedTest {
         assertEquals(101000, events.get(0).previousLastPrice(), 0.0001);
         assertEquals(MarketPriceMovementDirection.UP, events.get(0).direction());
         assertEquals(102400, events.get(0).result().indexPrice(), 0.0001);
+        assertEquals(1_025_000_000, events.get(0).result().turnover24hUsdt(), 0.0001);
     }
 
     @Test
@@ -326,7 +329,16 @@ class MarketRealtimeFeedTest {
             double fundingRate,
             double change24h
     ) {
-        return new MarketSnapshot(symbol, symbol + " Perpetual", lastPrice, markPrice, indexPrice, fundingRate, change24h);
+        return new MarketSnapshot(
+                symbol,
+                symbol + " Perpetual",
+                lastPrice,
+                markPrice,
+                indexPrice,
+                fundingRate,
+                change24h,
+                lastPrice * 10_000
+        );
     }
 
     private static MarketMinuteCandleSnapshot minuteCandle(

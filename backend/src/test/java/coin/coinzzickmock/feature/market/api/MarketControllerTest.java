@@ -150,6 +150,7 @@ class MarketControllerTest {
                 74005,
                 0.0001,
                 0.2,
+                6_400_000_000d,
                 serverTime,
                 nextFundingAt,
                 8
@@ -157,6 +158,8 @@ class MarketControllerTest {
 
         MarketSummaryResponse response = MarketSummaryResponse.from(market);
 
+        assertTrue(response.turnover24hUsdt() == 6_400_000_000d);
+        assertTrue(response.volume24h() == 6_400_000_000d);
         assertTrue(response.serverTime().equals(serverTime));
         assertTrue(response.nextFundingAt().equals(nextFundingAt));
         assertTrue(response.fundingIntervalHours() == 8);

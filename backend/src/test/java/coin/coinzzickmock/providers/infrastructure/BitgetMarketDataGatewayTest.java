@@ -8,6 +8,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
 import java.time.Instant;
 import java.util.List;
@@ -18,6 +19,41 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 class BitgetMarketDataGatewayTest {
+    @Test
+    void mapsTickerUsdtVolumeToMarketTurnover() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper()
+        );
+        server.expect(requestTo("https://api.bitget.com/api/v2/mix/market/ticker"
+                        + "?symbol=BTCUSDT&productType=USDT-FUTURES"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {
+                          "code": "00000",
+                          "msg": "success",
+                          "data": [
+                            {
+                              "symbol": "BTCUSDT",
+                              "lastPr": "74000",
+                              "markPrice": "74010",
+                              "indexPrice": "74005",
+                              "fundingRate": "0.0001",
+                              "change24h": "0.2",
+                              "usdtVolume": "5250000000"
+                            }
+                          ]
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+
+        server.verify();
+        assertThat(market.turnover24hUsdt()).isEqualTo(5_250_000_000d);
+    }
+
     @Test
     void loadsHistoricalCandlesFromBitgetHistoryEndpoint() {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");

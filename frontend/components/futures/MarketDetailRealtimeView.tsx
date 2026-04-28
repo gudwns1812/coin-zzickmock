@@ -100,6 +100,9 @@ export default function MarketDetailRealtimeView({
             data.fundingIntervalHours ?? current.fundingIntervalHours,
           serverTime: data.serverTime ?? current.serverTime,
           change24h: data.change24h,
+          turnover24hUsdt:
+            data.turnover24hUsdt ?? data.volume24h ?? current.turnover24hUsdt,
+          volume24h: data.volume24h ?? data.turnover24hUsdt ?? current.volume24h,
         }));
         setMarketUpdatedAt(receivedAt);
         setFundingCountdownNow(receivedAt);
@@ -233,7 +236,10 @@ export default function MarketDetailRealtimeView({
                 value={formatPercent(market.fundingRate * 100)}
                 subValue={`Next ${fundingCountdown}`}
               />
-              <Stat label="24h 거래량" value={formatCompactUsd(market.volume24h)} />
+              <Stat
+                label="24h 거래대금"
+                value={formatCompactUsd(market.turnover24hUsdt)}
+              />
             </div>
           </div>
 

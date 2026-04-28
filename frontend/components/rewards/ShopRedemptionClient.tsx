@@ -13,6 +13,7 @@ import type {
 } from "@/lib/futures-api";
 import {
   canRedeemShopItem,
+  getShopItemImagePath,
   getShopItemAvailabilityLabel,
   isShopItemLimitReached,
   isShopItemSoldOut,
@@ -22,13 +23,13 @@ import {
 import {
   CheckCircle2,
   Clock3,
-  Coffee,
   Loader2,
   Lock,
   Phone,
   RotateCcw,
   Send,
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
@@ -153,8 +154,14 @@ export default function ShopRedemptionClient({
               key={item.code}
               className="rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray flex min-h-[320px] flex-col gap-4"
             >
-              <div className="flex h-[140px] items-center justify-center rounded-main bg-main-light-gray/45 text-main-blue">
-                <Coffee size={52} strokeWidth={1.8} />
+              <div className="relative flex h-[140px] items-center justify-center overflow-hidden rounded-main bg-main-light-gray/45">
+                <Image
+                  alt={item.name}
+                  className="h-full w-full object-contain p-2"
+                  height={140}
+                  src={getShopItemImagePath(item)}
+                  width={220}
+                />
               </div>
               <div>
                 <div className="flex items-center justify-between gap-main">

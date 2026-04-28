@@ -133,7 +133,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 ### 주요 섹션
 
 1. **상단 요약 카드 (3종)**: 총 자산, 총 수익, 오늘 수익
-2. **코인 시세 테이블**: 코인명(아이콘 포함), 가격, 24h 변동, Mark Price, Funding Rate, Index Price, 24h 거래대금
+2. **코인 시세 테이블**: 코인명(번들 로고 포함), 가격, 24h 변동, Mark Price, Funding Rate, Index Price, 24h 거래대금
 3. **실현 수익률 랭킹 리스트**: 순위, 닉네임, 지갑 자산, 실현 수익률
 
 ### 필요한 데이터
@@ -148,6 +148,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 심볼 클릭 시 `/markets/[symbol]` 이동
 - 가격 실시간 업데이트 시 해당 가격 컴포넌트의 사각형 영역(Boundary)에 일시적인 플래시 효과 적용
 - 정렬 기준 변경 (가격, 변동률 등)
+- BTC/ETH 로고는 `frontend/public/images/logo`의 번들 이미지를 사용한다.
 
 ### 빈 상태
 
@@ -175,7 +176,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 ### 상단 헤더
 
 - `BTCUSDT`, `ETHUSDT` 심볼 selector. 현재 심볼은 선택 상태로 표시하고, 다른 심볼을 누르면 `/markets/{symbol}`로 이동한다.
-- 심볼명
+- 심볼명은 `Bitcoin`/`Ethereum`을 크게, `Perpetual`을 다음 줄의 작은 텍스트로 나누어 표시한다.
 - 현재가
 - 24h 변화율
 - mark price
@@ -373,6 +374,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 ### MVP 아이템 방향
 
 - 커피 교환권을 DB seed/migration 데이터로 제공한다.
+- 커피 상품 이미지는 `frontend/public/images/IceAmericano.png`의 번들 이미지를 사용한다.
 - 상품은 DB 운영 데이터로 관리한다.
 - 상품은 `active`, `total_stock`, `sold_quantity`, `per_member_purchase_limit`을 가진다.
 - 별도 `sellable` 플래그는 두지 않고 판매 가능 여부는 `active`, 재고, 구매 제한, 포인트 잔액으로 계산한다.

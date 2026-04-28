@@ -4,6 +4,7 @@ import {
   formatPercent,
   formatCompactUsd,
   formatUsd,
+  getMarketLogoPath,
   MARKET_RANKING_FALLBACKS,
   type MarketRankingEntry,
   type MarketSnapshot,
@@ -14,6 +15,7 @@ import {
   TrendingUp,
   WalletCards,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -278,8 +280,14 @@ function MarketTableRow({
           href={`/markets/${market.symbol}`}
           className="flex items-center gap-3 rounded-main transition-all group-hover:translate-x-1"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#4c8df7] to-[#2563eb] text-sm-custom font-bold text-white shadow-sm">
-            {market.symbol.slice(0, 1)}
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-main-light-gray bg-white shadow-sm">
+            <Image
+              alt={`${market.assetName} logo`}
+              className="h-8 w-8 rounded-full object-contain"
+              height={32}
+              src={getMarketLogoPath(market.symbol)}
+              width={32}
+            />
           </div>
           <div>
             <p className="font-semibold text-main-dark-gray">

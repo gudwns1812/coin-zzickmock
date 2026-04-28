@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  cancelRewardRedemption,
-  markRewardRedemptionSent,
+  approveRewardRedemption,
+  rejectRewardRedemption,
 } from "@/lib/futures-client-api";
 import type {
   RewardRedemption,
@@ -52,10 +52,10 @@ export default function AdminRewardRedemptionsClient({
     try {
       const memo = memoByRequestId[request.requestId] ?? "";
       if (action === "send") {
-        await markRewardRedemptionSent(request.requestId, memo);
+        await approveRewardRedemption(request.requestId, memo);
         toast.success("교환권을 승인 완료 처리했습니다.");
       } else {
-        await cancelRewardRedemption(request.requestId, memo);
+        await rejectRewardRedemption(request.requestId, memo);
         toast.success("교환권 신청을 반려하고 포인트를 환불했습니다.");
       }
 

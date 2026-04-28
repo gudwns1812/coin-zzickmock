@@ -54,6 +54,14 @@ export type FuturesAccountSummary = {
   rewardPoint: number;
 };
 
+export type FuturesWalletHistoryPoint = {
+  walletBalance: number;
+  availableMargin: number;
+  sourceType: string;
+  sourceReference: string;
+  recordedAt: string;
+};
+
 export type FuturesPosition = {
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";
@@ -361,6 +369,13 @@ export async function getFuturesMarket(
 export async function getFuturesAccountSummary(): Promise<FuturesAccountSummary> {
   const response = await readApi<FuturesAccountSummary>("/api/futures/account/me");
   return response ?? ACCOUNT_FALLBACK;
+}
+
+export async function getFuturesWalletHistory(): Promise<FuturesWalletHistoryPoint[]> {
+  const response = await readApi<FuturesWalletHistoryPoint[]>(
+    "/api/futures/account/me/wallet-history"
+  );
+  return response ?? [];
 }
 
 export async function getFuturesPositions(): Promise<FuturesPosition[]> {

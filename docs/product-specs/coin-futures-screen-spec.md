@@ -303,11 +303,12 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### `/mypage/assets`
 
-- `docs/design-docs/ui-design/image/assets.png`의 어두운 assets 패널을 기준으로 한다.
-- 참조 이미지가 없거나 로드되지 않는 환경에서는 같은 정보 구조를 텍스트 기반 다크 패널로 유지한다.
+- 앱의 밝은 금융 대시보드 톤에 맞춘 assets 패널을 사용한다.
+- 패널 오른쪽에는 `wallet_history` API의 최근 30일 wallet balance를 차트 라이브러리 기반 선 그래프로 표시한다.
 - 거래소성 액션 버튼(`Deposit`, `Buy crypto`, `Withdraw`, `Transfer`, `Sell crypto`)은 제공하지 않는다.
 - 총 평가 잔고는 wallet balance와 열린 포지션의 unrealized PnL을 합산해 표시한다.
 - 사용 가능 잔고를 함께 표시한다.
+- wallet history가 비어 있으면 백엔드의 현재 잔고 fallback point를 사용하고, 차트 라벨은 KST 날짜로 표시한다.
 - 하단에는 KST 일자별 `netRealizedPnl` 캘린더를 제공한다.
 - 일별 값은 포지션 히스토리의 `closedAt`을 `Asia/Seoul` 날짜로 변환한 뒤 `netRealizedPnl`을 합산한다.
 

@@ -2,22 +2,25 @@ import {
   getFuturesAccountSummary,
   getFuturesPositionHistory,
   getFuturesPositions,
+  getFuturesWalletHistory,
 } from "@/lib/futures-api";
+import WalletBalanceChart from "@/components/mypage/WalletBalanceChart";
 import {
   buildKstMonthCalendar,
   groupDailyNetRealizedPnl,
   toKstDateKey,
 } from "@/lib/futures-pnl-calendar";
 import { formatUsd } from "@/lib/markets";
-import { ChevronDown, Eye, TrendingDown, TrendingUp } from "lucide-react";
+import { Eye, TrendingDown, TrendingUp } from "lucide-react";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default async function MyPageAssetsPage() {
-  const [account, positions, histories] = await Promise.all([
+  const [account, positions, histories, walletHistory] = await Promise.all([
     getFuturesAccountSummary(),
     getFuturesPositions(),
     getFuturesPositionHistory(),
+    getFuturesWalletHistory(),
   ]);
   const unrealizedPnl = positions.reduce(
     (sum, position) => sum + position.unrealizedPnl,
@@ -38,35 +41,41 @@ export default async function MyPageAssetsPage() {
         <h1 className="text-2xl-custom font-bold text-main-dark-gray">
           Assets
         </h1>
-        <div className="mt-main rounded-main border border-[#30323a] bg-[#111216] p-main-2 text-white shadow-sm">
-          <div className="flex items-start justify-between gap-main-2">
-            <div>
-              <div className="flex items-center gap-2 text-sm-custom font-semibold text-white/55">
+        <div className="mt-main rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
+          <div className="grid grid-cols-1 gap-main-2 xl:grid-cols-[minmax(0,0.92fr)_minmax(360px,1fr)]">
+            <div className="flex min-w-0 flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm-custom font-semibold text-main-dark-gray/55">
                 <span>Total balance</span>
                 <Eye size={16} />
+                </div>
+                <div className="mt-4 flex items-end gap-2">
+                  <strong className="text-4xl-custom font-bold text-main-dark-gray">
+                    {formatUsd(totalBalance).replace("$", "")}
+                  </strong>
+                  <span className="mb-1 text-base-custom font-bold text-main-dark-gray/70">
+                    USDT
+                  </span>
+                </div>
+                <p className="mt-3 text-sm-custom text-main-dark-gray/55">
+                  Wallet {formatUsd(account.walletBalance)}
+                </p>
               </div>
-              <div className="mt-4 flex items-end gap-2">
-                <strong className="text-4xl-custom font-bold">
-                  {formatUsd(totalBalance).replace("$", "")}
-                </strong>
-                <span className="mb-1 text-base-custom font-bold text-white/85">
-                  USDT
-                </span>
+
+              <div className="mt-main-2 grid grid-cols-2 gap-main border-t border-main-light-gray/60 pt-main">
+                <BalanceMetric
+                  label="Available"
+                  value={formatUsd(account.available)}
+                />
+                <BalanceMetric
+                  label="Unrealized PnL"
+                  tone={unrealizedPnl >= 0 ? "positive" : "negative"}
+                  value={formatSignedUsd(unrealizedPnl)}
+                />
               </div>
-              <p className="mt-3 text-sm-custom text-white/50">
-                Available {formatUsd(account.available)}
-              </p>
             </div>
 
-            <div className="flex min-w-[420px] flex-col items-end gap-main">
-              <span
-                aria-hidden="true"
-                className="flex size-[28px] items-center justify-center rounded-main bg-white/10 text-white/65"
-              >
-                <ChevronDown size={18} />
-              </span>
-              <AssetSparkline value={unrealizedPnl} />
-            </div>
+            <WalletBalanceChart history={walletHistory} />
           </div>
         </div>
       </section>
@@ -140,24 +149,30 @@ export default async function MyPageAssetsPage() {
   );
 }
 
-function AssetSparkline({ value }: { value: number }) {
-  const positive = value >= 0;
+function BalanceMetric({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "positive" | "negative";
+}) {
+  const toneClassName =
+    tone === "positive"
+      ? "text-main-red"
+      : tone === "negative"
+        ? "text-main-blue"
+        : "text-main-dark-gray";
 
   return (
-    <div className="relative h-[96px] w-[420px] overflow-hidden">
-      <div className="absolute left-0 top-1/2 h-px w-full bg-white/10" />
-      <div
-        className={[
-          "absolute left-[48px] right-0 h-[2px] rounded-full",
-          positive ? "top-[36px] bg-main-red" : "top-[58px] bg-main-blue",
-        ].join(" ")}
-      />
-      <div
-        className={[
-          "absolute left-[48px] top-[36px] h-[28px] w-[88px] rounded-t-main opacity-20",
-          positive ? "bg-main-red" : "bg-main-blue",
-        ].join(" ")}
-      />
+    <div>
+      <p className="text-xs-custom font-semibold uppercase tracking-normal text-main-dark-gray/45">
+        {label}
+      </p>
+      <p className={`mt-2 text-lg-custom font-bold ${toneClassName}`}>
+        {value}
+      </p>
     </div>
   );
 }

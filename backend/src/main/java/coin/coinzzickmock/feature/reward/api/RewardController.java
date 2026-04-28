@@ -36,6 +36,17 @@ public class RewardController {
     }
 
     private ShopItemResponse toResponse(ShopItemResult result) {
-        return new ShopItemResponse(result.code(), result.name(), result.price(), result.description());
+        return new ShopItemResponse(
+                result.code(),
+                result.name(),
+                result.description(),
+                result.price(),
+                result.active(),
+                result.totalStock(),
+                result.soldQuantity(),
+                result.remainingStock(),
+                result.perMemberPurchaseLimit(),
+                result.remainingPurchaseLimit()
+        );
     }
 }

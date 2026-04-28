@@ -6,8 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
-import java.math.BigDecimal;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "reward_point_wallets")
@@ -16,8 +15,12 @@ public class RewardPointWalletEntity extends AuditableEntity {
     @Column(name = "member_id", nullable = false, length = 64)
     private String memberId;
 
-    @Column(name = "reward_point", nullable = false, precision = 19, scale = 2)
-    private BigDecimal rewardPoint;
+    @Column(name = "reward_point", nullable = false)
+    private int rewardPoint;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     protected RewardPointWalletEntity() {
     }
@@ -25,15 +28,15 @@ public class RewardPointWalletEntity extends AuditableEntity {
     public static RewardPointWalletEntity from(RewardPointWallet rewardPointWallet) {
         RewardPointWalletEntity entity = new RewardPointWalletEntity();
         entity.memberId = rewardPointWallet.memberId();
-        entity.rewardPoint = BigDecimal.valueOf(rewardPointWallet.rewardPoint());
+        entity.rewardPoint = rewardPointWallet.rewardPoint();
         return entity;
     }
 
     public void apply(RewardPointWallet rewardPointWallet) {
-        this.rewardPoint = BigDecimal.valueOf(rewardPointWallet.rewardPoint());
+        this.rewardPoint = rewardPointWallet.rewardPoint();
     }
 
     public RewardPointWallet toDomain() {
-        return new RewardPointWallet(memberId, rewardPoint.doubleValue());
+        return new RewardPointWallet(memberId, rewardPoint);
     }
 }

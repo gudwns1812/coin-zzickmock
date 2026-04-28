@@ -42,6 +42,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql)
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql)
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql)
   [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql)
   [V6__add_open_position_version.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V6__add_open_position_version.sql)
   [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
@@ -104,11 +105,16 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `member_id`
 - 주요 컬럼:
-  `reward_point`, `created_at`, `updated_at`
+  `reward_point`, `version`, `created_at`, `updated_at`
+- 포인트 타입:
+  `reward_point`는 정수 포인트다. 과거 `DECIMAL(19,2)` 값은 `.00` whole-point 값을 보존하는 방향으로 migration에서 정수 컬럼으로 전환한다.
+- 동시성:
+  `version`은 포인트 적립/차감/환급 시 낙관적 잠금 조건으로 사용한다.
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
 
 ### `member_credentials`
@@ -118,12 +124,89 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `member_id`
 - 주요 컬럼:
-  `password_hash`, `member_name`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `created_at`, `updated_at`
+  `password_hash`, `member_name`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `role`, `created_at`, `updated_at`
+- 권한:
+  `role`은 `USER`/`ADMIN` 문자열로 저장한다. 기존 `test` 계정과 fresh test-profile seed는 관리자 처리를 위해 `ADMIN`이 된다.
 - 관련 엔티티/모듈:
   `feature.member`
 - 관련 migration 또는 schema 파일:
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql),
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+
+### `reward_shop_items`
+
+- 목적:
+  포인트 상점 상품을 DB 운영 데이터로 저장한다. MVP에서는 admin item CRUD UI/API 없이 migration/bootstrap/data-admin 경로로 관리한다.
+- PK:
+  `id` (auto increment)
+- 유니크:
+  `code`
+- 주요 컬럼:
+  `code`, `name`, `description`, `item_type`, `price`, `active`, `total_stock`, `sold_quantity`, `per_member_purchase_limit`, `sort_order`, `version`, `created_at`, `updated_at`
+- 판매 가능성:
+  별도 `sellable` 컬럼은 없다. 판매 가능 여부는 `active`, `sold_quantity`, `total_stock`, 유저별 `purchase_count`로 계산한다.
+- 재고:
+  `sold_quantity`는 item-level 재고 소진 수량이다. 유한 재고 상품은 `sold_quantity <= total_stock` 제약을 가진다.
+- 관련 엔티티/모듈:
+  `feature.reward`
+- 관련 migration 또는 schema 파일:
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
+
+### `reward_shop_member_item_usages`
+
+- 목적:
+  회원별 상품 구매 제한 카운트를 저장한다.
+- PK:
+  `id` (auto increment)
+- 유니크:
+  `member_id`, `shop_item_id`
+- 주요 컬럼:
+  `member_id`, `shop_item_id`, `purchase_count`, `version`, `created_at`, `updated_at`
+- 구매 제한 기준:
+  `purchase_count`는 `PENDING`/`SENT` 요청만 카운트한다. `CANCELLED_REFUNDED` 전환은 guarded decrement로 카운트를 한 번만 복구한다.
+- 관련 엔티티/모듈:
+  `feature.reward`
+- 관련 migration 또는 schema 파일:
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
+
+### `reward_point_histories`
+
+- 목적:
+  포인트 적립, 교환권 차감, 환급 이력을 불변 로그로 저장한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `member_id`, `history_type`, `amount`, `balance_after`, `source_type`, `source_reference`, `created_at`, `updated_at`
+- 이력 타입:
+  `GRANT`, `REDEMPTION_DEDUCT`, `REDEMPTION_REFUND`
+- 관련 엔티티/모듈:
+  `feature.reward`
+- 관련 migration 또는 schema 파일:
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
+
+### `reward_redemption_requests`
+
+- 목적:
+  포인트 상점 교환권 요청과 관리자 처리 상태를 저장한다.
+- PK:
+  `id` (auto increment)
+- 유니크:
+  `request_id`
+- 주요 컬럼:
+  `request_id`, `member_id`, `shop_item_id`, `item_code`, `item_name`, `item_price`, `point_amount`, `submitted_phone_number`, `normalized_phone_number`, `status`, `requested_at`, `sent_at`, `cancelled_at`, `admin_member_id`, `admin_memo`, `version`, `created_at`, `updated_at`
+- 스냅샷:
+  `item_code`, `item_name`, `item_price`, `point_amount`는 요청 시점의 상품/가격 스냅샷이다.
+- 상태:
+  MVP 상태는 `PENDING`, `SENT`, `CANCELLED_REFUNDED`다.
+- 관련 엔티티/모듈:
+  `feature.reward`
+- 관련 migration 또는 schema 파일:
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
 
 ### `futures_orders`
 

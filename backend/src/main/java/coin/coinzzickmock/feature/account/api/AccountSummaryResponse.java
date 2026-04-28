@@ -8,6 +8,6 @@ public record AccountSummaryResponse(
         double available,
         double totalUnrealizedPnl,
         double roi,
-        double rewardPoint
+        int rewardPoint
 ) {
 }

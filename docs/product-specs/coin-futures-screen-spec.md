@@ -271,54 +271,63 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `Close amount`는 pending close나 closeable quantity가 아니라 누적 체결 종료 수량이다. 신규 포지션에서는 0이고, 부분 종료 체결 후에만 증가한다.
 - pending close 주문이 이미 보유 수량 전체를 덮어도 추가 close 주문 제출 UI/API를 막지 않으며, 접수 후 cap reconciliation으로 pending close 총량을 정리한다.
 
-## 화면 5. 포트폴리오 `/portfolio`
+## 화면 5. 마이페이지 `/mypage`
 
 ### 목표
 
-사용자가 자신의 전체 선물 계정 상태를 한눈에 보고, 리스크와 손익을 관리하게 만든다.
+사용자가 일반 계정 정보, 자산, 포인트 흐름을 계정 영역에서 분리해 확인하게 만든다.
+`/portfolio`는 호환성만 유지하고 `/mypage`로 리다이렉트한다.
 
-### 상단 요약 카드
+### 공통 구조
 
-- 총 자산
-- 사용 가능 증거금
-- 사용 중 증거금
-- 미실현 손익
-- 실현 손익
+- 왼쪽 패널:
+  `Info`, `Assets`, `Point`
+- 본문:
+  현재 하위 페이지의 상세 정보
+- 인증:
+  `/mypage`, `/mypage/assets`, `/mypage/points`는 로그인 필요
+
+### `/mypage`
+
+- 사용자 이름
+- 이메일
+- 휴대폰 번호
+- 회원 ID
+- 지갑 잔고
+- 사용 가능 잔고
+- 열린 포지션 수
 - 포인트 잔액
 
-### 주요 섹션
+### `/mypage/assets`
 
-1. 열린 포지션 테이블
-2. 미체결 주문 테이블
-3. 체결/손익 히스토리
-4. 손익 차트
-5. 리스크 경고 카드
+- `docs/design-docs/ui-design/image/assets.png`의 어두운 assets 패널을 기준으로 한다.
+- 참조 이미지가 없거나 로드되지 않는 환경에서는 같은 정보 구조를 텍스트 기반 다크 패널로 유지한다.
+- 거래소성 액션 버튼(`Deposit`, `Buy crypto`, `Withdraw`, `Transfer`, `Sell crypto`)은 제공하지 않는다.
+- 총 평가 잔고는 wallet balance와 열린 포지션의 unrealized PnL을 합산해 표시한다.
+- 사용 가능 잔고를 함께 표시한다.
+- 하단에는 KST 일자별 `netRealizedPnl` 캘린더를 제공한다.
+- 일별 값은 포지션 히스토리의 `closedAt`을 `Asia/Seoul` 날짜로 변환한 뒤 `netRealizedPnl`을 합산한다.
 
-### 포지션 테이블 컬럼
+### `/mypage/points`
 
-- 심볼
-- 방향
-- 마진 모드
-- 레버리지
-- 진입가
-- mark price
-- 청산가
-- 수량
-- 미실현 손익
-- 액션
-- TP/SL 가격
+- 현재 포인트 잔액
+- 포인트 적립, 교환권 신청 차감, 교환권 환불 이력
+- 상점 이동 링크
 
-### 핵심 상호작용
+### 상태 처리
 
-- 포지션별 빠른 종료
-- 히스토리 필터링
-- 심볼별 보기
-- 기간별 손익 보기
+- 인증되지 않은 사용자는 middleware에서 `/login`으로 리다이렉트한다.
+- `/mypage`의 기본 정보가 없으면 값 자리에 `-` 또는 0을 표시하고, 계정 영역 자체는 유지한다.
+- `/mypage/assets`의 포지션 히스토리가 비어 있으면 캘린더를 0원 셀로 표시한다.
+- `/mypage/points`의 포인트 이력이 비어 있으면 빈 이력 문구를 표시한다.
+- API 장애 시 서버 렌더링 단계의 fallback 데이터는 화면 붕괴를 막는 용도이며, 실제 잔액/포인트 확정값은 다음 정상 API 응답으로 갱신한다.
 
 ### 수용 기준
 
-- 계정 전체 상태와 포지션 리스크를 동시에 읽을 수 있다
-- 사용자는 손익과 포인트 변화를 함께 확인할 수 있다
+- `/mypage`는 사용자 기본 정보를 보여준다.
+- `/mypage/assets`는 거래소 액션 버튼 없이 assets 패널과 KST 일별 실현손익 캘린더를 보여준다.
+- `/mypage/points`는 현재 포인트와 point history를 보여준다.
+- `/portfolio`는 `/mypage`로 리다이렉트된다.
 
 ## 화면 6. 관심 심볼 `/watchlist`
 
@@ -353,31 +362,77 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 ### 주요 섹션
 
 1. 현재 포인트 잔액
-2. 포인트 획득 규칙 카드
-3. 구매 가능한 아이템 목록
-4. 구매 이력
+2. DB에서 읽은 구매 가능한 아이템 목록
+3. 커피 교환권 신청 모달
+4. sold-out / 유저별 구매 제한 / 포인트 부족 상태
 
 ### MVP 아이템 방향
 
-- 프로필 배지
-- 닉네임 테두리
-- 대시보드 테마
-- 코멘트형 칭호
+- 커피 교환권을 DB seed/migration 데이터로 제공한다.
+- 상품은 DB 운영 데이터로 관리한다.
+- 상품은 `active`, `total_stock`, `sold_quantity`, `per_member_purchase_limit`을 가진다.
+- 별도 `sellable` 플래그는 두지 않고 판매 가능 여부는 `active`, 재고, 구매 제한, 포인트 잔액으로 계산한다.
+- `total_stock = null`은 무제한 재고이며, 유한 재고의 잔여 수량은 `max(total_stock - sold_quantity, 0)`으로 계산한다.
+- `per_member_purchase_limit = null`은 유저별 제한 없음이며, 제한이 있으면 `max(per_member_purchase_limit - purchase_count, 0)`으로 계산한다.
+- 상태 우선순위는 비활성, 품절, 유저별 구매 제한, 포인트 부족 순서로 한 가지 대표 사유를 보여준다.
 
 실제 투자 성능에 직접 영향을 주는 pay-to-win 아이템은 두지 않는다.
 
 ### 핵심 상호작용
 
-- 아이템 구매
-- 구매 성공 토스트
-- 이미 보유한 아이템 표시
+- 유저가 커피 교환권 구매를 누른다.
+- 모달에서 휴대폰 번호를 입력한다.
+- 유효한 번호는 숫자와 하이픈만 허용하고 서버에서 10~11자리 숫자로 정규화한다.
+- 신청 성공 시 포인트는 즉시 차감되고 `PENDING` 교환권 요청이 생성된다.
+- 관리자에게 SMTP 알림을 보낸다. 수신자는 `coin.reward.notification.admin-email` 설정값이며 기본값은 `gudwns1812@naver.com`이다.
+- SMTP 실패는 요청을 롤백하지 않고 request id와 수신자를 포함해 로그로 남긴다.
+- MVP는 알림 시도 이력을 별도 테이블로 저장하거나 자동 재시도하지 않는다. 알림 실패 시에도 관리자 페이지의 `PENDING` 목록이 처리 기준 데이터다.
+- Discord 등 추가 채널은 같은 notification boundary에 붙이는 후속 확장으로 둔다.
+
+## 화면 8. 관리자 교환권 처리 `/admin/reward-redemptions`
+
+### 목표
+
+운영자가 커피 교환권 신청을 확인하고, 발송 완료 또는 취소/환불을 처리한다.
+
+### 권한
+
+- 프론트 라우트는 로그인 필요.
+- 실제 관리자 권한은 백엔드가 persisted `ADMIN` role로 강제한다.
+
+### 주요 섹션
+
+- 상태 탭:
+  `PENDING`, `SENT`, `CANCELLED_REFUNDED`
+- 요청자 member id
+- 상품명과 포인트
+- 제출한 휴대폰 번호
+- 신청 시각
+- 관리자 메모
+
+### 핵심 상호작용
+
+- `PENDING -> SENT`: 발송 완료 처리
+- `PENDING -> CANCELLED_REFUNDED`: 포인트 환불, 재고/유저 구매 카운트 복구
+- `SENT`는 취소/환불할 수 없다.
+- `SENT`와 `CANCELLED_REFUNDED`는 terminal 상태이며 추가 상태 전이가 없다.
+- 중복 클릭이나 이미 terminal 상태인 요청의 재처리는 백엔드에서 거절하고 포인트/재고/구매 카운트를 다시 변경하지 않는다.
+- 관리자 처리 행위는 요청 행에 `adminMemberId`, `adminMemo`, `sentAt` 또는 `cancelledAt`으로 남긴다. 별도 감사 로그 테이블은 MVP 범위 밖이다.
+
+### 환불 정확성
+
+- 관리자 전이는 요청을 잠근 뒤 `PENDING` 상태에서만 수행한다.
+- 취소/환불은 같은 트랜잭션 안에서 요청 상태 변경, 포인트 환불, 환불 이력 생성, `sold_quantity`와 `purchase_count` 복구를 처리한다.
+- 복구 연산은 현재 값이 0이면 더 줄이지 않는 guarded decrement를 사용해 음수 재고와 음수 구매 카운트를 방지한다.
+- 트랜잭션 실패 시 요청 상태와 포인트/재고/구매 카운트 변경은 함께 롤백된다.
 
 ### 수용 기준
 
 - 포인트를 어디서 벌고 어디에 쓰는지 사용자가 이해할 수 있다
-- 구매 결과가 즉시 계정에 반영된다
+- 신청 결과가 즉시 계정과 관리자 페이지에 반영된다
+- 환불은 정확히 한 번만 발생한다
 
-## 화면 8. 학습 보조 `/learn`
+## 화면 9. 학습 보조 `/learn`
 
 ### 목표
 
@@ -407,6 +462,8 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `OrderTable`
 - `RewardPointCard`
 - `ShopItemCard`
+- `MyPageShell`
+- `DailyPnlCalendar`
 - `RiskWarningBanner`
 
 ## 현재 프론트 구조에서의 매핑 전략
@@ -422,6 +479,9 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - [frontend/app/(main)/stock/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/page.tsx)
 - [frontend/app/(main)/stock/[code]/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/stock/[code]/page.tsx)
 - [frontend/app/(main)/portfolio/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/portfolio/page.tsx)
+- [frontend/app/(main)/mypage/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/mypage/page.tsx)
+- [frontend/app/(main)/mypage/assets/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/mypage/assets/page.tsx)
+- [frontend/app/(main)/mypage/points/page.tsx](/Users/hj.park/projects/coin-zzickmock/frontend/app/(main)/mypage/points/page.tsx)
 - [frontend/api/stocks.ts](/Users/hj.park/projects/coin-zzickmock/frontend/api/stocks.ts)
 - [frontend/hooks/useRealTimeStock.ts](/Users/hj.park/projects/coin-zzickmock/frontend/hooks/useRealTimeStock.ts)
 

@@ -356,15 +356,56 @@ MVP 1차는 아래 순서로 단순화한다.
 ### 원칙
 
 - 상점 아이템은 투자 성능에 직접 영향 주지 않는다
-- cosmetic 또는 profile 성격으로 시작한다
+- MVP 상점 아이템은 커피 교환권으로 시작한다
 - 포인트는 현금으로 환전되지 않는다
+- 포인트는 정수 단위로만 적립, 차감, 환불한다
+- 상점 상품은 정적 코드가 아니라 DB 운영 데이터로 관리한다
 
-### MVP 1차 아이템 예시
+### MVP 1차 상품
 
-- 닉네임 뱃지
-- 프로필 프레임
-- 대시보드 테마
-- 칭호
+- 커피 교환권
+- 관리 방식:
+  migration/bootstrap/data-admin
+- 관리자 상품 CRUD UI/API:
+  MVP 범위 밖
+
+### 판매 가능성
+
+판매 가능 여부는 별도 `sellable` 플래그가 아니라 아래 조건으로 계산한다.
+
+- `active = true`
+- `total_stock = null`이면 무제한 재고, 유한 재고 상품이면 `sold_quantity < total_stock`
+- `per_member_purchase_limit = null`이면 유저별 제한 없음, 제한이 있으면 해당 유저의 `purchase_count < per_member_purchase_limit`
+- 사용자의 포인트 잔액이 상품 가격 이상
+
+`sold_quantity`는 item-level 재고 소진 수량이다.
+유저별 제한은 `purchase_count`로 추적하며, `PENDING`과 `SENT` 요청만 카운트한다.
+`CANCELLED_REFUNDED` 요청은 재고와 유저 구매 카운트를 정확히 한 번 복구한다.
+판매 가능성 검증과 재고/구매 카운트/포인트 차감은 같은 트랜잭션에서 수행해 검증 시점과 저장 시점이 갈라지지 않게 한다.
+
+### 교환권 신청
+
+- 사용자는 `/shop`에서 커피 교환권을 선택하고 휴대폰 번호를 입력한다.
+- 휴대폰 번호는 숫자와 하이픈만 허용하며, 서버에서 10~11자리 숫자로 정규화한다.
+- 유효하지 않은 번호, 포인트 부족, 품절, 비활성 상품, 유저별 구매 제한 초과는 요청을 만들지 않고 포인트/재고/이력을 변경하지 않는다.
+- 성공 요청은 한 트랜잭션 안에서 상품 재고 예약, 유저 구매 카운트 증가, 포인트 차감, 차감 이력 생성, `PENDING` 요청 생성을 수행한다.
+- 요청 시점의 상품 code/name/price/point amount는 redemption request에 스냅샷으로 저장한다.
+
+### 관리자 처리
+
+- `PENDING -> SENT`:
+  관리자가 발송 완료 처리한다. 이미 발송된 요청은 환불할 수 없다.
+- `PENDING -> CANCELLED_REFUNDED`:
+  포인트를 환불하고, 환불 이력을 남기며, 상품 `sold_quantity`와 유저 `purchase_count`를 guarded decrement로 복구한다.
+- guarded decrement는 현재 값이 0이면 더 줄이지 않아 음수 재고와 음수 구매 카운트를 방지한다.
+- 중복 취소는 `PENDING -> CANCELLED_REFUNDED` 전이가 한 번만 성공하기 때문에 포인트/재고/구매 카운트를 두 번 복구하지 않는다.
+
+### 알림
+
+- 새 교환권 요청 생성 후 DB commit 이후 SMTP 알림을 보낸다.
+- 관리자 수신자는 `coin.reward.notification.admin-email` 설정값이며 기본값은 `gudwns1812@naver.com`이다.
+- SMTP 실패는 요청을 롤백하지 않고 request id와 수신자를 포함해 로그로 남긴다.
+- Discord 등 추가 알림 채널은 같은 notification boundary에 구현한다.
 
 ## 데이터 저장 규칙
 

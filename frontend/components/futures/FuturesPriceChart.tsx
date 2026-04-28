@@ -132,6 +132,14 @@ const CHART_COLORS = {
 
 const LOAD_MORE_THRESHOLD = 25;
 const CHART_HEIGHT = 500;
+const MAIN_PANE_INITIAL_HEIGHT = 360;
+const VOLUME_PANE_INITIAL_HEIGHT = CHART_HEIGHT - MAIN_PANE_INITIAL_HEIGHT;
+const DEFAULT_VOLUME_PANE_TOP = MAIN_PANE_INITIAL_HEIGHT;
+const VOLUME_PANE_INDEX = 1;
+const MAIN_PANE_STRETCH_FACTOR = 0.76;
+const VOLUME_PANE_STRETCH_FACTOR = 0.24;
+const VOLUME_LEGEND_TOP_OFFSET = 10;
+const VOLUME_LEGEND_MAX_TOP = CHART_HEIGHT - 72;
 const INDICATOR_TYPES: IndicatorType[] = ["EMA", "SMA", "BOLLINGER"];
 
 export default function FuturesPriceChart({
@@ -158,7 +166,9 @@ export default function FuturesPriceChart({
   const [isIntervalPreferenceHydrated, setIsIntervalPreferenceHydrated] =
     useState(false);
   const [hoveredOhlc, setHoveredOhlc] = useState<OhlcSnapshot | null>(null);
+  const [hoveredVolume, setHoveredVolume] = useState<number | null>(null);
   const [hoveredTime, setHoveredTime] = useState<Time | null>(null);
+  const [volumePaneTop, setVolumePaneTop] = useState<number | null>(null);
   const [indicatorConfigs, setIndicatorConfigs] = useState<IndicatorConfigs>(() =>
     resetIndicators(DEFAULT_INDICATOR_CONFIGS)
   );
@@ -274,6 +284,7 @@ export default function FuturesPriceChart({
   ]);
   const latestVisibleCandle = displayCandles.at(-1) ?? null;
   const displayedOhlc = hoveredOhlc ?? toOhlcSnapshot(latestVisibleCandle);
+  const displayedVolume = hoveredVolume ?? latestVisibleCandle?.volume ?? null;
   const {
     fetchNextPage,
     hasNextPage,
@@ -364,6 +375,11 @@ export default function FuturesPriceChart({
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: CHART_COLORS.surface },
+        panes: {
+          enableResize: true,
+          separatorColor: CHART_COLORS.grid,
+          separatorHoverColor: "rgba(37, 99, 235, 0.12)",
+        },
         textColor: CHART_COLORS.text,
       },
       grid: {
@@ -403,7 +419,7 @@ export default function FuturesPriceChart({
       borderVisible: false,
     });
     candleSeries.priceScale().applyOptions({
-      scaleMargins: { top: 0.22, bottom: 0.28 },
+      scaleMargins: { top: 0.18, bottom: 0.1 },
     });
     candleSeriesRef.current = candleSeries;
 
@@ -414,29 +430,67 @@ export default function FuturesPriceChart({
     });
     liveSeriesRef.current = liveSeries;
 
-    const volumeSeries = chart.addSeries(HistogramSeries, {
-      priceFormat: { type: "volume" },
-      priceScaleId: "volume",
-    });
-    chart.priceScale("volume").applyOptions({
+    const volumeSeries = chart.addSeries(
+      HistogramSeries,
+      {
+        lastValueVisible: false,
+        priceFormat: { type: "volume" },
+        priceLineVisible: false,
+      },
+      VOLUME_PANE_INDEX
+    );
+    volumeSeries.priceScale().applyOptions({
       scaleMargins: {
-        top: 0.8,
+        top: 0.18,
         bottom: 0,
       },
       visible: false,
     });
     volumeSeriesRef.current = volumeSeries;
 
+    chart.panes()[0]?.setStretchFactor(MAIN_PANE_STRETCH_FACTOR);
+    chart.panes()[VOLUME_PANE_INDEX]?.setStretchFactor(VOLUME_PANE_STRETCH_FACTOR);
+    chart.panes()[0]?.setHeight(MAIN_PANE_INITIAL_HEIGHT);
+    chart.panes()[VOLUME_PANE_INDEX]?.setHeight(VOLUME_PANE_INITIAL_HEIGHT);
+
+    let paneResizeObserver: ResizeObserver | null = null;
+    let observedVolumePaneElement: HTMLElement | null = null;
+    const syncVolumePaneTop = () => {
+      const volumePaneElement =
+        chart.panes()[VOLUME_PANE_INDEX]?.getHTMLElement() ?? null;
+
+      if (!volumePaneElement) {
+        setVolumePaneTop(DEFAULT_VOLUME_PANE_TOP);
+        return;
+      }
+
+      if (volumePaneElement !== observedVolumePaneElement) {
+        if (observedVolumePaneElement) {
+          paneResizeObserver?.unobserve(observedVolumePaneElement);
+        }
+        paneResizeObserver?.observe(volumePaneElement);
+        observedVolumePaneElement = volumePaneElement;
+      }
+
+      const containerTop = container.getBoundingClientRect().top;
+      const paneTop = volumePaneElement.getBoundingClientRect().top;
+      setVolumePaneTop(Math.max(0, paneTop - containerTop));
+    };
+    paneResizeObserver = new window.ResizeObserver(syncVolumePaneTop);
+
     chart.subscribeCrosshairMove((param) => {
       if (!param.point || !param.time) {
         setHoveredOhlc(null);
+        setHoveredVolume(null);
         setHoveredTime(null);
         return;
       }
 
       const hoveredData = param.seriesData.get(candleSeries);
+      const hoveredVolumeData = param.seriesData.get(volumeSeries);
       if (!hoveredData || !("open" in hoveredData)) {
         setHoveredOhlc(null);
+        setHoveredVolume(null);
         setHoveredTime(null);
         return;
       }
@@ -448,18 +502,29 @@ export default function FuturesPriceChart({
         low: hoveredData.low,
         close: hoveredData.close,
       });
+      setHoveredVolume(
+        hoveredVolumeData && "value" in hoveredVolumeData
+          ? hoveredVolumeData.value
+          : null
+      );
     });
 
     const resizeObserver = new window.ResizeObserver(() => {
       chart.resize(container.clientWidth, CHART_HEIGHT);
+      syncVolumePaneTop();
     });
     resizeObserver.observe(container);
+
+    syncVolumePaneTop();
+    const paneSyncAnimationFrame = requestAnimationFrame(syncVolumePaneTop);
 
     return () => {
       clearPriceLines(positionPriceLinesRef.current);
       clearPriceLines(orderPriceLinesRef.current);
       clearIndicatorSeries(chart, indicatorSeriesRefs.current);
+      cancelAnimationFrame(paneSyncAnimationFrame);
       resizeObserver.disconnect();
+      paneResizeObserver?.disconnect();
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
@@ -471,6 +536,7 @@ export default function FuturesPriceChart({
   useEffect(() => {
     liveBucketOpenTimeRef.current = null;
     setHoveredOhlc(null);
+    setHoveredVolume(null);
     setHoveredTime(null);
 
     chartRef.current?.applyOptions({
@@ -857,6 +923,24 @@ export default function FuturesPriceChart({
             </div>
           </div>
 
+          <div
+            aria-label={`${symbol} volume legend`}
+            className="pointer-events-none absolute left-3 z-10 rounded-main bg-white/92 px-3 py-1.5 text-[11px] font-semibold text-main-dark-gray shadow-sm ring-1 ring-main-light-gray/70 backdrop-blur"
+            role="group"
+            style={{
+              top: Math.min(
+                (volumePaneTop ?? DEFAULT_VOLUME_PANE_TOP) +
+                  VOLUME_LEGEND_TOP_OFFSET,
+                VOLUME_LEGEND_MAX_TOP
+              ),
+            }}
+          >
+            <span className="text-main-dark-gray/55">Vol</span>{" "}
+            <span className="text-main-dark-gray">
+              {formatVolume(displayedVolume)}
+            </span>
+          </div>
+
           <div className="h-full w-full" ref={chartContainerRef} />
         </div>
       </div>
@@ -1214,6 +1298,18 @@ function clearPriceLines(lines: OwnedPriceLine[]): void {
 
 function formatOhlc(value: number | undefined): string {
   return typeof value === "number" ? formatUsd(value) : "-";
+}
+
+function formatVolume(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    compactDisplay: "short",
+    maximumFractionDigits: 2,
+    notation: "compact",
+  }).format(value);
 }
 
 function toOhlcSnapshot(candle: CandleResponse | null): OhlcSnapshot | null {

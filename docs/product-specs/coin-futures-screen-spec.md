@@ -191,7 +191,10 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 캔들 차트
 - 기간 전환 (`1m`, `3m`, `5m`, `15m`, `1h`, `4h`, `12h`, `1D`, `1W`, `1M`)
 - 사용자가 선택한 차트 기간은 브라우저에 저장되어 심볼 이동이나 화면 재진입 후에도 이어서 사용한다.
-- 거래량 보조 표시
+- 거래량은 Lightweight Charts v5 multi-pane의 별도 하단 pane에 histogram으로 표시한다.
+- 사용자는 차트/거래량 pane 사이의 세로 구분선을 드래그해 pane 높이를 조절할 수 있다.
+- 거래량 pane의 왼쪽 위 legend는 커서가 가리키는 캔들의 거래량을 표시하고, 커서가 없으면 최신 캔들 거래량을 표시한다.
+- market SSE payload는 현재 24h 거래량/거래대금 기준이며 candle-level 거래량이 아니므로, 차트 거래량은 candle API의 `volume`을 기준으로 표시한다. live candle merge는 추후 SSE가 candle-level volume을 제공할 경우 해당 값을 반영할 수 있어야 한다.
 - 차트를 왼쪽으로 이동하면 더 오래된 캔들을 서버에서 이어서 로드
 - 최초 진입 시에만 로드된 캔들의 가장 빠른 timestamp부터 가장 늦은 timestamp까지를 `setVisibleRange`로 한 번 정하고, 이후 live/refetch/사용자 이동/"최신 보기"는 차트를 계속 고정하지 않는다. 오른쪽 여백은 차트 `rightOffset` 설정으로 유지한다.
 - 차트 헤더에 심볼과 커서가 가리키는 캔들의 `open/high/low/close` 표시

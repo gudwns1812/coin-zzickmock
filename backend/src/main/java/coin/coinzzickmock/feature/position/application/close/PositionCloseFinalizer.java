@@ -5,6 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -38,6 +39,34 @@ public class PositionCloseFinalizer {
             double feeRate,
             String closeReason
     ) {
+        return close(
+                memberId,
+                position,
+                quantity,
+                markPrice,
+                executionPrice,
+                feeRate,
+                closeReason,
+                WalletHistorySource.positionClose(
+                        closeReason,
+                        position.symbol(),
+                        position.positionSide(),
+                        position.marginMode(),
+                        Instant.now()
+                )
+        );
+    }
+
+    public ClosePositionResult close(
+            String memberId,
+            PositionSnapshot position,
+            double quantity,
+            double markPrice,
+            double executionPrice,
+            double feeRate,
+            String closeReason,
+            WalletHistorySource walletHistorySource
+    ) {
         if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "종료 수량을 확인해주세요.");
         }
@@ -55,11 +84,14 @@ public class PositionCloseFinalizer {
 
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        accountRepository.save(account.settlePositionClose(
-                closeOutcome.grossRealizedPnl(),
-                closeOutcome.closeFee(),
-                closeOutcome.releasedMargin()
-        ));
+        accountRepository.save(
+                account.settlePositionClose(
+                        closeOutcome.grossRealizedPnl(),
+                        closeOutcome.closeFee(),
+                        closeOutcome.releasedMargin()
+                ),
+                walletHistorySource
+        );
         afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
 
         RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(

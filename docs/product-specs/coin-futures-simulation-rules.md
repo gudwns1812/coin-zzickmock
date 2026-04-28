@@ -503,3 +503,11 @@ type PositionSnapshot = {
 - **Pending and closeable quantity**: `pendingCloseQuantity` is the sum of pending close orders, and `closeableQuantity` is retained as compatibility data. Neither field is displayed as `Close amount`.
 - **Close order acceptance and reconciliation**: a new close request is validated against held position quantity, not closeable quantity. The backend may accept a new close order before reconciling pending close caps; after submission, pending close orders are reduced or cancelled so total pending close quantity does not exceed the remaining held quantity. LONG close reconciliation reduces/cancels higher limit-price orders first; SHORT reduces/cancels lower limit-price orders first; ties reduce newer orders before older orders.
 - **TP/SL editing**: position-level TP/SL values are displayed on the position card, but inputs are hidden by default and opened via the `Position TP/SL` edit action. Save and clear use `/api/futures/positions/tpsl`, whose persistence source is pending conditional close orders, not `open_positions` TP/SL columns.
+
+## Wallet history and Assets chart source
+
+- `wallet_history` is the source for the Assets balance chart. The API defaults to the current timestamp minus 30 days through the current timestamp.
+- A wallet history row is written in the same transaction after a successful `trading_accounts` mutation when wallet balance or available margin changes.
+- Current implementation records open-order fills (`ORDER_FILL`) and position close fills (`POSITION_CLOSE`) because pending limit order placement and pending order cancellation do not reserve or release wallet funds yet.
+- Source references reserve room for future reservation, cancel-release, and partial-fill events: `order:<orderId>:reserve`, `order:<orderId>:cancel-release`, `order:<orderId>:fill`, and `order:<orderId>:partial-fill:<fillId>`.
+- Liquidation uses `LIQUIDATION` source type and a liquidation-specific reference. Duplicate `source_type + source_reference` writes are ignored so retries do not create duplicate chart points.

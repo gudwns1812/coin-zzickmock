@@ -5,6 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
@@ -80,7 +81,13 @@ public class PositionLiquidationProcessor {
                 markPrice,
                 executionPrice,
                 TAKER_FEE_RATE,
-                PositionHistory.CLOSE_REASON_LIQUIDATION
+                PositionHistory.CLOSE_REASON_LIQUIDATION,
+                WalletHistorySource.liquidation(
+                        position.symbol(),
+                        position.positionSide(),
+                        position.marginMode(),
+                        java.time.Instant.now()
+                )
         );
         pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionLiquidated(

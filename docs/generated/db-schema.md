@@ -31,6 +31,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [backend/src/test/resources/application-test.yml](/Users/hj.park/projects/coin-zzickmock/backend/src/test/resources/application-test.yml)
 - JPA entity 기준:
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
+  [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
   [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
@@ -54,6 +55,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql)
   [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql)
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql)
+  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
+  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql)
+  [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V15__add_wallet_history.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -120,6 +124,26 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
+
+### `wallet_history`
+
+- 목적:
+  사용자 지갑 잔고와 사용 가능 증거금의 변화를 Assets 차트용 시계열로 저장한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `member_id`, `wallet_balance`, `available_margin`, `source_type`, `source_reference`, `recorded_at`, `created_at`, `updated_at`
+- source reference:
+  `source_reference`는 `VARCHAR(255)`이며 `order:<orderId>:fill`, `order:<orderId>:cancel-release`, `order:<orderId>:partial-fill:<fillId>`, `liquidation:<symbol>:<side>:<mode>:<epochMillis>`처럼 이벤트 종류를 문자열에 포함해 같은 주문/포지션의 복수 이벤트를 구분한다.
+- 중복 방지:
+  `uk_wallet_history_source(source_type, source_reference)`가 같은 이벤트의 중복 차트 포인트를 막는다.
+- 조회 인덱스:
+  `idx_wallet_history_member_recorded_at(member_id, recorded_at)`는 사용자별 최근 1개월 Assets 차트 조회에 사용한다.
+- 관련 엔티티/모듈:
+  `feature.account`
+- 관련 migration 또는 schema 파일:
+  [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V15__add_wallet_history.sql),
+  [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
 
 ### `member_credentials`
 
@@ -335,6 +359,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 - `reward_point_wallets.member_id -> trading_accounts.member_id`:
   계정당 하나의 포인트 지갑을 가진다.
+- `wallet_history.member_id -> trading_accounts.member_id`:
+  지갑 이력은 특정 계정에 속한다.
 - `member_credentials.member_id -> trading_accounts.member_id`:
   인증에 필요한 회원 자격 증명은 선물 계정과 같은 `member_id`를 공유한다.
 - `futures_orders.member_id -> trading_accounts.member_id`:
@@ -378,6 +404,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V10__add_futures_order_conditional_trigger_fields.sql`로 `futures_orders.trigger_price`, `trigger_type`, `trigger_source`, `oco_group_id`를 추가했다. TP/SL source of truth는 open position 컬럼에서 pending conditional close order로 이동했다.
 - 2026-04-28:
   `V11__backfill_and_constrain_conditional_close_orders.sql`로 V9 legacy `open_positions.take_profit_price`, `stop_loss_price`를 pending conditional close order로 backfill하고, active conditional TP/SL 중복을 막는 unique index를 추가했다.
+- 2026-04-28:
+  `V15__add_wallet_history.sql`로 `wallet_history`를 추가했다. Assets 차트는 기본적으로 현재 시각 기준 30일 범위를 조회하고, `source_type + source_reference` unique key로 체결/반환/청산 같은 지갑 변경 이벤트의 중복 기록을 방지한다.
 
 ## Update Rule
 

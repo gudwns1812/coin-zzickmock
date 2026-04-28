@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.reward.api;
 
 public record RewardPointResponse(
-        double rewardPoint,
+        int rewardPoint,
         String tierLabel
 ) {
 }

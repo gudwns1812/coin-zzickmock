@@ -5,6 +5,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
+import coin.coinzzickmock.feature.member.domain.MemberRole;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,19 +37,25 @@ public class MemberDemoSeedConfiguration {
                 ));
             }
 
-            if (memberCredentialRepository.findByMemberId(DEMO_MEMBER_ID).isEmpty()) {
-                memberCredentialRepository.save(MemberCredential.register(
-                        DEMO_MEMBER_ID,
-                        memberPasswordHasher.hash(DEMO_PASSWORD),
-                        DEMO_MEMBER_NAME,
-                        DEMO_MEMBER_EMAIL,
-                        DEMO_PHONE_NUMBER,
-                        DEMO_ZIP_CODE,
-                        DEMO_ADDRESS,
-                        DEMO_ADDRESS_DETAIL,
-                        0
-                ));
-            }
+            memberCredentialRepository.findByMemberId(DEMO_MEMBER_ID)
+                    .ifPresentOrElse(
+                            credential -> {
+                                if (!credential.role().equals(MemberRole.ADMIN)) {
+                                    memberCredentialRepository.save(credential.asAdmin());
+                                }
+                            },
+                            () -> memberCredentialRepository.save(MemberCredential.register(
+                                    DEMO_MEMBER_ID,
+                                    memberPasswordHasher.hash(DEMO_PASSWORD),
+                                    DEMO_MEMBER_NAME,
+                                    DEMO_MEMBER_EMAIL,
+                                    DEMO_PHONE_NUMBER,
+                                    DEMO_ZIP_CODE,
+                                    DEMO_ADDRESS,
+                                    DEMO_ADDRESS_DETAIL,
+                                    0
+                            ).asAdmin())
+                    );
         };
     }
 }

@@ -28,6 +28,11 @@ UPDATE reward_redemption_requests
 UPDATE reward_redemption_requests
    SET status = 'CANCELLED_REFUNDED'
  WHERE status IN ('REJECTED', 'CANCELLED');
+
+ALTER TABLE reward_redemption_requests
+    ADD CONSTRAINT chk_reward_redemption_requests_status CHECK (
+        status IN ('PENDING', 'SENT', 'CANCELLED_REFUNDED')
+    );
 ```
 
 `CANCELLED` has no exact legacy equivalent, so rollback maps it to `CANCELLED_REFUNDED` with the same accounting outcome: points, stock, and member purchase count have already been restored once.

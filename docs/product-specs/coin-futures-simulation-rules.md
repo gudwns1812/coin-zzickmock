@@ -402,6 +402,8 @@ MVP 1차는 아래 순서로 단순화한다.
   포인트를 환불하고, 환불 이력을 남기며, 상품 `sold_quantity`와 유저 `purchase_count`를 guarded decrement로 복구한다.
 - guarded decrement는 현재 값이 0이면 더 줄이지 않아 음수 재고와 음수 구매 카운트를 방지한다.
 - 중복 반려/취소는 `PENDING`에서 terminal 상태로 가는 전이가 한 번만 성공하기 때문에 포인트/재고/구매 카운트를 두 번 복구하지 않는다.
+- 상태 전이는 `reward_redemption_requests.status = 'PENDING'` 조건을 포함한 DB conditional update 또는 동등한 optimistic claim으로 수행한다.
+- affected rows가 `0`이면 복구 작업을 실행하지 않고 요청을 다시 조회해 `404`, `403`, `409` 중 정확한 API 오류로 매핑한다.
 
 ### 알림
 

@@ -420,11 +420,13 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `APPROVED`는 취소/환불할 수 없다.
 - `APPROVED`, `REJECTED`, `CANCELLED`는 terminal 상태이며 추가 상태 전이가 없다.
 - 중복 클릭이나 이미 terminal 상태인 요청의 재처리는 백엔드에서 거절하고 포인트/재고/구매 카운트를 다시 변경하지 않는다.
-- 관리자 처리 행위는 요청 행에 `adminMemberId`, `adminMemo`, `sentAt`(승인 시각) 또는 `cancelledAt`(반려/취소 시각)으로 남긴다. 별도 감사 로그 테이블은 MVP 범위 밖이다.
+- 관리자 처리 행위는 요청 행에 `adminMemberId`, `adminMemo`, `sentAt` 또는 `cancelledAt`으로 남긴다. `sentAt`은 DB/API 하위 호환을 위해 유지하는 필드명이며 새 계약에서는 승인 시각을 뜻한다. 별도 감사 로그 테이블은 MVP 범위 밖이다.
+- 기존 `SENT`/`CANCELLED_REFUNDED` 저장값은 마이그레이션으로 `APPROVED`/`REJECTED`에 매핑하고, 기존 관리자 필터/엔드포인트는 후속 UI 전환이 끝날 때까지 호환 alias로 유지한다.
 
 ### 환불 정확성
 
-- 관리자 전이는 요청을 잠근 뒤 `PENDING` 상태에서만 수행한다.
+- 관리자/사용자 전이는 `status = PENDING` 조건을 포함한 DB conditional update로 한 요청만 terminal 상태를 claim한 뒤 수행한다.
+- affected rows가 `0`이면 요청을 다시 조회해 없는 요청은 `404`, 다른 사용자의 사용자 취소는 `403`, 이미 terminal 상태이거나 stale 전이는 `409`로 응답한다.
 - 취소/환불은 같은 트랜잭션 안에서 요청 상태 변경, 포인트 환불, 환불 이력 생성, `sold_quantity`와 `purchase_count` 복구를 처리한다.
 - 복구 연산은 현재 값이 0이면 더 줄이지 않는 guarded decrement를 사용해 음수 재고와 음수 구매 카운트를 방지한다.
 - 트랜잭션 실패 시 요청 상태와 포인트/재고/구매 카운트 변경은 함께 롤백된다.

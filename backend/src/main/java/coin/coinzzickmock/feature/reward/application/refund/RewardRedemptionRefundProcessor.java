@@ -13,6 +13,7 @@ import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import coin.coinzzickmock.feature.reward.domain.RewardShopMemberItemUsage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class RewardRedemptionRefundProcessor {
     private final RewardPointRepository rewardPointRepository;
     private final RewardPointHistoryRepository rewardPointHistoryRepository;
 
+    @Transactional
     public void refundReservation(RewardRedemptionRequest request) {
         RewardShopItem item = rewardShopItemRepository.findByIdForUpdate(request.shopItemId())
                 .orElseThrow(() -> invalid("상점 상품을 찾을 수 없습니다."));
@@ -29,7 +31,7 @@ public class RewardRedemptionRefundProcessor {
                 .findByMemberIdAndShopItemIdForUpdate(request.memberId(), request.shopItemId())
                 .orElseThrow(() -> invalid("구매 제한 사용량을 찾을 수 없습니다."));
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(request.memberId())
-                .orElse(RewardPointWallet.empty(request.memberId()));
+                .orElseThrow(() -> invalid("포인트 지갑을 찾을 수 없습니다."));
 
         RewardShopItem releasedItem = transition(item::releaseOne);
         RewardShopMemberItemUsage releasedUsage = transition(usage::decrement);

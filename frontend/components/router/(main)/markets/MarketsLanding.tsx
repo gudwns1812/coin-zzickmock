@@ -2,6 +2,7 @@
 
 import {
   formatPercent,
+  formatCompactUsd,
   formatUsd,
   MARKET_RANKING_FALLBACKS,
   type MarketRankingEntry,
@@ -29,7 +30,7 @@ export type PriceFlashRenderState = {
   intensity: number;
 };
 
-type MarketSortKey = "default" | "price" | "change24h" | "volume24h";
+type MarketSortKey = "default" | "price" | "change24h" | "turnover24hUsdt";
 
 const SORT_BUTTONS: Array<{
   key: MarketSortKey;
@@ -38,7 +39,7 @@ const SORT_BUTTONS: Array<{
   { key: "default", label: "기본순" },
   { key: "price", label: "가격순" },
   { key: "change24h", label: "변동률순" },
-  { key: "volume24h", label: "거래량순" },
+  { key: "turnover24hUsdt", label: "거래대금순" },
 ];
 
 const MARKET_SORT_VALUE: Record<
@@ -47,7 +48,8 @@ const MARKET_SORT_VALUE: Record<
 > = {
   price: (market) => market.lastPrice,
   change24h: (market) => market.change24h,
-  volume24h: (market) => (market.hasExtendedMetrics ? market.volume24h : -1),
+  turnover24hUsdt: (market) =>
+    market.hasExtendedMetrics ? market.turnover24hUsdt : -1,
 };
 
 type MarketsLandingProps = {
@@ -105,8 +107,7 @@ export default function MarketsLanding({
               코인 시세
             </h2>
             <p className="mt-2 text-sm-custom text-main-dark-gray/62 break-keep">
-              가격, 24시간 변동, 거래량, 펀딩비, 시가총액과 점유율을 한 번에
-              비교할 수 있습니다.
+              가격, 24시간 변동, 펀딩비와 거래대금을 한 번에 비교할 수 있습니다.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-main bg-main-light-gray/30 p-1">
@@ -148,7 +149,7 @@ export default function MarketsLanding({
                 <th className="px-main py-5 font-medium">Mark Price</th>
                 <th className="px-main py-5 font-medium">Funding Rate</th>
                 <th className="px-main py-5 font-medium">Index Price</th>
-                <th className="px-main py-5 font-medium">시장 메모</th>
+                <th className="px-main py-5 font-medium">거래대금</th>
               </tr>
             </thead>
             <tbody>
@@ -324,8 +325,8 @@ function MarketTableRow({
       <td className="px-main py-5 text-main-dark-gray/70">
         {isMarketDataDegraded ? "-" : formatUsd(market.indexPrice)}
       </td>
-      <td className="px-main py-5 text-main-blue/80 font-semibold">
-        {market.openInterestLabel}
+      <td className="px-main py-5 font-semibold text-main-dark-gray">
+        {isMarketDataDegraded ? "-" : formatCompactUsd(market.turnover24hUsdt)}
       </td>
     </tr>
   );

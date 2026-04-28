@@ -58,6 +58,13 @@ function mergeSnapshot(
     indexPrice: realtime.indexPrice,
     fundingRate: realtime.fundingRate,
     change24h: realtime.change24h,
+    turnover24hUsdt:
+      realtime.turnover24hUsdt ?? realtime.volume24h ?? current.turnover24hUsdt,
+    volume24h: realtime.volume24h ?? realtime.turnover24hUsdt ?? current.volume24h,
+    nextFundingAt: realtime.nextFundingAt ?? current.nextFundingAt,
+    fundingIntervalHours:
+      realtime.fundingIntervalHours ?? current.fundingIntervalHours,
+    serverTime: realtime.serverTime ?? current.serverTime,
   };
 }
 

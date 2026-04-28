@@ -11,6 +11,7 @@ export type MarketSnapshot = {
   indexPrice: number;
   change24h: number;
   volume24h: number;
+  turnover24hUsdt: number;
   fundingRate: number;
   nextFundingAt: string | null;
   fundingIntervalHours: number | null;
@@ -39,6 +40,7 @@ export const MARKET_SNAPSHOTS: Record<MarketSymbol, MarketSnapshot> = {
     indexPrice: 102_401,
     change24h: 2.84,
     volume24h: 1_280_000_000,
+    turnover24hUsdt: 1_280_000_000,
     fundingRate: 0.0001,
     nextFundingAt: null,
     fundingIntervalHours: null,
@@ -58,6 +60,7 @@ export const MARKET_SNAPSHOTS: Record<MarketSymbol, MarketSnapshot> = {
     indexPrice: 3_274,
     change24h: 1.72,
     volume24h: 640_000_000,
+    turnover24hUsdt: 640_000_000,
     fundingRate: 0.00008,
     nextFundingAt: null,
     fundingIntervalHours: null,

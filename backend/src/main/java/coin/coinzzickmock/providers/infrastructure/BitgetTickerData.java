@@ -6,6 +6,7 @@ public record BitgetTickerData(
         String change24h,
         String indexPrice,
         String fundingRate,
-        String markPrice
+        String markPrice,
+        String usdtVolume
 ) {
 }

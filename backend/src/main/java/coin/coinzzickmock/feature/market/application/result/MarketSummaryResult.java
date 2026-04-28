@@ -11,6 +11,7 @@ public record MarketSummaryResult(
         double indexPrice,
         double fundingRate,
         double change24h,
+        double turnover24hUsdt,
         Instant serverTime,
         Instant nextFundingAt,
         int fundingIntervalHours
@@ -24,7 +25,30 @@ public record MarketSummaryResult(
             double fundingRate,
             double change24h
     ) {
-        this(symbol, displayName, lastPrice, markPrice, indexPrice, fundingRate, change24h, defaultFundingTiming());
+        this(symbol, displayName, lastPrice, markPrice, indexPrice, fundingRate, change24h, 0.0);
+    }
+
+    public MarketSummaryResult(
+            String symbol,
+            String displayName,
+            double lastPrice,
+            double markPrice,
+            double indexPrice,
+            double fundingRate,
+            double change24h,
+            double turnover24hUsdt
+    ) {
+        this(
+                symbol,
+                displayName,
+                lastPrice,
+                markPrice,
+                indexPrice,
+                fundingRate,
+                change24h,
+                turnover24hUsdt,
+                defaultFundingTiming()
+        );
     }
 
     private MarketSummaryResult(
@@ -35,6 +59,7 @@ public record MarketSummaryResult(
             double indexPrice,
             double fundingRate,
             double change24h,
+            double turnover24hUsdt,
             DefaultFundingTiming defaultFundingTiming
     ) {
         this(
@@ -45,9 +70,37 @@ public record MarketSummaryResult(
                 indexPrice,
                 fundingRate,
                 change24h,
+                turnover24hUsdt,
                 defaultFundingTiming.serverTime(),
                 defaultFundingTiming.nextFundingAt(),
                 FundingSchedule.DEFAULT_INTERVAL_HOURS
+        );
+    }
+
+    public MarketSummaryResult(
+            String symbol,
+            String displayName,
+            double lastPrice,
+            double markPrice,
+            double indexPrice,
+            double fundingRate,
+            double change24h,
+            Instant serverTime,
+            Instant nextFundingAt,
+            int fundingIntervalHours
+    ) {
+        this(
+                symbol,
+                displayName,
+                lastPrice,
+                markPrice,
+                indexPrice,
+                fundingRate,
+                change24h,
+                0.0,
+                serverTime,
+                nextFundingAt,
+                fundingIntervalHours
         );
     }
 

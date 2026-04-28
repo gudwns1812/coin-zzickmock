@@ -32,6 +32,7 @@ export type MarketApiResponse = {
   fundingIntervalHours?: number | null;
   serverTime?: string | null;
   change24h: number;
+  turnover24hUsdt?: number;
   volume24h?: number;
   marketCap?: number;
   dominance?: number;
@@ -582,14 +583,19 @@ function mergeMarketSnapshot(
   apiMarket: MarketApiResponse
 ): MarketSnapshot {
   const fallback = MARKET_SNAPSHOTS[symbol];
-  const hasExtendedMetrics =
-    typeof apiMarket.volume24h === "number" &&
-    typeof apiMarket.marketCap === "number" &&
-    typeof apiMarket.dominance === "number";
+  const turnover24hUsdt =
+    typeof apiMarket.turnover24hUsdt === "number"
+      ? apiMarket.turnover24hUsdt
+      : typeof apiMarket.volume24h === "number"
+        ? apiMarket.volume24h
+        : fallback.turnover24hUsdt;
   const volume24h =
     typeof apiMarket.volume24h === "number"
       ? apiMarket.volume24h
-      : fallback.volume24h;
+      : turnover24hUsdt;
+  const hasExtendedMetrics =
+    typeof apiMarket.turnover24hUsdt === "number" ||
+    typeof apiMarket.volume24h === "number";
   const marketCap =
     typeof apiMarket.marketCap === "number"
       ? apiMarket.marketCap
@@ -612,6 +618,7 @@ function mergeMarketSnapshot(
     serverTime: apiMarket.serverTime ?? fallback.serverTime,
     change24h: apiMarket.change24h,
     volume24h,
+    turnover24hUsdt,
     marketCap,
     dominance,
     hasExtendedMetrics,

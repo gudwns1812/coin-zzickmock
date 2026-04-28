@@ -58,6 +58,7 @@ public class MarketSupportedMarketRefresher {
                 snapshot.indexPrice(),
                 snapshot.fundingRate(),
                 snapshot.change24h(),
+                snapshot.turnover24hUsdt(),
                 serverTime,
                 fundingSchedule.nextFundingAt(serverTime),
                 fundingSchedule.intervalHours()

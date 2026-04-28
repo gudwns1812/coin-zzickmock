@@ -11,6 +11,8 @@ public record MarketSummaryResponse(
         double indexPrice,
         double fundingRate,
         double change24h,
+        double turnover24hUsdt,
+        double volume24h,
         Instant serverTime,
         Instant nextFundingAt,
         int fundingIntervalHours
@@ -24,6 +26,8 @@ public record MarketSummaryResponse(
                 result.indexPrice(),
                 result.fundingRate(),
                 result.change24h(),
+                result.turnover24hUsdt(),
+                result.turnover24hUsdt(),
                 result.serverTime(),
                 result.nextFundingAt(),
                 result.fundingIntervalHours()

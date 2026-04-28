@@ -33,6 +33,23 @@ class MarketRealtimeSseBrokerTest {
     }
 
     @Test
+    void includesTurnoverInRealtimePayloads() {
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 10, 20);
+        CapturingSseEmitter emitter = new CapturingSseEmitter();
+        broker.register(broker.reserve("BTCUSDT"), emitter);
+
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult(
+                        "BTCUSDT", "Bitcoin Perpetual", 74000, 74010, 74005, 0.0001, 0.2, 5_250_000_000d
+                )
+        ));
+
+        MarketSummaryResponse response = (MarketSummaryResponse) emitter.events().get(0);
+        assertThat(response.turnover24hUsdt()).isEqualTo(5_250_000_000d);
+        assertThat(response.volume24h()).isEqualTo(5_250_000_000d);
+    }
+
+    @Test
     void removesFailedEmitterWithoutAffectingHealthyEmitters() {
         MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 10, 20);
         FailingSseEmitter failingEmitter = new FailingSseEmitter();

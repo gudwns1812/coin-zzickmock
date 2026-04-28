@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RewardShopItemRepository {
+    List<RewardShopItem> findAllItems();
+
     List<RewardShopItem> findActiveItems();
 
     Optional<RewardShopItem> findByCode(String code);

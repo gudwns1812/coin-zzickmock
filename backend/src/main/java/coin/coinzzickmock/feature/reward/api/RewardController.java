@@ -7,6 +7,8 @@ import coin.coinzzickmock.feature.reward.application.result.RewardPointHistoryRe
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
 import coin.coinzzickmock.feature.reward.application.result.ShopItemResult;
+import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
+import coin.coinzzickmock.feature.reward.application.service.AdminRewardShopItemService;
 import coin.coinzzickmock.feature.reward.application.service.AdminRewardRedemptionService;
 import coin.coinzzickmock.feature.reward.application.service.CreateRewardRedemptionService;
 import coin.coinzzickmock.feature.reward.application.service.GetRewardPointHistoryService;
@@ -35,6 +37,7 @@ public class RewardController {
     private final GetShopItemsService getShopItemsService;
     private final CreateRewardRedemptionService createRewardRedemptionService;
     private final AdminRewardRedemptionService adminRewardRedemptionService;
+    private final AdminRewardShopItemService adminRewardShopItemService;
     private final Providers providers;
 
     @GetMapping("/rewards/me")
@@ -108,12 +111,51 @@ public class RewardController {
         return ApiResponse.success(RewardRedemptionResponse.from(result));
     }
 
+    @GetMapping("/admin/shop-items")
+    public ApiResponse<List<AdminShopItemResponse>> adminShopItems() {
+        requireAdmin();
+        return ApiResponse.success(adminRewardShopItemService.list().stream()
+                .map(AdminShopItemResponse::from)
+                .toList());
+    }
+
+    @PostMapping("/admin/shop-items")
+    public ApiResponse<AdminShopItemResponse> createAdminShopItem(@RequestBody AdminShopItemRequest request) {
+        requireAdmin();
+        AdminShopItemResult result = adminRewardShopItemService.create(toAdminShopItemCommand(request));
+        return ApiResponse.success(AdminShopItemResponse.from(result));
+    }
+
+    @PostMapping("/admin/shop-items/{code}")
+    public ApiResponse<AdminShopItemResponse> updateAdminShopItem(
+            @PathVariable String code,
+            @RequestBody AdminShopItemRequest request
+    ) {
+        requireAdmin();
+        AdminShopItemResult result = adminRewardShopItemService.update(code, toAdminShopItemCommand(request));
+        return ApiResponse.success(AdminShopItemResponse.from(result));
+    }
+
+    @PostMapping("/admin/shop-items/{code}/deactivate")
+    public ApiResponse<AdminShopItemResponse> deactivateAdminShopItem(@PathVariable String code) {
+        requireAdmin();
+        AdminShopItemResult result = adminRewardShopItemService.deactivate(code);
+        return ApiResponse.success(AdminShopItemResponse.from(result));
+    }
+
     private Actor requireAdmin() {
         Actor actor = providers.auth().currentActor();
         if (!actor.admin()) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         return actor;
+    }
+
+    private AdminRewardShopItemService.AdminShopItemCommand toAdminShopItemCommand(AdminShopItemRequest request) {
+        if (request == null) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "상점 상품 정보는 필수입니다.");
+        }
+        return request.toCommand();
     }
 
     private ShopItemResponse toResponse(ShopItemResult result) {

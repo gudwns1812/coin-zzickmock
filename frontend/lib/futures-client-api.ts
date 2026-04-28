@@ -1,4 +1,8 @@
-import type { RewardRedemption } from "@/lib/futures-api";
+import type {
+  AdminShopItem,
+  AdminShopItemInput,
+  RewardRedemption,
+} from "@/lib/futures-api";
 
 type ClientApiResponse<T> = {
   success: boolean;
@@ -36,9 +40,34 @@ export async function cancelRewardRedemption(
   );
 }
 
+export async function createAdminShopItem(
+  input: AdminShopItemInput
+): Promise<AdminShopItem> {
+  return writeFuturesApi<AdminShopItem>("/admin/shop-items", input);
+}
+
+export async function updateAdminShopItem(
+  code: string,
+  input: AdminShopItemInput
+): Promise<AdminShopItem> {
+  return writeFuturesApi<AdminShopItem>(
+    `/admin/shop-items/${encodeURIComponent(code)}`,
+    input
+  );
+}
+
+export async function deactivateAdminShopItem(
+  code: string
+): Promise<AdminShopItem> {
+  return writeFuturesApi<AdminShopItem>(
+    `/admin/shop-items/${encodeURIComponent(code)}/deactivate`,
+    {}
+  );
+}
+
 async function writeFuturesApi<T>(
   path: string,
-  body: Record<string, unknown>
+  body: unknown
 ): Promise<T> {
   const response = await fetch(`/proxy-futures${path}`, {
     method: "POST",

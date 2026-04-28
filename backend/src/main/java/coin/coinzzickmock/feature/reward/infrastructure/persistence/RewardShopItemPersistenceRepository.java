@@ -16,6 +16,14 @@ public class RewardShopItemPersistenceRepository implements RewardShopItemReposi
 
     @Override
     @Transactional(readOnly = true)
+    public List<RewardShopItem> findAllItems() {
+        return rewardShopItemEntityRepository.findAllByOrderBySortOrderAscCodeAsc().stream()
+                .map(RewardShopItemEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<RewardShopItem> findActiveItems() {
         return rewardShopItemEntityRepository.findByActiveTrueOrderBySortOrderAscCodeAsc().stream()
                 .map(RewardShopItemEntity::toDomain)

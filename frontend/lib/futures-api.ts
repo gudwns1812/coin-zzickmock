@@ -127,8 +127,53 @@ export type FuturesLeaderboard = {
 export type ShopItem = {
   code: string;
   name: string;
-  price: number;
   description: string;
+  price: number;
+  active: boolean;
+  totalStock: number | null;
+  soldQuantity: number;
+  remainingStock: number | null;
+  perMemberPurchaseLimit: number | null;
+  remainingPurchaseLimit: number | null;
+};
+
+export type RewardPointHistoryType =
+  | "GRANT"
+  | "REDEMPTION_DEDUCT"
+  | "REDEMPTION_REFUND";
+
+export type RewardPointHistory = {
+  historyType: RewardPointHistoryType;
+  amount: number;
+  balanceAfter: number;
+  sourceType: string;
+  sourceReference: string;
+};
+
+export type RewardRedemptionStatus =
+  | "PENDING"
+  | "SENT"
+  | "CANCELLED_REFUNDED";
+
+export type RewardRedemption = {
+  requestId: string;
+  memberId: string;
+  itemCode: string;
+  itemName: string;
+  pointAmount: number;
+  submittedPhoneNumber: string;
+  status: RewardRedemptionStatus;
+  requestedAt: string;
+  sentAt: string | null;
+  cancelledAt: string | null;
+  adminMemberId: string | null;
+  adminMemo: string | null;
+};
+
+export type AdminRewardRedemptionsResult = {
+  redemptions: RewardRedemption[];
+  unavailable: boolean;
+  message: string | null;
 };
 
 export type OrderPreviewRequest = {
@@ -182,22 +227,16 @@ const FUTURES_API_BASE_URL =
 
 const SHOP_ITEM_FALLBACKS: ShopItem[] = [
   {
-    code: "badge.basic",
-    name: "프로필 배지",
-    price: 10,
-    description: "닉네임 옆에 붙는 기본 배지",
-  },
-  {
-    code: "theme.cyan",
-    name: "대시보드 테마",
-    price: 30,
-    description: "마켓 화면 강조 색상 테마",
-  },
-  {
-    code: "title.shark",
-    name: "칭호",
+    code: "voucher.coffee",
+    name: "커피 교환권",
     price: 50,
-    description: "프로필과 헤더에 표시되는 칭호",
+    description: "관리자 확인 후 입력한 휴대폰 번호로 발송되는 커피 교환권",
+    active: true,
+    totalStock: null,
+    soldQuantity: 0,
+    remainingStock: null,
+    perMemberPurchaseLimit: null,
+    remainingPurchaseLimit: null,
   },
 ];
 
@@ -360,6 +399,27 @@ export async function getShopItems(): Promise<ShopItem[]> {
   return response ?? SHOP_ITEM_FALLBACKS;
 }
 
+export async function getRewardPointHistory(): Promise<RewardPointHistory[]> {
+  const response = await readApi<RewardPointHistory[]>(
+    "/api/futures/rewards/history"
+  );
+  return response ?? [];
+}
+
+export async function getAdminRewardRedemptions(
+  status: RewardRedemptionStatus = "PENDING"
+): Promise<AdminRewardRedemptionsResult> {
+  const response = await readApiResult<RewardRedemption[]>(
+    `/api/futures/admin/reward-redemptions?status=${encodeURIComponent(status)}`
+  );
+
+  return {
+    redemptions: response.data ?? [],
+    unavailable: !response.ok,
+    message: response.message,
+  };
+}
+
 function filterSupportedOrderHistory(
   orders: FuturesOrderHistory[],
   symbol?: MarketSymbol
@@ -370,6 +430,18 @@ function filterSupportedOrderHistory(
 }
 
 async function readApi<T>(path: string): Promise<T | null> {
+  const response = await readApiResult<T>(path);
+  return response.ok ? response.data : null;
+}
+
+async function readApiResult<T>(
+  path: string
+): Promise<{
+  data: T | null;
+  ok: boolean;
+  status: number | null;
+  message: string | null;
+}> {
   try {
     const cookieHeader = await getAccessTokenCookieHeader();
     const response = await fetch(`${FUTURES_API_BASE_URL}${path}`, {
@@ -382,19 +454,41 @@ async function readApi<T>(path: string): Promise<T | null> {
       signal: AbortSignal.timeout(2000),
     });
 
+    const payload = (await response.json().catch(() => null)) as
+      | ApiResponse<T>
+      | null;
+
     if (!response.ok) {
-      return null;
+      return {
+        data: null,
+        ok: false,
+        status: response.status,
+        message: payload?.message ?? null,
+      };
     }
 
-    const payload = (await response.json()) as ApiResponse<T>;
-
-    if (!payload.success || payload.data === null) {
-      return null;
+    if (!payload || !payload.success || payload.data === null) {
+      return {
+        data: null,
+        ok: false,
+        status: response.status,
+        message: payload?.message ?? null,
+      };
     }
 
-    return payload.data;
+    return {
+      data: payload.data,
+      ok: true,
+      status: response.status,
+      message: payload.message,
+    };
   } catch {
-    return null;
+    return {
+      data: null,
+      ok: false,
+      status: null,
+      message: null,
+    };
   }
 }
 

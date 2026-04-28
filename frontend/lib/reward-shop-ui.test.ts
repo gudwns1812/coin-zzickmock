@@ -6,6 +6,7 @@ const rewardShopModule: typeof import("./reward-shop-ui") = await import(
 );
 
 const {
+  getShopItemImagePath,
   getShopItemAvailabilityLabel,
   isShopItemLimitReached,
   isShopItemSoldOut,
@@ -47,4 +48,14 @@ test("derives sold-out and per-member limit item states", () => {
 
   assert.equal(isShopItemLimitReached(limitedItem), true);
   assert.equal(getShopItemAvailabilityLabel(limitedItem), "구매 제한 도달");
+});
+
+test("maps coffee shop items to the bundled coffee image", () => {
+  assert.equal(
+    getShopItemImagePath({
+      code: "voucher.coffee",
+      name: "커피 교환권",
+    }),
+    "/images/IceAmericano.png"
+  );
 });

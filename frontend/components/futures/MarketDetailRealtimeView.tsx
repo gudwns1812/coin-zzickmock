@@ -25,9 +25,11 @@ import {
   formatPercent,
   formatSignedUsd,
   formatUsd,
+  getMarketLogoPath,
   type MarketSnapshot,
 } from "@/lib/markets";
 import { Pencil } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "react-toastify";
@@ -195,13 +197,31 @@ export default function MarketDetailRealtimeView({
           <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
             <div className="flex items-start justify-between gap-main">
               <div className="min-w-0">
-                <SymbolSelector activeSymbol={market.symbol} />
-                <p className="text-xs-custom uppercase text-main-dark-gray/50">
-                  {market.symbol}
-                </p>
-                <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
-                  {market.displayName}
-                </h1>
+                <div className="flex min-w-0 items-start gap-main">
+                  <div className="mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-main-light-gray bg-white shadow-sm">
+                    <Image
+                      alt={`${market.assetName} logo`}
+                      className="h-11 w-11 rounded-full object-contain"
+                      height={44}
+                      src={getMarketLogoPath(market.symbol)}
+                      width={44}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <SymbolSelector activeSymbol={market.symbol} />
+                    <p className="text-xs-custom uppercase text-main-dark-gray/50">
+                      {market.symbol}
+                    </p>
+                    <h1 className="mt-2 flex flex-col leading-none text-main-dark-gray">
+                      <span className="text-4xl-custom font-bold">
+                        {market.assetName}
+                      </span>
+                      <span className="mt-2 text-base-custom font-semibold tracking-normal text-main-dark-gray/55">
+                        Perpetual
+                      </span>
+                    </h1>
+                  </div>
+                </div>
                 <p className="mt-3 max-w-3xl text-sm-custom text-main-dark-gray/70 break-keep">
                   차트, 주문, 포지션, 미체결 주문을 한 화면에서 처리하는 메인
                   트레이딩 화면입니다.

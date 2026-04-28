@@ -104,6 +104,14 @@ export const MARKET_SNAPSHOT_LIST = SUPPORTED_MARKET_SYMBOLS.map(
   (symbol) => MARKET_SNAPSHOTS[symbol]
 );
 
+export function getMarketLogoPath(symbol: MarketSymbol) {
+  if (symbol === "ETHUSDT") {
+    return "/images/logo/ethereum.png";
+  }
+
+  return "/images/logo/bitcoin.png";
+}
+
 export function isSupportedMarketSymbol(
   value: string
 ): value is MarketSymbol {

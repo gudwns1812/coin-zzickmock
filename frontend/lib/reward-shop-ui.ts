@@ -1,5 +1,7 @@
 import type { ShopItem } from "@/lib/futures-api";
 
+const COFFEE_SHOP_ITEM_IMAGE_PATH = "/images/IceAmericano.png";
+
 export function normalizeVoucherPhoneNumber(value: string): string {
   return value.trim().replaceAll("-", "");
 }
@@ -65,4 +67,8 @@ export function getShopItemAvailabilityLabel(item: ShopItem): string {
   }
 
   return "구매 가능";
+}
+
+export function getShopItemImagePath(_item: Pick<ShopItem, "code" | "name">) {
+  return COFFEE_SHOP_ITEM_IMAGE_PATH;
 }

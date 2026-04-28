@@ -21,6 +21,13 @@ test("market detail remounts when the route symbol changes", () => {
   assert.equal(detailPageSource.includes("key={market.symbol}"), true);
 });
 
+test("trading title renders asset and perpetual on separate lines with logo", () => {
+  assert.equal(source.includes("getMarketLogoPath(market.symbol)"), true);
+  assert.equal(source.includes("{market.assetName}"), true);
+  assert.equal(source.includes("Perpetual"), true);
+  assert.equal(source.includes("{market.displayName}"), false);
+});
+
 test("close position button uses held quantity instead of closeable quantity gating", () => {
   assert.equal(source.includes("quantity={position.quantity}"), true);
   assert.equal(source.includes("disabled={closeableQuantity <= 0}"), false);

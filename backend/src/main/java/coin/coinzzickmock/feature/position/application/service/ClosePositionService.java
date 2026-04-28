@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -68,8 +69,9 @@ public class ClosePositionService {
         }
 
         double closeFee = market.lastPrice() * Math.min(quantity, position.quantity()) * TAKER_FEE_RATE;
+        String closeOrderId = UUID.randomUUID().toString();
         orderRepository.save(memberId, FuturesOrder.place(
-                UUID.randomUUID().toString(),
+                closeOrderId,
                 symbol,
                 positionSide,
                 ORDER_TYPE_MARKET,
@@ -91,7 +93,8 @@ public class ClosePositionService {
                 market.markPrice(),
                 market.lastPrice(),
                 TAKER_FEE_RATE,
-                PositionHistory.CLOSE_REASON_MANUAL
+                PositionHistory.CLOSE_REASON_MANUAL,
+                WalletHistorySource.positionCloseOrderFill(closeOrderId)
         );
         pendingCloseOrderCapReconciler.reconcile(
                 memberId,

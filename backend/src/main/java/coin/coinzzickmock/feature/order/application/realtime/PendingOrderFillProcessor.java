@@ -5,6 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
@@ -161,7 +162,10 @@ public class PendingOrderFillProcessor {
         double initialMargin = (executionPrice * order.quantity()) / order.leverage();
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        accountRepository.save(account.reserveForFilledOrder(order.estimatedFee(), initialMargin));
+        accountRepository.save(
+                account.reserveForFilledOrder(order.estimatedFee(), initialMargin),
+                WalletHistorySource.orderFill(order.orderId())
+        );
         afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
 
         PositionSnapshot existing = positionRepository.findOpenPosition(
@@ -205,7 +209,8 @@ public class PendingOrderFillProcessor {
                 markPrice,
                 executionPrice,
                 MAKER_FEE_RATE,
-                PositionHistory.CLOSE_REASON_LIMIT_CLOSE
+                PositionHistory.CLOSE_REASON_LIMIT_CLOSE,
+                WalletHistorySource.positionCloseOrderFill(order.orderId())
         );
         pendingCloseOrderCapReconciler.reconcile(
                 memberId,

@@ -5,6 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
@@ -63,7 +64,7 @@ public class CreateOrderService {
         );
 
         if (preview.executable()) {
-            applyFilledOrder(command, marketSnapshot, preview);
+            applyFilledOrder(command, orderId, marketSnapshot, preview);
         }
 
         return new CreateOrderResult(
@@ -80,12 +81,16 @@ public class CreateOrderService {
 
     private void applyFilledOrder(
             CreateOrderCommand command,
+            String orderId,
             MarketSnapshot marketSnapshot,
             OrderPreview preview
     ) {
         TradingAccount account = accountRepository.findByMemberId(command.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        accountRepository.save(account.reserveForFilledOrder(preview.estimatedFee(), preview.estimatedInitialMargin()));
+        accountRepository.save(
+                account.reserveForFilledOrder(preview.estimatedFee(), preview.estimatedInitialMargin()),
+                WalletHistorySource.orderFill(orderId)
+        );
         afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(command.memberId()));
 
         PositionSnapshot existing = positionRepository.findOpenPosition(

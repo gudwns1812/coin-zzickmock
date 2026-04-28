@@ -141,7 +141,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ### `reward_shop_items`
 
 - 목적:
-  포인트 상점 상품을 DB 운영 데이터로 저장한다. MVP에서는 admin item CRUD UI/API 없이 migration/bootstrap/data-admin 경로로 관리한다.
+  포인트 상점 상품을 DB 운영 데이터로 저장한다. MVP에서는 migration/bootstrap seed로 기본 상품을 만들고, 관리자 상품 관리 API/UI에서 운영 중인 상품을 생성, 수정, 비활성화한다.
 - PK:
   `id` (auto increment)
 - 유니크:
@@ -150,6 +150,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `code`, `name`, `description`, `item_type`, `price`, `active`, `total_stock`, `sold_quantity`, `per_member_purchase_limit`, `sort_order`, `version`, `created_at`, `updated_at`
 - 판매 가능성:
   별도 `sellable` 컬럼은 없다. 판매 가능 여부는 `active`, `sold_quantity`, `total_stock`, 유저별 `purchase_count`로 계산한다.
+- 운영 관리:
+  관리자 상품 관리는 기존 row를 hard delete하지 않는다. 판매 중지는 `active = false`로 처리하고, 이미 생성된 교환권 요청은 요청 시점의 `item_code`, `item_name`, `item_price`, `point_amount` 스냅샷을 유지한다.
 - 재고:
   `sold_quantity`는 item-level 재고 소진 수량이다. 유한 재고 상품은 `sold_quantity <= total_stock` 제약을 가진다.
 - 관련 엔티티/모듈:

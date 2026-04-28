@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/markets", label: "마켓" },
-  { href: "/portfolio", label: "계정" },
+  { href: "/mypage", label: "계정" },
   { href: "/markets/BTCUSDT", label: "트레이딩" },
   { href: "/shop", label: "상점" },
 ];

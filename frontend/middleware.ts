@@ -23,12 +23,17 @@ export async function middleware(req: NextRequest) {
 
   if (
     (pathname.startsWith("/portfolio") ||
+      pathname.startsWith("/mypage") ||
       pathname.startsWith("/watchlist") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/shop")) &&
     !token
   ) {
     return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  if (pathname === "/portfolio" || pathname.startsWith("/portfolio/")) {
+    return NextResponse.redirect(new URL("/mypage", req.url));
   }
 
   if (pathname.startsWith("/markets/")) {

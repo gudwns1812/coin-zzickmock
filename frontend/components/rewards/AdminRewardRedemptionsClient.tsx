@@ -18,8 +18,9 @@ import { toast } from "react-toastify";
 
 const STATUS_TABS: { label: string; value: RewardRedemptionStatus }[] = [
   { label: "대기", value: "PENDING" },
-  { label: "발송 완료", value: "SENT" },
-  { label: "취소/환불", value: "CANCELLED_REFUNDED" },
+  { label: "승인 완료", value: "APPROVED" },
+  { label: "반려", value: "REJECTED" },
+  { label: "취소", value: "CANCELLED" },
 ];
 
 type Props = {
@@ -52,10 +53,10 @@ export default function AdminRewardRedemptionsClient({
       const memo = memoByRequestId[request.requestId] ?? "";
       if (action === "send") {
         await markRewardRedemptionSent(request.requestId, memo);
-        toast.success("교환권을 발송 완료 처리했습니다.");
+        toast.success("교환권을 승인 완료 처리했습니다.");
       } else {
         await cancelRewardRedemption(request.requestId, memo);
-        toast.success("교환권 신청을 취소하고 포인트를 환불했습니다.");
+        toast.success("교환권 신청을 반려하고 포인트를 환불했습니다.");
       }
 
       router.refresh();
@@ -78,7 +79,7 @@ export default function AdminRewardRedemptionsClient({
               교환권 신청 관리
             </h1>
             <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
-              대기 중인 커피 교환권 신청을 발송 완료하거나 취소/환불 처리합니다.
+              대기 중인 커피 교환권 신청을 승인 완료하거나 반려 처리합니다.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -180,7 +181,7 @@ export default function AdminRewardRedemptionsClient({
                           isPending={
                             pendingAction === `${request.requestId}:send`
                           }
-                          label="발송 완료"
+                          label="승인 완료"
                           onClick={() => runAction(request, "send")}
                         />
                         <ActionButton
@@ -189,7 +190,7 @@ export default function AdminRewardRedemptionsClient({
                           isPending={
                             pendingAction === `${request.requestId}:cancel`
                           }
-                          label="취소/환불"
+                          label="반려"
                           onClick={() => runAction(request, "cancel")}
                         />
                       </div>
@@ -244,7 +245,8 @@ function formatDateTime(value: string): string {
 }
 
 function statusLabel(status: RewardRedemptionStatus): string {
-  if (status === "SENT") return "발송 완료";
-  if (status === "CANCELLED_REFUNDED") return "취소/환불";
+  if (status === "APPROVED" || status === "SENT") return "승인 완료";
+  if (status === "REJECTED" || status === "CANCELLED_REFUNDED") return "반려";
+  if (status === "CANCELLED") return "취소";
   return "대기";
 }

@@ -171,7 +171,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 주요 컬럼:
   `member_id`, `shop_item_id`, `purchase_count`, `version`, `created_at`, `updated_at`
 - 구매 제한 기준:
-  `purchase_count`는 `PENDING`/`SENT` 요청만 카운트한다. `CANCELLED_REFUNDED` 전환은 guarded decrement로 카운트를 한 번만 복구한다.
+  `purchase_count`는 `PENDING`/`APPROVED` 요청만 카운트한다. `REJECTED`/`CANCELLED` 전환은 guarded decrement로 카운트를 한 번만 복구한다.
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
@@ -192,6 +192,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `feature.reward`
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
   [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
 
 ### `reward_redemption_requests`
@@ -207,13 +208,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 스냅샷:
   `item_code`, `item_name`, `item_price`, `point_amount`는 요청 시점의 상품/가격 스냅샷이다.
 - 상태:
-  MVP 상태는 `PENDING`, `SENT`, `CANCELLED_REFUNDED`다.
+  MVP 상태는 `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`다.
 - 처리 규칙:
-  `PENDING` 요청은 포인트와 재고/구매 카운트를 이미 소비한 상태다. `SENT`는 최종 발송 상태이며, `CANCELLED_REFUNDED`는 발송 전 취소와 정확히 한 번의 포인트/재고/구매 카운트 복구를 뜻한다.
+  `PENDING` 요청은 포인트와 재고/구매 카운트를 이미 소비한 상태다. `APPROVED`는 최종 승인 상태이며, `REJECTED`와 `CANCELLED`는 승인 전 반려/취소와 정확히 한 번의 포인트/재고/구매 카운트 복구를 뜻한다.
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
   [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
 
 ### `futures_orders`

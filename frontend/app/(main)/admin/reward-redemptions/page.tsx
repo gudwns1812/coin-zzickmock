@@ -6,8 +6,9 @@ import {
 
 const REDEMPTION_STATUSES: RewardRedemptionStatus[] = [
   "PENDING",
-  "SENT",
-  "CANCELLED_REFUNDED",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
 ];
 
 type Props = {
@@ -34,6 +35,12 @@ export default async function AdminRewardRedemptionsPage({
 }
 
 function parseStatus(value: string | undefined): RewardRedemptionStatus {
+  if (value === "SENT") {
+    return "APPROVED";
+  }
+  if (value === "CANCELLED_REFUNDED") {
+    return "REJECTED";
+  }
   if (
     value &&
     REDEMPTION_STATUSES.includes(value as RewardRedemptionStatus)

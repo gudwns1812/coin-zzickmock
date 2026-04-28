@@ -395,7 +395,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 목표
 
-운영자가 커피 교환권 신청을 확인하고, 발송 완료 또는 취소/환불을 처리한다.
+운영자가 커피 교환권 신청을 확인하고, 승인 완료 또는 반려를 처리한다.
 
 ### 권한
 
@@ -405,7 +405,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 ### 주요 섹션
 
 - 상태 탭:
-  `PENDING`, `SENT`, `CANCELLED_REFUNDED`
+  `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`
 - 요청자 member id
 - 상품명과 포인트
 - 제출한 휴대폰 번호
@@ -414,12 +414,13 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 핵심 상호작용
 
-- `PENDING -> SENT`: 발송 완료 처리
-- `PENDING -> CANCELLED_REFUNDED`: 포인트 환불, 재고/유저 구매 카운트 복구
-- `SENT`는 취소/환불할 수 없다.
-- `SENT`와 `CANCELLED_REFUNDED`는 terminal 상태이며 추가 상태 전이가 없다.
+- `PENDING -> APPROVED`: 승인 완료 처리
+- `PENDING -> REJECTED`: 관리자 반려, 포인트 환불, 재고/유저 구매 카운트 복구
+- `PENDING -> CANCELLED`: 사용자 취소, 포인트 환불, 재고/유저 구매 카운트 복구
+- `APPROVED`는 취소/환불할 수 없다.
+- `APPROVED`, `REJECTED`, `CANCELLED`는 terminal 상태이며 추가 상태 전이가 없다.
 - 중복 클릭이나 이미 terminal 상태인 요청의 재처리는 백엔드에서 거절하고 포인트/재고/구매 카운트를 다시 변경하지 않는다.
-- 관리자 처리 행위는 요청 행에 `adminMemberId`, `adminMemo`, `sentAt` 또는 `cancelledAt`으로 남긴다. 별도 감사 로그 테이블은 MVP 범위 밖이다.
+- 관리자 처리 행위는 요청 행에 `adminMemberId`, `adminMemo`, `sentAt`(승인 시각) 또는 `cancelledAt`(반려/취소 시각)으로 남긴다. 별도 감사 로그 테이블은 MVP 범위 밖이다.
 
 ### 환불 정확성
 

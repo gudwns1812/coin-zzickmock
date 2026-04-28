@@ -63,7 +63,7 @@ public record RewardRedemptionRequest(
         }
     }
 
-    public RewardRedemptionRequest markSent(String adminMemberId, String adminMemo, Instant sentAt) {
+    public RewardRedemptionRequest markApproved(String adminMemberId, String adminMemo, Instant approvedAt) {
         requirePending();
         return new RewardRedemptionRequest(
                 requestId,
@@ -75,16 +75,16 @@ public record RewardRedemptionRequest(
                 pointAmount,
                 submittedPhoneNumber,
                 normalizedPhoneNumber,
-                RewardRedemptionStatus.SENT,
+                RewardRedemptionStatus.APPROVED,
                 requestedAt,
-                sentAt,
+                approvedAt,
                 cancelledAt,
                 adminMemberId,
                 adminMemo
         );
     }
 
-    public RewardRedemptionRequest cancelRefunded(String adminMemberId, String adminMemo, Instant cancelledAt) {
+    public RewardRedemptionRequest rejectRefunded(String adminMemberId, String adminMemo, Instant rejectedAt) {
         requirePending();
         return new RewardRedemptionRequest(
                 requestId,
@@ -96,7 +96,28 @@ public record RewardRedemptionRequest(
                 pointAmount,
                 submittedPhoneNumber,
                 normalizedPhoneNumber,
-                RewardRedemptionStatus.CANCELLED_REFUNDED,
+                RewardRedemptionStatus.REJECTED,
+                requestedAt,
+                sentAt,
+                rejectedAt,
+                adminMemberId,
+                adminMemo
+        );
+    }
+
+    public RewardRedemptionRequest cancelRefunded(Instant cancelledAt) {
+        requirePending();
+        return new RewardRedemptionRequest(
+                requestId,
+                memberId,
+                shopItemId,
+                itemCode,
+                itemName,
+                itemPrice,
+                pointAmount,
+                submittedPhoneNumber,
+                normalizedPhoneNumber,
+                RewardRedemptionStatus.CANCELLED,
                 requestedAt,
                 sentAt,
                 cancelledAt,

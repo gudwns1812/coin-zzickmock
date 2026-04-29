@@ -18,6 +18,7 @@ coin-zzickmock/
 ├── FRONTEND.md               # 프론트 작업 기준 문서
 ├── BACKEND.md                # 백엔드 아키텍처 기준 문서
 ├── RELEASE.md                # 배포/릴리즈 기준 문서
+├── OBSERVABILITY.md          # 메트릭/로그/모니터링 기준 문서
 ├── ARCHITECTURE.md           # 저장소 구조와 책임 경계
 └── README.md
 ```
@@ -62,6 +63,7 @@ npm run lint
 - 프론트 기준 문서: [FRONTEND.md](FRONTEND.md)
 - 백엔드 기준 문서: [BACKEND.md](BACKEND.md)
 - 배포/릴리즈 기준 문서: [RELEASE.md](RELEASE.md)
+- 관측성 기준 문서: [OBSERVABILITY.md](OBSERVABILITY.md)
 - 백엔드 상세 설계: [docs/design-docs/backend-design/README.md](docs/design-docs/backend-design/README.md)
 - UI 상세 설계: [docs/design-docs/ui-design/README.md](docs/design-docs/ui-design/README.md)
 
@@ -87,6 +89,7 @@ npm run lint
 
 - 백엔드 아키텍처 기준: [BACKEND.md](BACKEND.md)
 - 프론트 작업 기준: [FRONTEND.md](FRONTEND.md)
+- 관측성 기준: [OBSERVABILITY.md](OBSERVABILITY.md)
 - 저장소 구조와 책임 경계: [ARCHITECTURE.md](ARCHITECTURE.md)
 - 배포/릴리즈 상세 문서: [docs/release-docs/README.md](docs/release-docs/README.md)
 - 상세 설계 루트: [docs/design-docs/README.md](docs/design-docs/README.md)

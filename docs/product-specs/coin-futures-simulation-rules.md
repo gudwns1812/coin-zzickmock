@@ -115,9 +115,11 @@ mark-to-market을 프론트엔드에서 중복 계산할 수 있다. 이 중복 
 `CLOSE_POSITION` 목적을 기록한다.
 
 - Market 종료: 최신 체결가로 즉시 종료하며 `taker` 수수료를 적용한다
-- LONG limit 종료: 최신 체결가가 지정가 이상이 되면 체결 대상으로 본다
-- SHORT limit 종료: 최신 체결가가 지정가 이하가 되면 체결 대상으로 본다
-- Limit 종료 주문은 체결 전까지 미체결 주문으로 남고 취소할 수 있다
+- LONG limit 종료: 최신 체결가가 지정가 이상이면 즉시 체결 가능한 주문으로 보고 `taker`로 종료한다
+- SHORT limit 종료: 최신 체결가가 지정가 이하이면 즉시 체결 가능한 주문으로 보고 `taker`로 종료한다
+- 즉시 체결 가능한 limit 종료 주문은 주문 타입과 원래 지정가를 유지하되, 체결 가격/수수료/정산 기준은 최신 체결가를 사용한다
+- 즉시 체결되지 않은 limit 종료 주문은 미체결 주문으로 남고 취소할 수 있으며, pending 상태의 예상 수수료는 `0`으로 둔다
+- pending limit 종료 주문은 이후 가격 이동 구간에 지정가가 포함될 때 `maker`로 체결되며, 체결 가격과 수수료 기준 가격은 주문의 지정가다
 - 동일 계정/심볼/방향/마진 모드의 pending 종료 주문 수량 합계는 OCO-aware effective exposure 기준으로 최종 정합화 이후 현재 열린 포지션 수량을 초과할 수 없다
 - 새 종료 주문은 기존 pending 종료 주문 합계가 이미 현재 열린 포지션 수량과 같거나 더 큰 상태에서도 접수할 수 있다. 접수 후 같은 트랜잭션 흐름에서 cap reconciliation을 수행해 전체 pending 종료 주문 수량을 현재 열린 포지션 수량 이하로 맞춘다.
 - pending 종료 주문의 effective exposure 공식은 `sum(ungrouped pending CLOSE_POSITION quantity) + sum(max(quantity) per ocoGroupId)`이다. scope는 `memberId + symbol + positionSide + marginMode`이고 `FILLED`, `CANCELLED` 주문은 제외한다.

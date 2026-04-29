@@ -13,6 +13,9 @@ import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -26,7 +29,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Service
 public class CreateOrderService {
+    private static final String ORDER_TYPE_LIMIT = "LIMIT";
+    private static final String ORDER_TYPE_MARKET = "MARKET";
+
     private final OrderPreviewPolicy orderPreviewPolicy;
+    private final OrderPlacementPolicy orderPlacementPolicy;
     private final Providers providers;
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
@@ -35,13 +42,17 @@ public class CreateOrderService {
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
+        validateOrderType(command.orderType());
         return preview(command, loadMarket(command.symbol()));
     }
 
     @Transactional
     public CreateOrderResult execute(CreateOrderCommand command) {
+        validateOrderType(command.orderType());
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());
-        OrderPreview preview = preview(command, marketSnapshot);
+        OrderPlacementRequest placementRequest = placementRequest(command);
+        OrderPlacementDecision decision = orderPlacementPolicy.decide(placementRequest, marketSnapshot.lastPrice());
+        OrderPreview preview = orderPreviewPolicy.preview(placementRequest, marketSnapshot.lastPrice());
         String orderId = UUID.randomUUID().toString();
 
         FuturesOrder futuresOrder = orderRepository.save(
@@ -56,15 +67,15 @@ public class CreateOrderService {
                         command.leverage(),
                         command.quantity(),
                         command.limitPrice(),
-                        preview.executable(),
-                        preview.feeType(),
+                        decision.executable(),
+                        decision.feeType(),
                         preview.estimatedFee(),
-                        marketSnapshot.lastPrice()
+                        decision.executionPrice()
                 )
         );
 
-        if (preview.executable()) {
-            applyFilledOrder(command, orderId, marketSnapshot, preview);
+        if (decision.executable()) {
+            applyFilledOrder(command, orderId, marketSnapshot, preview, decision.executionPrice());
         }
 
         return new CreateOrderResult(
@@ -83,7 +94,8 @@ public class CreateOrderService {
             CreateOrderCommand command,
             String orderId,
             MarketSnapshot marketSnapshot,
-            OrderPreview preview
+            OrderPreview preview,
+            double executionPrice
     ) {
         TradingAccount account = accountRepository.findByMemberId(command.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
@@ -107,7 +119,7 @@ public class CreateOrderService {
                     command.marginMode(),
                     command.leverage(),
                     command.quantity(),
-                    marketSnapshot.lastPrice(),
+                    executionPrice,
                     marketSnapshot.markPrice(),
                     preview.estimatedFee()
             ));
@@ -119,7 +131,7 @@ public class CreateOrderService {
                 existing.increase(
                         command.leverage(),
                         command.quantity(),
-                        marketSnapshot.lastPrice(),
+                        executionPrice,
                         marketSnapshot.markPrice(),
                         preview.estimatedFee()
                 )
@@ -127,7 +139,18 @@ public class CreateOrderService {
     }
 
     private OrderPreview preview(CreateOrderCommand command, MarketSnapshot marketSnapshot) {
-        return orderPreviewPolicy.preview(command, marketSnapshot);
+        return orderPreviewPolicy.preview(placementRequest(command), marketSnapshot.lastPrice());
+    }
+
+    private OrderPlacementRequest placementRequest(CreateOrderCommand command) {
+        return new OrderPlacementRequest(
+                FuturesOrder.PURPOSE_OPEN_POSITION,
+                command.positionSide(),
+                command.orderType(),
+                command.limitPrice(),
+                command.quantity(),
+                command.leverage()
+        );
     }
 
     private MarketSnapshot loadMarket(String symbol) {
@@ -136,5 +159,11 @@ public class CreateOrderService {
             throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
         }
         return snapshot;
+    }
+
+    private void validateOrderType(String orderType) {
+        if (!ORDER_TYPE_MARKET.equalsIgnoreCase(orderType) && !ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 유형을 확인해주세요.");
+        }
     }
 }

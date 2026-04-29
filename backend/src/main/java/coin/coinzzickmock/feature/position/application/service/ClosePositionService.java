@@ -6,6 +6,9 @@ import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
@@ -21,17 +24,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ClosePositionService {
-    private static final double TAKER_FEE_RATE = 0.0005;
     private static final String ORDER_TYPE_LIMIT = "LIMIT";
     private static final String ORDER_TYPE_MARKET = "MARKET";
     private static final String FEE_TYPE_MAKER = "MAKER";
-    private static final String FEE_TYPE_TAKER = "TAKER";
 
     private final PositionRepository positionRepository;
     private final OrderRepository orderRepository;
     private final Providers providers;
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
+    private final OrderPlacementPolicy orderPlacementPolicy;
 
     @Transactional
     public ClosePositionResult close(
@@ -48,7 +50,19 @@ public class ClosePositionService {
         validateCloseRequest(quantity, orderType, limitPrice, position);
 
         MarketSnapshot market = loadMarket(symbol);
-        if (ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
+        OrderPlacementDecision decision = orderPlacementPolicy.decide(
+                new OrderPlacementRequest(
+                        FuturesOrder.PURPOSE_CLOSE_POSITION,
+                        positionSide,
+                        orderType,
+                        limitPrice,
+                        quantity,
+                        position.leverage()
+                ),
+                market.lastPrice()
+        );
+
+        if (ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType) && !decision.executable()) {
             FuturesOrder pendingCloseOrder = orderRepository.save(memberId, FuturesOrder.place(
                     UUID.randomUUID().toString(),
                     symbol,
@@ -68,22 +82,23 @@ public class ClosePositionService {
             return new ClosePositionResult(symbol, 0, 0, 0);
         }
 
-        double closeFee = market.lastPrice() * Math.min(quantity, position.quantity()) * TAKER_FEE_RATE;
+        double closeFee = decision.estimatedFee(Math.min(quantity, position.quantity()));
         String closeOrderId = UUID.randomUUID().toString();
+        String savedOrderType = ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType) ? ORDER_TYPE_LIMIT : ORDER_TYPE_MARKET;
         orderRepository.save(memberId, FuturesOrder.place(
                 closeOrderId,
                 symbol,
                 positionSide,
-                ORDER_TYPE_MARKET,
+                savedOrderType,
                 FuturesOrder.PURPOSE_CLOSE_POSITION,
                 marginMode,
                 position.leverage(),
                 quantity,
-                null,
+                ORDER_TYPE_LIMIT.equals(savedOrderType) ? limitPrice : null,
                 true,
-                FEE_TYPE_TAKER,
+                decision.feeType(),
                 closeFee,
-                market.lastPrice()
+                decision.executionPrice()
         ));
 
         ClosePositionResult result = positionCloseFinalizer.close(
@@ -91,8 +106,8 @@ public class ClosePositionService {
                 position,
                 quantity,
                 market.markPrice(),
-                market.lastPrice(),
-                TAKER_FEE_RATE,
+                decision.executionPrice(),
+                decision.feeRate(),
                 PositionHistory.CLOSE_REASON_MANUAL,
                 WalletHistorySource.positionCloseOrderFill(closeOrderId)
         );
@@ -121,6 +136,10 @@ public class ClosePositionService {
     ) {
         if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "종료 수량을 확인해주세요.");
+        }
+
+        if (!ORDER_TYPE_MARKET.equalsIgnoreCase(orderType) && !ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 유형을 확인해주세요.");
         }
 
         if (ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)

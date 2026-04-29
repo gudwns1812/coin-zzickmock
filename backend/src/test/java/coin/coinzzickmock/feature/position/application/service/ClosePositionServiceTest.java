@@ -474,6 +474,34 @@ class ClosePositionServiceTest {
     }
 
     @Test
+    void closeRejectsUnsupportedOrderType() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.2,
+                100000,
+                100000
+        ));
+        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(100000, 100000));
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.close(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                0.1,
+                "STOP",
+                101000.0
+        ));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
+
+    @Test
     void longPendingCloseCapReducesHigherLessLikelyLimitPriceFirst() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();

@@ -29,6 +29,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Service
 public class CreateOrderService {
+    private static final String ORDER_TYPE_LIMIT = "LIMIT";
+    private static final String ORDER_TYPE_MARKET = "MARKET";
+
     private final OrderPreviewPolicy orderPreviewPolicy;
     private final OrderPlacementPolicy orderPlacementPolicy;
     private final Providers providers;
@@ -39,11 +42,13 @@ public class CreateOrderService {
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
+        validateOrderType(command.orderType());
         return preview(command, loadMarket(command.symbol()));
     }
 
     @Transactional
     public CreateOrderResult execute(CreateOrderCommand command) {
+        validateOrderType(command.orderType());
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());
         OrderPlacementRequest placementRequest = placementRequest(command);
         OrderPlacementDecision decision = orderPlacementPolicy.decide(placementRequest, marketSnapshot.lastPrice());
@@ -154,5 +159,11 @@ public class CreateOrderService {
             throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
         }
         return snapshot;
+    }
+
+    private void validateOrderType(String orderType) {
+        if (!ORDER_TYPE_MARKET.equalsIgnoreCase(orderType) && !ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 유형을 확인해주세요.");
+        }
     }
 }

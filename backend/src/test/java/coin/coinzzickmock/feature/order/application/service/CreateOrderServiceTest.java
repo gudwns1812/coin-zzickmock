@@ -1,6 +1,8 @@
 package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
@@ -34,6 +36,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CreateOrderServiceTest {
@@ -284,6 +287,33 @@ class CreateOrderServiceTest {
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    @Test
+    void previewRejectsUnsupportedOrderType() {
+        CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
+                new FakeProviders(),
+                new InMemoryOrderRepository(),
+                new InMemoryAccountRepository(),
+                new InMemoryPositionRepository(),
+                new AfterCommitEventPublisher(event -> {
+                })
+        );
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.preview(new CreateOrderCommand(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "LIMT",
+                "ISOLATED",
+                10,
+                0.1,
+                75000.0
+        )));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
     }
 
     private static class CapturingEventPublisher implements ApplicationEventPublisher {

@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
@@ -44,6 +45,7 @@ class CreateOrderServiceTest {
 
         CreateOrderService service = new CreateOrderService(
                 new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
                 new FakeProviders(),
                 orderRepository,
                 accountRepository,
@@ -88,6 +90,7 @@ class CreateOrderServiceTest {
 
         CreateOrderService service = new CreateOrderService(
                 new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
                 new FakeProviders(110000, 110000),
                 orderRepository,
                 accountRepository,
@@ -118,6 +121,7 @@ class CreateOrderServiceTest {
     void previewsMakerLimitOrderWithEntryPriceAndExecutionFlag() {
         CreateOrderService service = new CreateOrderService(
                 new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
                 new FakeProviders(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),
@@ -143,6 +147,106 @@ class CreateOrderServiceTest {
     }
 
     @Test
+    void marketableLongLimitUsesLatestTradePriceForPreviewOrderAccountAndPosition() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
+                new FakeProviders(74700, 74700),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                new AfterCommitEventPublisher(event -> {
+                })
+        );
+        CreateOrderCommand command = new CreateOrderCommand(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                0.1,
+                75000.0
+        );
+
+        OrderPreview preview = service.preview(command);
+        CreateOrderResult result = service.execute(command);
+
+        assertTrue(preview.executable());
+        assertEquals("TAKER", preview.feeType());
+        assertEquals(74700.0, preview.estimatedEntryPrice(), 0.0001);
+        assertEquals(3.735, preview.estimatedFee(), 0.0001);
+        assertEquals(747.0, preview.estimatedInitialMargin(), 0.0001);
+        assertEquals(67230.0, preview.estimatedLiquidationPrice(), 0.0001);
+        assertEquals("FILLED", result.status());
+        assertEquals(74700.0, result.executionPrice(), 0.0001);
+        assertEquals(99249.265, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
+        FuturesOrder saved = orderRepository.findByMemberId("demo-member").get(0);
+        assertEquals(FuturesOrder.STATUS_FILLED, saved.status());
+        assertEquals("TAKER", saved.feeType());
+        assertEquals(74700.0, saved.executionPrice(), 0.0001);
+        assertEquals(75000.0, saved.limitPrice(), 0.0001);
+        PositionSnapshot opened = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow();
+        assertEquals(74700.0, opened.entryPrice(), 0.0001);
+        assertEquals(67230.0, opened.liquidationPrice(), 0.0001);
+        assertEquals(3.735, opened.accumulatedOpenFee(), 0.0001);
+    }
+
+    @Test
+    void marketableShortLimitEqualityUsesLatestTradePriceForPreviewOrderAccountAndPosition() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
+                new FakeProviders(75000, 75000),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                new AfterCommitEventPublisher(event -> {
+                })
+        );
+        CreateOrderCommand command = new CreateOrderCommand(
+                "demo-member",
+                "BTCUSDT",
+                "SHORT",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                0.1,
+                75000.0
+        );
+
+        OrderPreview preview = service.preview(command);
+        CreateOrderResult result = service.execute(command);
+
+        assertTrue(preview.executable());
+        assertEquals("TAKER", preview.feeType());
+        assertEquals(75000.0, preview.estimatedEntryPrice(), 0.0001);
+        assertEquals(3.75, preview.estimatedFee(), 0.0001);
+        assertEquals(750.0, preview.estimatedInitialMargin(), 0.0001);
+        assertEquals(82500.0, preview.estimatedLiquidationPrice(), 0.0001);
+        assertEquals("FILLED", result.status());
+        assertEquals(75000.0, result.executionPrice(), 0.0001);
+        assertEquals(99246.25, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
+        FuturesOrder saved = orderRepository.findByMemberId("demo-member").get(0);
+        assertEquals(FuturesOrder.STATUS_FILLED, saved.status());
+        assertEquals("TAKER", saved.feeType());
+        assertEquals(75000.0, saved.executionPrice(), 0.0001);
+        assertEquals(75000.0, saved.limitPrice(), 0.0001);
+        PositionSnapshot opened = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "SHORT", "ISOLATED")
+                .orElseThrow();
+        assertEquals(75000.0, opened.entryPrice(), 0.0001);
+        assertEquals(82500.0, opened.liquidationPrice(), 0.0001);
+        assertEquals(3.75, opened.accumulatedOpenFee(), 0.0001);
+    }
+
+    @Test
     void walletBalanceChangedEventPublishesOnlyAfterTransactionCommit() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -150,6 +254,7 @@ class CreateOrderServiceTest {
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
         CreateOrderService service = new CreateOrderService(
                 new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
                 new FakeProviders(),
                 orderRepository,
                 accountRepository,
@@ -255,14 +360,17 @@ class CreateOrderServiceTest {
     }
 
     private static class InMemoryOrderRepository implements OrderRepository {
+        private final List<FuturesOrder> orders = new ArrayList<>();
+
         @Override
         public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+            orders.add(futuresOrder);
             return futuresOrder;
         }
 
         @Override
         public List<FuturesOrder> findByMemberId(String memberId) {
-            return List.of();
+            return List.copyOf(orders);
         }
 
         @Override

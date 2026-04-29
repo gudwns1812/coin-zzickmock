@@ -9,6 +9,7 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
@@ -74,7 +75,8 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ),
-                new PendingCloseOrderCapReconciler(orderRepository)
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new OrderPlacementPolicy()
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
@@ -130,7 +132,8 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ),
-                new PendingCloseOrderCapReconciler(orderRepository)
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new OrderPlacementPolicy()
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
@@ -185,7 +188,8 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ),
-                new PendingCloseOrderCapReconciler(orderRepository)
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new OrderPlacementPolicy()
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.2, "MARKET", null);
@@ -338,7 +342,8 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ),
-                new PendingCloseOrderCapReconciler(orderRepository)
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new OrderPlacementPolicy()
         );
 
         ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 112000.0);
@@ -354,6 +359,118 @@ class ClosePositionServiceTest {
         assertEquals(FuturesOrder.PURPOSE_CLOSE_POSITION, order.orderPurpose());
         assertEquals("LIMIT", order.orderType());
         assertEquals(112000, order.limitPrice(), 0.0001);
+        assertEquals("MAKER", order.feeType());
+        assertEquals(0, order.estimatedFee(), 0.0001);
+        assertEquals(112000, order.executionPrice(), 0.0001);
+    }
+
+    @Test
+    void marketableLongLimitCloseFillsImmediatelyAsTakerAndRetainsLimitOrderShape() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
+                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+        );
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
+        InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.2,
+                100000,
+                100000
+        ));
+        ClosePositionService service = new ClosePositionService(
+                positionRepository,
+                orderRepository,
+                new FakeProviders(110000, 110000),
+                new PositionCloseFinalizer(
+                        positionRepository,
+                        accountRepository,
+                        positionHistoryRepository,
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
+                        new AfterCommitEventPublisher(event -> {
+                        })
+                ),
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new OrderPlacementPolicy()
+        );
+
+        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 110000.0);
+
+        assertEquals(0.1, result.closedQuantity(), 0.0001);
+        assertEquals(994.5, result.realizedPnl(), 0.0001);
+        FuturesOrder order = orderRepository.findByMemberId("demo-member").get(0);
+        assertEquals("LIMIT", order.orderType());
+        assertEquals(110000.0, order.limitPrice(), 0.0001);
+        assertEquals(FuturesOrder.PURPOSE_CLOSE_POSITION, order.orderPurpose());
+        assertEquals(FuturesOrder.STATUS_FILLED, order.status());
+        assertEquals("TAKER", order.feeType());
+        assertEquals(110000.0, order.executionPrice(), 0.0001);
+        assertEquals(5.5, order.estimatedFee(), 0.0001);
+        assertEquals(0.1, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow()
+                .quantity(), 0.0001);
+        TradingAccount account = accountRepository.findByMemberId("demo-member").orElseThrow();
+        assertEquals(100994.5, account.walletBalance(), 0.0001);
+        assertEquals(96994.5, account.availableMargin(), 0.0001);
+        assertEquals(0, positionHistoryRepository.findByMemberId("demo-member", null).size());
+    }
+
+    @Test
+    void marketableShortLimitCloseFillsImmediatelyAsTakerAtEqualityBoundary() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
+                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+        );
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
+        InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                0.2,
+                100000,
+                100000
+        ));
+        ClosePositionService service = new ClosePositionService(
+                positionRepository,
+                orderRepository,
+                new FakeProviders(90000, 90000),
+                new PositionCloseFinalizer(
+                        positionRepository,
+                        accountRepository,
+                        positionHistoryRepository,
+                        new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
+                        new AfterCommitEventPublisher(event -> {
+                        })
+                ),
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new OrderPlacementPolicy()
+        );
+
+        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "SHORT", "ISOLATED", 0.1, "LIMIT", 90000.0);
+
+        assertEquals(0.1, result.closedQuantity(), 0.0001);
+        assertEquals(995.5, result.realizedPnl(), 0.0001);
+        FuturesOrder order = orderRepository.findByMemberId("demo-member").get(0);
+        assertEquals("LIMIT", order.orderType());
+        assertEquals(90000.0, order.limitPrice(), 0.0001);
+        assertEquals(FuturesOrder.PURPOSE_CLOSE_POSITION, order.orderPurpose());
+        assertEquals(FuturesOrder.STATUS_FILLED, order.status());
+        assertEquals("TAKER", order.feeType());
+        assertEquals(90000.0, order.executionPrice(), 0.0001);
+        assertEquals(4.5, order.estimatedFee(), 0.0001);
+        assertEquals(0.1, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "SHORT", "ISOLATED")
+                .orElseThrow()
+                .quantity(), 0.0001);
+        TradingAccount account = accountRepository.findByMemberId("demo-member").orElseThrow();
+        assertEquals(100995.5, account.walletBalance(), 0.0001);
+        assertEquals(96995.5, account.availableMargin(), 0.0001);
     }
 
     @Test
@@ -613,7 +730,8 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ),
-                new PendingCloseOrderCapReconciler(orderRepository)
+                new PendingCloseOrderCapReconciler(orderRepository),
+                new OrderPlacementPolicy()
         );
     }
 

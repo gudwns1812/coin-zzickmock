@@ -199,6 +199,8 @@ MVP에서는 기본 리스트와 요약 카드 중심으로 시작한다.
   앱 톤에 맞춘 총자산 패널, wallet history 기반 30일 잔고 선 차트, 사용 가능 잔고, KST 일별 net realized PnL 캘린더
 - `/mypage/points`:
   현재 포인트와 point history
+- `/mypage/redemptions`:
+  포인트 상점 교환 내역, 신청 상태, 대기중 취소
 
 ### 4. `/watchlist`
 
@@ -213,6 +215,20 @@ MVP에서는 기본 리스트와 요약 카드 중심으로 시작한다.
 - 커피 교환권 신청 모달
 - sold-out, 구매 제한, 포인트 부족 상태
 - 신청 성공/실패 피드백
+- `교환 내역` 또는 `구매/교환 내역` 링크로 `/mypage/redemptions`에 이동
+
+### 6. `/admin`
+
+관리자 업무의 별도 진입 화면.
+
+- `/admin`:
+  관리자 허브. `/mypage`와 같은 admin 판별 패턴으로 관리자에게만 작업 링크를 보여준다.
+- `/admin/reward-redemptions`:
+  교환권 신청 승인/반려 처리
+- `/admin/shop-items`:
+  상점 상품 생성, 수정, 판매 중지
+
+계정 영역은 관리자에게 `/admin` 이동 링크만 제공하고, 세부 관리자 업무 메뉴는 `/admin` route family 내부에서 제공한다.
 
 ## 도메인 모델
 

@@ -5,7 +5,14 @@ import {
 } from "@/lib/futures-api";
 import { formatUsd } from "@/lib/markets";
 import { getJwtToken } from "@/utils/auth";
-import { CalendarDays, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  Mail,
+  Phone,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -63,7 +70,7 @@ export default async function MyPage() {
         <Metric label="포인트" value={`${reward.rewardPoint.toLocaleString("ko-KR")} P`} />
       </section>
 
-      <section className="grid grid-cols-2 gap-main-2">
+      <section className="grid grid-cols-3 gap-main-2">
         <QuickLink
           href="/mypage/assets"
           icon={<CalendarDays size={20} />}
@@ -75,6 +82,12 @@ export default async function MyPage() {
           icon={<ShieldCheck size={20} />}
           label="Point"
           value="보유 포인트와 히스토리"
+        />
+        <QuickLink
+          href="/mypage/redemptions"
+          icon={<ClipboardList size={20} />}
+          label="교환 내역"
+          value="상점 신청 상태와 취소"
         />
       </section>
     </div>

@@ -16,6 +16,12 @@ test("volume renders in a resizable lightweight-charts pane", () => {
   assert.equal(source.includes("visible: true"), true);
 });
 
+test("chart uses a taller canvas wrapper matching the lightweight-charts height", () => {
+  assert.equal(source.includes("const CHART_HEIGHT = 620"), true);
+  assert.equal(source.includes("relative h-[620px]"), true);
+  assert.equal(source.includes("chart.resize(container.clientWidth, CHART_HEIGHT)"), true);
+});
+
 test("volume pane exposes a hovered candle volume legend", () => {
   assert.equal(source.includes("hoveredVolume"), true);
   assert.equal(source.includes("volume legend"), true);

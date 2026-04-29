@@ -1,14 +1,9 @@
 "use client";
 
 import Modal from "@/components/ui/Modal";
-import {
-  cancelOwnRewardRedemption,
-  createRewardRedemption,
-} from "@/lib/futures-client-api";
+import { createRewardRedemption } from "@/lib/futures-client-api";
 import type {
   FuturesReward,
-  RewardRedemption,
-  RewardRedemptionsResult,
   ShopItem,
 } from "@/lib/futures-api";
 import {
@@ -22,26 +17,24 @@ import {
 } from "@/lib/reward-shop-ui";
 import {
   CheckCircle2,
-  Clock3,
+  ClipboardList,
   Loader2,
   Lock,
   Phone,
-  RotateCcw,
   Send,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
-  redemptions: RewardRedemptionsResult;
   reward: FuturesReward;
   shopItems: ShopItem[];
 };
 
 export default function ShopRedemptionClient({
-  redemptions,
   reward,
   shopItems,
 }: Props) {
@@ -49,9 +42,6 @@ export default function ShopRedemptionClient({
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(
-    null
-  );
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const phoneError = useMemo(
     () => (phoneNumber ? validateVoucherPhoneNumber(phoneNumber) : null),
@@ -102,24 +92,6 @@ export default function ShopRedemptionClient({
     }
   };
 
-  const cancelRedemption = async (request: RewardRedemption) => {
-    if (request.status !== "PENDING") return;
-
-    setCancellingRequestId(request.requestId);
-
-    try {
-      await cancelOwnRewardRedemption(request.requestId);
-      toast.success("구매 신청을 취소했습니다.");
-      router.refresh();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "구매 신청 취소에 실패했습니다."
-      );
-    } finally {
-      setCancellingRequestId(null);
-    }
-  };
-
   return (
     <div className="px-main-2 pb-24 flex flex-col gap-8 pt-4">
       <section className="grid grid-cols-[1.2fr_1fr] gap-main-2">
@@ -142,25 +114,32 @@ export default function ShopRedemptionClient({
           <p className="mt-3 text-sm-custom text-white/80 break-keep">
             포인트는 교환권 신청 시점에 바로 차감됩니다.
           </p>
+          <Link
+            className="mt-main inline-flex items-center gap-2 rounded-main bg-white/15 px-main py-2 text-sm-custom font-semibold text-white transition-colors hover:bg-white/25"
+            href="/mypage/redemptions"
+          >
+            <ClipboardList size={16} />
+            교환 내역
+          </Link>
         </div>
       </section>
 
-      <section className="grid grid-cols-3 gap-main-2">
+      <section className="grid grid-cols-[repeat(3,minmax(0,300px))] justify-start gap-main-2">
         {shopItems.map((item) => {
           const disabled = !canRedeemShopItem(item, reward.rewardPoint);
 
           return (
             <article
               key={item.code}
-              className="rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray flex min-h-[320px] flex-col gap-4"
+              className="rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray flex min-h-[370px] flex-col gap-4"
             >
-              <div className="relative flex h-[140px] items-center justify-center overflow-hidden rounded-main bg-main-light-gray/45">
+              <div className="relative flex h-[170px] items-center justify-center overflow-hidden rounded-main bg-main-light-gray/45">
                 <Image
                   alt={item.name}
                   className="h-full w-full object-contain p-2"
-                  height={140}
+                  height={170}
                   src={getShopItemImagePath(item)}
-                  width={220}
+                  width={260}
                 />
               </div>
               <div>
@@ -206,90 +185,6 @@ export default function ShopRedemptionClient({
             </article>
           );
         })}
-      </section>
-
-      <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
-        <div className="flex items-center justify-between gap-main-2">
-          <div>
-            <p className="text-sm-custom text-main-dark-gray/60">History</p>
-            <h2 className="mt-2 text-2xl-custom font-bold text-main-dark-gray">
-              구매 내역
-            </h2>
-          </div>
-          <span className="rounded-main bg-main-light-gray/55 px-3 py-1 text-xs-custom font-semibold text-main-dark-gray/60">
-            최근 신청순
-          </span>
-        </div>
-
-        {redemptions.unavailable ? (
-          <div className="mt-main rounded-main bg-main-light-gray/45 p-main text-sm-custom text-main-dark-gray/60">
-            {redemptions.message ?? "구매 내역을 불러오지 못했습니다."}
-          </div>
-        ) : redemptions.redemptions.length === 0 ? (
-          <div className="mt-main rounded-main bg-main-light-gray/45 p-main text-sm-custom text-main-dark-gray/60">
-            아직 구매 내역이 없습니다.
-          </div>
-        ) : (
-          <div className="mt-main overflow-x-auto rounded-main border border-main-light-gray">
-            <div className="grid min-w-[760px] grid-cols-[1.2fr_0.8fr_1fr_1fr_0.8fr] gap-main bg-main-light-gray/35 px-main py-3 text-xs-custom font-semibold text-main-dark-gray/55">
-              <span>상품</span>
-              <span>상태</span>
-              <span>연락처</span>
-              <span>신청 시각</span>
-              <span>처리</span>
-            </div>
-            {redemptions.redemptions.map((request) => (
-              <div
-                className="grid min-w-[760px] grid-cols-[1.2fr_0.8fr_1fr_1fr_0.8fr] items-center gap-main border-t border-main-light-gray px-main py-4 text-sm-custom"
-                key={request.requestId}
-              >
-                <div>
-                  <p className="font-semibold text-main-dark-gray">
-                    {request.itemName}
-                  </p>
-                  <p className="mt-1 text-xs-custom text-main-dark-gray/50">
-                    {request.pointAmount.toLocaleString("ko-KR")} P ·{" "}
-                    {request.requestId}
-                  </p>
-                </div>
-                <span
-                  className={[
-                    "inline-flex w-fit items-center gap-1 rounded-main px-2 py-1 text-xs-custom font-semibold",
-                    getRedemptionStatusClassName(request.status),
-                  ].join(" ")}
-                >
-                  {request.status === "PENDING" && <Clock3 size={13} />}
-                  {getRedemptionStatusLabel(request.status)}
-                </span>
-                <span className="font-semibold text-main-dark-gray">
-                  {request.submittedPhoneNumber}
-                </span>
-                <span className="text-main-dark-gray/60">
-                  {formatDateTime(request.requestedAt)}
-                </span>
-                {request.status === "PENDING" ? (
-                  <button
-                    className="flex w-fit items-center gap-1 rounded-main border border-main-light-gray px-3 py-2 text-xs-custom font-semibold text-main-dark-gray/65 transition-colors hover:border-main-blue hover:text-main-blue disabled:text-main-dark-gray/35"
-                    disabled={cancellingRequestId !== null}
-                    onClick={() => cancelRedemption(request)}
-                    type="button"
-                  >
-                    {cancellingRequestId === request.requestId ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <RotateCcw size={14} />
-                    )}
-                    취소
-                  </button>
-                ) : (
-                  <span className="text-xs-custom text-main-dark-gray/45">
-                    완료
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </section>
 
       <Modal
@@ -358,36 +253,6 @@ export default function ShopRedemptionClient({
       </Modal>
     </div>
   );
-}
-
-function getRedemptionStatusLabel(status: RewardRedemption["status"]): string {
-  if (status === "APPROVED" || status === "SENT") return "승인 완료";
-  if (status === "REJECTED" || status === "CANCELLED_REFUNDED") return "반려";
-  if (status === "CANCELLED") return "취소";
-  return "대기중";
-}
-
-function getRedemptionStatusClassName(
-  status: RewardRedemption["status"]
-): string {
-  if (status === "APPROVED" || status === "SENT") {
-    return "bg-main-blue/10 text-main-blue";
-  }
-  if (status === "REJECTED" || status === "CANCELLED_REFUNDED") {
-    return "bg-red-50 text-red-600";
-  }
-  if (status === "CANCELLED") {
-    return "bg-main-light-gray text-main-dark-gray/55";
-  }
-  return "bg-amber-50 text-amber-700";
-}
-
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "Asia/Seoul",
-  }).format(new Date(value));
 }
 
 function getButtonLabel(item: ShopItem, rewardPoint: number): string {

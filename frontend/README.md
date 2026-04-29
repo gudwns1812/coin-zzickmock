@@ -25,8 +25,13 @@
 - `/markets`
 - `/markets/[symbol]`
 - `/portfolio`
+- `/mypage`
+- `/mypage/assets`
+- `/mypage/points`
+- `/mypage/redemptions`
 - `/watchlist`
 - `/shop`
+- `/admin`
 - `/admin/reward-redemptions`
 - `/admin/shop-items`
 - `/login`
@@ -52,9 +57,10 @@
 
 - `app/(main)/markets/`: 마켓 목록/상세 흐름
 - `app/(main)/portfolio/`: 선물 계정 흐름
+- `app/(main)/mypage/`: 계정 정보, 자산, 포인트, 교환 내역 흐름
 - `app/(main)/watchlist/`: 관심 심볼 흐름
 - `app/(main)/shop/`: 포인트 상점 흐름
-- `app/(main)/admin/`: 관리자 상점 아이템과 교환권 처리 흐름
+- `app/(main)/admin/`: 관리자 허브, 상점 아이템, 교환권 처리 흐름
 - `app/login/`: 로그인 페이지
 - `app/signup/`: 회원가입 흐름
 - `app/only-desktop/`: 모바일 차단 화면

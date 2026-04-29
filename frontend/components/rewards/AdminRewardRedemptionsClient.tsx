@@ -85,10 +85,10 @@ export default function AdminRewardRedemptionsClient({
           <div className="flex items-center gap-2">
             <Link
               className="flex items-center gap-2 rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"
-              href="/mypage"
+              href="/admin"
             >
               <ArrowLeft size={15} />
-              계정으로
+              관리자 홈
             </Link>
             <Link
               className="rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/70 hover:text-main-blue"

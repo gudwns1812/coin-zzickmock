@@ -8,10 +8,15 @@ import coin.coinzzickmock.feature.market.domain.MarketTime;
 import coin.coinzzickmock.providers.connector.MarketHistoricalCandleGranularity;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +27,8 @@ import org.springframework.web.client.RestClient;
 @Component
 @RequiredArgsConstructor
 public class BitgetMarketDataGateway implements MarketDataGateway {
+    private static final int BITGET_HISTORICAL_CANDLE_LIMIT = 200;
+
     private final RestClient bitgetRestClient;
     private final BitgetTickerSnapshotMapper bitgetTickerSnapshotMapper;
 
@@ -103,7 +110,36 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             Instant toExclusive,
             int limit
     ) {
-        int requestLimit = Math.min(Math.max(limit, 1), 200);
+        if (limit <= 0 || !fromInclusive.isBefore(toExclusive)) {
+            return List.of();
+        }
+
+        List<MarketHistoricalCandleSnapshot> candles = new ArrayList<>();
+        Instant cursor = fromInclusive;
+        int remaining = limit;
+
+        while (cursor.isBefore(toExclusive) && remaining > 0) {
+            int requestLimit = Math.min(remaining, BITGET_HISTORICAL_CANDLE_LIMIT);
+            Instant batchEndExclusive = batchEndExclusive(cursor, toExclusive, interval, requestLimit);
+            candles.addAll(loadHistoricalCandleBatch(symbol, interval, cursor, batchEndExclusive, requestLimit));
+            remaining -= requestLimit;
+            cursor = batchEndExclusive;
+        }
+
+        return newest(limit, candles.stream()
+                .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                .filter(candle -> candle.openTime().isBefore(toExclusive))
+                .sorted(Comparator.comparing(MarketHistoricalCandleSnapshot::openTime))
+                .toList());
+    }
+
+    private List<MarketHistoricalCandleSnapshot> loadHistoricalCandleBatch(
+            String symbol,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive,
+            int requestLimit
+    ) {
         try {
             BitgetCandleResponse response = bitgetRestClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -112,7 +148,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                             .queryParam("productType", "USDT-FUTURES")
                             .queryParam("granularity", MarketHistoricalCandleGranularity.from(interval).value())
                             .queryParam("startTime", fromInclusive.toEpochMilli())
-                            .queryParam("endTime", toExclusive.toEpochMilli())
+                            .queryParam("endTime", providerEndTime(toExclusive))
                             .queryParam("limit", requestLimit)
                             .build())
                     .retrieve()
@@ -139,6 +175,56 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                     symbol, interval.value(), fromInclusive, toExclusive, exception);
             return List.of();
         }
+    }
+
+    private Instant batchEndExclusive(
+            Instant cursor,
+            Instant toExclusive,
+            MarketCandleInterval interval,
+            int requestLimit
+    ) {
+        Instant requestedEnd = cursor;
+        for (int count = 0; count < requestLimit; count++) {
+            requestedEnd = nextCandleOpenTime(requestedEnd, interval);
+            if (!requestedEnd.isBefore(toExclusive)) {
+                return toExclusive;
+            }
+        }
+        return requestedEnd;
+    }
+
+    private Instant nextCandleOpenTime(Instant openTime, MarketCandleInterval interval) {
+        return switch (interval) {
+            case ONE_MINUTE -> openTime.plus(1, ChronoUnit.MINUTES);
+            case THREE_MINUTES -> openTime.plus(3, ChronoUnit.MINUTES);
+            case FIVE_MINUTES -> openTime.plus(5, ChronoUnit.MINUTES);
+            case FIFTEEN_MINUTES -> openTime.plus(15, ChronoUnit.MINUTES);
+            case ONE_HOUR -> openTime.plus(1, ChronoUnit.HOURS);
+            case FOUR_HOURS -> openTime.plus(4, ChronoUnit.HOURS);
+            case TWELVE_HOURS -> openTime.plus(12, ChronoUnit.HOURS);
+            case ONE_DAY -> openTime.plus(1, ChronoUnit.DAYS);
+            case ONE_WEEK -> openTime.plus(7, ChronoUnit.DAYS);
+            case ONE_MONTH -> ZonedDateTime.ofInstant(openTime, MarketTime.STORAGE_ZONE)
+                    .plusMonths(1)
+                    .toInstant();
+        };
+    }
+
+    private long providerEndTime(Instant toExclusive) {
+        return toExclusive.minus(Duration.ofMillis(1)).toEpochMilli();
+    }
+
+    private List<MarketHistoricalCandleSnapshot> newest(
+            int limit,
+            List<MarketHistoricalCandleSnapshot> candles
+    ) {
+        Map<Instant, MarketHistoricalCandleSnapshot> candlesByOpenTime = new LinkedHashMap<>();
+        candles.forEach(candle -> candlesByOpenTime.put(candle.openTime(), candle));
+        List<MarketHistoricalCandleSnapshot> sorted = new ArrayList<>(candlesByOpenTime.values());
+        if (sorted.size() <= limit) {
+            return sorted;
+        }
+        return sorted.subList(sorted.size() - limit, sorted.size());
     }
 
     private MarketMinuteCandleSnapshot toMinuteCandleSnapshot(List<String> rawCandle) {

@@ -131,8 +131,8 @@ const CHART_COLORS = {
 } as const;
 
 const LOAD_MORE_THRESHOLD = 25;
-const CHART_HEIGHT = 500;
-const MAIN_PANE_INITIAL_HEIGHT = 360;
+const CHART_HEIGHT = 620;
+const MAIN_PANE_INITIAL_HEIGHT = 455;
 const VOLUME_PANE_INITIAL_HEIGHT = CHART_HEIGHT - MAIN_PANE_INITIAL_HEIGHT;
 const DEFAULT_VOLUME_PANE_TOP = MAIN_PANE_INITIAL_HEIGHT;
 const VOLUME_PANE_INDEX = 1;
@@ -837,7 +837,7 @@ export default function FuturesPriceChart({
           )}
         </div>
 
-        <div className="relative h-[500px] min-w-0 flex-1 overflow-hidden rounded-main border border-main-light-gray/70 bg-white">
+        <div className="relative h-[620px] min-w-0 flex-1 overflow-hidden rounded-main border border-main-light-gray/70 bg-white">
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-3">
             <div className="flex items-start justify-between gap-4">
               <div

@@ -7,27 +7,59 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
 
-test("my page shell exposes admin navigation only behind the admin flag", () => {
-  const shellSource = readFileSync(
-    path.join(rootDir, "components/mypage/MyPageShell.tsx"),
-    "utf8"
-  );
+function readFrontendSource(relativePath: string): string {
+  return readFileSync(path.join(rootDir, relativePath), "utf8");
+}
+
+test("my page shell exposes only one admin entry behind the admin flag", () => {
+  const shellSource = readFrontendSource("components/mypage/MyPageShell.tsx");
 
   assert.match(shellSource, /isAdmin \? \(/);
-  assert.match(shellSource, /href: "\/admin\/reward-redemptions"/);
-  assert.match(shellSource, /href: "\/admin\/shop-items"/);
+  assert.match(shellSource, /href="\/admin"/);
+  assert.doesNotMatch(shellSource, /href: "\/admin\/reward-redemptions"/);
+  assert.doesNotMatch(shellSource, /href: "\/admin\/shop-items"/);
+  assert.match(shellSource, /교환 내역/);
 });
 
-test("admin pages expose a return path to my page", () => {
-  const redemptionsSource = readFileSync(
-    path.join(rootDir, "components/rewards/AdminRewardRedemptionsClient.tsx"),
-    "utf8"
+test("admin pages navigate through the admin hub", () => {
+  const redemptionsSource = readFrontendSource(
+    "components/rewards/AdminRewardRedemptionsClient.tsx"
   );
-  const shopItemsSource = readFileSync(
-    path.join(rootDir, "components/rewards/AdminShopItemsClient.tsx"),
-    "utf8"
+  const shopItemsSource = readFrontendSource(
+    "components/rewards/AdminShopItemsClient.tsx"
+  );
+  const adminHubSource = readFrontendSource("app/(main)/admin/page.tsx");
+
+  assert.match(redemptionsSource, /href="\/admin"/);
+  assert.match(shopItemsSource, /href="\/admin"/);
+  assert.match(adminHubSource, /href="\/admin\/reward-redemptions"/);
+  assert.match(adminHubSource, /href="\/admin\/shop-items"/);
+  assert.match(
+    adminHubSource,
+    /Promise\.all\(\[getAuthUser\(\), getJwtToken\(\)\]\)/
+  );
+  assert.match(
+    adminHubSource,
+    /authUser\?\.admin \?\? token\?\.admin \?\? token\?\.role === "ADMIN"/
+  );
+});
+
+test("shop page no longer fetches redemption history", () => {
+  const shopPageSource = readFrontendSource("app/(main)/shop/page.tsx");
+
+  assert.doesNotMatch(shopPageSource, /getRewardRedemptions/);
+});
+
+test("exchange history uses user-facing labels and routes", () => {
+  const shopClientSource = readFrontendSource(
+    "components/rewards/ShopRedemptionClient.tsx"
+  );
+  const redemptionsPageSource = readFrontendSource(
+    "app/(main)/mypage/redemptions/page.tsx"
   );
 
-  assert.match(redemptionsSource, /href="\/mypage"/);
-  assert.match(shopItemsSource, /href="\/mypage"/);
+  assert.match(shopClientSource, /href="\/mypage\/redemptions"/);
+  assert.match(shopClientSource, /교환 내역/);
+  assert.match(redemptionsPageSource, /교환 내역/);
+  assert.match(redemptionsPageSource, /구매\/교환 내역/);
 });

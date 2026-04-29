@@ -21,11 +21,18 @@ test("market detail remounts when the route symbol changes", () => {
   assert.equal(detailPageSource.includes("key={market.symbol}"), true);
 });
 
-test("trading title renders asset and perpetual on separate lines with logo", () => {
+test("trading title renders logo, asset, and perpetual on one row", () => {
   assert.equal(source.includes("getMarketLogoPath(market.symbol)"), true);
   assert.equal(source.includes("{market.assetName}"), true);
   assert.equal(source.includes("Perpetual"), true);
+  assert.equal(source.includes("items-baseline gap-3"), true);
+  assert.equal(source.includes("flex-col leading-none"), false);
   assert.equal(source.includes("{market.displayName}"), false);
+});
+
+test("trading title does not render explanatory page copy", () => {
+  assert.equal(source.includes("메인"), false);
+  assert.equal(source.includes("트레이딩 화면입니다"), false);
 });
 
 test("close position button uses held quantity instead of closeable quantity gating", () => {

@@ -197,8 +197,12 @@ export default function MarketDetailRealtimeView({
           <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
             <div className="flex items-start justify-between gap-main">
               <div className="min-w-0">
-                <div className="flex min-w-0 items-start gap-main">
-                  <div className="mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-main-light-gray bg-white shadow-sm">
+                <SymbolSelector activeSymbol={market.symbol} />
+                <p className="text-xs-custom uppercase text-main-dark-gray/50">
+                  {market.symbol}
+                </p>
+                <div className="mt-3 flex min-w-0 items-center gap-main">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-main-light-gray bg-white shadow-sm">
                     <Image
                       alt={`${market.assetName} logo`}
                       className="h-11 w-11 rounded-full object-contain"
@@ -207,25 +211,15 @@ export default function MarketDetailRealtimeView({
                       width={44}
                     />
                   </div>
-                  <div className="min-w-0">
-                    <SymbolSelector activeSymbol={market.symbol} />
-                    <p className="text-xs-custom uppercase text-main-dark-gray/50">
-                      {market.symbol}
-                    </p>
-                    <h1 className="mt-2 flex flex-col leading-none text-main-dark-gray">
-                      <span className="text-4xl-custom font-bold">
-                        {market.assetName}
-                      </span>
-                      <span className="mt-2 text-base-custom font-semibold tracking-normal text-main-dark-gray/55">
-                        Perpetual
-                      </span>
-                    </h1>
-                  </div>
+                  <h1 className="flex min-w-0 items-baseline gap-3 leading-none text-main-dark-gray">
+                    <span className="text-4xl-custom font-bold">
+                      {market.assetName}
+                    </span>
+                    <span className="text-base-custom font-semibold tracking-normal text-main-dark-gray/55">
+                      Perpetual
+                    </span>
+                  </h1>
                 </div>
-                <p className="mt-3 max-w-3xl text-sm-custom text-main-dark-gray/70 break-keep">
-                  차트, 주문, 포지션, 미체결 주문을 한 화면에서 처리하는 메인
-                  트레이딩 화면입니다.
-                </p>
               </div>
               <div
                 className={[

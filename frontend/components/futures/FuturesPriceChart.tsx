@@ -59,7 +59,7 @@ import {
 } from "./futuresLiveCandles";
 import {
   getIntervalConfig,
-  getRenderedCandleVisibleTimeRange,
+  getLatestVisibleLogicalRange,
   getViewportScaleOptions,
   INTERVAL_OPTIONS,
   isViewingLatestRange,
@@ -159,7 +159,7 @@ export default function FuturesPriceChart({
   const indicatorSeriesRefs = useRef(createIndicatorSeriesRefs());
   const positionPriceLinesRef = useRef<OwnedPriceLine[]>([]);
   const orderPriceLinesRef = useRef<OwnedPriceLine[]>([]);
-  const initialViewportAppliedRef = useRef(false);
+  const appliedInitialViewportKeyRef = useRef<string | null>(null);
   const liveBucketOpenTimeRef = useRef<number | null>(null);
   const [selectedInterval, setSelectedInterval] =
     useState<FuturesCandleInterval>(DEFAULT_FUTURES_CHART_INTERVAL);
@@ -184,6 +184,7 @@ export default function FuturesPriceChart({
   ]);
 
   const selectedConfig = getIntervalConfig(selectedInterval);
+  const initialViewportKey = `${symbol}:${selectedInterval}`;
 
   useEffect(() => {
     const storedInterval = readStoredFuturesChartInterval();
@@ -444,7 +445,7 @@ export default function FuturesPriceChart({
         top: 0.18,
         bottom: 0,
       },
-      visible: false,
+      visible: true,
     });
     volumeSeriesRef.current = volumeSeries;
 
@@ -602,29 +603,33 @@ export default function FuturesPriceChart({
     }
 
     if (
-      initialViewportAppliedRef.current ||
+      appliedInitialViewportKeyRef.current === initialViewportKey ||
       !hasCandleData ||
       historyStatus !== "ready"
     ) {
       return;
     }
 
-    const visibleRange = getRenderedCandleVisibleTimeRange(candlestickData);
+    const initialLogicalRange = getLatestVisibleLogicalRange(
+      candlestickData.length,
+      selectedConfig
+    );
 
-    if (visibleRange) {
+    if (initialLogicalRange) {
       const timeScale = chart.timeScale();
       timeScale.applyOptions({
         ...getViewportScaleOptions(candlestickData.length, selectedConfig),
         rightOffset: selectedConfig.rightOffset,
       });
-      timeScale.setVisibleRange(visibleRange);
-      initialViewportAppliedRef.current = true;
+      timeScale.setVisibleLogicalRange(initialLogicalRange);
+      appliedInitialViewportKeyRef.current = initialViewportKey;
       setIsAtLatest(true);
     }
   }, [
     candlestickData,
     hasCandleData,
     historyStatus,
+    initialViewportKey,
     livePoints,
     selectedConfig,
     volumeData,
@@ -758,9 +763,6 @@ export default function FuturesPriceChart({
         <div>
           <p className="text-sm-custom font-semibold text-main-dark-gray">
             인터랙티브 차트
-          </p>
-          <p className="mt-1 text-xs-custom text-main-dark-gray/60">
-            {getChartDescription(hasCandleData, historyStatus)}
           </p>
         </div>
       </div>
@@ -1231,21 +1233,6 @@ function getActiveChartStatus({
   }
 
   return "실시간 라인 셸";
-}
-
-function getChartDescription(
-  hasCandleData: boolean,
-  historyStatus: "missing" | "ready" | "stale"
-): string {
-  if (hasCandleData) {
-    return "왼쪽으로 이동하면 더 오래된 캔들을 이어서 불러오고, 최신 이동은 버튼으로만 수행합니다.";
-  }
-
-  if (historyStatus === "stale") {
-    return "히스토리 시간이 오래되어 실시간 가격선 셸을 보여주고 있습니다.";
-  }
-
-  return "히스토리 응답이 없어서 실시간 가격선 셸을 보여주고 있습니다.";
 }
 
 function getChartHistoryBannerMessage(

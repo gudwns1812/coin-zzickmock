@@ -135,6 +135,16 @@ test("viewport range uses configured visible bars when enough candles are loaded
   });
 });
 
+test("initial latest-window range keeps older loaded candles offscreen", () => {
+  const config = getIntervalConfig("1m");
+  const range = getLatestVisibleLogicalRange(180, config);
+
+  assert.deepEqual(range, {
+    from: 41,
+    to: 185,
+  });
+});
+
 test("viewport scale caps sparse histories to prevent oversized refresh candles", () => {
   const config = getIntervalConfig("1m");
 

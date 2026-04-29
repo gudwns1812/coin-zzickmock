@@ -126,17 +126,29 @@ test("indicator state remains local to FuturesPriceChart", () => {
   assert.equal(source.includes("createJSONStorage"), false);
 });
 
-test("chart initial viewport uses timestamp range while preserving free scrolling", () => {
+test("chart initial viewport uses latest logical window while preserving free scrolling", () => {
   const source = readFileSync(
     path.join(__dirname, "FuturesPriceChart.tsx"),
     "utf8"
   );
-  const visibleRangeCallCount =
-    source.match(/setVisibleRange\(visibleRange\)/g)?.length ?? 0;
+  const logicalRangeCallCount =
+    source.match(/setVisibleLogicalRange\(initialLogicalRange\)/g)?.length ?? 0;
 
-  assert.equal(source.includes("initialViewportAppliedRef"), true);
-  assert.equal(source.includes("getRenderedCandleVisibleTimeRange"), true);
-  assert.equal(visibleRangeCallCount, 1);
+  assert.equal(source.includes("initialViewportAppliedRef"), false);
+  assert.equal(source.includes("appliedInitialViewportKeyRef"), true);
+  assert.equal(
+    source.includes("const initialViewportKey = `${symbol}:${selectedInterval}`"),
+    true
+  );
+  assert.equal(
+    source.includes(
+      "appliedInitialViewportKeyRef.current === initialViewportKey"
+    ),
+    true
+  );
+  assert.equal(source.includes("getLatestVisibleLogicalRange"), true);
+  assert.equal(source.includes("getRenderedCandleVisibleTimeRange"), false);
+  assert.equal(logicalRangeCallCount, 1);
   assert.equal(source.includes("!hasCandleData ||\n      historyStatus !== \"ready\""), true);
   assert.equal(source.includes("activeViewportResetKeyRef"), false);
   assert.equal(source.includes("scrollToRealTime()"), true);

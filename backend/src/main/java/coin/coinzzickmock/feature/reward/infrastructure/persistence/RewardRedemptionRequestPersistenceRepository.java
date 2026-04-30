@@ -46,7 +46,7 @@ public class RewardRedemptionRequestPersistenceRepository implements RewardRedem
 
     @Override
     @Transactional(readOnly = true)
-    public List<RewardRedemptionRequest> findByMemberId(String memberId) {
+    public List<RewardRedemptionRequest> findByMemberId(Long memberId) {
         return redemptionRequestEntityRepository.findByMemberIdOrderByRequestedAtDesc(memberId).stream()
                 .map(RewardRedemptionRequestEntity::toDomain)
                 .toList();
@@ -62,19 +62,19 @@ public class RewardRedemptionRequestPersistenceRepository implements RewardRedem
 
     @Override
     @Transactional
-    public int claimPendingAsApproved(String requestId, String adminMemberId, String adminMemo, Instant approvedAt) {
+    public int claimPendingAsApproved(String requestId, Long adminMemberId, String adminMemo, Instant approvedAt) {
         return redemptionRequestEntityRepository.claimPendingAsApproved(requestId, adminMemberId, adminMemo, approvedAt);
     }
 
     @Override
     @Transactional
-    public int claimPendingAsRejected(String requestId, String adminMemberId, String adminMemo, Instant rejectedAt) {
+    public int claimPendingAsRejected(String requestId, Long adminMemberId, String adminMemo, Instant rejectedAt) {
         return redemptionRequestEntityRepository.claimPendingAsRejected(requestId, adminMemberId, adminMemo, rejectedAt);
     }
 
     @Override
     @Transactional
-    public int claimPendingAsCancelled(String requestId, String memberId, Instant cancelledAt) {
+    public int claimPendingAsCancelled(String requestId, Long memberId, Instant cancelledAt) {
         return redemptionRequestEntityRepository.claimPendingAsCancelled(requestId, memberId, cancelledAt);
     }
 }

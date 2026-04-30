@@ -104,6 +104,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `feature.account`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
 
 ### `reward_point_wallets`
@@ -123,6 +124,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
 
 ### `wallet_history`
@@ -148,11 +150,15 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ### `member_credentials`
 
 - 목적:
-  로그인 아이디 기준의 비밀번호 해시와 회원 프로필을 저장한다.
+  내부 회원 PK, 로그인 계정, 비밀번호 해시와 회원 프로필을 저장한다.
 - PK:
-  `member_id`
+  `id` (auto increment surrogate key)
+- 유니크:
+  `account`
 - 주요 컬럼:
-  `password_hash`, `member_name`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `role`, `created_at`, `updated_at`
+  `account`, `password_hash`, `member_name`, `nickname`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `role`, `created_at`, `updated_at`
+- 닉네임 정책:
+  저장 전 trim 및 연속 공백 축약을 적용하고, 2~30자 Unicode 문자/숫자/공백/`_`/`-`만 허용한다. 화면 표시명은 `member_name`이 아니라 `nickname`을 사용한다.
 - 권한:
   `role`은 `USER`/`ADMIN` 문자열로 저장한다. 기존 `test` 계정과 fresh test-profile seed는 관리자 처리를 위해 `ADMIN`이 된다.
 - 관련 엔티티/모듈:
@@ -160,6 +166,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 migration 또는 schema 파일:
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql),
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
 
 ### `reward_shop_items`
@@ -361,12 +368,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 ## Relationships
 
-- `reward_point_wallets.member_id -> trading_accounts.member_id`:
-  계정당 하나의 포인트 지갑을 가진다.
+- `trading_accounts.member_id -> member_credentials.id`:
+  선물 계정은 내부 회원 surrogate key를 참조한다.
+- `reward_point_wallets.member_id -> member_credentials.id`:
+  회원당 하나의 포인트 지갑을 가진다.
 - `wallet_history.member_id -> trading_accounts.member_id`:
   지갑 이력은 특정 계정에 속한다.
-- `member_credentials.member_id -> trading_accounts.member_id`:
-  인증에 필요한 회원 자격 증명은 선물 계정과 같은 `member_id`를 공유한다.
 - `futures_orders.member_id -> trading_accounts.member_id`:
   주문 이력은 특정 계정에 속한다.
 - `open_positions.member_id -> trading_accounts.member_id`:
@@ -414,6 +421,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V16__enforce_single_open_position_per_side.sql`로 열린 포지션 유일성을 `member_id + symbol + position_side` 단위로 강화했다.
 - 2026-04-30:
   `V17__shorten_coffee_voucher_description.sql`로 기존 적용된 `V12` checksum을 유지하면서 기본 커피 교환권 seed 설명 문구를 짧게 갱신했다.
+- 2026-04-30:
+  `V18__member_surrogate_pk_and_nickname.sql`로 `member_credentials.id` surrogate PK와 `account` unique key, `nickname` 표시명을 추가하고 모든 `member_id` 참조 컬럼을 숫자 FK로 백필했다. migration 시작 전에는 모든 회원 참조 테이블과 `reward_redemption_requests.admin_member_id`에 대해 orphan preflight를 수행한다.
 
 ## Update Rule
 

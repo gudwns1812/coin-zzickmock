@@ -21,7 +21,7 @@ public class WalletHistoryEntity extends AuditableEntity {
     private Long id;
 
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @Column(name = "wallet_balance", nullable = false, precision = 19, scale = 4)
     private BigDecimal walletBalance;
@@ -42,7 +42,7 @@ public class WalletHistoryEntity extends AuditableEntity {
     }
 
     private WalletHistoryEntity(
-            String memberId,
+            Long memberId,
             BigDecimal walletBalance,
             BigDecimal availableMargin,
             String sourceType,

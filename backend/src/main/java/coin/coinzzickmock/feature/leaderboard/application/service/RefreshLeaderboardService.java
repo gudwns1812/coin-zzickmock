@@ -35,7 +35,7 @@ public class RefreshLeaderboardService {
     }
 
     @Transactional(readOnly = true)
-    public void refreshMember(String memberId) {
+    public void refreshMember(Long memberId) {
         if (snapshotStores.isEmpty()) {
             return;
         }

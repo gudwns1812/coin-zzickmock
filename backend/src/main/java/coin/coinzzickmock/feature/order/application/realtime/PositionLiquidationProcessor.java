@@ -43,7 +43,7 @@ public class PositionLiquidationProcessor {
             return;
         }
         List<OpenPositionCandidate> candidates = positionRepository.findOpenBySymbol(realtimeMarket.symbol());
-        Set<String> assessedCrossMembers = new HashSet<>();
+        Set<Long> assessedCrossMembers = new HashSet<>();
 
         for (OpenPositionCandidate candidate : candidates) {
             PositionSnapshot marked = candidate.position().markToMarket(realtimeMarket.markPrice());
@@ -83,7 +83,7 @@ public class PositionLiquidationProcessor {
         );
     }
 
-    private void liquidateCrossIfNeeded(String memberId, MarketSummaryResult market) {
+    private void liquidateCrossIfNeeded(Long memberId, MarketSummaryResult market) {
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         List<PositionSnapshot> positions = positionRepository.findOpenPositions(memberId).stream()
@@ -102,7 +102,7 @@ public class PositionLiquidationProcessor {
                 .ifPresent(candidate -> liquidate(memberId, candidate.position(), market.lastPrice(), market.markPrice()));
     }
 
-    private void liquidate(String memberId, PositionSnapshot position, double executionPrice, double markPrice) {
+    private void liquidate(Long memberId, PositionSnapshot position, double executionPrice, double markPrice) {
         var result = positionCloseFinalizer.close(
                 memberId,
                 position,

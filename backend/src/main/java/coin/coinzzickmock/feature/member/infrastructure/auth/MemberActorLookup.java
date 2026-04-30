@@ -13,13 +13,24 @@ public class MemberActorLookup implements ActorLookup {
     private final MemberCredentialRepository memberCredentialRepository;
 
     @Override
-    public Optional<Actor> findByMemberId(String memberId) {
+    public Optional<Actor> findByMemberId(Long memberId) {
         return memberCredentialRepository.findByMemberId(memberId)
-                .map(memberCredential -> new Actor(
-                        memberCredential.memberId(),
-                        memberCredential.memberEmail(),
-                        memberCredential.memberName(),
-                        memberCredential.role()
-                ));
+                .map(this::toActor);
+    }
+
+    @Override
+    public Optional<Actor> findByAccount(String account) {
+        return memberCredentialRepository.findByAccount(account)
+                .map(this::toActor);
+    }
+
+    private Actor toActor(coin.coinzzickmock.feature.member.domain.MemberCredential memberCredential) {
+        return new Actor(
+                memberCredential.memberId(),
+                memberCredential.account(),
+                memberCredential.memberEmail(),
+                memberCredential.nickname(),
+                memberCredential.role()
+        );
     }
 }

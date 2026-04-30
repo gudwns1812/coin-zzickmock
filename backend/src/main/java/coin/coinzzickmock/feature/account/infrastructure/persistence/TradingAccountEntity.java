@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 public class TradingAccountEntity extends AuditableEntity {
     @Id
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @Column(name = "member_email", nullable = false, length = 255)
     private String memberEmail;
@@ -32,7 +32,7 @@ public class TradingAccountEntity extends AuditableEntity {
     }
 
     public TradingAccountEntity(
-            String memberId,
+            Long memberId,
             String memberEmail,
             String memberName,
             BigDecimal walletBalance,
@@ -72,7 +72,7 @@ public class TradingAccountEntity extends AuditableEntity {
         );
     }
 
-    public String memberId() {
+    public Long memberId() {
         return memberId;
     }
 

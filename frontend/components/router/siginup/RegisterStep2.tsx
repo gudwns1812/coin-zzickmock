@@ -24,6 +24,12 @@ const RegisterStep2 = ({
   const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
 
   const router = useRouter();
+  const normalizedNickname = userInfo.nickname.trim().replace(/\s+/g, " ");
+  const isNicknameValid =
+    [...normalizedNickname].length >= 2 &&
+    [...normalizedNickname].length <= 30 &&
+    /^[\p{L}\p{N} _-]+$/u.test(normalizedNickname) &&
+    /[\p{L}\p{N}]/u.test(normalizedNickname);
 
   useEffect(() => {
     if (!userInfo.password) return;
@@ -82,6 +88,7 @@ const RegisterStep2 = ({
       !userInfo.password ||
       !userInfo.passwordConfirm ||
       !userInfo.name ||
+      !userInfo.nickname ||
       !userInfo.email ||
       !userInfo.address.zipcode ||
       !userInfo.address.address
@@ -120,11 +127,17 @@ const RegisterStep2 = ({
       !userInfo.password.trim() ||
       !userInfo.passwordConfirm.trim() ||
       !userInfo.name.trim() ||
+      !userInfo.nickname.trim() ||
       !userInfo.email.trim() ||
       !userInfo.address.zipcode.trim() ||
       !userInfo.address.address.trim()
     ) {
       toast.error("입력되지 않은 항목이 있습니다");
+      return;
+    }
+
+    if (!isNicknameValid) {
+      toast.error("닉네임은 2~30자의 한글, 영문, 숫자, 공백, _, -만 사용할 수 있습니다");
       return;
     }
 
@@ -141,6 +154,7 @@ const RegisterStep2 = ({
       account: userInfo.id,
       password: userInfo.password,
       name: userInfo.name,
+      nickname: normalizedNickname,
       phoneNumber: `${userInfo.phone.countryCode}-${userInfo.phone.phoneNumber1}-${userInfo.phone.phoneNumber2}`,
       email: userInfo.email,
       fgOffset: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -217,6 +231,19 @@ const RegisterStep2 = ({
               사용할 수 없는 아이디입니다
             </span>
           )}
+        </div>
+        <div className="flex flex-col gap-[5px]">
+          <label htmlFor="nickname">닉네임</label>
+          <Input
+            placeholder="닉네임"
+            value={userInfo.nickname}
+            onChange={(e) =>
+              setUserInfo({ ...userInfo, nickname: e.target.value })
+            }
+          />
+          <span className="text-sm-custom text-main-dark-gray">
+            2~30자, 한글/영문/숫자/공백/_/- 사용 가능
+          </span>
         </div>
         <div className="flex flex-col gap-[5px]">
           <label htmlFor="password">비밀번호</label>

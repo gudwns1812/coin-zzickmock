@@ -14,7 +14,7 @@ public class GetRewardRedemptionHistoryService {
     private final RewardRedemptionRequestRepository rewardRedemptionRequestRepository;
 
     @Transactional(readOnly = true)
-    public List<RewardRedemptionResult> get(String memberId) {
+    public List<RewardRedemptionResult> get(Long memberId) {
         return rewardRedemptionRequestRepository.findByMemberId(memberId).stream()
                 .map(RewardRedemptionResult::from)
                 .toList();

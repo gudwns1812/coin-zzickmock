@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrderEntity, Long> {
-    List<FuturesOrderEntity> findAllByMemberIdOrderByCreatedAtDesc(String memberId);
+    List<FuturesOrderEntity> findAllByMemberIdOrderByCreatedAtDesc(Long memberId);
 
     List<FuturesOrderEntity> findAllBySymbolAndStatusOrderByCreatedAtAsc(String symbol, String status);
 
-    Optional<FuturesOrderEntity> findByMemberIdAndOrderId(String memberId, String orderId);
+    Optional<FuturesOrderEntity> findByMemberIdAndOrderId(Long memberId, String orderId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -29,7 +29,7 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
                and order.status = :pendingStatus
             """)
     int markFilledIfPending(
-            @Param("memberId") String memberId,
+            @Param("memberId") Long memberId,
             @Param("orderId") String orderId,
             @Param("pendingStatus") String pendingStatus,
             @Param("filledStatus") String filledStatus,
@@ -48,11 +48,11 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
                and order.status = :pendingStatus
             """)
     int cancelIfPending(
-            @Param("memberId") String memberId,
+            @Param("memberId") Long memberId,
             @Param("orderId") String orderId,
             @Param("pendingStatus") String pendingStatus,
             @Param("cancelledStatus") String cancelledStatus
     );
 
-    void deleteAllByMemberId(String memberId);
+    void deleteAllByMemberId(Long memberId);
 }

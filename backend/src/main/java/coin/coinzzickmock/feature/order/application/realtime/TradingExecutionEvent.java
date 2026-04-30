@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.order.application.realtime;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 
 public record TradingExecutionEvent(
-        String memberId,
+        Long memberId,
         String type,
         String orderId,
         String symbol,
@@ -15,7 +15,7 @@ public record TradingExecutionEvent(
         String message
 ) {
     public static TradingExecutionEvent orderFilled(
-            String memberId,
+            Long memberId,
             String orderId,
             String symbol,
             String positionSide,
@@ -38,7 +38,7 @@ public record TradingExecutionEvent(
     }
 
     public static TradingExecutionEvent positionLiquidated(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode,
@@ -61,7 +61,7 @@ public record TradingExecutionEvent(
     }
 
     public static TradingExecutionEvent positionClosedByTrigger(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode,

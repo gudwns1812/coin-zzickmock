@@ -5,9 +5,9 @@ import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import java.util.Optional;
 
 public interface RewardPointRepository {
-    Optional<RewardPointWallet> findByMemberId(String memberId);
+    Optional<RewardPointWallet> findByMemberId(Long memberId);
 
-    default Optional<RewardPointWallet> findByMemberIdForUpdate(String memberId) {
+    default Optional<RewardPointWallet> findByMemberIdForUpdate(Long memberId) {
         return findByMemberId(memberId);
     }
 

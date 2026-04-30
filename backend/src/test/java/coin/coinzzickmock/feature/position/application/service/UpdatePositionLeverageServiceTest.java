@@ -28,7 +28,7 @@ class UpdatePositionLeverageServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -39,11 +39,11 @@ class UpdatePositionLeverageServiceTest {
         ));
 
         PositionSnapshotResult result = service(positionRepository, orderRepository, accountRepository)
-                .update("demo-member", "BTCUSDT", "LONG", "ISOLATED", 20);
+                .update(1L, "BTCUSDT", "LONG", "ISOLATED", 20);
 
         assertEquals(20, result.leverage());
         assertEquals(95, result.liquidationPrice(), 0.0001);
-        assertEquals(100005, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
+        assertEquals(100005, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
         assertEquals(WalletHistorySource.TYPE_POSITION_LEVERAGE_CHANGE, accountRepository.lastSource.sourceType());
     }
 
@@ -52,7 +52,7 @@ class UpdatePositionLeverageServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -61,7 +61,7 @@ class UpdatePositionLeverageServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", FuturesOrder.place(
+        orderRepository.save(1L, FuturesOrder.place(
                 "pending-open",
                 "BTCUSDT",
                 "LONG",
@@ -78,7 +78,7 @@ class UpdatePositionLeverageServiceTest {
 
         CoreException thrown = assertThrows(CoreException.class, () ->
                 service(positionRepository, orderRepository, accountRepository)
-                        .update("demo-member", "BTCUSDT", "LONG", "ISOLATED", 20));
+                        .update(1L, "BTCUSDT", "LONG", "ISOLATED", 20));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
     }
@@ -88,7 +88,7 @@ class UpdatePositionLeverageServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(1);
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -100,7 +100,7 @@ class UpdatePositionLeverageServiceTest {
 
         CoreException thrown = assertThrows(CoreException.class, () ->
                 service(positionRepository, orderRepository, accountRepository)
-                        .update("demo-member", "BTCUSDT", "LONG", "ISOLATED", 1));
+                        .update(1L, "BTCUSDT", "LONG", "ISOLATED", 1));
 
         assertEquals(ErrorCode.INSUFFICIENT_AVAILABLE_MARGIN, thrown.errorCode());
     }
@@ -124,7 +124,7 @@ class UpdatePositionLeverageServiceTest {
         private final List<OpenPositionCandidate> positions = new ArrayList<>();
 
         @Override
-        public List<PositionSnapshot> findOpenPositions(String memberId) {
+        public List<PositionSnapshot> findOpenPositions(Long memberId) {
             return positions.stream()
                     .filter(candidate -> candidate.memberId().equals(memberId))
                     .map(OpenPositionCandidate::position)
@@ -133,7 +133,7 @@ class UpdatePositionLeverageServiceTest {
 
         @Override
         public Optional<PositionSnapshot> findOpenPosition(
-                String memberId,
+                Long memberId,
                 String symbol,
                 String positionSide,
                 String marginMode
@@ -155,14 +155,14 @@ class UpdatePositionLeverageServiceTest {
         }
 
         @Override
-        public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+        public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             delete(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode());
             positions.add(new OpenPositionCandidate(memberId, positionSnapshot));
             return positionSnapshot;
         }
 
         @Override
-        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
             int before = positions.size();
             positions.removeIf(candidate -> candidate.memberId().equals(memberId)
                     && candidate.symbol().equals(symbol)
@@ -172,7 +172,7 @@ class UpdatePositionLeverageServiceTest {
         }
 
         @Override
-        public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
             deleteIfOpen(memberId, symbol, positionSide, marginMode);
         }
     }
@@ -181,18 +181,18 @@ class UpdatePositionLeverageServiceTest {
         private final List<FuturesOrder> orders = new ArrayList<>();
 
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             orders.add(futuresOrder);
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return List.copyOf(orders);
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return orders.stream().filter(order -> order.orderId().equals(orderId)).findFirst();
         }
 
@@ -200,13 +200,13 @@ class UpdatePositionLeverageServiceTest {
         public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
             return orders.stream()
                     .filter(order -> order.symbol().equals(symbol))
-                    .map(order -> new PendingOrderCandidate("demo-member", order))
+                    .map(order -> new PendingOrderCandidate(1L, order))
                     .toList();
         }
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -216,7 +216,7 @@ class UpdatePositionLeverageServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             throw new UnsupportedOperationException();
         }
     }
@@ -227,7 +227,7 @@ class UpdatePositionLeverageServiceTest {
 
         private InMemoryAccountRepository(double availableMargin) {
             this.account = new TradingAccount(
-                    "demo-member",
+                    1L,
                     "demo@coinzzickmock.dev",
                     "Demo",
                     100000,
@@ -236,7 +236,7 @@ class UpdatePositionLeverageServiceTest {
         }
 
         @Override
-        public Optional<TradingAccount> findByMemberId(String memberId) {
+        public Optional<TradingAccount> findByMemberId(Long memberId) {
             return Optional.of(account);
         }
 

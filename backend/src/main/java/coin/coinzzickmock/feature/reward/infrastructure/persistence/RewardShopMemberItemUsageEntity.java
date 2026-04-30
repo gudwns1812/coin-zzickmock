@@ -21,7 +21,7 @@ public class RewardShopMemberItemUsageEntity extends AuditableEntity {
     private Long id;
 
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "shop_item_id", nullable = false)
@@ -41,7 +41,7 @@ public class RewardShopMemberItemUsageEntity extends AuditableEntity {
         return new RewardShopMemberItemUsageEntity(usage.memberId(), shopItem, usage.purchaseCount());
     }
 
-    public RewardShopMemberItemUsageEntity(String memberId, RewardShopItemEntity shopItem, int purchaseCount) {
+    public RewardShopMemberItemUsageEntity(Long memberId, RewardShopItemEntity shopItem, int purchaseCount) {
         if (purchaseCount < 0) {
             throw new IllegalArgumentException("구매 수량은 음수일 수 없습니다.");
         }
@@ -78,7 +78,7 @@ public class RewardShopMemberItemUsageEntity extends AuditableEntity {
         return id;
     }
 
-    public String getMemberId() {
+    public Long getMemberId() {
         return memberId;
     }
 

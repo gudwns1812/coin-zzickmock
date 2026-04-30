@@ -43,13 +43,13 @@ class ClosePositionServiceTest {
     @Test
     void partiallyClosesPositionAndUpdatesAccountAndRewardPoint() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
         InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
-        positionRepository.save("demo-member", new PositionSnapshot(
+        positionRepository.save(1L, new PositionSnapshot(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -77,36 +77,36 @@ class ClosePositionServiceTest {
                 new OrderPlacementPolicy()
         );
 
-        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
+        ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
 
         assertEquals(0.1, result.closedQuantity(), 0.0001);
         assertEquals(994.5, result.realizedPnl(), 0.0001);
         assertEquals(0, result.grantedPoint(), 0.0001);
 
-        TradingAccount updatedAccount = accountRepository.findByMemberId("demo-member").orElseThrow();
+        TradingAccount updatedAccount = accountRepository.findByMemberId(1L).orElseThrow();
         assertEquals(100994.5, updatedAccount.walletBalance(), 0.0001);
         assertEquals(96994.5, updatedAccount.availableMargin(), 0.0001);
 
-        PositionSnapshot remaining = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot remaining = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(0.1, remaining.quantity(), 0.0001);
         assertEquals(1000.0, remaining.unrealizedPnl(), 0.0001);
         assertEquals(90000.0, remaining.liquidationPrice(), 0.0001);
 
-        RewardPointWallet wallet = rewardPointRepository.findByMemberId("demo-member").orElseThrow();
+        RewardPointWallet wallet = rewardPointRepository.findByMemberId(1L).orElseThrow();
         assertEquals(0, wallet.rewardPoint(), 0.0001);
     }
 
     @Test
     void lossCloseDoesNotGrantPointsAndSettlesAccountWithLoss() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
         InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
-        positionRepository.save("demo-member", new PositionSnapshot(
+        positionRepository.save(1L, new PositionSnapshot(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -134,35 +134,35 @@ class ClosePositionServiceTest {
                 new OrderPlacementPolicy()
         );
 
-        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
+        ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
 
         assertEquals(0.1, result.closedQuantity(), 0.0001);
         assertEquals(-1004.5, result.realizedPnl(), 0.0001);
         assertEquals(0, result.grantedPoint(), 0.0001);
 
-        TradingAccount updatedAccount = accountRepository.findByMemberId("demo-member").orElseThrow();
+        TradingAccount updatedAccount = accountRepository.findByMemberId(1L).orElseThrow();
         assertEquals(98995.5, updatedAccount.walletBalance(), 0.0001);
         assertEquals(94995.5, updatedAccount.availableMargin(), 0.0001);
 
-        PositionSnapshot remaining = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot remaining = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(0.1, remaining.quantity(), 0.0001);
         assertEquals(-1000.0, remaining.unrealizedPnl(), 0.0001);
 
-        RewardPointWallet wallet = rewardPointRepository.findByMemberId("demo-member").orElseThrow();
+        RewardPointWallet wallet = rewardPointRepository.findByMemberId(1L).orElseThrow();
         assertEquals(0, wallet.rewardPoint(), 0.0001);
     }
 
     @Test
     void fullyClosedPositionIsSavedToPositionHistory() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
         InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
-        positionRepository.save("demo-member", new PositionSnapshot(
+        positionRepository.save(1L, new PositionSnapshot(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -190,12 +190,12 @@ class ClosePositionServiceTest {
                 new OrderPlacementPolicy()
         );
 
-        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.2, "MARKET", null);
+        ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.2, "MARKET", null);
 
         assertEquals(0.2, result.closedQuantity(), 0.0001);
-        assertFalse(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
+        assertFalse(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isPresent());
 
-        List<PositionHistory> histories = positionHistoryRepository.findByMemberId("demo-member", null);
+        List<PositionHistory> histories = positionHistoryRepository.findByMemberId(1L, null);
         assertEquals(1, histories.size());
         PositionHistory history = histories.get(0);
         assertEquals("BTCUSDT", history.symbol());
@@ -219,7 +219,7 @@ class ClosePositionServiceTest {
     void fullMarketCloseCancelsExistingPendingCloseOrders() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -228,7 +228,7 @@ class ClosePositionServiceTest {
                 100000,
                 100000
         ));
-        orderRepository.save("demo-member", FuturesOrder.place(
+        orderRepository.save(1L, FuturesOrder.place(
                 "existing-close",
                 "BTCUSDT",
                 "LONG",
@@ -245,18 +245,18 @@ class ClosePositionServiceTest {
         ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(105000, 105000));
 
-        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 1, "MARKET", null);
+        service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 1, "MARKET", null);
 
-        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "existing-close").orElseThrow();
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId(1L, "existing-close").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
-        assertFalse(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
+        assertFalse(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isPresent());
     }
 
     @Test
     void partialMarketCloseReducesPendingCloseOrdersToRemainingPositionQuantity() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -265,7 +265,7 @@ class ClosePositionServiceTest {
                 100000,
                 100000
         ));
-        orderRepository.save("demo-member", FuturesOrder.place(
+        orderRepository.save(1L, FuturesOrder.place(
                 "closer",
                 "BTCUSDT",
                 "LONG",
@@ -280,7 +280,7 @@ class ClosePositionServiceTest {
                 0,
                 106000
         ));
-        orderRepository.save("demo-member", FuturesOrder.place(
+        orderRepository.save(1L, FuturesOrder.place(
                 "farther",
                 "BTCUSDT",
                 "LONG",
@@ -297,10 +297,10 @@ class ClosePositionServiceTest {
         ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(105000, 105000));
 
-        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.6, "MARKET", null);
+        service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.6, "MARKET", null);
 
-        FuturesOrder closer = orderRepository.findByMemberIdAndOrderId("demo-member", "closer").orElseThrow();
-        FuturesOrder reducedFarther = orderRepository.findByMemberIdAndOrderId("demo-member", "farther").orElseThrow();
+        FuturesOrder closer = orderRepository.findByMemberIdAndOrderId(1L, "closer").orElseThrow();
+        FuturesOrder reducedFarther = orderRepository.findByMemberIdAndOrderId(1L, "farther").orElseThrow();
         assertEquals(FuturesOrder.STATUS_PENDING, closer.status());
         assertEquals(0.3, closer.quantity(), 0.0001);
         assertEquals(FuturesOrder.STATUS_PENDING, reducedFarther.status());
@@ -310,13 +310,13 @@ class ClosePositionServiceTest {
     @Test
     void limitCloseCreatesPendingCloseOrderWithoutClosingPosition() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
         InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
-        positionRepository.save("demo-member", new PositionSnapshot(
+        positionRepository.save(1L, new PositionSnapshot(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -344,15 +344,15 @@ class ClosePositionServiceTest {
                 new OrderPlacementPolicy()
         );
 
-        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 112000.0);
+        ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 112000.0);
 
         assertEquals(0, result.closedQuantity(), 0.0001);
-        assertEquals(0, positionHistoryRepository.findByMemberId("demo-member", null).size());
-        assertEquals(0.2, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        assertEquals(0, positionHistoryRepository.findByMemberId(1L, null).size());
+        assertEquals(0.2, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow()
                 .quantity(), 0.0001);
 
-        FuturesOrder order = orderRepository.findByMemberId("demo-member").get(0);
+        FuturesOrder order = orderRepository.findByMemberId(1L).get(0);
         assertEquals(FuturesOrder.STATUS_PENDING, order.status());
         assertEquals(FuturesOrder.PURPOSE_CLOSE_POSITION, order.orderPurpose());
         assertEquals("LIMIT", order.orderType());
@@ -365,13 +365,13 @@ class ClosePositionServiceTest {
     @Test
     void marketableLongLimitCloseFillsImmediatelyAsTakerAndRetainsLimitOrderShape() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
         InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -396,11 +396,11 @@ class ClosePositionServiceTest {
                 new OrderPlacementPolicy()
         );
 
-        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 110000.0);
+        ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 110000.0);
 
         assertEquals(0.1, result.closedQuantity(), 0.0001);
         assertEquals(994.5, result.realizedPnl(), 0.0001);
-        FuturesOrder order = orderRepository.findByMemberId("demo-member").get(0);
+        FuturesOrder order = orderRepository.findByMemberId(1L).get(0);
         assertEquals("LIMIT", order.orderType());
         assertEquals(110000.0, order.limitPrice(), 0.0001);
         assertEquals(FuturesOrder.PURPOSE_CLOSE_POSITION, order.orderPurpose());
@@ -408,25 +408,25 @@ class ClosePositionServiceTest {
         assertEquals("TAKER", order.feeType());
         assertEquals(110000.0, order.executionPrice(), 0.0001);
         assertEquals(5.5, order.estimatedFee(), 0.0001);
-        assertEquals(0.1, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        assertEquals(0.1, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow()
                 .quantity(), 0.0001);
-        TradingAccount account = accountRepository.findByMemberId("demo-member").orElseThrow();
+        TradingAccount account = accountRepository.findByMemberId(1L).orElseThrow();
         assertEquals(100994.5, account.walletBalance(), 0.0001);
         assertEquals(96994.5, account.availableMargin(), 0.0001);
-        assertEquals(0, positionHistoryRepository.findByMemberId("demo-member", null).size());
+        assertEquals(0, positionHistoryRepository.findByMemberId(1L, null).size());
     }
 
     @Test
     void marketableShortLimitCloseFillsImmediatelyAsTakerAtEqualityBoundary() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
         InMemoryRewardPointRepository rewardPointRepository = new InMemoryRewardPointRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "SHORT",
                 "ISOLATED",
@@ -451,11 +451,11 @@ class ClosePositionServiceTest {
                 new OrderPlacementPolicy()
         );
 
-        ClosePositionResult result = service.close("demo-member", "BTCUSDT", "SHORT", "ISOLATED", 0.1, "LIMIT", 90000.0);
+        ClosePositionResult result = service.close(1L, "BTCUSDT", "SHORT", "ISOLATED", 0.1, "LIMIT", 90000.0);
 
         assertEquals(0.1, result.closedQuantity(), 0.0001);
         assertEquals(995.5, result.realizedPnl(), 0.0001);
-        FuturesOrder order = orderRepository.findByMemberId("demo-member").get(0);
+        FuturesOrder order = orderRepository.findByMemberId(1L).get(0);
         assertEquals("LIMIT", order.orderType());
         assertEquals(90000.0, order.limitPrice(), 0.0001);
         assertEquals(FuturesOrder.PURPOSE_CLOSE_POSITION, order.orderPurpose());
@@ -463,10 +463,10 @@ class ClosePositionServiceTest {
         assertEquals("TAKER", order.feeType());
         assertEquals(90000.0, order.executionPrice(), 0.0001);
         assertEquals(4.5, order.estimatedFee(), 0.0001);
-        assertEquals(0.1, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "SHORT", "ISOLATED")
+        assertEquals(0.1, positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "ISOLATED")
                 .orElseThrow()
                 .quantity(), 0.0001);
-        TradingAccount account = accountRepository.findByMemberId("demo-member").orElseThrow();
+        TradingAccount account = accountRepository.findByMemberId(1L).orElseThrow();
         assertEquals(100995.5, account.walletBalance(), 0.0001);
         assertEquals(96995.5, account.availableMargin(), 0.0001);
     }
@@ -475,7 +475,7 @@ class ClosePositionServiceTest {
     void closeRejectsUnsupportedOrderType() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -487,7 +487,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(100000, 100000));
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.close(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -503,7 +503,7 @@ class ClosePositionServiceTest {
     void closeRejectsOppositeSidePositionAsNotFound() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -515,7 +515,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(100000, 100000));
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.close(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "SHORT",
                 "ISOLATED",
@@ -531,7 +531,7 @@ class ClosePositionServiceTest {
     void longPendingCloseCapReducesHigherLessLikelyLimitPriceFirst() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -540,7 +540,7 @@ class ClosePositionServiceTest {
                 70000,
                 70000
         ));
-        orderRepository.save("demo-member", FuturesOrder.place(
+        orderRepository.save(1L, FuturesOrder.place(
                 "existing-long-close",
                 "BTCUSDT",
                 "LONG",
@@ -557,10 +557,10 @@ class ClosePositionServiceTest {
         ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
-        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 72000.0);
+        service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 72000.0);
 
-        FuturesOrder existing = orderRepository.findByMemberIdAndOrderId("demo-member", "existing-long-close").orElseThrow();
-        FuturesOrder reducedNew = orderRepository.findByMemberId("demo-member").stream()
+        FuturesOrder existing = orderRepository.findByMemberIdAndOrderId(1L, "existing-long-close").orElseThrow();
+        FuturesOrder reducedNew = orderRepository.findByMemberId(1L).stream()
                 .filter(order -> order.limitPrice() != null && order.limitPrice() == 72000.0)
                 .findFirst()
                 .orElseThrow();
@@ -574,7 +574,7 @@ class ClosePositionServiceTest {
     void shortPendingCloseCapReducesLowerLessLikelyLimitPriceFirst() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "SHORT",
                 "ISOLATED",
@@ -583,7 +583,7 @@ class ClosePositionServiceTest {
                 70000,
                 70000
         ));
-        orderRepository.save("demo-member", FuturesOrder.place(
+        orderRepository.save(1L, FuturesOrder.place(
                 "existing-short-close",
                 "BTCUSDT",
                 "SHORT",
@@ -600,10 +600,10 @@ class ClosePositionServiceTest {
         ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
-        service.close("demo-member", "BTCUSDT", "SHORT", "ISOLATED", 0.1, "LIMIT", 68000.0);
+        service.close(1L, "BTCUSDT", "SHORT", "ISOLATED", 0.1, "LIMIT", 68000.0);
 
-        FuturesOrder existing = orderRepository.findByMemberIdAndOrderId("demo-member", "existing-short-close").orElseThrow();
-        FuturesOrder reducedNew = orderRepository.findByMemberId("demo-member").stream()
+        FuturesOrder existing = orderRepository.findByMemberIdAndOrderId(1L, "existing-short-close").orElseThrow();
+        FuturesOrder reducedNew = orderRepository.findByMemberId(1L).stream()
                 .filter(order -> order.limitPrice() != null && order.limitPrice() == 68000.0)
                 .findFirst()
                 .orElseThrow();
@@ -617,7 +617,7 @@ class ClosePositionServiceTest {
     void limitCloseSucceedsWhenPendingCloseAlreadyCoversHeldQuantityAndReconcilesToCap() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -626,14 +626,14 @@ class ClosePositionServiceTest {
                 70000,
                 70000
         ));
-        orderRepository.save("demo-member", closeOrder(
+        orderRepository.save(1L, closeOrder(
                 "existing-low",
                 "LONG",
                 1,
                 71000.0,
                 java.time.Instant.parse("2026-04-27T00:00:00Z")
         ));
-        orderRepository.save("demo-member", closeOrder(
+        orderRepository.save(1L, closeOrder(
                 "existing-high",
                 "LONG",
                 1,
@@ -642,19 +642,19 @@ class ClosePositionServiceTest {
         ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
-        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 1, "LIMIT", 72000.0);
+        service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 1, "LIMIT", 72000.0);
 
         List<FuturesOrder> pendingCloseOrders = orderRepository.findPendingCloseOrders(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED"
         );
         assertEquals(2, pendingCloseOrders.stream().mapToDouble(FuturesOrder::quantity).sum(), 0.0001);
-        assertEquals(FuturesOrder.STATUS_CANCELLED, orderRepository.findByMemberIdAndOrderId("demo-member", "existing-high")
+        assertEquals(FuturesOrder.STATUS_CANCELLED, orderRepository.findByMemberIdAndOrderId(1L, "existing-high")
                 .orElseThrow()
                 .status());
-        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberId("demo-member").stream()
+        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberId(1L).stream()
                 .filter(order -> order.limitPrice() != null && order.limitPrice() == 72000.0)
                 .findFirst()
                 .orElseThrow()
@@ -665,7 +665,7 @@ class ClosePositionServiceTest {
     void pendingCloseCapReducesNewerOrderFirstWhenLikelihoodTies() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -674,7 +674,7 @@ class ClosePositionServiceTest {
                 70000,
                 70000
         ));
-        orderRepository.save("demo-member", closeOrder(
+        orderRepository.save(1L, closeOrder(
                 "older-close",
                 "LONG",
                 0.8,
@@ -683,10 +683,10 @@ class ClosePositionServiceTest {
         ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
-        service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.5, "LIMIT", 72000.0);
+        service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.5, "LIMIT", 72000.0);
 
-        FuturesOrder older = orderRepository.findByMemberIdAndOrderId("demo-member", "older-close").orElseThrow();
-        FuturesOrder newer = orderRepository.findByMemberId("demo-member").stream()
+        FuturesOrder older = orderRepository.findByMemberIdAndOrderId(1L, "older-close").orElseThrow();
+        FuturesOrder newer = orderRepository.findByMemberId(1L).stream()
                 .filter(order -> order.limitPrice() != null && order.limitPrice() == 72000.0)
                 .filter(order -> !order.orderId().equals("older-close"))
                 .findFirst()
@@ -700,7 +700,7 @@ class ClosePositionServiceTest {
     @Test
     void staleCloseFailsBeforeAccountHistoryOrRewardSideEffects() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryPositionHistoryRepository positionHistoryRepository = new InMemoryPositionHistoryRepository();
@@ -714,7 +714,7 @@ class ClosePositionServiceTest {
                 100000,
                 100000
         );
-        positionRepository.save("demo-member", stale.withVersion(1));
+        positionRepository.save(1L, stale.withVersion(1));
         PositionCloseFinalizer finalizer = new PositionCloseFinalizer(
                 positionRepository,
                 accountRepository,
@@ -725,7 +725,7 @@ class ClosePositionServiceTest {
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> finalizer.close(
-                "demo-member",
+                1L,
                 stale,
                 0.1,
                 110000,
@@ -735,12 +735,12 @@ class ClosePositionServiceTest {
         ));
 
         assertEquals(ErrorCode.POSITION_CHANGED, thrown.errorCode());
-        TradingAccount account = accountRepository.findByMemberId("demo-member").orElseThrow();
+        TradingAccount account = accountRepository.findByMemberId(1L).orElseThrow();
         assertEquals(100000, account.walletBalance(), 0.0001);
         assertEquals(95000, account.availableMargin(), 0.0001);
-        assertEquals(0, positionHistoryRepository.findByMemberId("demo-member", null).size());
-        assertEquals(0, rewardPointRepository.findByMemberId("demo-member").orElseThrow().rewardPoint(), 0.0001);
-        assertEquals(0.2, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        assertEquals(0, positionHistoryRepository.findByMemberId(1L, null).size());
+        assertEquals(0, rewardPointRepository.findByMemberId(1L).orElseThrow().rewardPoint(), 0.0001);
+        assertEquals(0.2, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow()
                 .quantity(), 0.0001);
     }
@@ -770,7 +770,7 @@ class ClosePositionServiceTest {
             RealtimeMarketPriceReader realtimeMarketPriceReader
     ) {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
-                new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
+                new TradingAccount(1L, "demo@coinzzickmock.dev", "Demo", 100000, 95000)
         );
         return new ClosePositionService(
                 positionRepository,
@@ -822,7 +822,7 @@ class ClosePositionServiceTest {
         }
 
         @Override
-        public Optional<TradingAccount> findByMemberId(String memberId) {
+        public Optional<TradingAccount> findByMemberId(Long memberId) {
             return Optional.of(account);
         }
 
@@ -837,13 +837,13 @@ class ClosePositionServiceTest {
         private final Map<String, PendingOrderCandidate> orders = new LinkedHashMap<>();
 
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             orders.put(key(memberId, futuresOrder.orderId()), new PendingOrderCandidate(memberId, futuresOrder));
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return orders.values().stream()
                     .filter(candidate -> candidate.memberId().equals(memberId))
                     .map(PendingOrderCandidate::order)
@@ -851,7 +851,7 @@ class ClosePositionServiceTest {
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return Optional.ofNullable(orders.get(key(memberId, orderId)))
                     .map(PendingOrderCandidate::order);
         }
@@ -865,7 +865,7 @@ class ClosePositionServiceTest {
         }
 
         @Override
-        public List<FuturesOrder> findPendingCloseOrders(String memberId, String symbol, String positionSide, String marginMode) {
+        public List<FuturesOrder> findPendingCloseOrders(Long memberId, String symbol, String positionSide, String marginMode) {
             return orders.values().stream()
                     .filter(candidate -> candidate.memberId().equals(memberId))
                     .map(PendingOrderCandidate::order)
@@ -879,7 +879,7 @@ class ClosePositionServiceTest {
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -895,7 +895,7 @@ class ClosePositionServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             PendingOrderCandidate candidate = orders.get(key(memberId, orderId));
             FuturesOrder updated = status.equals(FuturesOrder.STATUS_CANCELLED)
                     ? candidate.order().cancel()
@@ -905,7 +905,7 @@ class ClosePositionServiceTest {
         }
 
         @Override
-        public FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+        public FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
             PendingOrderCandidate candidate = orders.get(key(memberId, orderId));
             FuturesOrder updated = candidate.order().withQuantity(quantity);
             if (FuturesOrder.STATUS_CANCELLED.equals(status)) {
@@ -915,7 +915,7 @@ class ClosePositionServiceTest {
             return updated;
         }
 
-        private String key(String memberId, String orderId) {
+        private String key(Long memberId, String orderId) {
             return memberId + ":" + orderId;
         }
     }
@@ -924,12 +924,12 @@ class ClosePositionServiceTest {
         private final List<PositionSnapshot> positions = new ArrayList<>();
 
         @Override
-        public List<PositionSnapshot> findOpenPositions(String memberId) {
+        public List<PositionSnapshot> findOpenPositions(Long memberId) {
             return List.copyOf(positions);
         }
 
         @Override
-        public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide, String marginMode) {
+        public Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide, String marginMode) {
             return positions.stream()
                     .filter(position -> position.symbol().equals(symbol))
                     .filter(position -> position.positionSide().equals(positionSide))
@@ -941,26 +941,26 @@ class ClosePositionServiceTest {
         public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
             return positions.stream()
                     .filter(position -> position.symbol().equals(symbol))
-                    .map(position -> new OpenPositionCandidate("demo-member", position))
+                    .map(position -> new OpenPositionCandidate(1L, position))
                     .toList();
         }
 
         @Override
-        public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+        public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             delete(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode());
             positions.add(positionSnapshot);
             return positionSnapshot;
         }
 
         @Override
-        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
             int before = positions.size();
             delete(memberId, symbol, positionSide, marginMode);
             return before != positions.size();
         }
 
         @Override
-        public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
             positions.removeIf(position -> position.symbol().equals(symbol)
                     && position.positionSide().equals(positionSide)
                     && position.marginMode().equals(marginMode));
@@ -968,16 +968,16 @@ class ClosePositionServiceTest {
     }
 
     private static class InMemoryPositionHistoryRepository implements PositionHistoryRepository {
-        private final Map<String, List<PositionHistory>> histories = new LinkedHashMap<>();
+        private final Map<Long, List<PositionHistory>> histories = new LinkedHashMap<>();
 
         @Override
-        public PositionHistory save(String memberId, PositionHistory positionHistory) {
+        public PositionHistory save(Long memberId, PositionHistory positionHistory) {
             histories.computeIfAbsent(memberId, ignored -> new ArrayList<>()).add(positionHistory);
             return positionHistory;
         }
 
         @Override
-        public List<PositionHistory> findByMemberId(String memberId, String symbol) {
+        public List<PositionHistory> findByMemberId(Long memberId, String symbol) {
             return histories.getOrDefault(memberId, List.of()).stream()
                     .filter(history -> symbol == null || history.symbol().equals(symbol))
                     .toList();
@@ -985,10 +985,10 @@ class ClosePositionServiceTest {
     }
 
     private static class InMemoryRewardPointRepository implements RewardPointRepository {
-        private RewardPointWallet wallet = new RewardPointWallet("demo-member", 0);
+        private RewardPointWallet wallet = new RewardPointWallet(1L, 0);
 
         @Override
-        public Optional<RewardPointWallet> findByMemberId(String memberId) {
+        public Optional<RewardPointWallet> findByMemberId(Long memberId) {
             return wallet.memberId().equals(memberId) ? Optional.of(wallet) : Optional.empty();
         }
 

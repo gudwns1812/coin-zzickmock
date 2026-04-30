@@ -28,12 +28,12 @@ public class AdminRewardRedemptionService {
     }
 
     @Transactional
-    public RewardRedemptionResult markSent(String requestId, String adminMemberId, String adminMemo) {
+    public RewardRedemptionResult markSent(String requestId, Long adminMemberId, String adminMemo) {
         return approve(requestId, adminMemberId, adminMemo);
     }
 
     @Transactional
-    public RewardRedemptionResult approve(String requestId, String adminMemberId, String adminMemo) {
+    public RewardRedemptionResult approve(String requestId, Long adminMemberId, String adminMemo) {
         int claimed = rewardRedemptionRequestRepository.claimPendingAsApproved(
                 requestId,
                 adminMemberId,
@@ -47,12 +47,12 @@ public class AdminRewardRedemptionService {
     }
 
     @Transactional
-    public RewardRedemptionResult cancelAndRefund(String requestId, String adminMemberId, String adminMemo) {
+    public RewardRedemptionResult cancelAndRefund(String requestId, Long adminMemberId, String adminMemo) {
         return rejectAndRefund(requestId, adminMemberId, adminMemo);
     }
 
     @Transactional
-    public RewardRedemptionResult rejectAndRefund(String requestId, String adminMemberId, String adminMemo) {
+    public RewardRedemptionResult rejectAndRefund(String requestId, Long adminMemberId, String adminMemo) {
         int claimed = rewardRedemptionRequestRepository.claimPendingAsRejected(
                 requestId,
                 adminMemberId,

@@ -37,6 +37,7 @@ class RegisterMemberServiceTest {
                     " new-ranker ",
                     "hello@1234",
                     "New Ranker",
+                    "New Ranker",
                     "new-ranker@coinzzickmock.dev",
                     "010-5555-6666",
                     "04524",
@@ -44,20 +45,20 @@ class RegisterMemberServiceTest {
                     "12층"
             );
 
-            assertEquals(TradingAccount.INITIAL_WALLET_BALANCE, accountRepository.accounts.get("new-ranker").walletBalance());
+            assertEquals(TradingAccount.INITIAL_WALLET_BALANCE, accountRepository.accounts.get(1L).walletBalance());
             assertTrue(eventPublisher.events.isEmpty());
 
             TransactionSynchronizationUtils.triggerAfterCommit();
 
             assertEquals(1, eventPublisher.events.size());
-            assertEquals("new-ranker", eventPublisher.events.get("new-ranker").memberId());
+            assertEquals(1L, eventPublisher.events.get(1L).memberId());
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
     }
 
     private static class CapturingEventPublisher implements ApplicationEventPublisher {
-        private final Map<String, WalletBalanceChangedEvent> events = new LinkedHashMap<>();
+        private final Map<Long, WalletBalanceChangedEvent> events = new LinkedHashMap<>();
 
         @Override
         public void publishEvent(Object event) {
@@ -68,35 +69,49 @@ class RegisterMemberServiceTest {
     }
 
     private static class InMemoryMemberCredentialRepository implements MemberCredentialRepository {
-        private final Map<String, MemberCredential> credentials = new LinkedHashMap<>();
+        private final Map<Long, MemberCredential> credentialsById = new LinkedHashMap<>();
+        private final Map<String, MemberCredential> credentialsByAccount = new LinkedHashMap<>();
+        private long nextId = 1L;
 
         @Override
-        public Optional<MemberCredential> findByMemberId(String memberId) {
-            return Optional.ofNullable(credentials.get(memberId));
+        public Optional<MemberCredential> findByMemberId(Long memberId) {
+            return Optional.ofNullable(credentialsById.get(memberId));
         }
 
         @Override
-        public boolean existsByMemberId(String memberId) {
-            return credentials.containsKey(memberId);
+        public Optional<MemberCredential> findByAccount(String account) {
+            return Optional.ofNullable(credentialsByAccount.get(account));
+        }
+
+        @Override
+        public boolean existsByAccount(String account) {
+            return credentialsByAccount.containsKey(account);
         }
 
         @Override
         public MemberCredential save(MemberCredential memberCredential) {
-            credentials.put(memberCredential.memberId(), memberCredential);
-            return memberCredential;
+            MemberCredential saved = memberCredential.memberId() == null
+                    ? memberCredential.withMemberId(nextId++)
+                    : memberCredential;
+            credentialsById.put(saved.memberId(), saved);
+            credentialsByAccount.put(saved.account(), saved);
+            return saved;
         }
 
         @Override
-        public void deleteByMemberId(String memberId) {
-            credentials.remove(memberId);
+        public void deleteByMemberId(Long memberId) {
+            MemberCredential removed = credentialsById.remove(memberId);
+            if (removed != null) {
+                credentialsByAccount.remove(removed.account());
+            }
         }
     }
 
     private static class InMemoryAccountRepository implements AccountRepository {
-        private final Map<String, TradingAccount> accounts = new LinkedHashMap<>();
+        private final Map<Long, TradingAccount> accounts = new LinkedHashMap<>();
 
         @Override
-        public Optional<TradingAccount> findByMemberId(String memberId) {
+        public Optional<TradingAccount> findByMemberId(Long memberId) {
             return Optional.ofNullable(accounts.get(memberId));
         }
 

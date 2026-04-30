@@ -15,21 +15,32 @@ public class MemberCredentialPersistenceRepository implements MemberCredentialRe
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<MemberCredential> findByMemberId(String memberId) {
+    public Optional<MemberCredential> findByMemberId(Long memberId) {
         return memberCredentialEntityRepository.findById(memberId)
                 .map(MemberCredentialEntity::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existsByMemberId(String memberId) {
-        return memberCredentialEntityRepository.existsById(memberId);
+    public Optional<MemberCredential> findByAccount(String account) {
+        return memberCredentialEntityRepository.findByAccount(account)
+                .map(MemberCredentialEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByAccount(String account) {
+        return memberCredentialEntityRepository.existsByAccount(account);
     }
 
     @Override
     @Transactional
     public MemberCredential save(MemberCredential memberCredential) {
-        MemberCredentialEntity entity = memberCredentialEntityRepository.findById(memberCredential.memberId())
+        Optional<MemberCredentialEntity> existingEntity = memberCredential.memberId() == null
+                ? memberCredentialEntityRepository.findByAccount(memberCredential.account())
+                : memberCredentialEntityRepository.findById(memberCredential.memberId());
+
+        MemberCredentialEntity entity = existingEntity
                 .map(existing -> {
                     existing.apply(memberCredential);
                     return existing;
@@ -40,7 +51,7 @@ public class MemberCredentialPersistenceRepository implements MemberCredentialRe
 
     @Override
     @Transactional
-    public void deleteByMemberId(String memberId) {
+    public void deleteByMemberId(Long memberId) {
         memberCredentialEntityRepository.deleteById(memberId);
     }
 }

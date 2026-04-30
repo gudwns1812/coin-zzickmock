@@ -4,7 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 
 public record TradingAccount(
-        String memberId,
+        Long memberId,
         String memberEmail,
         String memberName,
         double walletBalance,
@@ -13,7 +13,7 @@ public record TradingAccount(
     public static final double INITIAL_WALLET_BALANCE = 100_000d;
     private static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
 
-    public static TradingAccount openDefault(String memberId, String memberEmail, String memberName) {
+    public static TradingAccount openDefault(Long memberId, String memberEmail, String memberName) {
         return new TradingAccount(
                 memberId,
                 memberEmail,

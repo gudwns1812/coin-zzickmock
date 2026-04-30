@@ -21,7 +21,7 @@ public class RewardPointHistoryPersistenceRepository implements RewardPointHisto
 
     @Override
     @Transactional(readOnly = true)
-    public List<RewardPointHistory> findByMemberId(String memberId) {
+    public List<RewardPointHistory> findByMemberId(Long memberId) {
         return rewardPointHistoryEntityRepository.findByMemberIdOrderByIdDesc(memberId).stream()
                 .map(RewardPointHistoryEntity::toDomain)
                 .toList();

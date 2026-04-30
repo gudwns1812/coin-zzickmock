@@ -31,14 +31,14 @@ class WalletHistoryPersistenceRepositoryTest {
 
     @Test
     void recordsWalletHistoryOnceForDuplicateSources() {
-        TradingAccount account = new TradingAccount("wallet-history-member", "wallet@example.com", "Wallet", 100_000, 100_000);
+        TradingAccount account = new TradingAccount(1L, "wallet@example.com", "Wallet", 100_000, 100_000);
         WalletHistorySource source = WalletHistorySource.orderFill("duplicate-order");
 
         accountRepository.save(account.reserveForFilledOrder(10, 100), source);
         accountRepository.save(account.reserveForFilledOrder(10, 100), source);
 
         List<WalletHistorySnapshot> snapshots = walletHistoryRepository.findByMemberIdBetween(
-                "wallet-history-member",
+                1L,
                 Instant.now().minus(1, ChronoUnit.DAYS),
                 Instant.now().plus(1, ChronoUnit.DAYS)
         );

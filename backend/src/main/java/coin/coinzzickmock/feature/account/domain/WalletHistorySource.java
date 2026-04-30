@@ -28,7 +28,7 @@ public record WalletHistorySource(
         }
     }
 
-    public static WalletHistorySource seed(String memberId) {
+    public static WalletHistorySource seed(Long memberId) {
         return new WalletHistorySource(TYPE_SEED, "account:" + memberId + ":seed");
     }
 

@@ -19,7 +19,7 @@ public class PositionHistoryEntity {
     private Long id;
 
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @Column(name = "symbol", nullable = false, length = 30)
     private String symbol;
@@ -82,7 +82,7 @@ public class PositionHistoryEntity {
     protected PositionHistoryEntity() {
     }
 
-    public static PositionHistoryEntity from(String memberId, PositionHistory history) {
+    public static PositionHistoryEntity from(Long memberId, PositionHistory history) {
         PositionHistoryEntity entity = new PositionHistoryEntity();
         entity.memberId = memberId;
         entity.symbol = history.symbol();
@@ -129,7 +129,7 @@ public class PositionHistoryEntity {
         );
     }
 
-    public String memberId() {
+    public Long memberId() {
         return memberId;
     }
 

@@ -13,13 +13,13 @@ public interface RewardRedemptionRequestRepository {
 
     Optional<RewardRedemptionRequest> findByRequestIdForUpdate(String requestId);
 
-    List<RewardRedemptionRequest> findByMemberId(String memberId);
+    List<RewardRedemptionRequest> findByMemberId(Long memberId);
 
     List<RewardRedemptionRequest> findByStatus(RewardRedemptionStatus status);
 
-    int claimPendingAsApproved(String requestId, String adminMemberId, String adminMemo, java.time.Instant approvedAt);
+    int claimPendingAsApproved(String requestId, Long adminMemberId, String adminMemo, java.time.Instant approvedAt);
 
-    int claimPendingAsRejected(String requestId, String adminMemberId, String adminMemo, java.time.Instant rejectedAt);
+    int claimPendingAsRejected(String requestId, Long adminMemberId, String adminMemo, java.time.Instant rejectedAt);
 
-    int claimPendingAsCancelled(String requestId, String memberId, java.time.Instant cancelledAt);
+    int claimPendingAsCancelled(String requestId, Long memberId, java.time.Instant cancelledAt);
 }

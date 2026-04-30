@@ -66,11 +66,11 @@ const MyAccountChart = ({ token }: { token: JwtToken | null }) => {
 
   // Asset 데이터 (차트 타입에 따라 변경)
   const { data: asset } = useQuery({
-    queryKey: ["portfolioAsset", token?.memberId, chartType],
+    queryKey: ["portfolioAsset", token?.account, chartType],
     queryFn: async () => {
       if (!token) throw new Error("No token");
       const res = await fetch(
-        `/proxy/v1/portfolios/asset/${token.memberId}?period=${chartType}`,
+        `/proxy/v1/portfolios/asset/${token.account}?period=${chartType}`,
         { credentials: "include" }
       );
       if (!res.ok) throw new Error("Failed to get asset data");
@@ -85,11 +85,11 @@ const MyAccountChart = ({ token }: { token: JwtToken | null }) => {
 
   // Today PnL (20초마다 폴링)
   const { data: todayPnl } = useQuery({
-    queryKey: ["todayPnl", token?.memberId],
+    queryKey: ["todayPnl", token?.account],
     queryFn: async () => {
       if (!token) throw new Error("No token");
       const res = await fetch(
-        `/proxy/v1/portfolios/asset/pnl/${token.memberId}?period=Today`,
+        `/proxy/v1/portfolios/asset/pnl/${token.account}?period=Today`,
         { credentials: "include" }
       );
       if (!res.ok) throw new Error("Failed to get today pnl");
@@ -104,11 +104,11 @@ const MyAccountChart = ({ token }: { token: JwtToken | null }) => {
 
   // Month PnL (초기 로드만)
   const { data: periodPnl } = useQuery({
-    queryKey: ["monthPnl", token?.memberId],
+    queryKey: ["monthPnl", token?.account],
     queryFn: async () => {
       if (!token) throw new Error("No token");
       const res = await fetch(
-        `/proxy/v1/portfolios/asset/pnl/${token.memberId}?period=M`,
+        `/proxy/v1/portfolios/asset/pnl/${token.account}?period=M`,
         { credentials: "include" }
       );
       if (!res.ok) throw new Error("Failed to get month pnl");
@@ -122,11 +122,11 @@ const MyAccountChart = ({ token }: { token: JwtToken | null }) => {
 
   // Total PnL (초기 로드만)
   const { data: totalPnl } = useQuery({
-    queryKey: ["totalPnl", token?.memberId],
+    queryKey: ["totalPnl", token?.account],
     queryFn: async () => {
       if (!token) throw new Error("No token");
       const res = await fetch(
-        `/proxy/v1/portfolios/asset/pnl/${token.memberId}?period=Total`,
+        `/proxy/v1/portfolios/asset/pnl/${token.account}?period=Total`,
         { credentials: "include" }
       );
       if (!res.ok) throw new Error("Failed to get total pnl");

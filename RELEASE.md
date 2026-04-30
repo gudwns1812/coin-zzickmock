@@ -44,6 +44,11 @@
 - 따라서 현재 기본 원칙은 "CI를 통과한 커밋을 기준으로 하는 검증된 수동 릴리즈"다.
 - 자동화가 추가되더라도, 이 문서와 `docs/release-docs/`에 먼저 계약을 적고 구현한다.
 
+## Open Release TODOs
+
+- Redis leaderboard snapshots written before the member surrogate-key rollout may contain legacy account-string members. After the first production release that writes the new numeric `active:v3` snapshot successfully, create and close a cleanup issue to expire/delete legacy leaderboard keys and confirm no reader falls back to them.
+- JWT parsing currently keeps a temporary fallback from legacy `memberId` string claims to `account`. After all clients have refreshed onto tokens carrying numeric `memberId`, `account`, and `nickname`, create and close a cleanup issue to remove that fallback and fail legacy tokens explicitly.
+
 ## Non-negotiables
 
 - 운영 환경 배포는 리뷰되지 않은 로컬 변경이나 미병합 브랜치 기준으로 하지 않는다.

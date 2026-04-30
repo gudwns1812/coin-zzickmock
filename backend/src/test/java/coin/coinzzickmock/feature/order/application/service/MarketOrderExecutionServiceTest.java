@@ -56,7 +56,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        orderRepository.save("demo-member", new FuturesOrder(
+        orderRepository.save(1L, new FuturesOrder(
                 "order-1",
                 "BTCUSDT",
                 "LONG",
@@ -80,10 +80,10 @@ class MarketOrderExecutionServiceTest {
 
         service.onMarketUpdated(marketEvent(101, 98, 98));
 
-        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId("demo-member", "order-1").orElseThrow();
+        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId(1L, "order-1").orElseThrow();
         assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
         assertEquals(99, filled.executionPrice(), 0.0001);
-        assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isPresent());
         assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
     }
 
@@ -93,7 +93,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        orderRepository.save("demo-member", new FuturesOrder(
+        orderRepository.save(1L, new FuturesOrder(
                 "order-1",
                 "BTCUSDT",
                 "LONG",
@@ -116,7 +116,7 @@ class MarketOrderExecutionServiceTest {
 
         service.onMarketUpdated(MarketSummaryUpdatedEvent.from(rawMarket(101, 101), rawMarket(98, 98)));
 
-        FuturesOrder pending = orderRepository.findByMemberIdAndOrderId("demo-member", "order-1").orElseThrow();
+        FuturesOrder pending = orderRepository.findByMemberIdAndOrderId(1L, "order-1").orElseThrow();
         assertEquals(FuturesOrder.STATUS_PENDING, pending.status());
         assertTrue(eventPublisher.events.isEmpty());
     }
@@ -127,7 +127,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        orderRepository.save("demo-member", new FuturesOrder(
+        orderRepository.save(1L, new FuturesOrder(
                 "stale-isolated-open",
                 "BTCUSDT",
                 "LONG",
@@ -141,7 +141,7 @@ class MarketOrderExecutionServiceTest {
                 0,
                 99
         ));
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "CROSS",
@@ -154,13 +154,13 @@ class MarketOrderExecutionServiceTest {
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(marketEvent(101, 98, 98));
 
-        FuturesOrder stale = orderRepository.findByMemberIdAndOrderId("demo-member", "stale-isolated-open").orElseThrow();
+        FuturesOrder stale = orderRepository.findByMemberIdAndOrderId(1L, "stale-isolated-open").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, stale.status());
-        assertEquals(1, positionRepository.findOpenPositions("demo-member").size());
-        assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "CROSS").isPresent());
-        assertFalse(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
+        assertEquals(1, positionRepository.findOpenPositions(1L).size());
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "CROSS").isPresent());
+        assertFalse(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isPresent());
         assertTrue(eventPublisher.events.isEmpty());
-        assertEquals(100000, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
+        assertEquals(100000, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
     }
 
     @Test
@@ -169,7 +169,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -178,7 +178,7 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", new FuturesOrder(
+        orderRepository.save(1L, new FuturesOrder(
                 "stale-leverage-open",
                 "BTCUSDT",
                 "LONG",
@@ -196,11 +196,11 @@ class MarketOrderExecutionServiceTest {
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(marketEvent(101, 98, 98));
 
-        PositionSnapshot position = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot position = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(10, position.leverage());
         assertEquals(2, position.quantity(), 0.0001);
-        assertEquals(99990.08515, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
+        assertEquals(99990.08515, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
     }
 
     @Test
@@ -209,7 +209,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        orderRepository.save("demo-member", new FuturesOrder(
+        orderRepository.save(1L, new FuturesOrder(
                 "order-after-commit",
                 "BTCUSDT",
                 "LONG",
@@ -246,7 +246,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -265,7 +265,7 @@ class MarketOrderExecutionServiceTest {
 
         service.onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
 
-        assertTrue(positionRepository.findOpenPositions("demo-member").isEmpty());
+        assertTrue(positionRepository.findOpenPositions(1L).isEmpty());
         assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
         assertEquals(-20.09, eventPublisher.events.get(0).realizedPnl(), 0.0001);
     }
@@ -276,7 +276,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -305,7 +305,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -314,7 +314,7 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", FuturesOrder.place(
+        orderRepository.save(1L, FuturesOrder.place(
                 "order-close-1",
                 "BTCUSDT",
                 "LONG",
@@ -339,9 +339,9 @@ class MarketOrderExecutionServiceTest {
 
         service.onMarketUpdated(marketEvent(100, 106, 106));
 
-        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "order-close-1").orElseThrow();
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId(1L, "order-close-1").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
-        assertEquals(0.5, positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        assertEquals(0.5, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow()
                 .quantity(), 0.0001);
         assertTrue(eventPublisher.events.isEmpty());
@@ -353,7 +353,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -362,14 +362,14 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", pendingCloseOrderAt("fill-close", "LONG", 0.6, 105, Instant.parse("2026-04-27T00:00:00Z")));
-        orderRepository.save("demo-member", pendingCloseOrderAt("other-close", "LONG", 0.6, 106, Instant.parse("2026-04-27T00:00:01Z")));
+        orderRepository.save(1L, pendingCloseOrderAt("fill-close", "LONG", 0.6, 105, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save(1L, pendingCloseOrderAt("other-close", "LONG", 0.6, 106, Instant.parse("2026-04-27T00:00:01Z")));
 
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(marketEvent(100, 105, 105));
 
-        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId("demo-member", "fill-close").orElseThrow();
-        FuturesOrder reduced = orderRepository.findByMemberIdAndOrderId("demo-member", "other-close").orElseThrow();
+        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId(1L, "fill-close").orElseThrow();
+        FuturesOrder reduced = orderRepository.findByMemberIdAndOrderId(1L, "other-close").orElseThrow();
         assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
         assertEquals(FuturesOrder.STATUS_PENDING, reduced.status());
         assertEquals(0.4, reduced.quantity(), 0.0001);
@@ -381,7 +381,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -390,19 +390,19 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", pendingCloseOrderAt("first-close", "LONG", 0.6, 105, Instant.parse("2026-04-27T00:00:00Z")));
-        orderRepository.save("demo-member", pendingCloseOrderAt("second-close", "LONG", 0.6, 106, Instant.parse("2026-04-27T00:00:01Z")));
+        orderRepository.save(1L, pendingCloseOrderAt("first-close", "LONG", 0.6, 105, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save(1L, pendingCloseOrderAt("second-close", "LONG", 0.6, 106, Instant.parse("2026-04-27T00:00:01Z")));
 
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(marketEvent(100, 106, 106));
 
-        FuturesOrder first = orderRepository.findByMemberIdAndOrderId("demo-member", "first-close").orElseThrow();
-        FuturesOrder second = orderRepository.findByMemberIdAndOrderId("demo-member", "second-close").orElseThrow();
+        FuturesOrder first = orderRepository.findByMemberIdAndOrderId(1L, "first-close").orElseThrow();
+        FuturesOrder second = orderRepository.findByMemberIdAndOrderId(1L, "second-close").orElseThrow();
         assertEquals(FuturesOrder.STATUS_FILLED, first.status());
         assertEquals(0.6, first.quantity(), 0.0001);
         assertEquals(FuturesOrder.STATUS_FILLED, second.status());
         assertEquals(0.4, second.quantity(), 0.0001);
-        assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isEmpty());
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isEmpty());
     }
 
     @Test
@@ -411,7 +411,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -420,12 +420,12 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", pendingCloseOrderAt("close-before-liquidation", "LONG", 0.5, 105, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save(1L, pendingCloseOrderAt("close-before-liquidation", "LONG", 0.5, 105, Instant.parse("2026-04-27T00:00:00Z")));
 
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
 
-        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "close-before-liquidation").orElseThrow();
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId(1L, "close-before-liquidation").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
     }
 
@@ -435,7 +435,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -444,7 +444,7 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
                 "tp-order",
                 "BTCUSDT",
                 "LONG",
@@ -455,7 +455,7 @@ class MarketOrderExecutionServiceTest {
                 FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
                 null
         ));
-        orderRepository.save("demo-member", pendingCloseOrderAt(
+        orderRepository.save(1L, pendingCloseOrderAt(
                 "close-after-tp",
                 "LONG",
                 0.5,
@@ -466,9 +466,9 @@ class MarketOrderExecutionServiceTest {
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
 
-        assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isEmpty());
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isEmpty());
         assertEquals("POSITION_TAKE_PROFIT", eventPublisher.events.get(0).type());
-        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId("demo-member", "close-after-tp").orElseThrow();
+        FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId(1L, "close-after-tp").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
     }
 
@@ -478,7 +478,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -487,7 +487,7 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
                 "tp-order",
                 "BTCUSDT",
                 "LONG",
@@ -498,7 +498,7 @@ class MarketOrderExecutionServiceTest {
                 FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
                 "oco-1"
         ));
-        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
                 "sl-order",
                 "BTCUSDT",
                 "LONG",
@@ -513,8 +513,8 @@ class MarketOrderExecutionServiceTest {
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
 
-        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId("demo-member", "tp-order").orElseThrow();
-        FuturesOrder stopLoss = orderRepository.findByMemberIdAndOrderId("demo-member", "sl-order").orElseThrow();
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp-order").orElseThrow();
+        FuturesOrder stopLoss = orderRepository.findByMemberIdAndOrderId(1L, "sl-order").orElseThrow();
         assertEquals(FuturesOrder.STATUS_FILLED, takeProfit.status());
         assertEquals(FuturesOrder.STATUS_CANCELLED, stopLoss.status());
         assertEquals("POSITION_TAKE_PROFIT", eventPublisher.events.get(0).type());
@@ -526,7 +526,7 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "SHORT",
                 "ISOLATED",
@@ -535,7 +535,7 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ));
-        orderRepository.save("demo-member", FuturesOrder.conditionalClose(
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
                 "sl-order",
                 "BTCUSDT",
                 "SHORT",
@@ -578,7 +578,7 @@ class MarketOrderExecutionServiceTest {
                 100,
                 100
         ).withVersion(7);
-        positionRepository.save("demo-member", original);
+        positionRepository.save(1L, original);
         int savesBeforeMarketEvent = positionRepository.saveCount;
 
         MarketOrderExecutionService service = service(
@@ -591,7 +591,7 @@ class MarketOrderExecutionServiceTest {
         service.onMarketUpdated(new MarketSummaryUpdatedEvent(market(105, 105)));
 
         assertEquals(savesBeforeMarketEvent, positionRepository.saveCount);
-        PositionSnapshot persisted = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot persisted = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(100, persisted.markPrice(), 0.0001);
         assertEquals(0, persisted.unrealizedPnl(), 0.0001);
@@ -605,10 +605,10 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        orderRepository.save("demo-member", pendingOpenOrderAt("later-price", "SHORT", 103, Instant.parse("2026-04-27T00:00:00Z")));
-        orderRepository.save("demo-member", pendingOpenOrderAt("same-price-second", "SHORT", 102, Instant.parse("2026-04-27T00:00:02Z")));
-        orderRepository.save("demo-member", pendingOpenOrderAt("same-price-first", "SHORT", 102, Instant.parse("2026-04-27T00:00:01Z")));
-        orderRepository.save("demo-member", pendingOpenOrderAt("buy-side-ignored", "LONG", 101, Instant.parse("2026-04-27T00:00:03Z")));
+        orderRepository.save(1L, pendingOpenOrderAt("later-price", "SHORT", 103, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save(1L, pendingOpenOrderAt("same-price-second", "SHORT", 102, Instant.parse("2026-04-27T00:00:02Z")));
+        orderRepository.save(1L, pendingOpenOrderAt("same-price-first", "SHORT", 102, Instant.parse("2026-04-27T00:00:01Z")));
+        orderRepository.save(1L, pendingOpenOrderAt("buy-side-ignored", "LONG", 101, Instant.parse("2026-04-27T00:00:03Z")));
 
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(marketEvent(100, 104, 104));
@@ -620,10 +620,10 @@ class MarketOrderExecutionServiceTest {
         assertEquals(102, eventPublisher.events.get(1).executionPrice(), 0.0001);
         assertEquals("later-price", eventPublisher.events.get(2).orderId());
         assertEquals(103, eventPublisher.events.get(2).executionPrice(), 0.0001);
-        PositionSnapshot opened = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "SHORT", "ISOLATED")
+        PositionSnapshot opened = positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "ISOLATED")
                 .orElseThrow();
         assertEquals(0.004605, opened.accumulatedOpenFee(), 0.000001);
-        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId("demo-member", "buy-side-ignored")
+        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId(1L, "buy-side-ignored")
                 .orElseThrow()
                 .status());
     }
@@ -634,9 +634,9 @@ class MarketOrderExecutionServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        orderRepository.save("demo-member", pendingOpenOrderAt("lower-price", "LONG", 97, Instant.parse("2026-04-27T00:00:00Z")));
-        orderRepository.save("demo-member", pendingOpenOrderAt("higher-price", "LONG", 99, Instant.parse("2026-04-27T00:00:01Z")));
-        orderRepository.save("demo-member", pendingOpenOrderAt("sell-side-ignored", "SHORT", 98, Instant.parse("2026-04-27T00:00:02Z")));
+        orderRepository.save(1L, pendingOpenOrderAt("lower-price", "LONG", 97, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save(1L, pendingOpenOrderAt("higher-price", "LONG", 99, Instant.parse("2026-04-27T00:00:01Z")));
+        orderRepository.save(1L, pendingOpenOrderAt("sell-side-ignored", "SHORT", 98, Instant.parse("2026-04-27T00:00:02Z")));
 
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(marketEvent(100, 96, 96));
@@ -646,7 +646,7 @@ class MarketOrderExecutionServiceTest {
         assertEquals(99, eventPublisher.events.get(0).executionPrice(), 0.0001);
         assertEquals("lower-price", eventPublisher.events.get(1).orderId());
         assertEquals(97, eventPublisher.events.get(1).executionPrice(), 0.0001);
-        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId("demo-member", "sell-side-ignored")
+        assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId(1L, "sell-side-ignored")
                 .orElseThrow()
                 .status());
     }
@@ -798,11 +798,11 @@ class MarketOrderExecutionServiceTest {
     }
 
     private static class InMemoryAccountRepository implements AccountRepository {
-        private final Map<String, TradingAccount> accounts = new LinkedHashMap<>();
+        private final Map<Long, TradingAccount> accounts = new LinkedHashMap<>();
 
         private InMemoryAccountRepository() {
-            accounts.put("demo-member", new TradingAccount(
-                    "demo-member",
+            accounts.put(1L, new TradingAccount(
+                    1L,
                     "demo@coinzzickmock.dev",
                     "Demo",
                     100000,
@@ -811,7 +811,7 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
-        public Optional<TradingAccount> findByMemberId(String memberId) {
+        public Optional<TradingAccount> findByMemberId(Long memberId) {
             return Optional.ofNullable(accounts.get(memberId));
         }
 
@@ -826,13 +826,13 @@ class MarketOrderExecutionServiceTest {
         private final Map<String, PendingOrderCandidate> orders = new LinkedHashMap<>();
 
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             orders.put(key(memberId, futuresOrder.orderId()), new PendingOrderCandidate(memberId, futuresOrder));
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return orders.values().stream()
                     .filter(candidate -> candidate.memberId().equals(memberId))
                     .map(PendingOrderCandidate::order)
@@ -840,7 +840,7 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return Optional.ofNullable(orders.get(key(memberId, orderId)))
                     .map(PendingOrderCandidate::order);
         }
@@ -855,7 +855,7 @@ class MarketOrderExecutionServiceTest {
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -871,7 +871,7 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             PendingOrderCandidate candidate = orders.get(key(memberId, orderId));
             FuturesOrder updated = status.equals(FuturesOrder.STATUS_CANCELLED)
                     ? candidate.order().cancel()
@@ -881,7 +881,7 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
-        public FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+        public FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
             PendingOrderCandidate candidate = orders.get(key(memberId, orderId));
             FuturesOrder updated = candidate.order().withQuantity(quantity);
             if (FuturesOrder.STATUS_CANCELLED.equals(status)) {
@@ -891,7 +891,7 @@ class MarketOrderExecutionServiceTest {
             return updated;
         }
 
-        private String key(String memberId, String orderId) {
+        private String key(Long memberId, String orderId) {
             return memberId + ":" + orderId;
         }
     }
@@ -901,7 +901,7 @@ class MarketOrderExecutionServiceTest {
         private int saveCount;
 
         @Override
-        public List<PositionSnapshot> findOpenPositions(String memberId) {
+        public List<PositionSnapshot> findOpenPositions(Long memberId) {
             return positions.values().stream()
                     .filter(candidate -> candidate.memberId().equals(memberId))
                     .map(OpenPositionCandidate::position)
@@ -910,7 +910,7 @@ class MarketOrderExecutionServiceTest {
 
         @Override
         public Optional<PositionSnapshot> findOpenPosition(
-                String memberId,
+                Long memberId,
                 String symbol,
                 String positionSide,
                 String marginMode
@@ -927,7 +927,7 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
-        public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+        public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             saveCount++;
             positions.put(
                     key(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode()),
@@ -937,31 +937,31 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
-        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
             return positions.remove(key(memberId, symbol, positionSide, marginMode)) != null;
         }
 
         @Override
-        public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
             deleteIfOpen(memberId, symbol, positionSide, marginMode);
         }
 
-        private String key(String memberId, String symbol, String positionSide, String marginMode) {
+        private String key(Long memberId, String symbol, String positionSide, String marginMode) {
             return memberId + ":" + symbol + ":" + positionSide + ":" + marginMode;
         }
     }
 
     private static class InMemoryPositionHistoryRepository implements PositionHistoryRepository {
-        private final Map<String, List<PositionHistory>> histories = new LinkedHashMap<>();
+        private final Map<Long, List<PositionHistory>> histories = new LinkedHashMap<>();
 
         @Override
-        public PositionHistory save(String memberId, PositionHistory positionHistory) {
+        public PositionHistory save(Long memberId, PositionHistory positionHistory) {
             histories.computeIfAbsent(memberId, ignored -> new ArrayList<>()).add(positionHistory);
             return positionHistory;
         }
 
         @Override
-        public List<PositionHistory> findByMemberId(String memberId, String symbol) {
+        public List<PositionHistory> findByMemberId(Long memberId, String symbol) {
             return histories.getOrDefault(memberId, List.of()).stream()
                     .filter(history -> symbol == null || history.symbol().equals(symbol))
                     .toList();
@@ -969,10 +969,10 @@ class MarketOrderExecutionServiceTest {
     }
 
     private static class InMemoryRewardPointRepository implements RewardPointRepository {
-        private RewardPointWallet wallet = new RewardPointWallet("demo-member", 0);
+        private RewardPointWallet wallet = new RewardPointWallet(1L, 0);
 
         @Override
-        public Optional<RewardPointWallet> findByMemberId(String memberId) {
+        public Optional<RewardPointWallet> findByMemberId(Long memberId) {
             return wallet.memberId().equals(memberId) ? Optional.of(wallet) : Optional.empty();
         }
 

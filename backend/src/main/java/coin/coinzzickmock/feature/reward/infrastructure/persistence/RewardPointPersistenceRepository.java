@@ -15,14 +15,14 @@ public class RewardPointPersistenceRepository implements RewardPointRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<RewardPointWallet> findByMemberId(String memberId) {
+    public Optional<RewardPointWallet> findByMemberId(Long memberId) {
         return rewardPointWalletEntityRepository.findById(memberId)
                 .map(RewardPointWalletEntity::toDomain);
     }
 
     @Override
     @Transactional
-    public Optional<RewardPointWallet> findByMemberIdForUpdate(String memberId) {
+    public Optional<RewardPointWallet> findByMemberIdForUpdate(Long memberId) {
         return rewardPointWalletEntityRepository.findWithLockingByMemberId(memberId)
                 .map(RewardPointWalletEntity::toDomain);
     }

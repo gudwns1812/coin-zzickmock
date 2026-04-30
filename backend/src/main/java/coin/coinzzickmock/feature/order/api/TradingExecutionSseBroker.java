@@ -21,8 +21,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Slf4j
 @Component
 public class TradingExecutionSseBroker {
-    private final ConcurrentMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, Semaphore> memberSubscriberLimits = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, Semaphore> memberSubscriberLimits = new ConcurrentHashMap<>();
     private final Executor sseEventExecutor;
     private final int maxSubscribersPerMember;
     private final Semaphore totalSubscriberLimit;
@@ -37,7 +37,7 @@ public class TradingExecutionSseBroker {
         this.totalSubscriberLimit = new Semaphore(maxSubscribersTotal, true);
     }
 
-    public SseSubscriptionPermit reserve(String memberId) {
+    public SseSubscriptionPermit reserve(Long memberId) {
         if (!totalSubscriberLimit.tryAcquire()) {
             throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         }
@@ -60,7 +60,7 @@ public class TradingExecutionSseBroker {
         permit.markRegistered();
     }
 
-    public void unregister(String memberId, SseEmitter emitter) {
+    public void unregister(Long memberId, SseEmitter emitter) {
         CopyOnWriteArrayList<SseEmitter> memberEmitters = emitters.get(memberId);
         if (memberEmitters == null) {
             return;
@@ -104,7 +104,7 @@ public class TradingExecutionSseBroker {
         });
     }
 
-    private void send(String memberId, SseEmitter emitter, TradingExecutionEventResponse response) {
+    private void send(Long memberId, SseEmitter emitter, TradingExecutionEventResponse response) {
         try {
             emitter.send(response);
         } catch (IOException exception) {
@@ -115,14 +115,14 @@ public class TradingExecutionSseBroker {
     }
 
     private void sendToSubscribers(
-            String memberId,
+            Long memberId,
             CopyOnWriteArrayList<SseEmitter> memberEmitters,
             TradingExecutionEventResponse response
     ) {
         memberEmitters.forEach(emitter -> send(memberId, emitter, response));
     }
 
-    private void release(String memberId) {
+    private void release(Long memberId) {
         totalSubscriberLimit.release();
         Semaphore memberLimit = memberSubscriberLimits.get(memberId);
         if (memberLimit != null) {
@@ -131,24 +131,24 @@ public class TradingExecutionSseBroker {
         }
     }
 
-    private void cleanupMemberLimit(String memberId, Semaphore memberLimit) {
+    private void cleanupMemberLimit(Long memberId, Semaphore memberLimit) {
         if (memberLimit.availablePermits() == maxSubscribersPerMember && !emitters.containsKey(memberId)) {
             memberSubscriberLimits.remove(memberId, memberLimit);
         }
     }
 
     public static final class SseSubscriptionPermit {
-        private final String memberId;
+        private final Long memberId;
         private final Semaphore memberLimit;
         private final AtomicBoolean released = new AtomicBoolean(false);
         private final AtomicBoolean registered = new AtomicBoolean(false);
 
-        private SseSubscriptionPermit(String memberId, Semaphore memberLimit) {
+        private SseSubscriptionPermit(Long memberId, Semaphore memberLimit) {
             this.memberId = memberId;
             this.memberLimit = memberLimit;
         }
 
-        public String memberId() {
+        public Long memberId() {
             return memberId;
         }
 

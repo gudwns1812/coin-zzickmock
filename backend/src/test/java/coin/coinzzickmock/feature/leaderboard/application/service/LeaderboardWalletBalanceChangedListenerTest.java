@@ -13,20 +13,20 @@ class LeaderboardWalletBalanceChangedListenerTest {
         RecordingRefreshLeaderboardService refreshLeaderboardService = new RecordingRefreshLeaderboardService();
         LeaderboardWalletBalanceChangedListener listener = new LeaderboardWalletBalanceChangedListener(refreshLeaderboardService);
 
-        listener.onWalletBalanceChanged(new WalletBalanceChangedEvent("demo-member"));
+        listener.onWalletBalanceChanged(new WalletBalanceChangedEvent(1L));
 
-        assertEquals(List.of("demo-member"), refreshLeaderboardService.memberIds);
+        assertEquals(List.of(1L), refreshLeaderboardService.memberIds);
     }
 
     private static class RecordingRefreshLeaderboardService extends RefreshLeaderboardService {
-        private final List<String> memberIds = new ArrayList<>();
+        private final List<Long> memberIds = new ArrayList<>();
 
         private RecordingRefreshLeaderboardService() {
             super(null, List.of());
         }
 
         @Override
-        public void refreshMember(String memberId) {
+        public void refreshMember(Long memberId) {
             memberIds.add(memberId);
         }
     }

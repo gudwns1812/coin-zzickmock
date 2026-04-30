@@ -169,7 +169,7 @@ class MarketHistoryPersistenceRepositoryTest {
                     return new AuthProvider() {
                         @Override
                         public Actor currentActor() {
-                            return new Actor("demo-member", "demo@coinzzickmock.dev", "Demo");
+                            return new Actor(1L, "demo-member", "demo@coinzzickmock.dev", "Demo");
                         }
 
                         @Override

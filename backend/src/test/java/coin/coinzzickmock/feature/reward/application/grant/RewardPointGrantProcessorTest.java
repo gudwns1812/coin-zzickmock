@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class RewardPointGrantProcessorTest {
     @Test
     void doesNotPersistWalletWhenGrantedPointIsZero() {
-        InMemoryRewardPointRepository repository = new InMemoryRewardPointRepository(new RewardPointWallet("demo-member", 7));
+        InMemoryRewardPointRepository repository = new InMemoryRewardPointRepository(new RewardPointWallet(1L, 7));
         InMemoryRewardPointHistoryRepository historyRepository = new InMemoryRewardPointHistoryRepository();
         RewardPointGrantProcessor processor = new RewardPointGrantProcessor(
                 new RewardPointPolicy(),
@@ -27,7 +27,7 @@ class RewardPointGrantProcessorTest {
                 historyRepository
         );
 
-        RewardPointResult result = processor.grant(new GrantProfitPointCommand("demo-member", -5));
+        RewardPointResult result = processor.grant(new GrantProfitPointCommand(1L, -5));
 
         assertEquals(7, result.rewardPoint());
         assertEquals("NONE", result.tierLabel());
@@ -37,7 +37,7 @@ class RewardPointGrantProcessorTest {
 
     @Test
     void writesGrantHistoryWithBalanceAfterWhenPointsAreGranted() {
-        InMemoryRewardPointRepository repository = new InMemoryRewardPointRepository(new RewardPointWallet("demo-member", 7));
+        InMemoryRewardPointRepository repository = new InMemoryRewardPointRepository(new RewardPointWallet(1L, 7));
         InMemoryRewardPointHistoryRepository historyRepository = new InMemoryRewardPointHistoryRepository();
         RewardPointGrantProcessor processor = new RewardPointGrantProcessor(
                 new RewardPointPolicy(),
@@ -45,7 +45,7 @@ class RewardPointGrantProcessorTest {
                 historyRepository
         );
 
-        RewardPointResult result = processor.grant(new GrantProfitPointCommand("demo-member", 20_000));
+        RewardPointResult result = processor.grant(new GrantProfitPointCommand(1L, 20_000));
 
         assertEquals(17, result.rewardPoint());
         assertEquals(1, repository.saveCount);
@@ -65,7 +65,7 @@ class RewardPointGrantProcessorTest {
         }
 
         @Override
-        public Optional<RewardPointWallet> findByMemberId(String memberId) {
+        public Optional<RewardPointWallet> findByMemberId(Long memberId) {
             return Optional.ofNullable(wallet).filter(current -> current.memberId().equals(memberId));
         }
 

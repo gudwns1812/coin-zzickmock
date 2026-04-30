@@ -39,7 +39,7 @@ public class JwtAccessTokenManager {
         this.secureCookie = secureCookie;
     }
 
-    public String issue(String memberId, String memberName, String email, MemberRole role) {
+    public String issue(Long memberId, String account, String nickname, String email, MemberRole role) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(accessTokenExpirationSeconds);
 
@@ -48,7 +48,8 @@ public class JwtAccessTokenManager {
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .claim("memberId", memberId)
-                .claim("memberName", memberName)
+                .claim("account", account)
+                .claim("nickname", nickname)
                 .claim("email", email)
                 .claim("role", (role == null ? MemberRole.USER : role).name())
                 .signWith(secretKey)
@@ -68,14 +69,38 @@ public class JwtAccessTokenManager {
             }
 
             return new JwtSessionClaims(
-                    claims.get("memberId", String.class),
-                    claims.get("memberName", String.class),
+                    parseMemberId(claims.get("memberId")),
+                    parseAccount(claims),
+                    claims.get("nickname", String.class),
                     claims.get("email", String.class),
                     parseRole(claims.get("role", String.class))
             );
         } catch (JwtException | IllegalArgumentException exception) {
             throw new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
         }
+    }
+
+    private Long parseMemberId(Object memberId) {
+        if (memberId instanceof Number number) {
+            return number.longValue();
+        }
+        if (memberId instanceof String value) {
+            try {
+                return Long.parseLong(value);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String parseAccount(Claims claims) {
+        String account = claims.get("account", String.class);
+        if (account != null && !account.isBlank()) {
+            return account;
+        }
+        Object legacyMemberId = claims.get("memberId");
+        return legacyMemberId instanceof String value && !value.isBlank() ? value : null;
     }
 
     public ResponseCookie buildAccessTokenCookie(String token) {

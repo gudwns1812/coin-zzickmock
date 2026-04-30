@@ -32,7 +32,7 @@ export default async function MyPage() {
           <div>
             <p className="text-sm-custom text-main-dark-gray/55">Account</p>
             <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
-              {token?.memberName ?? account.memberName}
+              {token?.nickname ?? account.nickname}
             </h1>
           </div>
           <div className="flex size-[72px] items-center justify-center rounded-main bg-main-blue text-white">
@@ -53,8 +53,8 @@ export default async function MyPage() {
           />
           <InfoRow
             icon={<ShieldCheck size={17} />}
-            label="회원 ID"
-            value={token?.memberId ?? account.memberId}
+            label="아이디"
+            value={token?.account ?? account.account}
           />
         </div>
       </section>

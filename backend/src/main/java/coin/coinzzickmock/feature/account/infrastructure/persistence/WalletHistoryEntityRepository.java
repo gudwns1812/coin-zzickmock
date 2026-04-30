@@ -8,8 +8,10 @@ public interface WalletHistoryEntityRepository extends JpaRepository<WalletHisto
     boolean existsBySourceTypeAndSourceReference(String sourceType, String sourceReference);
 
     List<WalletHistoryEntity> findAllByMemberIdAndRecordedAtBetweenOrderByRecordedAtAsc(
-            String memberId,
+            Long memberId,
             Instant fromInclusive,
             Instant toInclusive
     );
+
+    void deleteAllByMemberId(Long memberId);
 }

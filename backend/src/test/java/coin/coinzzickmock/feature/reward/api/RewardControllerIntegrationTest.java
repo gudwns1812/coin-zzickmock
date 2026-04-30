@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.reward.api;
 
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -33,10 +34,13 @@ class RewardControllerIntegrationTest {
     @Autowired
     private RewardPointRepository rewardPointRepository;
 
+    @Autowired
+    private MemberCredentialRepository memberCredentialRepository;
+
     @Test
     void adminLegacyAndNewTransitionEndpointsStayCompatible() throws Exception {
         Cookie adminCookie = login("test", "test@1234");
-        rewardPointRepository.save(new RewardPointWallet("test", 300));
+        rewardPointRepository.save(new RewardPointWallet(memberId("test"), 300));
 
         String rejectedRequestId = createRedemption(adminCookie);
         mockMvc.perform(post("/api/futures/admin/reward-redemptions/{requestId}/reject", rejectedRequestId)
@@ -79,7 +83,7 @@ class RewardControllerIntegrationTest {
         register("reward-other");
         Cookie ownerCookie = login("reward-owner", "hello@1234");
         Cookie otherCookie = login("reward-other", "hello@1234");
-        rewardPointRepository.save(new RewardPointWallet("reward-owner", 300));
+        rewardPointRepository.save(new RewardPointWallet(memberId("reward-owner"), 300));
 
         String requestId = createRedemption(ownerCookie);
 
@@ -121,7 +125,7 @@ class RewardControllerIntegrationTest {
         return JsonPath.read(result.getResponse().getContentAsString(), "$.data.requestId");
     }
 
-    private void register(String memberId) throws Exception {
+    private void register(String account) throws Exception {
         mockMvc.perform(post("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -129,6 +133,7 @@ class RewardControllerIntegrationTest {
                                   "account": "%s",
                                   "password": "hello@1234",
                                   "name": "%s",
+                                  "nickname": "%s",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "%s@coinzzickmock.dev",
                                   "fgOffset": "unused",
@@ -138,8 +143,12 @@ class RewardControllerIntegrationTest {
                                     "addressDetail": "12층"
                                   }
                                 }
-                                """.formatted(memberId, memberId, memberId)))
+                                """.formatted(account, account, account, account)))
                 .andExpect(status().isOk());
+    }
+
+    private Long memberId(String account) {
+        return memberCredentialRepository.findByAccount(account).orElseThrow().memberId();
     }
 
     private Cookie login(String account, String password) throws Exception {

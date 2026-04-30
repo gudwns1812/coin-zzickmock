@@ -23,9 +23,9 @@ class GetLeaderboardServiceTest {
     void ranksProfitRateFromRealizedWalletBalance() {
         GetLeaderboardService service = new GetLeaderboardService(
                 new InMemoryProjectionRepository(List.of(
-                        entry("member-1", "Flat", 100_000),
-                        entry("member-2", "Winner", 124_580),
-                        entry("member-3", "Loss", 95_000)
+                        entry(1L, "Flat", 100_000),
+                        entry(2L, "Winner", 124_580),
+                        entry(3L, "Loss", 95_000)
                 )),
                 List.of()
         );
@@ -45,8 +45,8 @@ class GetLeaderboardServiceTest {
     void ranksWalletBalanceModeByWalletUsdt() {
         GetLeaderboardService service = new GetLeaderboardService(
                 new InMemoryProjectionRepository(List.of(
-                        entry("member-1", "SmallProfitRate", 120_000),
-                        entry("member-2", "LargestWallet", 150_000)
+                        entry(1L, "SmallProfitRate", 120_000),
+                        entry(2L, "LargestWallet", 150_000)
                 )),
                 List.of()
         );
@@ -62,8 +62,8 @@ class GetLeaderboardServiceTest {
     @Test
     void usesRedisStoreWhenSnapshotExists() {
         GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(entry("database", "Database", 200_000))),
-                List.of(new InMemorySnapshotStore(List.of(entry("redis", "Redis", 130_000))))
+                new InMemoryProjectionRepository(List.of(entry(10L, "Database", 200_000))),
+                List.of(new InMemorySnapshotStore(List.of(entry(11L, "Redis", 130_000))))
         );
 
         LeaderboardResult result = service.get(null, null);
@@ -75,7 +75,7 @@ class GetLeaderboardServiceTest {
     @Test
     void fallsBackToDatabaseWhenRedisSnapshotIsEmpty() {
         GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(entry("database", "Database", 200_000))),
+                new InMemoryProjectionRepository(List.of(entry(10L, "Database", 200_000))),
                 List.of(new InMemorySnapshotStore(List.of()))
         );
 
@@ -102,7 +102,7 @@ class GetLeaderboardServiceTest {
         assertEquals(ErrorCode.INVALID_REQUEST, nonNumericLimit.errorCode());
     }
 
-    private static LeaderboardEntry entry(String memberId, String nickname, double walletBalance) {
+    private static LeaderboardEntry entry(Long memberId, String nickname, double walletBalance) {
         return new LeaderboardEntry(
                 memberId,
                 nickname,
@@ -119,7 +119,7 @@ class GetLeaderboardServiceTest {
         }
 
         @Override
-        public Optional<LeaderboardEntry> findByMemberId(String memberId) {
+        public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
             return entries.stream()
                     .filter(entry -> entry.memberId().equals(memberId))
                     .findFirst();

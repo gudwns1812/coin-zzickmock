@@ -27,7 +27,7 @@ public class UpdatePositionTpslService {
 
     @Transactional
     public PositionSnapshotResult update(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode,
@@ -88,7 +88,7 @@ public class UpdatePositionTpslService {
         return "LONG".equalsIgnoreCase(position.positionSide());
     }
 
-    private void cancelExistingTpslOrders(String memberId, PositionSnapshot position) {
+    private void cancelExistingTpslOrders(Long memberId, PositionSnapshot position) {
         orderRepository.findPendingConditionalCloseOrders(
                         memberId,
                         position.symbol(),
@@ -100,7 +100,7 @@ public class UpdatePositionTpslService {
     }
 
     private void createReplacementOrders(
-            String memberId,
+            Long memberId,
             PositionSnapshot position,
             Double takeProfitPrice,
             Double stopLossPrice
@@ -134,7 +134,7 @@ public class UpdatePositionTpslService {
         }
     }
 
-    private PositionSnapshotResult toResult(String memberId, PositionSnapshot snapshot) {
+    private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot) {
         List<FuturesOrder> tpslOrders = orderRepository.findPendingConditionalCloseOrders(
                 memberId,
                 snapshot.symbol(),

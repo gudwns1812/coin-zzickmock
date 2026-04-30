@@ -26,7 +26,7 @@ public class JwtCookieAuthProvider implements AuthProvider {
     @Override
     public Actor currentActor() {
         JwtSessionClaims claims = parseRequiredClaims();
-        return actorLookup.findByMemberId(claims.memberId())
+        return lookupActor(claims)
                 .orElseThrow(() -> new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다."));
     }
 
@@ -34,7 +34,7 @@ public class JwtCookieAuthProvider implements AuthProvider {
     public boolean isAuthenticated() {
         try {
             JwtSessionClaims claims = parseOptionalClaims();
-            return claims != null && actorLookup.findByMemberId(claims.memberId()).isPresent();
+            return claims != null && lookupActor(claims).isPresent();
         } catch (CoreException exception) {
             log.debug("Optional authentication failed; treating request as anonymous.", exception);
             return false;
@@ -62,6 +62,16 @@ public class JwtCookieAuthProvider implements AuthProvider {
                 .filter(value -> value != null && !value.isBlank())
                 .map(jwtAccessTokenManager::parse)
                 .orElse(null);
+    }
+
+    private java.util.Optional<Actor> lookupActor(JwtSessionClaims claims) {
+        if (claims.memberId() != null) {
+            return actorLookup.findByMemberId(claims.memberId());
+        }
+        if (claims.account() != null && !claims.account().isBlank()) {
+            return actorLookup.findByAccount(claims.account());
+        }
+        return java.util.Optional.empty();
     }
 
     private HttpServletRequest currentRequest() {

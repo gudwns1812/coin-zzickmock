@@ -25,26 +25,28 @@ public class RegisterMemberService {
 
     @Transactional
     public MemberProfileResult register(
-            String memberId,
+            String account,
             String rawPassword,
             String memberName,
+            String nickname,
             String memberEmail,
             String phoneNumber,
             String zipCode,
             String address,
             String addressDetail
     ) {
-        String normalizedMemberId = MemberIdentityRules.normalizeMemberId(memberId);
+        String normalizedAccount = MemberIdentityRules.normalizeAccount(account);
         String normalizedPassword = MemberIdentityRules.validateRawPassword(rawPassword);
 
-        if (memberCredentialRepository.existsByMemberId(normalizedMemberId)) {
+        if (memberCredentialRepository.existsByAccount(normalizedAccount)) {
             throw new CoreException(ErrorCode.MEMBER_ALREADY_EXISTS);
         }
 
         MemberCredential memberCredential = MemberCredential.register(
-                normalizedMemberId,
+                normalizedAccount,
                 memberPasswordHasher.hash(normalizedPassword),
                 memberName,
+                nickname,
                 memberEmail,
                 phoneNumber,
                 zipCode,
@@ -52,14 +54,14 @@ public class RegisterMemberService {
                 addressDetail,
                 0
         );
+        MemberCredential savedMemberCredential = memberCredentialRepository.save(memberCredential);
 
         accountRepository.save(TradingAccount.openDefault(
-                memberCredential.memberId(),
-                memberCredential.memberEmail(),
-                memberCredential.memberName()
+                savedMemberCredential.memberId(),
+                savedMemberCredential.memberEmail(),
+                savedMemberCredential.memberName()
         ));
-        memberCredentialRepository.save(memberCredential);
-        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberCredential.memberId()));
-        return MemberProfileResult.from(memberCredential);
+        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(savedMemberCredential.memberId()));
+        return MemberProfileResult.from(savedMemberCredential);
     }
 }

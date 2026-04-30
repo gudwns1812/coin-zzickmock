@@ -73,7 +73,7 @@ export default function ActiveStockRequestCoordinator({
       }
 
       try {
-        const groupsResponse = await fetch(`/proxy/favorite/${token.memberId}`);
+        const groupsResponse = await fetch(`/proxy/favorite/${token.account}`);
         if (!groupsResponse.ok) {
           if (!cancelled) setSourceStocks("interest-main", []);
           return;
@@ -90,7 +90,7 @@ export default function ActiveStockRequestCoordinator({
         }
 
         const stocksResponse = await fetch(
-          `/proxy/favorite/${token.memberId}/${mainGroup.groupId}`
+          `/proxy/favorite/${token.account}/${mainGroup.groupId}`
         );
         if (!stocksResponse.ok) {
           if (!cancelled) setSourceStocks("interest-main", []);

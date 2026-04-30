@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class)
@@ -26,10 +27,13 @@ class OrderPersistenceRepositoryContractTest {
     @Autowired
     private AccountRepository accountRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     void findsPendingCandidatesWithOwnerIdentity() {
-        String firstMemberId = "order-owner-" + UUID.randomUUID();
-        String secondMemberId = "order-owner-" + UUID.randomUUID();
+        Long firstMemberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+        Long secondMemberId = Math.abs(UUID.randomUUID().getLeastSignificantBits());
         saveAccount(firstMemberId);
         saveAccount(secondMemberId);
 
@@ -84,7 +88,7 @@ class OrderPersistenceRepositoryContractTest {
 
     @Test
     void claimsPendingFillExactlyOnce() {
-        String memberId = "fill-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         String orderId = "order-" + UUID.randomUUID();
         saveAccount(memberId);
 
@@ -114,7 +118,7 @@ class OrderPersistenceRepositoryContractTest {
 
     @Test
     void findsAndAdjustsPendingCloseOrderQuantity() {
-        String memberId = "close-cap-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         String orderId = "close-order-" + UUID.randomUUID();
         saveAccount(memberId);
 
@@ -148,11 +152,24 @@ class OrderPersistenceRepositoryContractTest {
         assertEquals(0.05, adjusted.quantity(), 0.0001);
     }
 
-    private void saveAccount(String memberId) {
+    private void saveAccount(Long memberId) {
+        jdbcTemplate.update("""
+                INSERT INTO member_credentials (
+                    id, account, password_hash, member_name, nickname, member_email,
+                    phone_number, zip_code, address, address_detail, invest_score, role
+                )
+                VALUES (?, ?, 'hash', ?, ?, ?, '010-0000-0000', '00000', '서울', '', 0, 'USER')
+                """,
+                memberId,
+                "account-" + memberId,
+                String.valueOf(memberId),
+                String.valueOf(memberId),
+                memberId + "@coinzzickmock.dev"
+        );
         accountRepository.save(new TradingAccount(
                 memberId,
                 memberId + "@coinzzickmock.dev",
-                memberId,
+                String.valueOf(memberId),
                 100000,
                 100000
         ));

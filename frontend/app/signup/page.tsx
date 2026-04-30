@@ -24,6 +24,7 @@ const SignUpPage = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: "",
+    nickname: "",
     address: {
       zipcode: "",
       address: "",

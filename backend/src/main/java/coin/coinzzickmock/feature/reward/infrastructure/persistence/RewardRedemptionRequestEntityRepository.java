@@ -17,7 +17,7 @@ public interface RewardRedemptionRequestEntityRepository extends JpaRepository<R
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<RewardRedemptionRequestEntity> findWithLockingByRequestId(String requestId);
 
-    List<RewardRedemptionRequestEntity> findByMemberIdOrderByRequestedAtDesc(String memberId);
+    List<RewardRedemptionRequestEntity> findByMemberIdOrderByRequestedAtDesc(Long memberId);
 
     List<RewardRedemptionRequestEntity> findByStatusOrderByRequestedAtDesc(String status);
 
@@ -33,7 +33,7 @@ public interface RewardRedemptionRequestEntityRepository extends JpaRepository<R
             """)
     int claimPendingAsApproved(
             @Param("requestId") String requestId,
-            @Param("adminMemberId") String adminMemberId,
+            @Param("adminMemberId") Long adminMemberId,
             @Param("adminMemo") String adminMemo,
             @Param("approvedAt") Instant approvedAt
     );
@@ -50,7 +50,7 @@ public interface RewardRedemptionRequestEntityRepository extends JpaRepository<R
             """)
     int claimPendingAsRejected(
             @Param("requestId") String requestId,
-            @Param("adminMemberId") String adminMemberId,
+            @Param("adminMemberId") Long adminMemberId,
             @Param("adminMemo") String adminMemo,
             @Param("rejectedAt") Instant rejectedAt
     );
@@ -66,7 +66,17 @@ public interface RewardRedemptionRequestEntityRepository extends JpaRepository<R
             """)
     int claimPendingAsCancelled(
             @Param("requestId") String requestId,
-            @Param("memberId") String memberId,
+            @Param("memberId") Long memberId,
             @Param("cancelledAt") Instant cancelledAt
     );
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update RewardRedemptionRequestEntity request
+               set request.adminMemberId = null
+             where request.adminMemberId = :adminMemberId
+            """)
+    int clearAdminMemberId(@Param("adminMemberId") Long adminMemberId);
+
+    void deleteAllByMemberId(Long memberId);
 }

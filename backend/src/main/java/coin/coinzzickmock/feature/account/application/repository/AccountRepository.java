@@ -6,7 +6,7 @@ import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import java.util.Optional;
 
 public interface AccountRepository {
-    Optional<TradingAccount> findByMemberId(String memberId);
+    Optional<TradingAccount> findByMemberId(Long memberId);
 
     TradingAccount save(TradingAccount account);
 

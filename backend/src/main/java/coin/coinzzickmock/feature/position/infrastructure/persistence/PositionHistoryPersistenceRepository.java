@@ -14,13 +14,13 @@ public class PositionHistoryPersistenceRepository implements PositionHistoryRepo
 
     @Override
     @Transactional
-    public PositionHistory save(String memberId, PositionHistory positionHistory) {
+    public PositionHistory save(Long memberId, PositionHistory positionHistory) {
         return positionHistoryEntityRepository.save(PositionHistoryEntity.from(memberId, positionHistory)).toDomain();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PositionHistory> findByMemberId(String memberId, String symbol) {
+    public List<PositionHistory> findByMemberId(Long memberId, String symbol) {
         if (symbol == null || symbol.isBlank()) {
             return positionHistoryEntityRepository.findAllByMemberIdOrderByClosedAtDesc(memberId).stream()
                     .map(PositionHistoryEntity::toDomain)

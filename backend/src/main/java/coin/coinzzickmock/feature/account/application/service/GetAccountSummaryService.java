@@ -7,6 +7,8 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
+import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
@@ -23,11 +25,14 @@ public class GetAccountSummaryService {
     private final RewardPointRepository rewardPointRepository;
     private final PositionRepository positionRepository;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
+    private final MemberCredentialRepository memberCredentialRepository;
 
     @Transactional(readOnly = true)
     public AccountSummaryResult execute(GetAccountSummaryQuery query) {
         TradingAccount account = accountRepository.findByMemberId(query.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        MemberCredential member = memberCredentialRepository.findByMemberId(query.memberId())
+                .orElseThrow(() -> new CoreException(ErrorCode.MEMBER_NOT_FOUND));
         RewardPointWallet rewardPointWallet = rewardPointRepository.findByMemberId(query.memberId())
                 .orElse(RewardPointWallet.empty(query.memberId()));
         List<PositionSnapshot> positions = positionRepository.findOpenPositions(query.memberId()).stream()
@@ -43,7 +48,9 @@ public class GetAccountSummaryService {
 
         return new AccountSummaryResult(
                 account.memberId(),
+                member.account(),
                 account.memberName(),
+                member.nickname(),
                 account.walletBalance() + totalUnrealizedPnl,
                 account.walletBalance(),
                 account.availableMargin(),

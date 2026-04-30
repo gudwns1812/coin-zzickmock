@@ -20,7 +20,7 @@ class GetOrderHistoryServiceTest {
                 order("4", "ETHUSDT", "LONG", "MARKET", "ISOLATED", 5, 1.0, null, "FILLED")
         ));
 
-        List<OrderHistoryResult> results = service.getOrderHistory("demo-member", "BTCUSDT");
+        List<OrderHistoryResult> results = service.getOrderHistory(1L, "BTCUSDT");
 
         assertEquals(3, results.size());
         assertEquals("1", results.get(0).orderId());
@@ -64,17 +64,17 @@ class GetOrderHistoryServiceTest {
         }
 
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return orders;
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return orders.stream().filter(order -> order.orderId().equals(orderId)).findFirst();
         }
 
@@ -83,13 +83,13 @@ class GetOrderHistoryServiceTest {
             return orders.stream()
                     .filter(order -> order.symbol().equals(symbol))
                     .filter(FuturesOrder::isPending)
-                    .map(order -> new PendingOrderCandidate("demo-member", order))
+                    .map(order -> new PendingOrderCandidate(1L, order))
                     .toList();
         }
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -99,7 +99,7 @@ class GetOrderHistoryServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             throw new UnsupportedOperationException();
         }
     }

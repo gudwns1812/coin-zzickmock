@@ -188,12 +188,12 @@ public class PendingOrderFillProcessor {
         ));
     }
 
-    private void cancelPendingCandidate(String memberId, FuturesOrder order, String symbol) {
+    private void cancelPendingCandidate(Long memberId, FuturesOrder order, String symbol) {
         orderRepository.cancelPending(memberId, order.orderId());
         pendingOrderExecutionCache.evict(symbol, memberId, order.orderId());
     }
 
-    private boolean hasEnoughOpenPosition(String memberId, FuturesOrder order) {
+    private boolean hasEnoughOpenPosition(Long memberId, FuturesOrder order) {
         return positionRepository.findOpenPosition(
                         memberId,
                         order.symbol(),
@@ -204,13 +204,13 @@ public class PendingOrderFillProcessor {
                 .isPresent();
     }
 
-    private boolean hasDifferentMarginPosition(String memberId, FuturesOrder order) {
+    private boolean hasDifferentMarginPosition(Long memberId, FuturesOrder order) {
         return positionRepository.findOpenPosition(memberId, order.symbol(), order.positionSide())
                 .filter(position -> !position.marginMode().equalsIgnoreCase(order.marginMode()))
                 .isPresent();
     }
 
-    private void applyFilledOpenOrder(String memberId, FuturesOrder order, double executionPrice, double markPrice) {
+    private void applyFilledOpenOrder(Long memberId, FuturesOrder order, double executionPrice, double markPrice) {
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 memberId,
                 order.symbol(),
@@ -251,7 +251,7 @@ public class PendingOrderFillProcessor {
         );
     }
 
-    private void applyFilledCloseOrder(String memberId, FuturesOrder order, double executionPrice, double markPrice) {
+    private void applyFilledCloseOrder(Long memberId, FuturesOrder order, double executionPrice, double markPrice) {
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 memberId,
                 order.symbol(),

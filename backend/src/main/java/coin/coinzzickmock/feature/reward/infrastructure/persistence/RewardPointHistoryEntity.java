@@ -20,7 +20,7 @@ public class RewardPointHistoryEntity extends AuditableEntity {
     private Long id;
 
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "history_type", nullable = false, length = 50)

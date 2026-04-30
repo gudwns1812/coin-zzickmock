@@ -31,7 +31,7 @@ public class PositionCloseFinalizer {
     private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     public ClosePositionResult close(
-            String memberId,
+            Long memberId,
             PositionSnapshot position,
             double quantity,
             double markPrice,
@@ -58,7 +58,7 @@ public class PositionCloseFinalizer {
     }
 
     public ClosePositionResult close(
-            String memberId,
+            Long memberId,
             PositionSnapshot position,
             double quantity,
             double markPrice,

@@ -18,11 +18,11 @@ public class AuthenticateMemberService {
     private final MemberPasswordHasher memberPasswordHasher;
 
     @Transactional(readOnly = true)
-    public MemberProfileResult authenticate(String memberId, String rawPassword) {
-        String normalizedMemberId = MemberIdentityRules.normalizeMemberId(memberId);
+    public MemberProfileResult authenticate(String account, String rawPassword) {
+        String normalizedAccount = MemberIdentityRules.normalizeAccount(account);
         String requiredPassword = MemberIdentityRules.requirePasswordInput(rawPassword);
 
-        MemberCredential memberCredential = memberCredentialRepository.findByMemberId(normalizedMemberId)
+        MemberCredential memberCredential = memberCredentialRepository.findByAccount(normalizedAccount)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_CREDENTIALS));
 
         if (!memberPasswordHasher.matches(requiredPassword, memberCredential.passwordHash())) {

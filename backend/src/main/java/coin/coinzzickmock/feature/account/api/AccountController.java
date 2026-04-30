@@ -30,7 +30,9 @@ public class AccountController {
         );
         return ApiResponse.success(new AccountSummaryResponse(
                 result.memberId(),
+                result.account(),
                 result.memberName(),
+                result.nickname(),
                 result.usdtBalance(),
                 result.walletBalance(),
                 result.available(),

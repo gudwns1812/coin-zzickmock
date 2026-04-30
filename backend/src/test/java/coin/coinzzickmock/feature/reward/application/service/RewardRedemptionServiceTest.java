@@ -37,8 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @ActiveProfiles("test")
 @Transactional
 class RewardRedemptionServiceTest {
-    private static final String MEMBER_ID = "test";
-    private static final String ADMIN_ID = "test";
+    private static final Long MEMBER_ID = 1L;
+    private static final Long ADMIN_ID = 1L;
     private static final String ITEM_CODE = "voucher.coffee";
 
     @Autowired
@@ -169,7 +169,7 @@ class RewardRedemptionServiceTest {
         RewardRedemptionResult created = createRewardRedemptionService.create(MEMBER_ID, ITEM_CODE, "010-1234-5678");
 
         CoreException thrown = assertThrows(CoreException.class,
-                () -> cancelRewardRedemptionService.cancel("other-member", created.requestId()));
+                () -> cancelRewardRedemptionService.cancel(2L, created.requestId()));
 
         assertEquals(ErrorCode.FORBIDDEN, thrown.errorCode());
     }

@@ -20,7 +20,7 @@ public class PendingOrderExecutionCache {
         return snapshot;
     }
 
-    public void evict(String symbol, String memberId, String orderId) {
+    public void evict(String symbol, Long memberId, String orderId) {
         pendingBySymbol.computeIfPresent(symbol, (key, candidates) -> {
             List<PendingOrderCandidate> remaining = candidates.stream()
                     .filter(candidate -> !candidate.memberId().equals(memberId)

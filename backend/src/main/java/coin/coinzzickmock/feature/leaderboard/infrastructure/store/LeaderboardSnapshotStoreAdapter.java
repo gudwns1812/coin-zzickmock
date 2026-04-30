@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "coin.leaderboard.redis", name = "enabled", havingValue = "true")
 public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore {
-    private static final String ACTIVE_KEY_SUFFIX = "active:v2";
+    private static final String ACTIVE_KEY_SUFFIX = "active:v3";
     private static final String PROFIT_RATE_ZSET = "realized-profit-rate:zset";
     private static final String WALLET_BALANCE_ZSET = "wallet-balance:zset";
     private static final String MEMBERS_HASH = "members:hash";
@@ -89,9 +89,10 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
                 operations.multi();
                 operations.delete(List.of(profitRateKey, walletBalanceKey, membersKey, metaKey));
                 for (LeaderboardEntry entry : snapshot.entries()) {
-                    operations.opsForZSet().add(profitRateKey, entry.memberId(), entry.profitRate());
-                    operations.opsForZSet().add(walletBalanceKey, entry.memberId(), entry.walletBalance());
-                    operations.opsForHash().put(membersKey, entry.memberId(), writeEntry(entry));
+                    String memberKey = memberKey(entry.memberId());
+                    operations.opsForZSet().add(profitRateKey, memberKey, entry.profitRate());
+                    operations.opsForZSet().add(walletBalanceKey, memberKey, entry.walletBalance());
+                    operations.opsForHash().put(membersKey, memberKey, writeEntry(entry));
                 }
                 operations.opsForHash().put(metaKey, REFRESHED_AT_FIELD, snapshot.refreshedAt().toString());
                 operations.opsForValue().set(activePointerKey(), version);
@@ -115,9 +116,10 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
             @SuppressWarnings({"rawtypes", "unchecked"})
             public List<Object> execute(RedisOperations operations) {
                 operations.multi();
-                operations.opsForZSet().add(profitRateKey, entry.memberId(), entry.profitRate());
-                operations.opsForZSet().add(walletBalanceKey, entry.memberId(), entry.walletBalance());
-                operations.opsForHash().put(membersKey, entry.memberId(), writeEntry(entry));
+                String memberKey = memberKey(entry.memberId());
+                operations.opsForZSet().add(profitRateKey, memberKey, entry.profitRate());
+                operations.opsForZSet().add(walletBalanceKey, memberKey, entry.walletBalance());
+                operations.opsForHash().put(membersKey, memberKey, writeEntry(entry));
                 return operations.exec();
             }
         });
@@ -157,6 +159,10 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
         }
     }
 
+    private String memberKey(Long memberId) {
+        return String.valueOf(memberId);
+    }
+
     private Instant readRefreshedAt(String version) {
         Object value = redisTemplate.opsForHash().get(metaKey(version), REFRESHED_AT_FIELD);
         if (!(value instanceof String refreshedAt)) {
@@ -190,7 +196,7 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
     }
 
     private record MemberSnapshot(
-            String memberId,
+            Long memberId,
             String nickname,
             double walletBalance,
             double profitRate,

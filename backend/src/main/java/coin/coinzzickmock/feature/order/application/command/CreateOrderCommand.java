@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.order.application.command;
 
 public record CreateOrderCommand(
-        String memberId,
+        Long memberId,
         String symbol,
         String positionSide,
         String orderType,

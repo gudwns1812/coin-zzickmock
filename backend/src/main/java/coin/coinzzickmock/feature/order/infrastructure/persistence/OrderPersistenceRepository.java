@@ -18,13 +18,13 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional
-    public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+    public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
         return futuresOrderEntityRepository.save(FuturesOrderEntity.from(memberId, futuresOrder)).toDomain();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<FuturesOrder> findByMemberId(String memberId) {
+    public List<FuturesOrder> findByMemberId(Long memberId) {
         return futuresOrderEntityRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
                 .map(FuturesOrderEntity::toDomain)
                 .toList();
@@ -32,7 +32,7 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+    public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
         return futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .map(FuturesOrderEntity::toDomain);
     }
@@ -51,7 +51,7 @@ public class OrderPersistenceRepository implements OrderRepository {
     @Override
     @Transactional(readOnly = true)
     public List<FuturesOrder> findPendingCloseOrders(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode
@@ -68,7 +68,7 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public List<FuturesOrder> findPendingOpenOrders(String memberId, String symbol, String positionSide) {
+    public List<FuturesOrder> findPendingOpenOrders(Long memberId, String symbol, String positionSide) {
         return futuresOrderEntityRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
                 .map(FuturesOrderEntity::toDomain)
                 .filter(FuturesOrder::isPending)
@@ -82,7 +82,7 @@ public class OrderPersistenceRepository implements OrderRepository {
     @Override
     @Transactional
     public Optional<FuturesOrder> claimPendingFill(
-            String memberId,
+            Long memberId,
             String orderId,
             double executionPrice,
             String feeType,
@@ -106,7 +106,7 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional
-    public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+    public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();
         entity.updateStatus(status);
@@ -115,7 +115,7 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional
-    public boolean cancelPending(String memberId, String orderId) {
+    public boolean cancelPending(Long memberId, String orderId) {
         return futuresOrderEntityRepository.cancelIfPending(
                 memberId,
                 orderId,
@@ -126,7 +126,7 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional
-    public FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+    public FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();
         entity.updateQuantityAndStatus(quantity, status);

@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ActiveProfiles("test")
 @Transactional
 class RewardPersistenceFoundationTest {
-    private static final String DEMO_MEMBER_ID = "test";
+    private static final String DEMO_ACCOUNT = "test";
 
     @Autowired
     private RewardShopItemRepository rewardShopItemRepository;
@@ -64,19 +64,20 @@ class RewardPersistenceFoundationTest {
     void demoMemberSeedCreatesOrPromotesTestAccountAsAdmin() {
         assertEquals(
                 MemberRole.ADMIN,
-                memberCredentialRepository.findByMemberId(DEMO_MEMBER_ID).orElseThrow().role()
+                memberCredentialRepository.findByAccount(DEMO_ACCOUNT).orElseThrow().role()
         );
     }
 
     @Test
     void grantUsesIntegerWalletAndWritesHistoryWithBalanceAfter() {
-        rewardPointRepository.save(RewardPointWallet.empty(DEMO_MEMBER_ID));
+        Long demoMemberId = demoMemberId();
+        rewardPointRepository.save(RewardPointWallet.empty(demoMemberId));
 
-        rewardPointGrantProcessor.grant(new GrantProfitPointCommand(DEMO_MEMBER_ID, 20_000));
+        rewardPointGrantProcessor.grant(new GrantProfitPointCommand(demoMemberId, 20_000));
 
-        RewardPointWallet wallet = rewardPointRepository.findByMemberId(DEMO_MEMBER_ID).orElseThrow();
+        RewardPointWallet wallet = rewardPointRepository.findByMemberId(demoMemberId).orElseThrow();
         assertEquals(10, wallet.rewardPoint());
-        assertEquals(1, rewardPointHistoryEntityRepository.countByMemberId(DEMO_MEMBER_ID));
+        assertEquals(1, rewardPointHistoryEntityRepository.countByMemberId(demoMemberId));
     }
 
     @Test
@@ -86,5 +87,9 @@ class RewardPersistenceFoundationTest {
         assertNotNull(item.remainingPurchaseLimit(0));
         assertEquals(1, item.remainingPurchaseLimit(0));
         assertTrue(item.memberReachedLimit(1));
+    }
+
+    private Long demoMemberId() {
+        return memberCredentialRepository.findByAccount(DEMO_ACCOUNT).orElseThrow().memberId();
     }
 }

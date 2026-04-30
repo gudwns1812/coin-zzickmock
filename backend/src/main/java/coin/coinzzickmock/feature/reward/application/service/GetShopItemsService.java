@@ -15,13 +15,13 @@ public class GetShopItemsService {
     private final RewardShopItemRepository rewardShopItemRepository;
     private final RewardShopMemberItemUsageRepository rewardShopMemberItemUsageRepository;
 
-    public List<ShopItemResult> getItems(String memberId) {
+    public List<ShopItemResult> getItems(Long memberId) {
         return rewardShopItemRepository.findActiveItems().stream()
                 .map(item -> toResult(memberId, item))
                 .toList();
     }
 
-    private ShopItemResult toResult(String memberId, RewardShopItem item) {
+    private ShopItemResult toResult(Long memberId, RewardShopItem item) {
         int purchaseCount = rewardShopMemberItemUsageRepository.findByMemberIdAndShopItemId(memberId, item.id())
                 .map(usage -> usage.purchaseCount())
                 .orElse(0);

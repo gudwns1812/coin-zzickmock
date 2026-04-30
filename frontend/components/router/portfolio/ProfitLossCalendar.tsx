@@ -28,11 +28,11 @@ const toDate = (value: Pnl["date"]) => {
 const ProfitLossCalendar = ({ token }: { token: JwtToken | null }) => {
   // 연간 PnL 데이터
   const { data: pnl } = useQuery({
-    queryKey: ["yearlyPnl", token?.memberId],
+    queryKey: ["yearlyPnl", token?.account],
     queryFn: async () => {
       if (!token) throw new Error("No token");
       const res = await fetch(
-        `/proxy/v1/portfolios/asset/${token.memberId}?period=Y`,
+        `/proxy/v1/portfolios/asset/${token.account}?period=Y`,
         { credentials: "include" }
       );
       if (!res.ok) throw new Error("Failed to get yearly pnl");
@@ -46,11 +46,11 @@ const ProfitLossCalendar = ({ token }: { token: JwtToken | null }) => {
 
   // Today PnL (20초마다 폴링) - MyAccountChart와 동일한 queryKey 사용
   const { data: todayPnl } = useQuery({
-    queryKey: ["todayPnl", token?.memberId],
+    queryKey: ["todayPnl", token?.account],
     queryFn: async () => {
       if (!token) throw new Error("No token");
       const res = await fetch(
-        `/proxy/v1/portfolios/asset/pnl/${token.memberId}?period=Today`,
+        `/proxy/v1/portfolios/asset/pnl/${token.account}?period=Today`,
         { credentials: "include" }
       );
       if (!res.ok) throw new Error("Failed to get today pnl");

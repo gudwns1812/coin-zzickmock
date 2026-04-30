@@ -23,7 +23,7 @@ public class GetOpenPositionsService {
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
 
     @Transactional(readOnly = true)
-    public List<PositionSnapshotResult> getPositions(String memberId) {
+    public List<PositionSnapshotResult> getPositions(Long memberId) {
         return positionRepository.findOpenPositions(memberId).stream()
                 .map(this::markToMarketForRead)
                 .map(snapshot -> toResult(memberId, snapshot))
@@ -36,7 +36,7 @@ public class GetOpenPositionsService {
                 .orElse(snapshot);
     }
 
-    private PositionSnapshotResult toResult(String memberId, PositionSnapshot snapshot) {
+    private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot) {
         List<FuturesOrder> tpslOrders = orderRepository.findPendingConditionalCloseOrders(
                 memberId,
                 snapshot.symbol(),

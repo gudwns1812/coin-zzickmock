@@ -9,5 +9,5 @@ import java.util.List;
 public interface WalletHistoryRepository {
     void record(TradingAccount account, WalletHistorySource source, Instant recordedAt);
 
-    List<WalletHistorySnapshot> findByMemberIdBetween(String memberId, Instant fromInclusive, Instant toInclusive);
+    List<WalletHistorySnapshot> findByMemberIdBetween(Long memberId, Instant fromInclusive, Instant toInclusive);
 }

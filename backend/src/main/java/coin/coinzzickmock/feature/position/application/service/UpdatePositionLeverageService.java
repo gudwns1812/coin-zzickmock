@@ -34,7 +34,7 @@ public class UpdatePositionLeverageService {
 
     @Transactional
     public PositionSnapshotResult update(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode,
@@ -78,13 +78,13 @@ public class UpdatePositionLeverageService {
         }
     }
 
-    private void rejectPendingOpenOrders(String memberId, String symbol, String positionSide) {
+    private void rejectPendingOpenOrders(Long memberId, String symbol, String positionSide) {
         if (!orderRepository.findPendingOpenOrders(memberId, symbol, positionSide).isEmpty()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "미체결 오픈 주문을 취소하거나 체결한 뒤 레버리지를 변경해주세요.");
         }
     }
 
-    private PositionSnapshotResult toResult(String memberId, PositionSnapshot snapshot) {
+    private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot) {
         double pendingCloseQuantity = pendingCloseOrderCapReconciler.pendingCloseQuantity(
                 memberId,
                 snapshot

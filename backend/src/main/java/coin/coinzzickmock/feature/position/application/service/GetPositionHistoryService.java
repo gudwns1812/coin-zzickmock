@@ -14,7 +14,7 @@ public class GetPositionHistoryService {
     private final PositionHistoryRepository positionHistoryRepository;
 
     @Transactional(readOnly = true)
-    public List<PositionHistoryResult> getHistory(String memberId, String symbol) {
+    public List<PositionHistoryResult> getHistory(Long memberId, String symbol) {
         return positionHistoryRepository.findByMemberId(memberId, symbol).stream()
                 .map(this::toResult)
                 .toList();

@@ -14,9 +14,10 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 @Profile("test")
 public class MemberDemoSeedConfiguration {
-    private static final String DEMO_MEMBER_ID = "test";
+    private static final String DEMO_ACCOUNT = "test";
     private static final String DEMO_PASSWORD = "test@1234";
     private static final String DEMO_MEMBER_NAME = "demo-trader";
+    private static final String DEMO_NICKNAME = "demo-trader";
     private static final String DEMO_MEMBER_EMAIL = "test@coinzzickmock.dev";
     private static final String DEMO_PHONE_NUMBER = "010-1234-5678";
     private static final String DEMO_ZIP_CODE = "06018";
@@ -29,33 +30,30 @@ public class MemberDemoSeedConfiguration {
             MemberPasswordHasher memberPasswordHasher
     ) {
         return args -> {
-            if (accountRepository.findByMemberId(DEMO_MEMBER_ID).isEmpty()) {
-                accountRepository.save(TradingAccount.openDefault(
-                        DEMO_MEMBER_ID,
-                        DEMO_MEMBER_EMAIL,
-                        DEMO_MEMBER_NAME
-                ));
-            }
-
-            memberCredentialRepository.findByMemberId(DEMO_MEMBER_ID)
-                    .ifPresentOrElse(
-                            credential -> {
-                                if (!credential.role().equals(MemberRole.ADMIN)) {
-                                    memberCredentialRepository.save(credential.asAdmin());
-                                }
-                            },
-                            () -> memberCredentialRepository.save(MemberCredential.register(
-                                    DEMO_MEMBER_ID,
+            MemberCredential credential = memberCredentialRepository.findByAccount(DEMO_ACCOUNT)
+                    .map(existing -> existing.role().equals(MemberRole.ADMIN)
+                            ? existing
+                            : memberCredentialRepository.save(existing.asAdmin()))
+                    .orElseGet(() -> memberCredentialRepository.save(MemberCredential.register(
+                                    DEMO_ACCOUNT,
                                     memberPasswordHasher.hash(DEMO_PASSWORD),
                                     DEMO_MEMBER_NAME,
+                                    DEMO_NICKNAME,
                                     DEMO_MEMBER_EMAIL,
                                     DEMO_PHONE_NUMBER,
                                     DEMO_ZIP_CODE,
                                     DEMO_ADDRESS,
                                     DEMO_ADDRESS_DETAIL,
                                     0
-                            ).asAdmin())
-                    );
+                            ).asAdmin()));
+
+            if (accountRepository.findByMemberId(credential.memberId()).isEmpty()) {
+                accountRepository.save(TradingAccount.openDefault(
+                        credential.memberId(),
+                        credential.memberEmail(),
+                        credential.memberName()
+                ));
+            }
         };
     }
 }

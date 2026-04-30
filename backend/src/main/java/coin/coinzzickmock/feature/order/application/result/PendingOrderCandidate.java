@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.order.application.result;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 
 public record PendingOrderCandidate(
-        String memberId,
+        Long memberId,
         FuturesOrder order
 ) {
     public String orderId() {

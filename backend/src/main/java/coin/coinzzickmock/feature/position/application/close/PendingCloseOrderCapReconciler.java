@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class PendingCloseOrderCapReconciler {
     private final OrderRepository orderRepository;
 
-    public void reconcile(String memberId, FuturesOrder submittedOrder, double heldQuantity, double currentPrice) {
+    public void reconcile(Long memberId, FuturesOrder submittedOrder, double heldQuantity, double currentPrice) {
         reconcile(
                 memberId,
                 submittedOrder.symbol(),
@@ -27,7 +27,7 @@ public class PendingCloseOrderCapReconciler {
         );
     }
 
-    public void reconcile(String memberId, PositionSnapshot position, double heldQuantity, double currentPrice) {
+    public void reconcile(Long memberId, PositionSnapshot position, double heldQuantity, double currentPrice) {
         reconcile(
                 memberId,
                 position.symbol(),
@@ -38,7 +38,7 @@ public class PendingCloseOrderCapReconciler {
         );
     }
 
-    public double pendingCloseQuantity(String memberId, PositionSnapshot position) {
+    public double pendingCloseQuantity(Long memberId, PositionSnapshot position) {
         return exposureBuckets(pendingCloseOrders(
                 memberId,
                 position.symbol(),
@@ -49,12 +49,12 @@ public class PendingCloseOrderCapReconciler {
                 .sum();
     }
 
-    public double closeableQuantity(String memberId, PositionSnapshot position) {
+    public double closeableQuantity(Long memberId, PositionSnapshot position) {
         return Math.max(0, position.quantity() - pendingCloseQuantity(memberId, position));
     }
 
     public void reconcile(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode,
@@ -112,7 +112,7 @@ public class PendingCloseOrderCapReconciler {
     }
 
     private List<FuturesOrder> pendingCloseOrders(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode

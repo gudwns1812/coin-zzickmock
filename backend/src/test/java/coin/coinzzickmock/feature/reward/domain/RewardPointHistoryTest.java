@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class RewardPointHistoryTest {
     @Test
     void createsGrantHistoryWithPositiveAmount() {
-        RewardPointHistory history = RewardPointHistory.grant("demo-member", 10, 17, "close-order-1");
+        RewardPointHistory history = RewardPointHistory.grant(1L, 10, 17, "close-order-1");
 
         assertEquals(RewardPointHistoryType.GRANT, history.historyType());
         assertEquals(10, history.amount());
@@ -17,9 +17,9 @@ class RewardPointHistoryTest {
 
     @Test
     void rejectsInvalidHistoryState() {
-        assertThrows(IllegalArgumentException.class, () -> RewardPointHistory.grant("demo-member", 0, 17, null));
+        assertThrows(IllegalArgumentException.class, () -> RewardPointHistory.grant(1L, 0, 17, null));
         assertThrows(IllegalArgumentException.class, () -> new RewardPointHistory(
-                "",
+                null,
                 RewardPointHistoryType.GRANT,
                 10,
                 17,
@@ -27,7 +27,7 @@ class RewardPointHistoryTest {
                 null
         ));
         assertThrows(IllegalArgumentException.class, () -> new RewardPointHistory(
-                "demo-member",
+                1L,
                 RewardPointHistoryType.GRANT,
                 10,
                 -1,

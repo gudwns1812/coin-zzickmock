@@ -50,7 +50,7 @@ public class RewardPointGrantProcessor {
             }
 
             @Override
-            public List<RewardPointHistory> findByMemberId(String memberId) {
+            public List<RewardPointHistory> findByMemberId(Long memberId) {
                 return List.of();
             }
         };

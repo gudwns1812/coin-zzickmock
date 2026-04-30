@@ -4,7 +4,7 @@ import java.time.Instant;
 
 public record RewardRedemptionRequest(
         String requestId,
-        String memberId,
+        Long memberId,
         Long shopItemId,
         String itemCode,
         String itemName,
@@ -16,12 +16,12 @@ public record RewardRedemptionRequest(
         Instant requestedAt,
         Instant sentAt,
         Instant cancelledAt,
-        String adminMemberId,
+        Long adminMemberId,
         String adminMemo
 ) {
     public static RewardRedemptionRequest pending(
             String requestId,
-            String memberId,
+            Long memberId,
             RewardShopItem item,
             RewardPhoneNumber phoneNumber,
             Instant requestedAt
@@ -49,7 +49,7 @@ public record RewardRedemptionRequest(
         if (requestId == null || requestId.isBlank()) {
             throw new IllegalArgumentException("요청 ID는 필수입니다.");
         }
-        if (memberId == null || memberId.isBlank()) {
+        if (memberId == null) {
             throw new IllegalArgumentException("회원 ID는 필수입니다.");
         }
         if (shopItemId == null) {
@@ -63,7 +63,7 @@ public record RewardRedemptionRequest(
         }
     }
 
-    public RewardRedemptionRequest markApproved(String adminMemberId, String adminMemo, Instant approvedAt) {
+    public RewardRedemptionRequest markApproved(Long adminMemberId, String adminMemo, Instant approvedAt) {
         requirePending();
         return new RewardRedemptionRequest(
                 requestId,
@@ -84,7 +84,7 @@ public record RewardRedemptionRequest(
         );
     }
 
-    public RewardRedemptionRequest rejectRefunded(String adminMemberId, String adminMemo, Instant rejectedAt) {
+    public RewardRedemptionRequest rejectRefunded(Long adminMemberId, String adminMemo, Instant rejectedAt) {
         requirePending();
         return new RewardRedemptionRequest(
                 requestId,

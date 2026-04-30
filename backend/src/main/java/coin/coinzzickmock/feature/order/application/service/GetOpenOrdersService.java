@@ -14,7 +14,7 @@ public class GetOpenOrdersService {
     private final OrderRepository orderRepository;
 
     @Transactional(readOnly = true)
-    public List<OpenOrderResult> getOpenOrders(String memberId, String symbol) {
+    public List<OpenOrderResult> getOpenOrders(Long memberId, String symbol) {
         return orderRepository.findByMemberId(memberId).stream()
                 .filter(FuturesOrder::isPending)
                 .filter(order -> symbol == null || symbol.isBlank() || order.symbol().equalsIgnoreCase(symbol))

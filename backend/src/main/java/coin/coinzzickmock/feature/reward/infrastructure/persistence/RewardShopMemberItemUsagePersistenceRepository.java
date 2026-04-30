@@ -16,14 +16,14 @@ public class RewardShopMemberItemUsagePersistenceRepository implements RewardSho
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<RewardShopMemberItemUsage> findByMemberIdAndShopItemId(String memberId, Long shopItemId) {
+    public Optional<RewardShopMemberItemUsage> findByMemberIdAndShopItemId(Long memberId, Long shopItemId) {
         return usageEntityRepository.findByMemberIdAndShopItem_Id(memberId, shopItemId)
                 .map(RewardShopMemberItemUsageEntity::toDomain);
     }
 
     @Override
     @Transactional
-    public Optional<RewardShopMemberItemUsage> findByMemberIdAndShopItemIdForUpdate(String memberId, Long shopItemId) {
+    public Optional<RewardShopMemberItemUsage> findByMemberIdAndShopItemIdForUpdate(Long memberId, Long shopItemId) {
         return usageEntityRepository.findWithLockingByMemberIdAndShopItem_Id(memberId, shopItemId)
                 .map(RewardShopMemberItemUsageEntity::toDomain);
     }

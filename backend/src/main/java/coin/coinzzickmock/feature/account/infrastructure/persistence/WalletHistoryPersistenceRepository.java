@@ -25,7 +25,7 @@ public class WalletHistoryPersistenceRepository implements WalletHistoryReposito
     @Override
     @Transactional(readOnly = true)
     public List<WalletHistorySnapshot> findByMemberIdBetween(
-            String memberId,
+            Long memberId,
             Instant fromInclusive,
             Instant toInclusive
     ) {

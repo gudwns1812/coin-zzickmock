@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.reward.domain;
 
 public record RewardPointHistory(
-        String memberId,
+        Long memberId,
         RewardPointHistoryType historyType,
         int amount,
         int balanceAfter,
@@ -9,7 +9,7 @@ public record RewardPointHistory(
         String sourceReference
 ) {
     public RewardPointHistory {
-        if (memberId == null || memberId.isBlank()) {
+        if (memberId == null) {
             throw new IllegalArgumentException("회원 ID는 필수입니다.");
         }
         if (historyType == null) {
@@ -23,7 +23,7 @@ public record RewardPointHistory(
         }
     }
 
-    public static RewardPointHistory grant(String memberId, int amount, int balanceAfter, String sourceReference) {
+    public static RewardPointHistory grant(Long memberId, int amount, int balanceAfter, String sourceReference) {
         if (amount <= 0) {
             throw new IllegalArgumentException("적립 포인트는 0보다 커야 합니다.");
         }
@@ -37,7 +37,7 @@ public record RewardPointHistory(
         );
     }
 
-    public static RewardPointHistory redemptionDeduct(String memberId, int amount, int balanceAfter, String requestId) {
+    public static RewardPointHistory redemptionDeduct(Long memberId, int amount, int balanceAfter, String requestId) {
         if (amount <= 0) {
             throw new IllegalArgumentException("차감 포인트는 0보다 커야 합니다.");
         }
@@ -51,7 +51,7 @@ public record RewardPointHistory(
         );
     }
 
-    public static RewardPointHistory redemptionRefund(String memberId, int amount, int balanceAfter, String requestId) {
+    public static RewardPointHistory redemptionRefund(Long memberId, int amount, int balanceAfter, String requestId) {
         if (amount <= 0) {
             throw new IllegalArgumentException("환급 포인트는 0보다 커야 합니다.");
         }

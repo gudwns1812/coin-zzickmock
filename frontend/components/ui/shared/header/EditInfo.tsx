@@ -14,7 +14,8 @@ const EditInfo = ({ token }: { token: JwtToken }) => {
   const [info, setInfo] = useState<UserInfo>(() => {
     const phoneNumber = (token.phoneNumber || "010-0000-0000").split("-");
     return {
-      name: token.memberName,
+      name: token.nickname,
+      nickname: token.nickname,
       phone: {
         countryCode: phoneNumber[0],
         phoneNumber1: phoneNumber[1],

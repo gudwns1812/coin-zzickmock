@@ -21,7 +21,7 @@ class GetWalletHistoryServiceTest {
     void defaultsToOneMonthWindowFromCurrentDate() {
         RecordingWalletHistoryRepository walletHistoryRepository = new RecordingWalletHistoryRepository(List.of(
                 new WalletHistorySnapshot(
-                        "member-1",
+                        1L,
                         99_900,
                         94_900,
                         WalletHistorySource.TYPE_ORDER_FILL,
@@ -34,7 +34,7 @@ class GetWalletHistoryServiceTest {
                 accountRepository()
         );
 
-        List<WalletHistoryResult> results = service.execute(new GetWalletHistoryQuery("member-1", null, null));
+        List<WalletHistoryResult> results = service.execute(new GetWalletHistoryQuery(1L, null, null));
 
         assertThat(results).hasSize(1);
         assertThat(Duration.between(walletHistoryRepository.requestedFrom, walletHistoryRepository.requestedTo).toDays())
@@ -48,7 +48,7 @@ class GetWalletHistoryServiceTest {
                 accountRepository()
         );
 
-        List<WalletHistoryResult> results = service.execute(new GetWalletHistoryQuery("member-1", null, null));
+        List<WalletHistoryResult> results = service.execute(new GetWalletHistoryQuery(1L, null, null));
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).walletBalance()).isEqualTo(100_000d);
@@ -59,7 +59,7 @@ class GetWalletHistoryServiceTest {
     private AccountRepository accountRepository() {
         return new AccountRepository() {
             @Override
-            public Optional<TradingAccount> findByMemberId(String memberId) {
+            public Optional<TradingAccount> findByMemberId(Long memberId) {
                 return Optional.of(new TradingAccount(memberId, "demo@coinzzickmock.dev", "Demo", 100_000, 95_000));
             }
 
@@ -93,7 +93,7 @@ class GetWalletHistoryServiceTest {
 
         @Override
         public List<WalletHistorySnapshot> findByMemberIdBetween(
-                String memberId,
+                Long memberId,
                 Instant fromInclusive,
                 Instant toInclusive
         ) {

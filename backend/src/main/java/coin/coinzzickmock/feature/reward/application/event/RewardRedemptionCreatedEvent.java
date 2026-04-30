@@ -4,7 +4,7 @@ import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
 
 public record RewardRedemptionCreatedEvent(
         String requestId,
-        String memberId,
+        Long memberId,
         String itemCode,
         String itemName,
         int pointAmount,

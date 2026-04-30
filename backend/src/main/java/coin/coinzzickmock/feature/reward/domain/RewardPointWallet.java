@@ -1,11 +1,11 @@
 package coin.coinzzickmock.feature.reward.domain;
 
 public record RewardPointWallet(
-        String memberId,
+        Long memberId,
         int rewardPoint
 ) {
     public RewardPointWallet {
-        if (memberId == null || memberId.isBlank()) {
+        if (memberId == null) {
             throw new IllegalArgumentException("회원 ID는 필수입니다.");
         }
         if (rewardPoint < 0) {
@@ -13,7 +13,7 @@ public record RewardPointWallet(
         }
     }
 
-    public static RewardPointWallet empty(String memberId) {
+    public static RewardPointWallet empty(Long memberId) {
         return new RewardPointWallet(memberId, 0);
     }
 

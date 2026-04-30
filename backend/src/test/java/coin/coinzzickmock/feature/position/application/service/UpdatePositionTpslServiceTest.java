@@ -28,7 +28,7 @@ class UpdatePositionTpslServiceTest {
     void createsTakeProfitAndStopLossOrdersWhenPricesAreNotAlreadyBreached() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -40,7 +40,7 @@ class UpdatePositionTpslServiceTest {
         UpdatePositionTpslService service = service(positionRepository, orderRepository, 101);
 
         PositionSnapshotResult result = service.update(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -50,13 +50,13 @@ class UpdatePositionTpslServiceTest {
 
         assertEquals(110, result.takeProfitPrice(), 0.0001);
         assertEquals(95, result.stopLossPrice(), 0.0001);
-        PositionSnapshot persisted = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot persisted = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(null, persisted.takeProfitPrice());
         assertEquals(null, persisted.stopLossPrice());
         assertEquals(0, persisted.version());
         List<FuturesOrder> orders = orderRepository.findPendingConditionalCloseOrders(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED"
@@ -68,7 +68,7 @@ class UpdatePositionTpslServiceTest {
     @Test
     void rejectsAlreadyBreachedLongTakeProfit() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -79,7 +79,7 @@ class UpdatePositionTpslServiceTest {
         ));
 
         assertThrows(CoreException.class, () -> service(positionRepository, new InMemoryOrderRepository(), 101).update(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -91,7 +91,7 @@ class UpdatePositionTpslServiceTest {
     @Test
     void rejectsAlreadyBreachedShortStopLoss() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "SHORT",
                 "ISOLATED",
@@ -102,7 +102,7 @@ class UpdatePositionTpslServiceTest {
         ));
 
         assertThrows(CoreException.class, () -> service(positionRepository, new InMemoryOrderRepository(), 101).update(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "SHORT",
                 "ISOLATED",
@@ -128,7 +128,7 @@ class UpdatePositionTpslServiceTest {
         private final List<OpenPositionCandidate> positions = new ArrayList<>();
 
         @Override
-        public List<PositionSnapshot> findOpenPositions(String memberId) {
+        public List<PositionSnapshot> findOpenPositions(Long memberId) {
             return positions.stream()
                     .filter(candidate -> candidate.memberId().equals(memberId))
                     .map(OpenPositionCandidate::position)
@@ -137,7 +137,7 @@ class UpdatePositionTpslServiceTest {
 
         @Override
         public Optional<PositionSnapshot> findOpenPosition(
-                String memberId,
+                Long memberId,
                 String symbol,
                 String positionSide,
                 String marginMode
@@ -159,14 +159,14 @@ class UpdatePositionTpslServiceTest {
         }
 
         @Override
-        public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+        public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             delete(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode());
             positions.add(new OpenPositionCandidate(memberId, positionSnapshot));
             return positionSnapshot;
         }
 
         @Override
-        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
             int before = positions.size();
             positions.removeIf(candidate -> candidate.memberId().equals(memberId)
                     && candidate.symbol().equals(symbol)
@@ -176,7 +176,7 @@ class UpdatePositionTpslServiceTest {
         }
 
         @Override
-        public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
             deleteIfOpen(memberId, symbol, positionSide, marginMode);
         }
     }
@@ -185,18 +185,18 @@ class UpdatePositionTpslServiceTest {
         private final List<FuturesOrder> orders = new ArrayList<>();
 
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             orders.add(futuresOrder);
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return orders;
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return orders.stream().filter(order -> order.orderId().equals(orderId)).findFirst();
         }
 
@@ -204,13 +204,13 @@ class UpdatePositionTpslServiceTest {
         public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
             return orders.stream()
                     .filter(order -> order.symbol().equals(symbol))
-                    .map(order -> new PendingOrderCandidate("demo-member", order))
+                    .map(order -> new PendingOrderCandidate(1L, order))
                     .toList();
         }
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -220,7 +220,7 @@ class UpdatePositionTpslServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
             orders.remove(order);
             FuturesOrder updated = FuturesOrder.STATUS_CANCELLED.equals(status) ? order.cancel() : order;
@@ -229,7 +229,7 @@ class UpdatePositionTpslServiceTest {
         }
 
         @Override
-        public FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+        public FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
             FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
             orders.remove(order);
             FuturesOrder updated = order.withQuantity(quantity);

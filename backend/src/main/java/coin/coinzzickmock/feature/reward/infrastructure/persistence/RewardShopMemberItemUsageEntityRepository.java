@@ -8,8 +8,10 @@ import java.util.Optional;
 
 public interface RewardShopMemberItemUsageEntityRepository
         extends JpaRepository<RewardShopMemberItemUsageEntity, Long> {
-    Optional<RewardShopMemberItemUsageEntity> findByMemberIdAndShopItem_Id(String memberId, Long shopItemId);
+    Optional<RewardShopMemberItemUsageEntity> findByMemberIdAndShopItem_Id(Long memberId, Long shopItemId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<RewardShopMemberItemUsageEntity> findWithLockingByMemberIdAndShopItem_Id(String memberId, Long shopItemId);
+    Optional<RewardShopMemberItemUsageEntity> findWithLockingByMemberIdAndShopItem_Id(Long memberId, Long shopItemId);
+
+    void deleteAllByMemberId(Long memberId);
 }

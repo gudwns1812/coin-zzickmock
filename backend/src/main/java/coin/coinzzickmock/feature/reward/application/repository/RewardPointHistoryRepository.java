@@ -7,7 +7,7 @@ import java.util.List;
 public interface RewardPointHistoryRepository {
     RewardPointHistory save(RewardPointHistory history);
 
-    default List<RewardPointHistory> findByMemberId(String memberId) {
+    default List<RewardPointHistory> findByMemberId(Long memberId) {
         return List.of();
     }
 }

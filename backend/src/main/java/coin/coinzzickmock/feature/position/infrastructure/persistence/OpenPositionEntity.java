@@ -27,7 +27,7 @@ public class OpenPositionEntity extends AuditableEntity {
     private Long id;
 
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @Column(name = "symbol", nullable = false, length = 30)
     private String symbol;
@@ -92,7 +92,7 @@ public class OpenPositionEntity extends AuditableEntity {
     protected OpenPositionEntity() {
     }
 
-    public static OpenPositionEntity from(String memberId, PositionSnapshot positionSnapshot) {
+    public static OpenPositionEntity from(Long memberId, PositionSnapshot positionSnapshot) {
         OpenPositionEntity entity = new OpenPositionEntity();
         entity.memberId = memberId;
         entity.apply(positionSnapshot);
@@ -147,7 +147,7 @@ public class OpenPositionEntity extends AuditableEntity {
         );
     }
 
-    public String memberId() {
+    public Long memberId() {
         return memberId;
     }
 

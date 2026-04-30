@@ -26,7 +26,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
-                providers(new Actor("demo-member", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
+                providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
         );
 
         CoreException thrown = assertThrows(
@@ -48,7 +48,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
-                providers(new Actor("demo-member", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
+                providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
         );
 
         CoreException thrown = assertThrows(
@@ -70,7 +70,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
-                providers(new Actor("admin", "admin@coinzzickmock.dev", "Admin", MemberRole.ADMIN))
+                providers(new Actor(99L, "admin", "admin@coinzzickmock.dev", "Admin", MemberRole.ADMIN))
         );
 
         CoreException thrown = assertThrows(

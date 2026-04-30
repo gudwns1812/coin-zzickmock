@@ -34,7 +34,7 @@ public class CreateRewardRedemptionService {
     private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     @Transactional
-    public RewardRedemptionResult create(String memberId, String itemCode, String phoneNumber) {
+    public RewardRedemptionResult create(Long memberId, String itemCode, String phoneNumber) {
         RewardPhoneNumber normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
         if (itemCode == null || itemCode.isBlank()) {
             throw invalid("상점 상품 코드는 필수입니다.");

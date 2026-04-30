@@ -73,7 +73,7 @@ public class OrderController {
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
-        String memberId = providers.auth().currentActor().memberId();
+        Long memberId = providers.auth().currentActor().memberId();
         TradingExecutionSseBroker.SseSubscriptionPermit permit = tradingExecutionSseBroker.reserve(memberId);
         SseEmitter emitter = createEmitter();
         try {

@@ -11,6 +11,8 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketData
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
+import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -37,7 +39,7 @@ class GetAccountSummaryServiceTest {
         GetAccountSummaryService service = new GetAccountSummaryService(
                 new AccountRepository() {
                     @Override
-                    public Optional<TradingAccount> findByMemberId(String memberId) {
+                    public Optional<TradingAccount> findByMemberId(Long memberId) {
                         return Optional.of(new TradingAccount(memberId, "demo@coinzzickmock.dev", "Demo", 100000, 95000));
                     }
 
@@ -49,7 +51,7 @@ class GetAccountSummaryServiceTest {
                 },
                 new RewardPointRepository() {
                     @Override
-                    public Optional<RewardPointWallet> findByMemberId(String memberId) {
+                    public Optional<RewardPointWallet> findByMemberId(Long memberId) {
                         return Optional.of(new RewardPointWallet(memberId, 12));
                     }
 
@@ -60,10 +62,48 @@ class GetAccountSummaryServiceTest {
                     }
                 },
                 positionRepository,
-                realtimePriceReader(110)
+                realtimePriceReader(110),
+                new MemberCredentialRepository() {
+                    @Override
+                    public Optional<MemberCredential> findByMemberId(Long memberId) {
+                        return Optional.of(MemberCredential.register(
+                                "demo",
+                                "hashed",
+                                "Demo",
+                                "DemoNick",
+                                "demo@coinzzickmock.dev",
+                                "010-0000-0000",
+                                "04524",
+                                "서울",
+                                "",
+                                0
+                        ).withMemberId(memberId));
+                    }
+
+                    @Override
+                    public Optional<MemberCredential> findByAccount(String account) {
+                        return Optional.empty();
+                    }
+
+                    @Override
+                    public boolean existsByAccount(String account) {
+                        return false;
+                    }
+
+                    @Override
+                    public MemberCredential save(MemberCredential memberCredential) {
+                        fail("account summary read must not save member");
+                        return memberCredential;
+                    }
+
+                    @Override
+                    public void deleteByMemberId(Long memberId) {
+                        fail("account summary read must not delete member");
+                    }
+                }
         );
 
-        AccountSummaryResult result = service.execute(new GetAccountSummaryQuery("demo-member"));
+        AccountSummaryResult result = service.execute(new GetAccountSummaryQuery(1L));
 
         assertEquals(100020, result.usdtBalance(), 0.0001);
         assertEquals(20, result.totalUnrealizedPnl(), 0.0001);
@@ -80,34 +120,34 @@ class GetAccountSummaryServiceTest {
         }
 
         @Override
-        public List<PositionSnapshot> findOpenPositions(String memberId) {
+        public List<PositionSnapshot> findOpenPositions(Long memberId) {
             return List.of(position);
         }
 
         @Override
-        public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide, String marginMode) {
+        public Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide, String marginMode) {
             return Optional.of(position);
         }
 
         @Override
         public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
-            return List.of(new OpenPositionCandidate("demo-member", position));
+            return List.of(new OpenPositionCandidate(1L, position));
         }
 
         @Override
-        public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+        public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             fail("read-time mark-to-market must not save positions");
             return positionSnapshot;
         }
 
         @Override
-        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
             fail("read-time mark-to-market must not delete positions");
             return false;
         }
 
         @Override
-        public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
             fail("read-time mark-to-market must not delete positions");
         }
     }

@@ -24,9 +24,9 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PositionSnapshot> findOpenPositions(String memberId) {
+    public List<PositionSnapshot> findOpenPositions(Long memberId) {
         return jpaQueryFactory.selectFrom(position)
-                .where(position.getString("memberId").eq(memberId))
+                .where(position.getNumber("memberId", Long.class).eq(memberId))
                 .orderBy(position.getString("symbol").asc())
                 .fetch()
                 .stream()
@@ -37,14 +37,14 @@ public class PositionPersistenceRepository implements PositionRepository {
     @Override
     @Transactional(readOnly = true)
     public Optional<PositionSnapshot> findOpenPosition(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode
     ) {
         OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
                 .where(
-                        position.getString("memberId").eq(memberId),
+                        position.getNumber("memberId", Long.class).eq(memberId),
                         position.getString("symbol").eq(symbol),
                         position.getString("positionSide").eq(positionSide),
                         position.getString("marginMode").eq(marginMode)
@@ -55,10 +55,10 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide) {
+    public Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide) {
         OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
                 .where(
-                        position.getString("memberId").eq(memberId),
+                        position.getNumber("memberId", Long.class).eq(memberId),
                         position.getString("symbol").eq(symbol),
                         position.getString("positionSide").eq(positionSide)
                 )
@@ -73,7 +73,7 @@ public class PositionPersistenceRepository implements PositionRepository {
         return jpaQueryFactory.selectFrom(position)
                 .where(position.getString("symbol").eq(symbol))
                 .orderBy(
-                        position.getString("memberId").asc(),
+                        position.getNumber("memberId", Long.class).asc(),
                         position.getString("positionSide").asc(),
                         position.getString("marginMode").asc()
                 )
@@ -85,10 +85,10 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional
-    public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+    public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
         OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
                 .where(
-                        position.getString("memberId").eq(memberId),
+                        position.getNumber("memberId", Long.class).eq(memberId),
                         position.getString("symbol").eq(positionSnapshot.symbol()),
                         position.getString("positionSide").eq(positionSnapshot.positionSide()),
                         position.getString("marginMode").eq(positionSnapshot.marginMode())
@@ -107,7 +107,7 @@ public class PositionPersistenceRepository implements PositionRepository {
     @Override
     @Transactional
     public PositionMutationResult updateWithVersion(
-            String memberId,
+            Long memberId,
             PositionSnapshot expectedPosition,
             PositionSnapshot nextPosition
     ) {
@@ -115,7 +115,7 @@ public class PositionPersistenceRepository implements PositionRepository {
         long affectedRows = applyPositionUpdate(
                 jpaQueryFactory.update(position)
                         .where(
-                                position.getString("memberId").eq(memberId),
+                                position.getNumber("memberId", Long.class).eq(memberId),
                                 position.getString("symbol").eq(expectedPosition.symbol()),
                                 position.getString("positionSide").eq(expectedPosition.positionSide()),
                                 position.getString("marginMode").eq(expectedPosition.marginMode()),
@@ -135,10 +135,10 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional
-    public PositionMutationResult deleteWithVersion(String memberId, PositionSnapshot expectedPosition) {
+    public PositionMutationResult deleteWithVersion(Long memberId, PositionSnapshot expectedPosition) {
         long affectedRows = jpaQueryFactory.delete(position)
                 .where(
-                        position.getString("memberId").eq(memberId),
+                        position.getNumber("memberId", Long.class).eq(memberId),
                         position.getString("symbol").eq(expectedPosition.symbol()),
                         position.getString("positionSide").eq(expectedPosition.positionSide()),
                         position.getString("marginMode").eq(expectedPosition.marginMode()),
@@ -157,10 +157,10 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional
-    public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+    public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
         return jpaQueryFactory.delete(position)
                 .where(
-                        position.getString("memberId").eq(memberId),
+                        position.getNumber("memberId", Long.class).eq(memberId),
                         position.getString("symbol").eq(symbol),
                         position.getString("positionSide").eq(positionSide),
                         position.getString("marginMode").eq(marginMode)
@@ -170,7 +170,7 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional
-    public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+    public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
         deleteIfOpen(memberId, symbol, positionSide, marginMode);
     }
 

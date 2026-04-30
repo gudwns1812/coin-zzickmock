@@ -1,5 +1,6 @@
 export type UserInfo = {
   name: string;
+  nickname: string;
   address: {
     zipcode: string;
     address: string;

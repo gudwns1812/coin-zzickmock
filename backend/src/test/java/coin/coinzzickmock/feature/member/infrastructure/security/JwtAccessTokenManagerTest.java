@@ -22,11 +22,12 @@ class JwtAccessTokenManagerTest {
         environment.setActiveProfiles("test");
 
         JwtAccessTokenManager manager = new JwtAccessTokenManager("", 3600, true, environment);
-        String token = manager.issue("demo-member", "Demo User", "demo@example.com", MemberRole.ADMIN);
+        String token = manager.issue(1L, "demo-member", "Demo User", "demo@example.com", MemberRole.ADMIN);
 
         JwtSessionClaims claims = manager.parse(token);
-        assertEquals("demo-member", claims.memberId());
-        assertEquals("Demo User", claims.memberName());
+        assertEquals(1L, claims.memberId());
+        assertEquals("demo-member", claims.account());
+        assertEquals("Demo User", claims.nickname());
         assertEquals("demo@example.com", claims.email());
         assertEquals(MemberRole.ADMIN, claims.role());
     }

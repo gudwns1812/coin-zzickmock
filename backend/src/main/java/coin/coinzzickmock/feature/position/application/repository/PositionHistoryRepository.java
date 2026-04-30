@@ -4,7 +4,7 @@ import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import java.util.List;
 
 public interface PositionHistoryRepository {
-    PositionHistory save(String memberId, PositionHistory positionHistory);
+    PositionHistory save(Long memberId, PositionHistory positionHistory);
 
-    List<PositionHistory> findByMemberId(String memberId, String symbol);
+    List<PositionHistory> findByMemberId(Long memberId, String symbol);
 }

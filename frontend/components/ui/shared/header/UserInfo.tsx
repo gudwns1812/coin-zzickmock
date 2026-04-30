@@ -35,7 +35,7 @@ const UserInfo = ({
           className="text-main-dark-gray hover:text-main-blue transition-colors duration-300"
           onClick={() => setIsOpenForm(!isOpenForm)}
         >
-          <b className="underline">{token.memberName}</b> 님
+          <b className="underline">{token.nickname}</b> 님
         </button>
       </div>
 
@@ -54,8 +54,8 @@ const UserInfo = ({
             <EditInfo token={token} />
           </div>
           <div className="grid grid-cols-[auto_1fr] gap-y-main gap-x-main-2">
-            <span>이름</span>
-            <span>{token.memberName}</span>
+            <span>닉네임</span>
+            <span>{token.nickname}</span>
 
             <span>휴대폰</span>
             <span>{token.phoneNumber || "-"}</span>

@@ -6,9 +6,9 @@ import org.springframework.data.jpa.repository.Lock;
 
 import java.util.Optional;
 
-public interface RewardPointWalletEntityRepository extends JpaRepository<RewardPointWalletEntity, String> {
+public interface RewardPointWalletEntityRepository extends JpaRepository<RewardPointWalletEntity, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<RewardPointWalletEntity> findWithLockingByMemberId(String memberId);
+    Optional<RewardPointWalletEntity> findWithLockingByMemberId(Long memberId);
 
-    void deleteAllByMemberId(String memberId);
+    void deleteAllByMemberId(Long memberId);
 }

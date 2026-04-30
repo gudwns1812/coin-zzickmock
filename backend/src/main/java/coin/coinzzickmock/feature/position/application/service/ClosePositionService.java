@@ -37,7 +37,7 @@ public class ClosePositionService {
 
     @Transactional
     public ClosePositionResult close(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode,

@@ -12,7 +12,7 @@ public class CheckMemberAvailabilityService {
     private final MemberCredentialRepository memberCredentialRepository;
 
     @Transactional(readOnly = true)
-    public boolean isAvailable(String memberId) {
-        return !memberCredentialRepository.existsByMemberId(MemberIdentityRules.normalizeMemberId(memberId));
+    public boolean isAvailable(String account) {
+        return !memberCredentialRepository.existsByAccount(MemberIdentityRules.normalizeAccount(account));
     }
 }

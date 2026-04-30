@@ -40,7 +40,7 @@ class GetOpenPositionsServiceTest {
                 realtimePriceReader(110)
         );
 
-        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+        PositionSnapshotResult result = service.getPositions(1L).get(0);
 
         assertEquals(110, result.markPrice(), 0.0001);
         assertEquals(20, result.unrealizedPnl(), 0.0001);
@@ -77,7 +77,7 @@ class GetOpenPositionsServiceTest {
                 realtimePriceReader(100)
         );
 
-        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+        PositionSnapshotResult result = service.getPositions(1L).get(0);
 
         assertEquals(0.75, result.accumulatedClosedQuantity(), 0.0001);
         assertEquals(0, result.pendingCloseQuantity(), 0.0001);
@@ -103,7 +103,7 @@ class GetOpenPositionsServiceTest {
                 realtimePriceReader(100)
         );
 
-        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+        PositionSnapshotResult result = service.getPositions(1L).get(0);
 
         assertEquals(0, result.accumulatedClosedQuantity(), 0.0001);
         assertEquals(0.4, result.pendingCloseQuantity(), 0.0001);
@@ -129,7 +129,7 @@ class GetOpenPositionsServiceTest {
                 realtimePriceReader(100)
         );
 
-        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+        PositionSnapshotResult result = service.getPositions(1L).get(0);
 
         assertEquals(1, result.pendingCloseQuantity(), 0.0001);
         assertEquals(0, result.closeableQuantity(), 0.0001);
@@ -169,7 +169,7 @@ class GetOpenPositionsServiceTest {
                 realtimePriceReader(100)
         );
 
-        PositionSnapshotResult result = service.getPositions("demo-member").get(0);
+        PositionSnapshotResult result = service.getPositions(1L).get(0);
 
         assertEquals(0.5, result.accumulatedClosedQuantity(), 0.0001);
         assertEquals(0, result.pendingCloseQuantity(), 0.0001);
@@ -184,51 +184,51 @@ class GetOpenPositionsServiceTest {
         }
 
         @Override
-        public List<PositionSnapshot> findOpenPositions(String memberId) {
+        public List<PositionSnapshot> findOpenPositions(Long memberId) {
             return List.of(position);
         }
 
         @Override
-        public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide, String marginMode) {
+        public Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide, String marginMode) {
             return Optional.of(position);
         }
 
         @Override
         public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
-            return List.of(new OpenPositionCandidate("demo-member", position));
+            return List.of(new OpenPositionCandidate(1L, position));
         }
 
         @Override
-        public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+        public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             fail("read-time mark-to-market must not save positions");
             return positionSnapshot;
         }
 
         @Override
-        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
             fail("read-time mark-to-market must not delete positions");
             return false;
         }
 
         @Override
-        public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
             fail("read-time mark-to-market must not delete positions");
         }
     }
 
     private static class EmptyOrderRepository implements OrderRepository {
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return List.of();
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return Optional.empty();
         }
 
@@ -239,7 +239,7 @@ class GetOpenPositionsServiceTest {
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -249,14 +249,14 @@ class GetOpenPositionsServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             throw new UnsupportedOperationException();
         }
     }
 
     private static class PendingCloseOrderRepository extends EmptyOrderRepository {
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return List.of(FuturesOrder.place(
                     "close-order",
                     "BTCUSDT",
@@ -277,7 +277,7 @@ class GetOpenPositionsServiceTest {
 
     private static class TpslOcoOrderRepository extends EmptyOrderRepository {
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return List.of(
                     FuturesOrder.conditionalClose(
                             "tp",

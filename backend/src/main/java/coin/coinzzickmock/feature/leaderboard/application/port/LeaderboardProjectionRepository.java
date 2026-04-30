@@ -7,5 +7,5 @@ import java.util.Optional;
 public interface LeaderboardProjectionRepository {
     List<LeaderboardEntry> findAll();
 
-    Optional<LeaderboardEntry> findByMemberId(String memberId);
+    Optional<LeaderboardEntry> findByMemberId(Long memberId);
 }

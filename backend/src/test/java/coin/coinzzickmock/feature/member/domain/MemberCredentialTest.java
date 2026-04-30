@@ -13,6 +13,7 @@ class MemberCredentialTest {
                 " demo-user ",
                 "hashed-password",
                 " Demo User ",
+                " Demo Nick ",
                 " demo@coinzzickmock.dev ",
                 " 010-1111-2222 ",
                 " 04524 ",
@@ -21,7 +22,8 @@ class MemberCredentialTest {
                 0
         );
 
-        assertEquals("demo-user", credential.memberId());
+        assertEquals("demo-user", credential.account());
+        assertEquals("Demo Nick", credential.nickname());
         assertEquals("Demo User", credential.memberName());
         assertEquals("demo@coinzzickmock.dev", credential.memberEmail());
         assertEquals("010-1111-2222", credential.phoneNumber());

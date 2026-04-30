@@ -7,6 +7,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -14,14 +16,21 @@ import jakarta.persistence.Table;
 @Table(name = "member_credentials")
 public class MemberCredentialEntity extends AuditableEntity {
     @Id
-    @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
+    private Long id;
+
+    @Column(name = "account", nullable = false, length = 64, unique = true)
+    private String account;
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
     @Column(name = "member_name", nullable = false, length = 100)
     private String memberName;
+
+    @Column(name = "nickname", nullable = false, length = 100)
+    private String nickname;
 
     @Column(name = "member_email", nullable = false, length = 255)
     private String memberEmail;
@@ -49,9 +58,11 @@ public class MemberCredentialEntity extends AuditableEntity {
     }
 
     public MemberCredentialEntity(
-            String memberId,
+            Long id,
+            String account,
             String passwordHash,
             String memberName,
+            String nickname,
             String memberEmail,
             String phoneNumber,
             String zipCode,
@@ -60,9 +71,11 @@ public class MemberCredentialEntity extends AuditableEntity {
             int investScore,
             MemberRole role
     ) {
-        this.memberId = memberId;
+        this.id = id;
+        this.account = account;
         this.passwordHash = passwordHash;
         this.memberName = memberName;
+        this.nickname = nickname;
         this.memberEmail = memberEmail;
         this.phoneNumber = phoneNumber;
         this.zipCode = zipCode;
@@ -75,8 +88,10 @@ public class MemberCredentialEntity extends AuditableEntity {
     public static MemberCredentialEntity from(MemberCredential memberCredential) {
         return new MemberCredentialEntity(
                 memberCredential.memberId(),
+                memberCredential.account(),
                 memberCredential.passwordHash(),
                 memberCredential.memberName(),
+                memberCredential.nickname(),
                 memberCredential.memberEmail(),
                 memberCredential.phoneNumber(),
                 memberCredential.zipCode(),
@@ -88,8 +103,10 @@ public class MemberCredentialEntity extends AuditableEntity {
     }
 
     public void apply(MemberCredential memberCredential) {
+        this.account = memberCredential.account();
         this.passwordHash = memberCredential.passwordHash();
         this.memberName = memberCredential.memberName();
+        this.nickname = memberCredential.nickname();
         this.memberEmail = memberCredential.memberEmail();
         this.phoneNumber = memberCredential.phoneNumber();
         this.zipCode = memberCredential.zipCode();
@@ -101,9 +118,11 @@ public class MemberCredentialEntity extends AuditableEntity {
 
     public MemberCredential toDomain() {
         return new MemberCredential(
-                memberId,
+                id,
+                account,
                 passwordHash,
                 memberName,
+                nickname,
                 memberEmail,
                 phoneNumber,
                 zipCode,

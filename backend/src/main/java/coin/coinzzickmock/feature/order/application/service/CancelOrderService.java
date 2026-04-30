@@ -15,7 +15,7 @@ public class CancelOrderService {
     private final OrderRepository orderRepository;
 
     @Transactional
-    public CancelOrderResult cancel(String memberId, String orderId) {
+    public CancelOrderResult cancel(Long memberId, String orderId) {
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
 

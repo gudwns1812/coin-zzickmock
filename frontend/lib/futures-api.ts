@@ -15,8 +15,10 @@ type ApiResponse<T> = {
 };
 
 export type AuthUser = {
-  memberId: string;
+  memberId: number;
+  account: string;
   memberName: string;
+  nickname: string;
   role: "USER" | "ADMIN";
   admin: boolean;
 };
@@ -44,8 +46,10 @@ export type FuturesMarketsResult = {
 };
 
 export type FuturesAccountSummary = {
-  memberId: string;
+  memberId: number;
+  account: string;
   memberName: string;
+  nickname: string;
   usdtBalance: number;
   walletBalance: number;
   available: number;
@@ -201,7 +205,7 @@ export type RewardRedemptionStatus =
 
 export type RewardRedemption = {
   requestId: string;
-  memberId: string;
+  memberId: number;
   itemCode: string;
   itemName: string;
   pointAmount: number;
@@ -210,7 +214,7 @@ export type RewardRedemption = {
   requestedAt: string;
   sentAt: string | null;
   cancelledAt: string | null;
-  adminMemberId: string | null;
+  adminMemberId: number | null;
   adminMemo: string | null;
 };
 
@@ -291,8 +295,10 @@ const SHOP_ITEM_FALLBACKS: ShopItem[] = [
 ];
 
 const ACCOUNT_FALLBACK: FuturesAccountSummary = {
-  memberId: "test",
+  memberId: 0,
+  account: "test",
   memberName: "demo-trader",
+  nickname: "demo-trader",
   usdtBalance: 100_000,
   walletBalance: 100_000,
   available: 100_000,

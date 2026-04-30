@@ -13,7 +13,7 @@ import jakarta.persistence.Version;
 public class RewardPointWalletEntity extends AuditableEntity {
     @Id
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @Column(name = "reward_point", nullable = false)
     private int rewardPoint;

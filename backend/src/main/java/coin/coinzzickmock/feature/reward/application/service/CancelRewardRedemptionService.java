@@ -19,7 +19,7 @@ public class CancelRewardRedemptionService {
     private final RewardRedemptionRefundProcessor rewardRedemptionRefundProcessor;
 
     @Transactional
-    public RewardRedemptionResult cancel(String memberId, String requestId) {
+    public RewardRedemptionResult cancel(Long memberId, String requestId) {
         int claimed = rewardRedemptionRequestRepository.claimPendingAsCancelled(
                 requestId,
                 memberId,
@@ -34,7 +34,7 @@ public class CancelRewardRedemptionService {
         return RewardRedemptionResult.from(request);
     }
 
-    private CoreException mapOwnerClaimFailure(String memberId, String requestId) {
+    private CoreException mapOwnerClaimFailure(Long memberId, String requestId) {
         return rewardRedemptionRequestRepository.findByRequestId(requestId)
                 .map(request -> {
                     if (!request.memberId().equals(memberId)) {

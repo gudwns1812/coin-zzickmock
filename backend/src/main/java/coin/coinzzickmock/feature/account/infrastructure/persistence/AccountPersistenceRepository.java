@@ -18,7 +18,7 @@ public class AccountPersistenceRepository implements AccountRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<TradingAccount> findByMemberId(String memberId) {
+    public Optional<TradingAccount> findByMemberId(Long memberId) {
         return tradingAccountEntityRepository.findById(memberId)
                 .map(TradingAccountEntity::toDomain);
     }

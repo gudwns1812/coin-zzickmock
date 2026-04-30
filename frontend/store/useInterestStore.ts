@@ -94,7 +94,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
   fetchGroups: async (token: JwtToken) => {
     try {
       set({ isLoading: true });
-      const res = await fetch(`/proxy/favorite/${token.memberId}`);
+      const res = await fetch(`/proxy/favorite/${token.account}`);
       const json: { data: InterestGroup[] } = await res.json();
 
       set({ interestGroups: json.data });
@@ -116,7 +116,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
   fetchStocks: async (token: JwtToken, groupId: string) => {
     try {
       set({ isLoading: true });
-      const res = await fetch(`/proxy/favorite/${token.memberId}/${groupId}`);
+      const res = await fetch(`/proxy/favorite/${token.account}/${groupId}`);
       const data: InterestStock[] = await res.json();
 
       if (res.ok) {
@@ -135,7 +135,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
   addGroup: async (token: JwtToken) => {
     try {
       const randomId = Math.random().toString(36).substring(2, 10);
-      const res = await fetch(`/proxy/favorite/${token.memberId}`, {
+      const res = await fetch(`/proxy/favorite/${token.account}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -187,7 +187,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
     groupName: string
   ) => {
     try {
-      const res = await fetch(`/proxy/favorite/${token.memberId}/${groupId}`, {
+      const res = await fetch(`/proxy/favorite/${token.account}/${groupId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -222,7 +222,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
       if (selectedGroupId === groupId && interestStocks.length > 0) {
         for (const stock of interestStocks) {
           await fetch(
-            `/proxy/favorite/${token.memberId}/${groupId}/stock?stockCode=${stock.stockInfo.stockCode}`,
+            `/proxy/favorite/${token.account}/${groupId}/stock?stockCode=${stock.stockInfo.stockCode}`,
             { method: "DELETE" }
           );
         }
@@ -231,7 +231,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
 
       // 그룹 삭제
       const deleteGroupRes = await fetch(
-        `/proxy/favorite/${token.memberId}/${groupId}`,
+        `/proxy/favorite/${token.account}/${groupId}`,
         { method: "DELETE" }
       );
 
@@ -263,7 +263,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
   ) => {
     try {
       const res = await fetch(
-        `/proxy/favorite/${token.memberId}/${groupId}/main`,
+        `/proxy/favorite/${token.account}/${groupId}/main`,
         { method: "PUT" }
       );
 
@@ -293,7 +293,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
   addStock: async (token: JwtToken, groupId: string, stock: SearchResult) => {
     try {
       const res = await fetch(
-        `/proxy/favorite/${token.memberId}/${groupId}?stockCode=${stock.stockCode}`,
+        `/proxy/favorite/${token.account}/${groupId}?stockCode=${stock.stockCode}`,
         { method: "POST" }
       );
 
@@ -323,7 +323,7 @@ export const useInterestStore = create<InterestState>((set, get) => ({
   deleteStock: async (token: JwtToken, groupId: string, stockCode: string) => {
     try {
       const res = await fetch(
-        `/proxy/favorite/${token.memberId}/${groupId}/stock?stockCode=${stockCode}`,
+        `/proxy/favorite/${token.account}/${groupId}/stock?stockCode=${stockCode}`,
         { method: "DELETE" }
       );
 

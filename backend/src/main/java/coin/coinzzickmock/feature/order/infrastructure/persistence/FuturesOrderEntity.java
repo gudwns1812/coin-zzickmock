@@ -23,7 +23,7 @@ public class FuturesOrderEntity {
     private String orderId;
 
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @Column(name = "symbol", nullable = false, length = 30)
     private String symbol;
@@ -83,7 +83,7 @@ public class FuturesOrderEntity {
     protected FuturesOrderEntity() {
     }
 
-    public static FuturesOrderEntity from(String memberId, FuturesOrder futuresOrder) {
+    public static FuturesOrderEntity from(Long memberId, FuturesOrder futuresOrder) {
         FuturesOrderEntity entity = new FuturesOrderEntity();
         entity.orderId = futuresOrder.orderId();
         entity.memberId = memberId;
@@ -130,7 +130,7 @@ public class FuturesOrderEntity {
         );
     }
 
-    public String memberId() {
+    public Long memberId() {
         return memberId;
     }
 

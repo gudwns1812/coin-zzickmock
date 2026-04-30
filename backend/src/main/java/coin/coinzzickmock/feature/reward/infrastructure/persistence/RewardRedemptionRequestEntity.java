@@ -27,7 +27,7 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
     private String requestId;
 
     @Column(name = "member_id", nullable = false, length = 64)
-    private String memberId;
+    private Long memberId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "shop_item_id", nullable = false)
@@ -64,7 +64,7 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
     private Instant cancelledAt;
 
     @Column(name = "admin_member_id", length = 64)
-    private String adminMemberId;
+    private Long adminMemberId;
 
     @Column(name = "admin_memo", length = 500)
     private String adminMemo;
@@ -128,7 +128,7 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
         return requestId;
     }
 
-    public String getMemberId() {
+    public Long getMemberId() {
         return memberId;
     }
 
@@ -176,7 +176,7 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
         return cancelledAt;
     }
 
-    public String getAdminMemberId() {
+    public Long getAdminMemberId() {
         return adminMemberId;
     }
 

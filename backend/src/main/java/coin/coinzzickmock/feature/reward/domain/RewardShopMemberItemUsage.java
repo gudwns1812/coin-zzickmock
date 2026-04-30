@@ -2,16 +2,16 @@ package coin.coinzzickmock.feature.reward.domain;
 
 public record RewardShopMemberItemUsage(
         Long id,
-        String memberId,
+        Long memberId,
         Long shopItemId,
         int purchaseCount
 ) {
-    public static RewardShopMemberItemUsage empty(String memberId, Long shopItemId) {
+    public static RewardShopMemberItemUsage empty(Long memberId, Long shopItemId) {
         return new RewardShopMemberItemUsage(null, memberId, shopItemId, 0);
     }
 
     public RewardShopMemberItemUsage {
-        if (memberId == null || memberId.isBlank()) {
+        if (memberId == null) {
             throw new IllegalArgumentException("회원 ID는 필수입니다.");
         }
         if (shopItemId == null) {

@@ -7,16 +7,16 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository {
-    FuturesOrder save(String memberId, FuturesOrder futuresOrder);
+    FuturesOrder save(Long memberId, FuturesOrder futuresOrder);
 
-    List<FuturesOrder> findByMemberId(String memberId);
+    List<FuturesOrder> findByMemberId(Long memberId);
 
-    Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId);
+    Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId);
 
     List<PendingOrderCandidate> findPendingBySymbol(String symbol);
 
     default List<FuturesOrder> findPendingCloseOrders(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode
@@ -30,7 +30,7 @@ public interface OrderRepository {
                 .toList();
     }
 
-    default List<FuturesOrder> findPendingOpenOrders(String memberId, String symbol, String positionSide) {
+    default List<FuturesOrder> findPendingOpenOrders(Long memberId, String symbol, String positionSide) {
         return findByMemberId(memberId).stream()
                 .filter(FuturesOrder::isPending)
                 .filter(FuturesOrder::isOpenPositionOrder)
@@ -41,7 +41,7 @@ public interface OrderRepository {
     }
 
     default List<FuturesOrder> findPendingConditionalCloseOrders(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode
@@ -60,16 +60,16 @@ public interface OrderRepository {
     }
 
     Optional<FuturesOrder> claimPendingFill(
-            String memberId,
+            Long memberId,
             String orderId,
             double executionPrice,
             String feeType,
             double estimatedFee
     );
 
-    FuturesOrder updateStatus(String memberId, String orderId, String status);
+    FuturesOrder updateStatus(Long memberId, String orderId, String status);
 
-    default boolean cancelPending(String memberId, String orderId) {
+    default boolean cancelPending(Long memberId, String orderId) {
         FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElse(null);
         if (order == null || !order.isPending()) {
             return false;
@@ -78,7 +78,7 @@ public interface OrderRepository {
         return true;
     }
 
-    default FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
+    default FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
         if (FuturesOrder.STATUS_CANCELLED.equalsIgnoreCase(status)) {
             return updateStatus(memberId, orderId, status);
         }

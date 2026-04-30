@@ -14,7 +14,7 @@ class GetRewardPointServiceTest {
     void returnsZeroWalletWhenMemberHasNoRewardWallet() {
         GetRewardPointService service = new GetRewardPointService(new InMemoryRewardPointRepository());
 
-        RewardPointResult result = service.get("demo-member");
+        RewardPointResult result = service.get(1L);
 
         assertEquals(0, result.rewardPoint());
         assertEquals("POINT_WALLET", result.tierLabel());
@@ -22,7 +22,7 @@ class GetRewardPointServiceTest {
 
     private static class InMemoryRewardPointRepository implements RewardPointRepository {
         @Override
-        public Optional<RewardPointWallet> findByMemberId(String memberId) {
+        public Optional<RewardPointWallet> findByMemberId(Long memberId) {
             return Optional.empty();
         }
 

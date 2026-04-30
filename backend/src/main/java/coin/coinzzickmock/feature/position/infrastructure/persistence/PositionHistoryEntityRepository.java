@@ -4,7 +4,9 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PositionHistoryEntityRepository extends JpaRepository<PositionHistoryEntity, Long> {
-    List<PositionHistoryEntity> findAllByMemberIdOrderByClosedAtDesc(String memberId);
+    List<PositionHistoryEntity> findAllByMemberIdOrderByClosedAtDesc(Long memberId);
 
-    List<PositionHistoryEntity> findAllByMemberIdAndSymbolOrderByClosedAtDesc(String memberId, String symbol);
+    List<PositionHistoryEntity> findAllByMemberIdAndSymbolOrderByClosedAtDesc(Long memberId, String symbol);
+
+    void deleteAllByMemberId(Long memberId);
 }

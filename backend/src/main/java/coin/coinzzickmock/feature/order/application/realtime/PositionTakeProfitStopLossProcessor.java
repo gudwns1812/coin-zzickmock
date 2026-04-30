@@ -69,7 +69,7 @@ public class PositionTakeProfitStopLossProcessor {
         );
     }
 
-    private void closeIfTriggered(String memberId, FuturesOrder candidate, MarketSummaryResult market) {
+    private void closeIfTriggered(Long memberId, FuturesOrder candidate, MarketSummaryResult market) {
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(memberId, candidate.orderId())
                 .orElse(candidate);
         if (!order.isPending() || !order.isConditionalCloseOrder() || !isTriggered(order, market.markPrice())) {
@@ -167,7 +167,7 @@ public class PositionTakeProfitStopLossProcessor {
                 : PositionHistory.CLOSE_REASON_STOP_LOSS;
     }
 
-    private void cancelOcoSiblings(String memberId, FuturesOrder filled) {
+    private void cancelOcoSiblings(Long memberId, FuturesOrder filled) {
         if (filled.ocoGroupId() == null || filled.ocoGroupId().isBlank()) {
             return;
         }

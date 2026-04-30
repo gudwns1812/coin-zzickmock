@@ -17,7 +17,7 @@ class CancelOrderServiceTest {
     @Test
     void cancelsPendingOrder() {
         InMemoryOrderRepository repository = new InMemoryOrderRepository();
-        repository.save("demo-member", new FuturesOrder(
+        repository.save(1L, new FuturesOrder(
                 "1",
                 "BTCUSDT",
                 "LONG",
@@ -33,16 +33,16 @@ class CancelOrderServiceTest {
         ));
 
         CancelOrderService service = new CancelOrderService(repository);
-        CancelOrderResult result = service.cancel("demo-member", "1");
+        CancelOrderResult result = service.cancel(1L, "1");
 
         assertEquals("CANCELLED", result.status());
-        assertEquals("CANCELLED", repository.findByMemberIdAndOrderId("demo-member", "1").orElseThrow().status());
+        assertEquals("CANCELLED", repository.findByMemberIdAndOrderId(1L, "1").orElseThrow().status());
     }
 
     @Test
     void rejectsCancelWhenOrderIsNotPending() {
         InMemoryOrderRepository repository = new InMemoryOrderRepository();
-        repository.save("demo-member", new FuturesOrder(
+        repository.save(1L, new FuturesOrder(
                 "1",
                 "BTCUSDT",
                 "LONG",
@@ -59,26 +59,26 @@ class CancelOrderServiceTest {
 
         CancelOrderService service = new CancelOrderService(repository);
 
-        assertThrows(CoreException.class, () -> service.cancel("demo-member", "1"));
+        assertThrows(CoreException.class, () -> service.cancel(1L, "1"));
     }
 
     private static class InMemoryOrderRepository implements OrderRepository {
         private final List<FuturesOrder> orders = new ArrayList<>();
 
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             orders.removeIf(order -> order.orderId().equals(futuresOrder.orderId()));
             orders.add(futuresOrder);
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return List.copyOf(orders);
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return orders.stream().filter(order -> order.orderId().equals(orderId)).findFirst();
         }
 
@@ -87,13 +87,13 @@ class CancelOrderServiceTest {
             return orders.stream()
                     .filter(FuturesOrder::isPending)
                     .filter(order -> order.symbol().equals(symbol))
-                    .map(order -> new PendingOrderCandidate("demo-member", order))
+                    .map(order -> new PendingOrderCandidate(1L, order))
                     .toList();
         }
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -107,7 +107,7 @@ class CancelOrderServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
             FuturesOrder updated = new FuturesOrder(
                     order.orderId(),

@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ActiveProfiles("test")
 @Transactional
 class AdminRewardShopItemServiceTest {
-    private static final String MEMBER_ID = "test";
+    private static final Long MEMBER_ID = 1L;
     private static final String ITEM_CODE = "voucher.coffee";
 
     @Autowired

@@ -4,7 +4,6 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
-import coin.coinzzickmock.feature.member.domain.MemberIdentityRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,8 +14,8 @@ public class GetMemberProfileService {
     private final MemberCredentialRepository memberCredentialRepository;
 
     @Transactional(readOnly = true)
-    public MemberProfileResult get(String memberId) {
-        return memberCredentialRepository.findByMemberId(MemberIdentityRules.normalizeMemberId(memberId))
+    public MemberProfileResult get(Long memberId) {
+        return memberCredentialRepository.findByMemberId(memberId)
                 .map(MemberProfileResult::from)
                 .orElseThrow(() -> new CoreException(ErrorCode.MEMBER_NOT_FOUND));
     }

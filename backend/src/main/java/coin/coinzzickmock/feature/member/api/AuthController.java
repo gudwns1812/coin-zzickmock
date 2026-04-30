@@ -44,6 +44,7 @@ public class AuthController {
                 request.account(),
                 request.password(),
                 request.name(),
+                request.nickname(),
                 request.email(),
                 request.phoneNumber(),
                 request.address().zipcode(),
@@ -100,7 +101,8 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.buildAccessTokenCookie(
                         jwtAccessTokenManager.issue(
                                 memberProfile.memberId(),
-                                memberProfile.memberName(),
+                                memberProfile.account(),
+                                memberProfile.nickname(),
                                 memberProfile.memberEmail(),
                                 memberProfile.role()
                         )

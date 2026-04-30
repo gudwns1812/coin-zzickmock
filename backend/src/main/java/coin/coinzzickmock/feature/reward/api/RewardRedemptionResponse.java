@@ -7,7 +7,7 @@ import java.time.Instant;
 
 public record RewardRedemptionResponse(
         String requestId,
-        String memberId,
+        Long memberId,
         String itemCode,
         String itemName,
         int pointAmount,
@@ -16,7 +16,7 @@ public record RewardRedemptionResponse(
         Instant requestedAt,
         Instant sentAt,
         Instant cancelledAt,
-        String adminMemberId,
+        Long adminMemberId,
         String adminMemo
 ) {
     public static RewardRedemptionResponse from(RewardRedemptionResult result) {

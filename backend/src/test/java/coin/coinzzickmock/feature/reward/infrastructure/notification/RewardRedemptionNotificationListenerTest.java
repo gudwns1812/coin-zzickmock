@@ -29,7 +29,7 @@ class RewardRedemptionNotificationListenerTest {
     private RewardRedemptionCreatedEvent event() {
         return new RewardRedemptionCreatedEvent(
                 "request-1",
-                "demo-member",
+                1L,
                 "voucher.coffee",
                 "커피 교환권",
                 100,

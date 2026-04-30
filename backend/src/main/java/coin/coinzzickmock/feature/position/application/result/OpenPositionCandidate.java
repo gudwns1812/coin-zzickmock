@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.position.application.result;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 
 public record OpenPositionCandidate(
-        String memberId,
+        Long memberId,
         PositionSnapshot position
 ) {
     public String symbol() {

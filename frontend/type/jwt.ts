@@ -1,6 +1,8 @@
 export interface JwtToken {
-  memberId: string;
-  memberName: string;
+  memberId: number;
+  account: string;
+  nickname: string;
+  memberName?: string;
   email: string;
   role?: "USER" | "ADMIN";
   admin?: boolean;

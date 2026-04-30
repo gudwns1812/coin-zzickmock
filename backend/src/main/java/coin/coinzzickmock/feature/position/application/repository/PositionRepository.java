@@ -8,16 +8,16 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PositionRepository {
-    List<PositionSnapshot> findOpenPositions(String memberId);
+    List<PositionSnapshot> findOpenPositions(Long memberId);
 
     Optional<PositionSnapshot> findOpenPosition(
-            String memberId,
+            Long memberId,
             String symbol,
             String positionSide,
             String marginMode
     );
 
-    default Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide) {
+    default Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide) {
         return findOpenPositions(memberId).stream()
                 .filter(position -> position.symbol().equalsIgnoreCase(symbol))
                 .filter(position -> position.positionSide().equalsIgnoreCase(positionSide))
@@ -26,10 +26,10 @@ public interface PositionRepository {
 
     List<OpenPositionCandidate> findOpenBySymbol(String symbol);
 
-    PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot);
+    PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot);
 
     default PositionMutationResult updateWithVersion(
-            String memberId,
+            Long memberId,
             PositionSnapshot expectedPosition,
             PositionSnapshot nextPosition
     ) {
@@ -49,7 +49,7 @@ public interface PositionRepository {
         return PositionMutationResult.updated(1, saved);
     }
 
-    default PositionMutationResult deleteWithVersion(String memberId, PositionSnapshot expectedPosition) {
+    default PositionMutationResult deleteWithVersion(Long memberId, PositionSnapshot expectedPosition) {
         Optional<PositionSnapshot> current = findOpenPosition(
                 memberId,
                 expectedPosition.symbol(),
@@ -67,7 +67,7 @@ public interface PositionRepository {
                 : PositionMutationResult.notFound();
     }
 
-    boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode);
+    boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode);
 
-    void delete(String memberId, String symbol, String positionSide, String marginMode);
+    void delete(Long memberId, String symbol, String positionSide, String marginMode);
 }

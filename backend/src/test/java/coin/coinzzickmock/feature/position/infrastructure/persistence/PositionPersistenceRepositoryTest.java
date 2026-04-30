@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class)
@@ -38,9 +39,12 @@ class PositionPersistenceRepositoryTest {
     @Autowired
     private OpenPositionEntityRepository openPositionEntityRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     void savesAndLoadsOpenPositionThroughH2() {
-        String memberId = "position-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         saveAccount(memberId);
 
         positionRepository.save(memberId, new PositionSnapshot(
@@ -69,7 +73,7 @@ class PositionPersistenceRepositoryTest {
 
     @Test
     void rejectsDifferentMarginModeForSameSymbolAndSideAtDatabaseBoundary() {
-        String memberId = "position-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         saveAccount(memberId);
 
         openPositionEntityRepository.saveAndFlush(OpenPositionEntity.from(memberId, PositionSnapshot.open(
@@ -97,7 +101,7 @@ class PositionPersistenceRepositoryTest {
 
     @Test
     void updatesOpenPositionOnlyWhenVersionMatchesAndIncrementsVersion() {
-        String memberId = "position-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         saveAccount(memberId);
         positionRepository.save(memberId, PositionSnapshot.open(
                 "BTCUSDT",
@@ -128,7 +132,7 @@ class PositionPersistenceRepositoryTest {
 
     @Test
     void guardedMutationReportsStaleVersionWithoutOverwritingCurrentPosition() {
-        String memberId = "position-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         saveAccount(memberId);
         positionRepository.save(memberId, PositionSnapshot.open(
                 "BTCUSDT",
@@ -160,7 +164,7 @@ class PositionPersistenceRepositoryTest {
 
     @Test
     void findsOpenPositionCandidatesWithOwnerIdentityAndDeletesOnce() {
-        String memberId = "position-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         saveAccount(memberId);
         positionRepository.save(memberId, new PositionSnapshot(
                 "BTCUSDT",
@@ -184,7 +188,7 @@ class PositionPersistenceRepositoryTest {
 
     @Test
     void savesAndLoadsPositionHistoryNetPnlAccountingFieldsThroughH2() {
-        String memberId = "position-owner-" + UUID.randomUUID();
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         saveAccount(memberId);
         PositionHistory saved = positionHistoryRepository.save(memberId, new PositionHistory(
                 "BTCUSDT",
@@ -218,11 +222,24 @@ class PositionPersistenceRepositoryTest {
         assertEquals(1987.5, loaded.netRealizedPnl(), 0.0001);
     }
 
-    private void saveAccount(String memberId) {
+    private void saveAccount(Long memberId) {
+        jdbcTemplate.update("""
+                INSERT INTO member_credentials (
+                    id, account, password_hash, member_name, nickname, member_email,
+                    phone_number, zip_code, address, address_detail, invest_score, role
+                )
+                VALUES (?, ?, 'hash', ?, ?, ?, '010-0000-0000', '00000', '서울', '', 0, 'USER')
+                """,
+                memberId,
+                "account-" + memberId,
+                String.valueOf(memberId),
+                String.valueOf(memberId),
+                memberId + "@coinzzickmock.dev"
+        );
         accountRepository.save(new TradingAccount(
                 memberId,
                 memberId + "@coinzzickmock.dev",
-                memberId,
+                String.valueOf(memberId),
                 100000,
                 100000
         ));

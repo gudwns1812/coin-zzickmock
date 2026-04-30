@@ -14,7 +14,7 @@ public class GetRewardPointHistoryService {
     private final RewardPointHistoryRepository rewardPointHistoryRepository;
 
     @Transactional(readOnly = true)
-    public List<RewardPointHistoryResult> get(String memberId) {
+    public List<RewardPointHistoryResult> get(Long memberId) {
         return rewardPointHistoryRepository.findByMemberId(memberId).stream()
                 .map(RewardPointHistoryResult::from)
                 .toList();

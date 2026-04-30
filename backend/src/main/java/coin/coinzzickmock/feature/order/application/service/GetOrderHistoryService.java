@@ -14,7 +14,7 @@ public class GetOrderHistoryService {
     private final OrderRepository orderRepository;
 
     @Transactional(readOnly = true)
-    public List<OrderHistoryResult> getOrderHistory(String memberId, String symbol) {
+    public List<OrderHistoryResult> getOrderHistory(Long memberId, String symbol) {
         return orderRepository.findByMemberId(memberId).stream()
                 .filter(order -> matchesSymbol(order, symbol))
                 .map(this::toResult)

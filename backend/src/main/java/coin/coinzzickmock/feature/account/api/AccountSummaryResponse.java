@@ -1,8 +1,10 @@
 package coin.coinzzickmock.feature.account.api;
 
 public record AccountSummaryResponse(
-        String memberId,
+        Long memberId,
+        String account,
         String memberName,
+        String nickname,
         double usdtBalance,
         double walletBalance,
         double available,

@@ -56,7 +56,7 @@ class CreateOrderServiceTest {
         );
 
         CreateOrderResult result = service.execute(new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "MARKET",
@@ -67,9 +67,9 @@ class CreateOrderServiceTest {
         ));
 
         assertEquals("FILLED", result.status());
-        assertEquals(1, positionRepository.findOpenPositions("demo-member").size());
-        assertEquals(5, positionRepository.findOpenPositions("demo-member").get(0).accumulatedOpenFee(), 0.0001);
-        assertEquals(98995, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
+        assertEquals(1, positionRepository.findOpenPositions(1L).size());
+        assertEquals(5, positionRepository.findOpenPositions(1L).get(0).accumulatedOpenFee(), 0.0001);
+        assertEquals(98995, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
     }
 
     @Test
@@ -77,7 +77,7 @@ class CreateOrderServiceTest {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        positionRepository.save("demo-member", new PositionSnapshot(
+        positionRepository.save(1L, new PositionSnapshot(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -101,7 +101,7 @@ class CreateOrderServiceTest {
         );
 
         service.execute(new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "MARKET",
@@ -111,7 +111,7 @@ class CreateOrderServiceTest {
                 null
         ));
 
-        PositionSnapshot updated = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot updated = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(105000.0, updated.entryPrice(), 0.0001);
         assertEquals(94500.0, updated.liquidationPrice(), 0.0001);
@@ -132,7 +132,7 @@ class CreateOrderServiceTest {
         );
 
         OrderPreview preview = service.preview(new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "LIMIT",
@@ -163,7 +163,7 @@ class CreateOrderServiceTest {
                 })
         );
         CreateOrderCommand command = new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "LIMIT",
@@ -184,13 +184,13 @@ class CreateOrderServiceTest {
         assertEquals(67230.0, preview.estimatedLiquidationPrice(), 0.0001);
         assertEquals("FILLED", result.status());
         assertEquals(74700.0, result.executionPrice(), 0.0001);
-        assertEquals(99249.265, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
-        FuturesOrder saved = orderRepository.findByMemberId("demo-member").get(0);
+        assertEquals(99249.265, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+        FuturesOrder saved = orderRepository.findByMemberId(1L).get(0);
         assertEquals(FuturesOrder.STATUS_FILLED, saved.status());
         assertEquals("TAKER", saved.feeType());
         assertEquals(74700.0, saved.executionPrice(), 0.0001);
         assertEquals(75000.0, saved.limitPrice(), 0.0001);
-        PositionSnapshot opened = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+        PositionSnapshot opened = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(74700.0, opened.entryPrice(), 0.0001);
         assertEquals(67230.0, opened.liquidationPrice(), 0.0001);
@@ -213,7 +213,7 @@ class CreateOrderServiceTest {
                 })
         );
         CreateOrderCommand command = new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "SHORT",
                 "LIMIT",
@@ -234,13 +234,13 @@ class CreateOrderServiceTest {
         assertEquals(82500.0, preview.estimatedLiquidationPrice(), 0.0001);
         assertEquals("FILLED", result.status());
         assertEquals(75000.0, result.executionPrice(), 0.0001);
-        assertEquals(99246.25, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
-        FuturesOrder saved = orderRepository.findByMemberId("demo-member").get(0);
+        assertEquals(99246.25, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+        FuturesOrder saved = orderRepository.findByMemberId(1L).get(0);
         assertEquals(FuturesOrder.STATUS_FILLED, saved.status());
         assertEquals("TAKER", saved.feeType());
         assertEquals(75000.0, saved.executionPrice(), 0.0001);
         assertEquals(75000.0, saved.limitPrice(), 0.0001);
-        PositionSnapshot opened = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "SHORT", "ISOLATED")
+        PositionSnapshot opened = positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "ISOLATED")
                 .orElseThrow();
         assertEquals(75000.0, opened.entryPrice(), 0.0001);
         assertEquals(82500.0, opened.liquidationPrice(), 0.0001);
@@ -266,7 +266,7 @@ class CreateOrderServiceTest {
         TransactionSynchronizationManager.initSynchronization();
         try {
             service.execute(new CreateOrderCommand(
-                    "demo-member",
+                    1L,
                     "BTCUSDT",
                     "LONG",
                     "MARKET",
@@ -281,7 +281,7 @@ class CreateOrderServiceTest {
             TransactionSynchronizationUtils.triggerAfterCommit();
 
             assertEquals(1, eventPublisher.events.size());
-            assertEquals("demo-member", eventPublisher.events.get(0).memberId());
+            assertEquals(1L, eventPublisher.events.get(0).memberId());
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
@@ -301,7 +301,7 @@ class CreateOrderServiceTest {
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.preview(new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "LIMT",
@@ -317,7 +317,7 @@ class CreateOrderServiceTest {
     @Test
     void previewRejectsDifferentMarginModeWhenSameSidePositionExists() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -338,7 +338,7 @@ class CreateOrderServiceTest {
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.preview(new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "LIMIT",
@@ -354,7 +354,7 @@ class CreateOrderServiceTest {
     @Test
     void createRejectsDifferentLeverageWhenSameSidePositionExists() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
-        positionRepository.save("demo-member", PositionSnapshot.open(
+        positionRepository.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
                 "ISOLATED",
@@ -375,7 +375,7 @@ class CreateOrderServiceTest {
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.execute(new CreateOrderCommand(
-                "demo-member",
+                1L,
                 "BTCUSDT",
                 "LONG",
                 "MARKET",
@@ -401,7 +401,7 @@ class CreateOrderServiceTest {
 
     private static class InMemoryAccountRepository implements AccountRepository {
         private TradingAccount account = new TradingAccount(
-                "demo-member",
+                1L,
                 "demo@coinzzickmock.dev",
                 "Demo",
                 100000,
@@ -409,7 +409,7 @@ class CreateOrderServiceTest {
         );
 
         @Override
-        public Optional<TradingAccount> findByMemberId(String memberId) {
+        public Optional<TradingAccount> findByMemberId(Long memberId) {
             return Optional.of(account);
         }
 
@@ -424,12 +424,12 @@ class CreateOrderServiceTest {
         private final List<PositionSnapshot> positions = new ArrayList<>();
 
         @Override
-        public List<PositionSnapshot> findOpenPositions(String memberId) {
+        public List<PositionSnapshot> findOpenPositions(Long memberId) {
             return List.copyOf(positions);
         }
 
         @Override
-        public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide, String marginMode) {
+        public Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide, String marginMode) {
             return positions.stream()
                     .filter(position -> position.symbol().equals(symbol))
                     .filter(position -> position.positionSide().equals(positionSide))
@@ -441,19 +441,19 @@ class CreateOrderServiceTest {
         public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
             return positions.stream()
                     .filter(position -> position.symbol().equals(symbol))
-                    .map(position -> new OpenPositionCandidate("demo-member", position))
+                    .map(position -> new OpenPositionCandidate(1L, position))
                     .toList();
         }
 
         @Override
-        public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
+        public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             delete(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode());
             positions.add(positionSnapshot);
             return positionSnapshot;
         }
 
         @Override
-        public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
+        public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
             int before = positions.size();
             positions.removeIf(position -> position.symbol().equals(symbol)
                     && position.positionSide().equals(positionSide)
@@ -462,7 +462,7 @@ class CreateOrderServiceTest {
         }
 
         @Override
-        public void delete(String memberId, String symbol, String positionSide, String marginMode) {
+        public void delete(Long memberId, String symbol, String positionSide, String marginMode) {
             deleteIfOpen(memberId, symbol, positionSide, marginMode);
         }
     }
@@ -471,18 +471,18 @@ class CreateOrderServiceTest {
         private final List<FuturesOrder> orders = new ArrayList<>();
 
         @Override
-        public FuturesOrder save(String memberId, FuturesOrder futuresOrder) {
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             orders.add(futuresOrder);
             return futuresOrder;
         }
 
         @Override
-        public List<FuturesOrder> findByMemberId(String memberId) {
+        public List<FuturesOrder> findByMemberId(Long memberId) {
             return List.copyOf(orders);
         }
 
         @Override
-        public Optional<FuturesOrder> findByMemberIdAndOrderId(String memberId, String orderId) {
+        public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return Optional.empty();
         }
 
@@ -493,7 +493,7 @@ class CreateOrderServiceTest {
 
         @Override
         public Optional<FuturesOrder> claimPendingFill(
-                String memberId,
+                Long memberId,
                 String orderId,
                 double executionPrice,
                 String feeType,
@@ -503,7 +503,7 @@ class CreateOrderServiceTest {
         }
 
         @Override
-        public FuturesOrder updateStatus(String memberId, String orderId, String status) {
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             throw new UnsupportedOperationException();
         }
     }

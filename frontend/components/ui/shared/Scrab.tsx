@@ -62,7 +62,7 @@ const Scrab = ({
       const checkMainGroupStock = async () => {
         try {
           const res = await fetch(
-            `/proxy/favorite/${token.memberId}/${mainGroup.groupId}`
+            `/proxy/favorite/${token.account}/${mainGroup.groupId}`
           );
           const data = await res.json();
 

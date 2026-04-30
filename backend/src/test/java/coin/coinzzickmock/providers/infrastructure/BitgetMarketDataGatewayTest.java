@@ -10,7 +10,9 @@ import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -64,14 +66,14 @@ class BitgetMarketDataGatewayTest {
         );
         server.expect(requestTo("https://api.bitget.com/api/v2/mix/market/history-candles"
                         + "?symbol=BTCUSDT&productType=USDT-FUTURES&granularity=1H"
-                        + "&startTime=1580515200000&endTime=1580522399999&limit=200"))
+                        + "&startTime=1580515200000&endTime=1580522400000&limit=2"))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(queryParam("symbol", "BTCUSDT"))
                 .andExpect(queryParam("productType", "USDT-FUTURES"))
                 .andExpect(queryParam("granularity", "1H"))
                 .andExpect(queryParam("startTime", "1580515200000"))
-                .andExpect(queryParam("endTime", "1580522399999"))
-                .andExpect(queryParam("limit", "200"))
+                .andExpect(queryParam("endTime", "1580522400000"))
+                .andExpect(queryParam("limit", "2"))
                 .andRespond(withSuccess("""
                         {
                           "code": "00000",
@@ -98,7 +100,7 @@ class BitgetMarketDataGatewayTest {
     }
 
     @Test
-    void splitsHistoricalCandlesIntoBitgetSizedBatches() {
+    void splitsHistoricalCandlesIntoNinetyDayBatches() {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
@@ -106,45 +108,37 @@ class BitgetMarketDataGatewayTest {
                 new BitgetTickerSnapshotMapper()
         );
         Instant fromInclusive = Instant.parse("2025-01-01T00:00:00Z");
-        Instant firstBatchEndExclusive = Instant.parse("2025-07-20T00:00:00Z");
+        Instant firstBatchEndExclusive = Instant.parse("2025-04-01T00:00:00Z");
+        Instant secondBatchEndExclusive = Instant.parse("2025-06-30T00:00:00Z");
         Instant toExclusive = Instant.parse("2025-08-29T00:00:00Z");
 
-        server.expect(request -> assertThat(request.getURI().getPath())
-                        .isEqualTo("/api/v2/mix/market/history-candles"))
-                .andExpect(method(HttpMethod.GET))
-                .andExpect(queryParam("symbol", "BTCUSDT"))
-                .andExpect(queryParam("productType", "USDT-FUTURES"))
-                .andExpect(queryParam("granularity", "1D"))
-                .andExpect(queryParam("startTime", epochMillis(fromInclusive)))
-                .andExpect(queryParam("endTime", epochMillis(firstBatchEndExclusive.minusMillis(1))))
-                .andExpect(queryParam("limit", "200"))
-                .andRespond(withSuccess("""
-                        {
-                          "code": "00000",
-                          "msg": "success",
-                          "data": [
-                            ["1735689600000", "100", "110", "90", "105", "12", "1260"]
-                          ]
-                        }
-                        """, MediaType.APPLICATION_JSON));
-        server.expect(request -> assertThat(request.getURI().getPath())
-                        .isEqualTo("/api/v2/mix/market/history-candles"))
-                .andExpect(method(HttpMethod.GET))
-                .andExpect(queryParam("symbol", "BTCUSDT"))
-                .andExpect(queryParam("productType", "USDT-FUTURES"))
-                .andExpect(queryParam("granularity", "1D"))
-                .andExpect(queryParam("startTime", epochMillis(firstBatchEndExclusive)))
-                .andExpect(queryParam("endTime", epochMillis(toExclusive.minusMillis(1))))
-                .andExpect(queryParam("limit", "40"))
-                .andRespond(withSuccess("""
-                        {
-                          "code": "00000",
-                          "msg": "success",
-                          "data": [
-                            ["1752969600000", "120", "130", "110", "125", "10", "1250"]
-                          ]
-                        }
-                        """, MediaType.APPLICATION_JSON));
+        expectHistoricalRequest(server, "1Dutc", fromInclusive, firstBatchEndExclusive, "90", """
+                {
+                  "code": "00000",
+                  "msg": "success",
+                  "data": [
+                    ["1735689600000", "100", "110", "90", "105", "12", "1260"]
+                  ]
+                }
+                """);
+        expectHistoricalRequest(server, "1Dutc", firstBatchEndExclusive, secondBatchEndExclusive, "90", """
+                {
+                  "code": "00000",
+                  "msg": "success",
+                  "data": [
+                    ["1743465600000", "110", "120", "100", "115", "11", "1265"]
+                  ]
+                }
+                """);
+        expectHistoricalRequest(server, "1Dutc", secondBatchEndExclusive, toExclusive, "60", """
+                {
+                  "code": "00000",
+                  "msg": "success",
+                  "data": [
+                    ["1751241600000", "120", "130", "110", "125", "10", "1250"]
+                  ]
+                }
+                """);
 
         List<MarketHistoricalCandleSnapshot> candles = gateway.loadHistoricalCandles(
                 "BTCUSDT",
@@ -158,11 +152,140 @@ class BitgetMarketDataGatewayTest {
         assertThat(candles).extracting(MarketHistoricalCandleSnapshot::openTime)
                 .containsExactly(
                         Instant.parse("2025-01-01T00:00:00Z"),
-                        Instant.parse("2025-07-20T00:00:00Z")
+                        Instant.parse("2025-04-01T00:00:00Z"),
+                        Instant.parse("2025-06-30T00:00:00Z")
                 );
+    }
+
+    @Test
+    void usesUtcGranularityForWeeklyAndMonthlyHistoricalCandles() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper()
+        );
+
+        expectHistoricalRequest(
+                server,
+                "1Wutc",
+                Instant.parse("2025-01-06T00:00:00Z"),
+                Instant.parse("2025-03-31T00:00:00Z"),
+                "12",
+                successfulEmptyResponse()
+        );
+        expectHistoricalRequest(
+                server,
+                "1Wutc",
+                Instant.parse("2025-03-31T00:00:00Z"),
+                Instant.parse("2025-05-26T00:00:00Z"),
+                "8",
+                successfulEmptyResponse()
+        );
+        expectHistoricalRequest(
+                server,
+                "1Mutc",
+                Instant.parse("2025-01-01T00:00:00Z"),
+                Instant.parse("2025-04-01T00:00:00Z"),
+                "3",
+                successfulEmptyResponse()
+        );
+        expectHistoricalRequest(
+                server,
+                "1Mutc",
+                Instant.parse("2025-04-01T00:00:00Z"),
+                Instant.parse("2025-06-01T00:00:00Z"),
+                "2",
+                successfulEmptyResponse()
+        );
+        expectHistoricalRequest(
+                server,
+                "1Mutc",
+                Instant.parse("2025-06-01T00:00:00Z"),
+                Instant.parse("2025-07-01T00:00:00Z"),
+                "1",
+                successfulEmptyResponse()
+        );
+
+        gateway.loadHistoricalCandles(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_WEEK,
+                Instant.parse("2025-01-06T00:00:00Z"),
+                Instant.parse("2025-05-26T00:00:00Z"),
+                20
+        );
+        gateway.loadHistoricalCandles(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_MONTH,
+                Instant.parse("2025-01-01T00:00:00Z"),
+                Instant.parse("2025-07-01T00:00:00Z"),
+                6
+        );
+
+        server.verify();
+    }
+
+    @Test
+    void clampsFutureHistoricalEndTimeToCurrentClosedBoundary() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper(),
+                Clock.fixed(Instant.parse("2026-04-29T19:12:53Z"), ZoneOffset.UTC)
+        );
+
+        expectHistoricalRequest(
+                server,
+                "1Dutc",
+                Instant.parse("2026-04-22T00:00:00Z"),
+                Instant.parse("2026-04-29T00:00:00Z"),
+                "7",
+                successfulEmptyResponse()
+        );
+
+        gateway.loadHistoricalCandles(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_DAY,
+                Instant.parse("2026-04-22T00:00:00Z"),
+                Instant.parse("2026-11-08T00:00:00Z"),
+                200
+        );
+
+        server.verify();
     }
 
     private String epochMillis(Instant instant) {
         return String.valueOf(instant.toEpochMilli());
+    }
+
+    private void expectHistoricalRequest(
+            MockRestServiceServer server,
+            String granularity,
+            Instant fromInclusive,
+            Instant toExclusive,
+            String limit,
+            String responseBody
+    ) {
+        server.expect(request -> assertThat(request.getURI().getPath())
+                        .isEqualTo("/api/v2/mix/market/history-candles"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(queryParam("symbol", "BTCUSDT"))
+                .andExpect(queryParam("productType", "USDT-FUTURES"))
+                .andExpect(queryParam("granularity", granularity))
+                .andExpect(queryParam("startTime", epochMillis(fromInclusive)))
+                .andExpect(queryParam("endTime", epochMillis(toExclusive)))
+                .andExpect(queryParam("limit", limit))
+                .andRespond(withSuccess(responseBody, MediaType.APPLICATION_JSON));
+    }
+
+    private String successfulEmptyResponse() {
+        return """
+                {
+                  "code": "00000",
+                  "msg": "success",
+                  "data": []
+                }
+                """;
     }
 }

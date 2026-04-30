@@ -17,8 +17,8 @@ import java.time.Instant;
 @Table(
         name = "open_positions",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_open_position_member_symbol_side_mode",
-                columnNames = {"member_id", "symbol", "position_side", "margin_mode"}
+                name = "uk_open_position_member_symbol_side",
+                columnNames = {"member_id", "symbol", "position_side"}
         )
 )
 public class OpenPositionEntity extends AuditableEntity {

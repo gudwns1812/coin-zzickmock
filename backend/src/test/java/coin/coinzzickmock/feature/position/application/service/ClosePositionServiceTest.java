@@ -502,6 +502,34 @@ class ClosePositionServiceTest {
     }
 
     @Test
+    void closeRejectsOppositeSidePositionAsNotFound() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.2,
+                100000,
+                100000
+        ));
+        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(100000, 100000));
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.close(
+                "demo-member",
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                0.1,
+                "MARKET",
+                null
+        ));
+
+        assertEquals(ErrorCode.POSITION_NOT_FOUND, thrown.errorCode());
+    }
+
+    @Test
     void longPendingCloseCapReducesHigherLessLikelyLimitPriceFirst() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();

@@ -67,6 +67,19 @@ public class OrderPersistenceRepository implements OrderRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<FuturesOrder> findPendingOpenOrders(String memberId, String symbol, String positionSide) {
+        return futuresOrderEntityRepository.findAllByMemberIdOrderByCreatedAtDesc(memberId).stream()
+                .map(FuturesOrderEntity::toDomain)
+                .filter(FuturesOrder::isPending)
+                .filter(FuturesOrder::isOpenPositionOrder)
+                .filter(order -> !order.isConditionalOrder())
+                .filter(order -> order.symbol().equalsIgnoreCase(symbol))
+                .filter(order -> order.positionSide().equalsIgnoreCase(positionSide))
+                .toList();
+    }
+
+    @Override
     @Transactional
     public Optional<FuturesOrder> claimPendingFill(
             String memberId,
@@ -98,6 +111,17 @@ public class OrderPersistenceRepository implements OrderRepository {
                 .orElseThrow();
         entity.updateStatus(status);
         return futuresOrderEntityRepository.saveAndFlush(entity).toDomain();
+    }
+
+    @Override
+    @Transactional
+    public boolean cancelPending(String memberId, String orderId) {
+        return futuresOrderEntityRepository.cancelIfPending(
+                memberId,
+                orderId,
+                FuturesOrder.STATUS_PENDING,
+                FuturesOrder.STATUS_CANCELLED
+        ) > 0;
     }
 
     @Override

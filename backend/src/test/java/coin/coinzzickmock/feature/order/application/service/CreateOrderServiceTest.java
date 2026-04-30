@@ -316,6 +316,80 @@ class CreateOrderServiceTest {
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
     }
 
+    @Test
+    void previewRejectsDifferentMarginModeWhenSameSidePositionExists() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.1,
+                100000,
+                100000
+        ));
+        CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
+                new FakeProviders(),
+                new InMemoryOrderRepository(),
+                new InMemoryAccountRepository(),
+                positionRepository,
+                new AfterCommitEventPublisher(event -> {
+                })
+        );
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.preview(new CreateOrderCommand(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "CROSS",
+                10,
+                0.1,
+                99900.0
+        )));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
+
+    @Test
+    void createRejectsDifferentLeverageWhenSameSidePositionExists() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.1,
+                100000,
+                100000
+        ));
+        CreateOrderService service = new CreateOrderService(
+                new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
+                new FakeProviders(),
+                new InMemoryOrderRepository(),
+                new InMemoryAccountRepository(),
+                positionRepository,
+                new AfterCommitEventPublisher(event -> {
+                })
+        );
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.execute(new CreateOrderCommand(
+                "demo-member",
+                "BTCUSDT",
+                "LONG",
+                "MARKET",
+                "ISOLATED",
+                20,
+                0.1,
+                null
+        )));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
+
     private static class CapturingEventPublisher implements ApplicationEventPublisher {
         private final List<WalletBalanceChangedEvent> events = new ArrayList<>();
 
@@ -353,12 +427,16 @@ class CreateOrderServiceTest {
 
         @Override
         public List<PositionSnapshot> findOpenPositions(String memberId) {
-            return positions;
+            return List.copyOf(positions);
         }
 
         @Override
         public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide, String marginMode) {
-            return positions.stream().findFirst();
+            return positions.stream()
+                    .filter(position -> position.symbol().equals(symbol))
+                    .filter(position -> position.positionSide().equals(positionSide))
+                    .filter(position -> position.marginMode().equals(marginMode))
+                    .findFirst();
         }
 
         @Override
@@ -371,21 +449,23 @@ class CreateOrderServiceTest {
 
         @Override
         public PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot) {
-            positions.clear();
+            delete(memberId, positionSnapshot.symbol(), positionSnapshot.positionSide(), positionSnapshot.marginMode());
             positions.add(positionSnapshot);
             return positionSnapshot;
         }
 
         @Override
         public boolean deleteIfOpen(String memberId, String symbol, String positionSide, String marginMode) {
-            boolean deleted = !positions.isEmpty();
-            positions.clear();
-            return deleted;
+            int before = positions.size();
+            positions.removeIf(position -> position.symbol().equals(symbol)
+                    && position.positionSide().equals(positionSide)
+                    && position.marginMode().equals(marginMode));
+            return before != positions.size();
         }
 
         @Override
         public void delete(String memberId, String symbol, String positionSide, String marginMode) {
-            positions.clear();
+            deleteIfOpen(memberId, symbol, positionSide, marginMode);
         }
     }
 

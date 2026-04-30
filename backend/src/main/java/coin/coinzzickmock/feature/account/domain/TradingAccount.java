@@ -37,6 +37,21 @@ public record TradingAccount(
         );
     }
 
+    public TradingAccount adjustAvailableMarginForLeverageChange(double oldInitialMargin, double newInitialMargin) {
+        double marginDelta = oldInitialMargin - newInitialMargin;
+        double nextAvailableMargin = availableMargin + marginDelta;
+        if (nextAvailableMargin < 0) {
+            throw new CoreException(ErrorCode.INSUFFICIENT_AVAILABLE_MARGIN);
+        }
+        return new TradingAccount(
+                memberId,
+                memberEmail,
+                memberName,
+                walletBalance,
+                nextAvailableMargin
+        );
+    }
+
     public TradingAccount settlePositionClose(double grossRealizedPnl, double closeFee, double releasedMargin) {
         return new TradingAccount(
                 memberId,

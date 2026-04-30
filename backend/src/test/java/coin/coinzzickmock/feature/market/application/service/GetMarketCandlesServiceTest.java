@@ -207,6 +207,54 @@ class GetMarketCandlesServiceTest {
     }
 
     @Test
+    void dailyRollupUsesLatestCompleteBucketBeforeHistoricalFallback() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        saveHourlyRange(repository, "2026-04-27T00:00:00Z", "2026-04-29T00:00:00Z");
+        saveHourlyRange(repository, "2026-04-29T00:00:00Z", "2026-04-29T19:00:00Z");
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1D", 2, null));
+
+        assertEquals(2, results.size());
+        assertEquals(Instant.parse("2026-04-27T00:00:00Z"), results.get(0).openTime());
+        assertEquals(Instant.parse("2026-04-28T00:00:00Z"), results.get(1).openTime());
+        assertEquals(0, gateway.historicalCallCount);
+    }
+
+    @Test
+    void weeklyRollupUsesLatestCompleteBucketBeforeHistoricalFallback() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        saveHourlyRange(repository, "2026-04-06T00:00:00Z", "2026-04-20T00:00:00Z");
+        saveHourlyRange(repository, "2026-04-20T00:00:00Z", "2026-04-22T00:00:00Z");
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1W", 2, null));
+
+        assertEquals(2, results.size());
+        assertEquals(Instant.parse("2026-04-06T00:00:00Z"), results.get(0).openTime());
+        assertEquals(Instant.parse("2026-04-13T00:00:00Z"), results.get(1).openTime());
+        assertEquals(0, gateway.historicalCallCount);
+    }
+
+    @Test
+    void monthlyRollupUsesLatestCompleteBucketBeforeHistoricalFallback() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        saveHourlyRange(repository, "2026-02-01T00:00:00Z", "2026-04-01T00:00:00Z");
+        saveHourlyRange(repository, "2026-04-01T00:00:00Z", "2026-04-15T00:00:00Z");
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1M", 2, null));
+
+        assertEquals(2, results.size());
+        assertEquals(Instant.parse("2026-02-01T00:00:00Z"), results.get(0).openTime());
+        assertEquals(Instant.parse("2026-03-01T00:00:00Z"), results.get(1).openTime());
+        assertEquals(0, gateway.historicalCallCount);
+    }
+
+    @Test
     void supplementsPartialMinutePageFromHistoricalCacheWithoutSavingToRepository() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         Instant dbStart = Instant.parse("2026-03-01T00:00:00Z");
@@ -262,6 +310,24 @@ class GetMarketCandlesServiceTest {
         ));
 
         assertEquals(1, gateway.historicalCallCount);
+    }
+
+    @Test
+    void doesNotCacheFutureEndedHistoricalSegmentsAsComplete() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
+        GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
+
+        GetMarketCandlesQuery query = new GetMarketCandlesQuery(
+                "BTCUSDT",
+                "1W",
+                20,
+                Instant.parse("2099-01-01T00:00:00Z")
+        );
+        service.getCandles(query);
+        service.getCandles(query);
+
+        assertEquals(2, gateway.historicalCallCount);
     }
 
     @Test
@@ -388,6 +454,19 @@ class GetMarketCandlesServiceTest {
                 openInstant,
                 openInstant.plusSeconds(3600)
         );
+    }
+
+    private static void saveHourlyRange(
+            InMemoryMarketHistoryRepository repository,
+            String fromInclusive,
+            String toExclusive
+    ) {
+        Instant cursor = Instant.parse(fromInclusive);
+        Instant end = Instant.parse(toExclusive);
+        while (cursor.isBefore(end)) {
+            repository.saveHourlyCandle(hourly(1L, cursor.toString(), 100, 101, 99, 100.5, 10));
+            cursor = cursor.plusSeconds(3600);
+        }
     }
 
     private static class InMemoryMarketHistoryRepository implements MarketHistoryRepository {

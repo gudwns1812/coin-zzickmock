@@ -6,6 +6,7 @@ import coin.coinzzickmock.feature.position.application.result.PositionSnapshotRe
 import coin.coinzzickmock.feature.position.application.service.ClosePositionService;
 import coin.coinzzickmock.feature.position.application.service.GetOpenPositionsService;
 import coin.coinzzickmock.feature.position.application.service.GetPositionHistoryService;
+import coin.coinzzickmock.feature.position.application.service.UpdatePositionLeverageService;
 import coin.coinzzickmock.feature.position.application.service.UpdatePositionTpslService;
 import coin.coinzzickmock.providers.Providers;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class PositionController {
     private final GetPositionHistoryService getPositionHistoryService;
     private final ClosePositionService closePositionService;
     private final UpdatePositionTpslService updatePositionTpslService;
+    private final UpdatePositionLeverageService updatePositionLeverageService;
     private final Providers providers;
 
     @GetMapping("/me")
@@ -77,6 +79,18 @@ public class PositionController {
                 request.marginMode(),
                 request.takeProfitPrice(),
                 request.stopLossPrice()
+        );
+        return ApiResponse.success(toResponse(result));
+    }
+
+    @PatchMapping("/leverage")
+    public ApiResponse<PositionSummaryResponse> updateLeverage(@RequestBody UpdatePositionLeverageRequest request) {
+        PositionSnapshotResult result = updatePositionLeverageService.update(
+                providers.auth().currentActor().memberId(),
+                request.symbol(),
+                request.positionSide(),
+                request.marginMode(),
+                request.leverage()
         );
         return ApiResponse.success(toResponse(result));
     }

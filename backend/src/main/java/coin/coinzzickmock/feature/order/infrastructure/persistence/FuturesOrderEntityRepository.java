@@ -38,5 +38,21 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
             @Param("executionPrice") BigDecimal executionPrice
     );
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update FuturesOrderEntity order
+               set order.status = :cancelledStatus,
+                   order.activeConditionalTriggerType = null
+             where order.memberId = :memberId
+               and order.orderId = :orderId
+               and order.status = :pendingStatus
+            """)
+    int cancelIfPending(
+            @Param("memberId") String memberId,
+            @Param("orderId") String orderId,
+            @Param("pendingStatus") String pendingStatus,
+            @Param("cancelledStatus") String cancelledStatus
+    );
+
     void deleteAllByMemberId(String memberId);
 }

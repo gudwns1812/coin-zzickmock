@@ -55,6 +55,20 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide) {
+        OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
+                .where(
+                        position.getString("memberId").eq(memberId),
+                        position.getString("symbol").eq(symbol),
+                        position.getString("positionSide").eq(positionSide)
+                )
+                .orderBy(position.getString("marginMode").asc())
+                .fetchFirst();
+        return Optional.ofNullable(entity).map(OpenPositionEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
         return jpaQueryFactory.selectFrom(position)
                 .where(position.getString("symbol").eq(symbol))

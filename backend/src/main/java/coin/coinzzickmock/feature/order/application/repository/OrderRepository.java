@@ -30,6 +30,16 @@ public interface OrderRepository {
                 .toList();
     }
 
+    default List<FuturesOrder> findPendingOpenOrders(String memberId, String symbol, String positionSide) {
+        return findByMemberId(memberId).stream()
+                .filter(FuturesOrder::isPending)
+                .filter(FuturesOrder::isOpenPositionOrder)
+                .filter(order -> !order.isConditionalOrder())
+                .filter(order -> order.symbol().equalsIgnoreCase(symbol))
+                .filter(order -> order.positionSide().equalsIgnoreCase(positionSide))
+                .toList();
+    }
+
     default List<FuturesOrder> findPendingConditionalCloseOrders(
             String memberId,
             String symbol,
@@ -58,6 +68,15 @@ public interface OrderRepository {
     );
 
     FuturesOrder updateStatus(String memberId, String orderId, String status);
+
+    default boolean cancelPending(String memberId, String orderId) {
+        FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElse(null);
+        if (order == null || !order.isPending()) {
+            return false;
+        }
+        updateStatus(memberId, orderId, FuturesOrder.STATUS_CANCELLED);
+        return true;
+    }
 
     default FuturesOrder updateQuantityAndStatus(String memberId, String orderId, double quantity, String status) {
         if (FuturesOrder.STATUS_CANCELLED.equalsIgnoreCase(status)) {

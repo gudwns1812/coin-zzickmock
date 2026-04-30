@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.order.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
@@ -75,6 +76,88 @@ class MarketOrderExecutionServiceTest {
         assertEquals(99, filled.executionPrice(), 0.0001);
         assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
         assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
+    }
+
+    @Test
+    void cancelsStalePendingOpenOrderWhenSameSidePositionUsesDifferentMarginMode() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save("demo-member", new FuturesOrder(
+                "stale-isolated-open",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                0.1,
+                99.0,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                99
+        ));
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                0.1,
+                100,
+                100
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(101, 98, 98));
+
+        FuturesOrder stale = orderRepository.findByMemberIdAndOrderId("demo-member", "stale-isolated-open").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, stale.status());
+        assertEquals(1, positionRepository.findOpenPositions("demo-member").size());
+        assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "CROSS").isPresent());
+        assertFalse(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
+        assertTrue(eventPublisher.events.isEmpty());
+        assertEquals(100000, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
+    }
+
+    @Test
+    void pendingOpenFillUsesExistingPositionLeverageForMarginAndPositionUpdate() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save("demo-member", PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save("demo-member", new FuturesOrder(
+                "stale-leverage-open",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                50,
+                1,
+                99.0,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                99
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(101, 98, 98));
+
+        PositionSnapshot position = positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow();
+        assertEquals(10, position.leverage());
+        assertEquals(2, position.quantity(), 0.0001);
+        assertEquals(99990.08515, accountRepository.findByMemberId("demo-member").orElseThrow().availableMargin(), 0.0001);
     }
 
     @Test

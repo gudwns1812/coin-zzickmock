@@ -265,11 +265,12 @@ public class GetMarketCandlesService {
         if (latestHourOpenTime == null) {
             return List.of();
         }
-        Instant earliestBucketStart = earliestHourlyBucketStart(latestHourOpenTime, interval, limit);
+        Instant latestCompleteBucketStart = latestCompleteHourlyBucketStart(latestHourOpenTime, interval);
+        Instant earliestBucketStart = earliestHourlyBucketStart(latestCompleteBucketStart, interval, limit);
         List<HourlyMarketCandle> rawCandles = marketHistoryRepository.findHourlyCandles(
                 symbolId,
                 earliestBucketStart,
-                latestHourOpenTime.plus(1, ChronoUnit.HOURS)
+                MarketTime.bucketClose(latestCompleteBucketStart, interval)
         );
 
         Map<Instant, List<HourlyMarketCandle>> grouped = new LinkedHashMap<>();
@@ -297,6 +298,29 @@ public class GetMarketCandlesService {
             case ONE_DAY -> latestBucket.minusDays(limit - 1L).toInstant();
             case ONE_WEEK -> latestBucket.minusWeeks(limit - 1L).toInstant();
             case ONE_MONTH -> latestBucket.minusMonths(limit - 1L).toInstant();
+            default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
+        };
+    }
+
+    private Instant latestCompleteHourlyBucketStart(Instant latestHourOpenTime, MarketCandleInterval interval) {
+        Instant latestBucketStart = MarketTime.bucketStart(latestHourOpenTime, interval);
+        Instant latestBucketClose = MarketTime.bucketClose(latestBucketStart, interval);
+        Instant latestKnownClose = latestHourOpenTime.plus(1, ChronoUnit.HOURS);
+        if (!latestKnownClose.isBefore(latestBucketClose)) {
+            return latestBucketStart;
+        }
+
+        return previousHourlyBucketStart(latestBucketStart, interval);
+    }
+
+    private Instant previousHourlyBucketStart(Instant bucketStart, MarketCandleInterval interval) {
+        ZonedDateTime bucket = MarketTime.atStorageZone(bucketStart);
+        return switch (interval) {
+            case FOUR_HOURS -> bucket.minusHours(4).toInstant();
+            case TWELVE_HOURS -> bucket.minusHours(12).toInstant();
+            case ONE_DAY -> bucket.minusDays(1).toInstant();
+            case ONE_WEEK -> bucket.minusWeeks(1).toInstant();
+            case ONE_MONTH -> bucket.minusMonths(1).toInstant();
             default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
         };
     }

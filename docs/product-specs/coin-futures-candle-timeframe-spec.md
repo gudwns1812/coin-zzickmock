@@ -107,7 +107,14 @@ DB에 저장된 `1m`, `1h` 캔들만으로 요청한 `limit`을 모두 채우지
 
 오래된 구간 보충은 현재 단계에서 DB에 저장하지 않는다.
 Redis에는 `symbol + interval + aligned segment start + size200` 기준의 200캔들 세그먼트를 30분 동안 저장하고, exact `from/to/limit` 요청값을 캐시 키에 넣지 않는다.
-Redis에 없을 때만 Bitget historical candle REST API를 최대 1회 호출하며, 반복 cache miss와 Bitget 호출량은 낮은 cardinality의 range bucket 단위로 관측한다.
+`1D`, `1W`, `1M`처럼 `1h`에서 파생하는 기간은 최신 저장 `1h`가 아니라 최신 완료 일/주/월 버킷을 기준으로 DB 조회 범위를 잡는다.
+따라서 현재 진행 중인 일/주/월 버킷이 미완성이라는 이유만으로 결과가 `limit - 1`개가 되어 Redis/Bitget 보충 경로가 열리면 안 된다.
+Redis에 없을 때만 Bitget historical candle REST API를 호출하며, 반복 cache miss와 Bitget 호출량은 낮은 cardinality의 range bucket 단위로 관측한다.
+Redis의 논리 세그먼트 크기는 200캔들이지만 Bitget `history-candles` 호출은 provider 제한에 맞춰 내부적으로 `startTime`~`endTime` 90일 이하의 하위 요청들로 나눈다.
+Bitget 요청의 `startTime`과 `endTime`은 선택 기간 경계에 맞춰 정렬하고, 미래로 끝나는 논리 세그먼트는 현재 완료 경계까지만 provider에 요청한다.
+`1D`, `1W`, `1M` provider 요청은 서버의 UTC 버킷 정책과 맞추기 위해 Bitget UTC granularity(`1Dutc`, `1Wutc`, `1Mutc`)를 사용한다.
+이 전환으로 calendar interval Redis key의 granularity 구성요소도 `1D/1W/1M`에서 `1Dutc/1Wutc/1Mutc`로 바뀌며, 기존 key는 짧은 TTL이 만료되면 자연히 사라진다.
+현재 또는 미래로 걸친 partial 세그먼트는 응답에는 사용할 수 있지만 완성된 200캔들 세그먼트처럼 Redis에 저장하지 않는다.
 충분히 자주 요청되는 구간이 확인되면 별도 후속 결정으로 DB 승격을 검토한다.
 
 ## API 및 백엔드 요구사항

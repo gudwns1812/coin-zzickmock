@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -38,6 +39,7 @@ public class PendingOrderFillProcessor {
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
 
+    @Transactional
     public void fillExecutablePendingOrders(MarketSummaryUpdatedEvent event) {
         if (!event.hasPriceMovement()) {
             return;
@@ -109,8 +111,11 @@ public class PendingOrderFillProcessor {
             return;
         }
         if (order.isClosePositionOrder() && !hasEnoughOpenPosition(candidate.memberId(), order)) {
-            orderRepository.updateStatus(candidate.memberId(), order.orderId(), FuturesOrder.STATUS_CANCELLED);
-            pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
+            cancelPendingCandidate(candidate.memberId(), order, market.symbol());
+            return;
+        }
+        if (order.isOpenPositionOrder() && hasDifferentMarginPosition(candidate.memberId(), order)) {
+            cancelPendingCandidate(candidate.memberId(), order, market.symbol());
             return;
         }
 
@@ -147,6 +152,11 @@ public class PendingOrderFillProcessor {
         ));
     }
 
+    private void cancelPendingCandidate(String memberId, FuturesOrder order, String symbol) {
+        orderRepository.cancelPending(memberId, order.orderId());
+        pendingOrderExecutionCache.evict(symbol, memberId, order.orderId());
+    }
+
     private boolean hasEnoughOpenPosition(String memberId, FuturesOrder order) {
         return positionRepository.findOpenPosition(
                         memberId,
@@ -158,8 +168,25 @@ public class PendingOrderFillProcessor {
                 .isPresent();
     }
 
+    private boolean hasDifferentMarginPosition(String memberId, FuturesOrder order) {
+        return positionRepository.findOpenPosition(memberId, order.symbol(), order.positionSide())
+                .filter(position -> !position.marginMode().equalsIgnoreCase(order.marginMode()))
+                .isPresent();
+    }
+
     private void applyFilledOpenOrder(String memberId, FuturesOrder order, double executionPrice, double markPrice) {
-        double initialMargin = (executionPrice * order.quantity()) / order.leverage();
+        PositionSnapshot existing = positionRepository.findOpenPosition(
+                memberId,
+                order.symbol(),
+                order.positionSide()
+        ).orElse(null);
+
+        if (existing != null && !existing.marginMode().equalsIgnoreCase(order.marginMode())) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "기존 포지션과 다른 마진 모드의 대기 주문은 체결할 수 없습니다.");
+        }
+
+        int effectiveLeverage = existing == null ? order.leverage() : existing.leverage();
+        double initialMargin = (executionPrice * order.quantity()) / effectiveLeverage;
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         accountRepository.save(
@@ -168,19 +195,12 @@ public class PendingOrderFillProcessor {
         );
         afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
 
-        PositionSnapshot existing = positionRepository.findOpenPosition(
-                memberId,
-                order.symbol(),
-                order.positionSide(),
-                order.marginMode()
-        ).orElse(null);
-
         if (existing == null) {
             positionRepository.save(memberId, PositionSnapshot.open(
                     order.symbol(),
                     order.positionSide(),
                     order.marginMode(),
-                    order.leverage(),
+                    effectiveLeverage,
                     order.quantity(),
                     executionPrice,
                     markPrice,
@@ -191,7 +211,7 @@ public class PendingOrderFillProcessor {
 
         positionRepository.save(
                 memberId,
-                existing.increase(order.leverage(), order.quantity(), executionPrice, markPrice, order.estimatedFee())
+                existing.increase(effectiveLeverage, order.quantity(), executionPrice, markPrice, order.estimatedFee())
         );
     }
 

@@ -17,6 +17,13 @@ public interface PositionRepository {
             String marginMode
     );
 
+    default Optional<PositionSnapshot> findOpenPosition(String memberId, String symbol, String positionSide) {
+        return findOpenPositions(memberId).stream()
+                .filter(position -> position.symbol().equalsIgnoreCase(symbol))
+                .filter(position -> position.positionSide().equalsIgnoreCase(positionSide))
+                .findFirst();
+    }
+
     List<OpenPositionCandidate> findOpenBySymbol(String symbol);
 
     PositionSnapshot save(String memberId, PositionSnapshot positionSnapshot);

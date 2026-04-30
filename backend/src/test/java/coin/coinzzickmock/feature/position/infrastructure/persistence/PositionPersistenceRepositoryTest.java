@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.infrastructure.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class)
@@ -32,6 +34,9 @@ class PositionPersistenceRepositoryTest {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private OpenPositionEntityRepository openPositionEntityRepository;
 
     @Test
     void savesAndLoadsOpenPositionThroughH2() {
@@ -60,6 +65,34 @@ class PositionPersistenceRepositoryTest {
         assertEquals(95000, loaded.stopLossPrice(), 0.000001);
         assertEquals(0, loaded.version());
         assertEquals(1, positionRepository.findOpenPositions(memberId).size());
+    }
+
+    @Test
+    void rejectsDifferentMarginModeForSameSymbolAndSideAtDatabaseBoundary() {
+        String memberId = "position-owner-" + UUID.randomUUID();
+        saveAccount(memberId);
+
+        openPositionEntityRepository.saveAndFlush(OpenPositionEntity.from(memberId, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                0.1,
+                100000,
+                100000
+        )));
+
+        assertThrows(DataIntegrityViolationException.class, () -> openPositionEntityRepository.saveAndFlush(
+                OpenPositionEntity.from(memberId, PositionSnapshot.open(
+                        "BTCUSDT",
+                        "LONG",
+                        "ISOLATED",
+                        10,
+                        0.1,
+                        100000,
+                        100000
+                ))
+        ));
     }
 
     @Test

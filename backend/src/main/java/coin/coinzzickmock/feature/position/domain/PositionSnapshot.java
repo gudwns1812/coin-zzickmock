@@ -25,6 +25,8 @@ public record PositionSnapshot(
         long version
 ) {
     private static final String MARGIN_MODE_CROSS = "CROSS";
+    private static final int MIN_LEVERAGE = 1;
+    private static final int MAX_LEVERAGE = 50;
 
     public PositionSnapshot(
             String symbol,
@@ -299,6 +301,34 @@ public record PositionSnapshot(
                 accumulatedFundingCost,
                 nextTakeProfitPrice,
                 nextStopLossPrice,
+                version
+        );
+    }
+
+    public PositionSnapshot withLeverage(int nextLeverage) {
+        if (nextLeverage < MIN_LEVERAGE || nextLeverage > MAX_LEVERAGE) {
+            throw new IllegalArgumentException("leverage must be between 1 and 50");
+        }
+        return new PositionSnapshot(
+                symbol,
+                positionSide,
+                marginMode,
+                nextLeverage,
+                quantity,
+                entryPrice,
+                markPrice,
+                liquidationPrice(positionSide, nextLeverage, entryPrice),
+                pnl(markPrice, quantity),
+                openedAt,
+                originalQuantity,
+                accumulatedClosedQuantity,
+                accumulatedExitNotional,
+                accumulatedRealizedPnl,
+                accumulatedOpenFee,
+                accumulatedCloseFee,
+                accumulatedFundingCost,
+                takeProfitPrice,
+                stopLossPrice,
                 version
         );
     }

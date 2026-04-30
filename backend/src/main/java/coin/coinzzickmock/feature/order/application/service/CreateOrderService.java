@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -43,12 +44,14 @@ public class CreateOrderService {
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
         validateOrderType(command.orderType());
+        validateExistingPositionInvariants(command);
         return preview(command, loadMarket(command.symbol()));
     }
 
     @Transactional
     public CreateOrderResult execute(CreateOrderCommand command) {
         validateOrderType(command.orderType());
+        validateExistingPositionInvariants(command);
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());
         OrderPlacementRequest placementRequest = placementRequest(command);
         OrderPlacementDecision decision = orderPlacementPolicy.decide(placementRequest, marketSnapshot.lastPrice());
@@ -108,9 +111,12 @@ public class CreateOrderService {
         PositionSnapshot existing = positionRepository.findOpenPosition(
                 command.memberId(),
                 command.symbol(),
-                command.positionSide(),
-                command.marginMode()
+                command.positionSide()
         ).orElse(null);
+
+        if (existing != null && !existing.marginMode().equalsIgnoreCase(command.marginMode())) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "기존 포지션과 다른 마진 모드로 주문할 수 없습니다.");
+        }
 
         if (existing == null) {
             positionRepository.save(command.memberId(), PositionSnapshot.open(
@@ -140,6 +146,25 @@ public class CreateOrderService {
 
     private OrderPreview preview(CreateOrderCommand command, MarketSnapshot marketSnapshot) {
         return orderPreviewPolicy.preview(placementRequest(command), marketSnapshot.lastPrice());
+    }
+
+    private void validateExistingPositionInvariants(CreateOrderCommand command) {
+        Optional<PositionSnapshot> existing = positionRepository.findOpenPosition(
+                command.memberId(),
+                command.symbol(),
+                command.positionSide()
+        );
+        if (existing.isEmpty()) {
+            return;
+        }
+
+        PositionSnapshot position = existing.orElseThrow();
+        if (!position.marginMode().equalsIgnoreCase(command.marginMode())) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "기존 포지션과 다른 마진 모드로 주문할 수 없습니다.");
+        }
+        if (position.leverage() != command.leverage()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "기존 포지션 레버리지를 먼저 적용한 뒤 주문해주세요.");
+        }
     }
 
     private OrderPlacementRequest placementRequest(CreateOrderCommand command) {

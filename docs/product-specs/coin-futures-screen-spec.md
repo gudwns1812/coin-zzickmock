@@ -222,7 +222,16 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 예상 사용 증거금
 - 예상 청산가
 - 주문 버튼
+- 열린 포지션이 없는 심볼/방향의 주문 기본값은 `CROSS`, `10x`다. 선택한 심볼/방향의 기존
+  포지션이 있으면 주문 패널은 해당 포지션의 마진 모드와 레버리지를 표시하고, 마진 모드 선택을
+  비활성화한다.
+- 기존 포지션 레버리지는 레버리지 모달에서 `적용`을 누르는 순간 `/positions/leverage`로
+  반영한다. 적용 전 입력/슬라이더 조작은 draft 상태이며, 모달을 닫으면 포지션 레버리지를 바꾸지
+  않는다. 같은 심볼/방향의 미체결 open 주문이 있으면 레버리지 변경은 실패한다.
+- 주문 타입 옆 `?` 도움말은 Cross/Isolated, 레버리지, Limit/Market, Long/Short, 예상 증거금,
+  청산가, 수수료, 기존 포지션의 마진/레버리지 고정 규칙을 설명한다.
 - 가격 입력은 화면/모달이 열린 순간 또는 사용자가 order book 가격을 선택한 순간의 snapshot 값을 한 번만 채운다. 이후 최신가, mark price, order book 업데이트가 들어와도 사용자가 입력 중인 가격을 자동으로 덮어쓰지 않는다. 단, TP/SL 신규 편집 값은 사용자가 직접 입력하도록 빈 값으로 시작하며 기존 TP/SL 주문이 있을 때만 기존 trigger price를 채운다.
+- 주문 패널의 `Close` 모드는 신규 주문 미리보기를 호출하지 않고 `/positions/close` 종료 주문 API를 사용한다. `Close Long`은 같은 심볼/마진 모드의 열린 `LONG` 포지션만, `Close Short`은 같은 심볼/마진 모드의 열린 `SHORT` 포지션만 종료 대상으로 본다. 대상 포지션이 없거나 반대 방향 포지션만 있으면 `POSITION_NOT_FOUND`를 자연스러운 사용자 오류로 처리하고, 콘솔에 출력하지 않으며 패널 안에 "종료할 포지션이 없습니다." 문구를 표시한다.
 - Account 영역은 주문 미리보기 수수료가 아니라 계정 상태를 보여준다:
   - `USDT balance`: wallet balance + total unrealized PnL
   - `Wallet balance`: 미실현 손익을 제외한 지갑 잔고
@@ -254,6 +263,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 포지션 응답은 `accumulatedClosedQuantity`, `pendingCloseQuantity`, `closeableQuantity`를 제공한다. 화면의 `Close amount`는 누적 종료 체결 수량인 `accumulatedClosedQuantity`만 의미한다.
 - `pendingCloseQuantity`는 같은 심볼/방향/마진 모드의 미체결 close 주문 effective exposure이고, `closeableQuantity = max(0, quantity - pendingCloseQuantity)`이다. OCO group이 있는 TP/SL sibling은 group별 `max(quantity)`로 한 번만 계산한다. 두 값은 예약 상태/호환 필드이며 `Close amount` 라벨로 표시하지 않는다.
 - close 입력의 최대값과 클라이언트 검증은 `closeableQuantity`가 아니라 현재 보유 `quantity` 기준이다. pending close 수량이 보유 수량과 같아도 새 close 주문은 제출할 수 있고, 백엔드는 접수 후 pending close cap을 조정한다.
+- 주문 패널 `Close` 모드의 퍼센트/최대 수량 보조 UI도 같은 심볼/방향/마진 모드의 현재 보유 `quantity`를 기준으로 한다. 같은 방향의 포지션이 없거나 반대 방향 포지션만 있으면 제출 결과는 포지션 없음 오류로 표시한다.
 - market close, limit close 체결, liquidation, 새 close 주문 접수로 포지션 수량 또는 pending close effective exposure가 cap을 넘으면 같은 포지션의 pending close exposure가 남은 포지션 수량을 넘지 않도록 조정한다. manual close 주문은 TP/SL OCO bucket보다 우선 보존하고, 같은 OCO group의 TP/SL sibling quantity는 함께 맞춘다.
 - 포지션은 order-backed `takeProfitPrice`, `stopLossPrice`를 표시할 수 있다. 화면은 `Position TP/SL` 값을 기본 표시만 하고, edit icon을 눌렀을 때 편집기를 연다. 사용자가 TP/SL을 수정하면 백엔드는 현재 mark price 기준으로 이미 발동된 가격을 거절하고, pending conditional `CLOSE_POSITION` 주문을 생성/교체/취소한다.
 - TP/SL 조건부 주문은 Open orders와 Order history에 `TP Close`, `SL Close`로 표시하며 trigger price를 가격 기준으로 보여준다. 체결 이력의 execution price는 실제 체결가다.

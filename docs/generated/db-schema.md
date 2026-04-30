@@ -182,6 +182,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `feature.reward`
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql),
   [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
 
 ### `reward_shop_member_item_usages`
@@ -274,12 +275,15 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `take_profit_price`, `stop_loss_price`는 V9 호환 컬럼으로 남아 있지만 TP/SL의 source of truth가 아니다. 현재 TP/SL read/write/trigger path는 `futures_orders`의 조건부 close order를 사용한다.
 - 동시성:
   `version`은 포지션 종료/청산/종료 주문 체결 시 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 정산, 포지션 이력, 리워드, SSE 이벤트를 수행하지 않고 재조회가 필요한 충돌로 처리한다.
+- 유일성:
+  `uk_open_position_member_symbol_side`는 같은 `member_id + symbol + position_side` 안에서 열린 포지션을 하나만 허용한다. 포지션이 열려 있는 동안 마진 모드는 해당 포지션 값으로 고정되며, `margin_mode`별 별도 오픈 포지션을 만들 수 없다.
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
   [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql),
+  [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql),
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
 
 ### `position_history`
@@ -367,8 +371,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   주문 이력은 특정 계정에 속한다.
 - `open_positions.member_id -> trading_accounts.member_id`:
   오픈 포지션은 특정 계정에 속한다.
-- `open_positions(member_id, symbol, position_side, margin_mode)`:
-  한 계정에서 동일 심볼/방향/마진 모드 조합은 하나의 집계 포지션만 가진다.
+- `open_positions(member_id, symbol, position_side)`:
+  한 계정에서 동일 심볼/방향 조합은 하나의 집계 포지션만 가진다. 마진 모드는 열린 포지션 값으로 잠기며 다른 마진 모드 포지션을 동시에 만들 수 없다.
 - `market_candles_1m.symbol_id -> market_symbols.id`:
   1분봉은 반드시 등록된 거래 심볼에 속한다.
 - `market_candles_1h.symbol_id -> market_symbols.id`:
@@ -406,6 +410,10 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V11__backfill_and_constrain_conditional_close_orders.sql`로 V9 legacy `open_positions.take_profit_price`, `stop_loss_price`를 pending conditional close order로 backfill하고, active conditional TP/SL 중복을 막는 unique index를 추가했다.
 - 2026-04-28:
   `V15__add_wallet_history.sql`로 `wallet_history`를 추가했다. Assets 차트는 기본적으로 현재 시각 기준 30일 범위를 조회하고, `source_type + source_reference` unique key로 체결/반환/청산 같은 지갑 변경 이벤트의 중복 기록을 방지한다.
+- 2026-04-30:
+  `V16__enforce_single_open_position_per_side.sql`로 열린 포지션 유일성을 `member_id + symbol + position_side` 단위로 강화했다.
+- 2026-04-30:
+  `V17__shorten_coffee_voucher_description.sql`로 기존 적용된 `V12` checksum을 유지하면서 기본 커피 교환권 seed 설명 문구를 짧게 갱신했다.
 
 ## Update Rule
 

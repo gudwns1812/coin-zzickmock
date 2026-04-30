@@ -12,6 +12,7 @@ public record WalletHistorySource(
     public static final String TYPE_ORDER_FILL = "ORDER_FILL";
     public static final String TYPE_PARTIAL_FILL = "PARTIAL_FILL";
     public static final String TYPE_POSITION_CLOSE = "POSITION_CLOSE";
+    public static final String TYPE_POSITION_LEVERAGE_CHANGE = "POSITION_LEVERAGE_CHANGE";
     public static final String TYPE_LIQUIDATION = "LIQUIDATION";
     public static final String TYPE_MANUAL_ADJUSTMENT = "MANUAL_ADJUSTMENT";
 
@@ -56,6 +57,15 @@ public record WalletHistorySource(
         return new WalletHistorySource(
                 TYPE_POSITION_CLOSE,
                 "position:" + symbol + ":" + positionSide + ":" + marginMode + ":" + closeReason + ":"
+                        + eventTime.toEpochMilli()
+        );
+    }
+
+    public static WalletHistorySource positionLeverageChange(String symbol, String positionSide, String marginMode,
+                                                             Instant eventTime) {
+        return new WalletHistorySource(
+                TYPE_POSITION_LEVERAGE_CHANGE,
+                "position:" + symbol + ":" + positionSide + ":" + marginMode + ":leverage:"
                         + eventTime.toEpochMilli()
         );
     }

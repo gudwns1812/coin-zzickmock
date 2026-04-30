@@ -1,23 +1,106 @@
-# Bitget Candlestick Channel
+# Candlestick Channel
 
-이 문서는 Bitget 공개 WebSocket의 캔들 채널을 구현하거나 검토할 때 빠르게 읽는 참고 메모다.
-정확한 subscribe payload, 필드 이름, 응답 예시는 공식 Bitget 문서 원문과 함께 확인한다.
+## Description
 
-## 언제 먼저 읽는가
+The channel will push a snapshot after successful subscribed, later on the updates will be pushed
 
-- 과거 가격 수집이 아니라 실시간 캔들 스트림이 필요할 때
-- `1m`, `5m`, `15m`, `1h` 같은 주기별 차트 갱신 구조를 설계할 때
-- REST 기반 차트 조회를 WebSocket 기반 보강 흐름으로 확장할 때
+If intended to query history data in a customized time range, please refer to Get Candle Data
 
-## 이 저장소에서 확인할 포인트
+When there are transactions in the K-line channel, data is pushed once per second.
 
-- 지원 심볼명과 Bitget 채널의 상품 코드 표기가 현재 `market_symbols.symbol`과 바로 연결되는지
-- 프론트 즉시 갱신용인지, 백엔드 수집/롤업용인지에 따라 소비 위치를 분리할지
-- 봉 확정 전 업데이트와 봉 마감 이벤트를 같은 upsert 규칙으로 처리할지
-- 재연결 시 마지막 `open_time` 기준으로 중복 캔들을 어떻게 무해하게 흡수할지
+When there are no transactions, data is pushed once at the specified time granularity.
 
-## 함께 볼 문서
+Request Example
 
-- [bitget-quickstart.md](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/bitget-quickstart.md)
-- [best-practice-guide.md](/Users/hj.park/projects/coin-zzickmock/docs/references/bitget/best-practice-guide.md)
-- [coin-futures-candle-timeframe-spec.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-candle-timeframe-spec.md)
+```json
+{
+  "op": "subscribe",
+  "args": [
+    {
+      "instType": "USDT-FUTURES",
+      "channel": "candle1m",
+      "instId": "BTCUSDT"
+    }
+  ]
+}
+```
+
+Request Parameters
+
+| Parameter  | Type         | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|------------|--------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| op         | String       | Yes      | Operation, subscribe unsubscribe                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| args       | List<Object> | Yes      | List of channels to request subscription                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| > instType | String       | Yes      | Product type                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| > channel  | String       | Yes      | Channel name, candle1m (1 minute) candle5m (5 minutes) candle15m (15 minutes) candle30m (30minutes) candle1H (1 hour) candle4H (4 hours) candle12H (12 hours) candle1D (1 day) candle1W (1 week) candle6H (6 hours) candle3D (3 days) candle1M (1-month line) candle6Hutc (6-hour line, UTC) candle12Hutc (12-hour line, UTC) candle1Dutc (1-day line, UTC) candle3Dutc (3-day line, UTC) candle1Wutc (weekly line, UTC) candle1Mutc (monthly line. UTC) |
+| >instId    | String       | Yes      | Product ID E.g. ETHUSDT                                                                                                                                                                                                                                                                                                                                                                                                                                  | 
+
+Response Example
+
+```json
+ {
+  "event": "subscribe",
+  "arg": {
+    "instType": "USDT-FUTURES",
+    "channel": "candle1m",
+    "instId": "BTCUSDT"
+  }
+}
+```
+
+Response Parameters
+
+| Parameter  | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| event      | String | Yes  Event                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| arg        | Object | Subscribed channels                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| > channel  | String | Channel name, candle1m (1 minute) candle5m (5 minutes) candle15m (15 minutes) candle30m (30 minutes) candle1H (1 hour) candle4H (4 hours) candle12H (12 hours) candle1D (1 day) candle1W (1 week) candle6H (6 hours) candle3D (3 days) candle1M (1-month line) candle6Hutc (6-hour line, UTC) candle12Hutc (12-hour line, UTC) candle1Dutc (1-day line, UTC) candle3Dutc (3-day line, UTC) candle1Wutc (weekly line, UTC) candle1Mutc (monthly line. UTC) |
+| > instType | String | Product type                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| > instId   | String | Product E.g. ETHUSDT                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| code       | String | Error code, returned only on error                                                                                                                                                                                                                                                                                                                                                                                                                        |                                                                                                                                                                                                                                                                                                                                                                                                                        
+| msg        | String | Error message                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+
+Push Data
+
+```json
+{
+  "action": "snapshot",
+  "arg": {
+    "instType": "USDT-FUTURES",
+    "channel": "candle1m",
+    "instId": "BTCUSDT"
+  },
+  "data": [
+    [
+      "1695685500000",
+      "27000",
+      "27000.5",
+      "27000",
+      "27000.5",
+      "0.057",
+      "1539.0155",
+      "1539.0155"
+    ]
+  ],
+  "ts": 1695715462250
+}
+```
+
+Push Parameters
+
+| Parameter  | Type         | Description                                                          |
+|------------|--------------|----------------------------------------------------------------------|
+| arg        | Object       | Channels with successful subscription                                |
+| > channel  | String       | Channel name                                                         |
+| > instId   | String       | Product ID                                                           |
+| > instType | String       | Product type                                                         |
+| data       | List<String> | Subscription data                                                    |
+| > index[0] | String       | Start time, milliseconds format of Unix timestamp, e.g.1597026383085 |
+| > index[1] | String       | Opening price                                                        |
+| > index[2] | String       | Highest price                                                        |
+| > index[3] | String       | Lowest price                                                         |
+| > index[4] | String       | Closing price                                                        |
+| > index[5] | String       | The value is the trading volume of left coin                         |
+| > index[6] | String       | Trading volume of quote currency                                     |
+| > index[7] | String       | Trading volume of USDT                                               |
+| > ts       | String       | Data streaming time                                                  |

@@ -27,7 +27,7 @@ public enum MarketCandleInterval {
 
     public static MarketCandleInterval from(String value) {
         for (MarketCandleInterval interval : values()) {
-            if (interval.value.equalsIgnoreCase(value)) {
+            if (interval.value.equals(value)) {
                 return interval;
             }
         }

@@ -26,7 +26,7 @@ class MarketHistoricalCandleSegmentPolicyTest {
                 MarketTime.atStorageZone(segment.startInclusive()),
                 MarketTime.atStorageZone(segment.endExclusive())
         )).isEqualTo(200);
-        assertThat(segment.granularity()).isEqualTo("1W");
+        assertThat(segment.granularity()).isEqualTo("1Wutc");
     }
 
     @Test
@@ -43,7 +43,7 @@ class MarketHistoricalCandleSegmentPolicyTest {
                 MarketTime.atStorageZone(segment.startInclusive()),
                 MarketTime.atStorageZone(segment.endExclusive())
         )).isEqualTo(200);
-        assertThat(segment.granularity()).isEqualTo("1M");
+        assertThat(segment.granularity()).isEqualTo("1Mutc");
     }
 
     @Test

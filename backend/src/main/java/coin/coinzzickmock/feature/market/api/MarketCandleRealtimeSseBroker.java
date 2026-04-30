@@ -83,7 +83,6 @@ public class MarketCandleRealtimeSseBroker {
         } catch (IOException exception) {
             log.debug("Market candle SSE send failed; closing subscription. key={}", key, exception);
             unregister(key, emitter);
-            emitter.complete();
         }
     }
 

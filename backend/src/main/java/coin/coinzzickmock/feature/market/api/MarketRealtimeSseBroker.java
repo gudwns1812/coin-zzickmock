@@ -110,7 +110,6 @@ public class MarketRealtimeSseBroker {
         } catch (IOException exception) {
             log.debug("Market SSE send failed; closing subscription. symbol={}", symbol, exception);
             unregister(symbol, emitter);
-            emitter.complete();
         }
     }
 

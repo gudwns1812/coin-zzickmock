@@ -110,7 +110,6 @@ public class TradingExecutionSseBroker {
         } catch (IOException exception) {
             log.debug("Trading SSE send failed; closing subscription. memberId={}", memberId, exception);
             unregister(memberId, emitter);
-            emitter.complete();
         }
     }
 

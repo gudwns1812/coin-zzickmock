@@ -50,7 +50,7 @@ class MarketRealtimeSseBrokerTest {
     }
 
     @Test
-    void removesFailedEmitterWithoutAffectingHealthyEmitters() {
+    void removesFailedEmitterWithoutCompletingOrAffectingHealthyEmitters() {
         MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 10, 20);
         FailingSseEmitter failingEmitter = new FailingSseEmitter();
         CapturingSseEmitter healthyEmitter = new CapturingSseEmitter();
@@ -67,7 +67,7 @@ class MarketRealtimeSseBrokerTest {
         broker.onMarketUpdated(secondEvent);
 
         assertThat(failingEmitter.sendAttempts()).isEqualTo(1);
-        assertThat(failingEmitter.completed()).isTrue();
+        assertThat(failingEmitter.completed()).isFalse();
         assertThat(healthyEmitter.events()).hasSize(2);
         assertThat(((MarketSummaryResponse) healthyEmitter.events().get(1)).lastPrice()).isEqualTo(74100);
     }

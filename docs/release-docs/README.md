@@ -26,6 +26,11 @@
 - [03-rollout-and-rollback.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/03-rollout-and-rollback.md)
   롤아웃 순서, 호환성 원칙, 롤백과 장애 대응 기준.
 
+### Observability
+
+- [observability/backend-observability-signal-map.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/observability/backend-observability-signal-map.md)
+  backend 관측성 metric, trace, log 우선순위와 릴리즈 확인 기준.
+
 ### Release Record Template
 
 - [release-note-template.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/release-note-template.md)

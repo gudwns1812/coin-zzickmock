@@ -21,13 +21,16 @@
 
 ## 기준 스택
 
-- 메트릭: Spring Boot + Micrometer로 수집하고 Prometheus가 scrape한다.
+- 메트릭: Spring Boot + Micrometer로 애플리케이션 meter를 수집하고 Prometheus가 scrape한다.
 - 로그: 애플리케이션은 구조화 로그를 남기고 Loki가 수집한다.
 - 대시보드와 알림: Grafana가 Prometheus 메트릭과 Loki 로그를 함께 보여 준다.
 - 관리자 모니터링: 관리자 페이지는 운영 인프라 지표가 아니라 서비스 운영자가 조치할 수 있는 도메인 상태를 보여 준다.
 
 새 관측성 구현은 이 스택을 먼저 사용한다.
 다른 SaaS나 에이전트를 추가해야 하면 왜 Micrometer/Prometheus/Loki/Grafana로 충분하지 않은지 먼저 설명해야 한다.
+API 응답속도, use-case duration, 외부 연동 latency 같은 횡단 관심사는 `Providers`의 `TelemetryProvider`
+또는 목적별 협력 객체 뒤에서 직접 구현한다.
+기능 코드와 도메인 모델은 계측 구현 세부사항을 알지 않는다.
 
 ## Grafana와 관리자 페이지의 경계
 
@@ -91,6 +94,7 @@ Grafana에 두지 않는 것:
 - 관리자 페이지는 민감 데이터를 보여 줄 수 있지만 역할 기반 접근 제어와 감사 로그 기준을 먼저 충족해야 한다.
 - 도메인 모델 안에서 Micrometer, logger, Sentry, Prometheus API를 직접 호출하지 않는다.
 - 애플리케이션 계층의 공통 계측은 `TelemetryProvider` 또는 목적별 협력 객체 뒤에 둔다.
+- API 응답속도 같은 공통 요청/응답 계측은 filter/interceptor 같은 경계에서 수집하되, 기록은 `TelemetryProvider`를 통해 수행한다.
 - 외부 HTTP 연동 계측은 connector/infrastructure 경계에서 처리하고 기능 코드에 흩뿌리지 않는다.
 - 로그 메시지는 사람이 검색할 수 있는 안정적인 event name과 key-value context를 가져야 한다.
 - 알림은 "운영자가 바로 판단할 수 있는 증상"에 걸고, 원인 후보는 dashboard와 runbook으로 연결한다.
@@ -331,6 +335,7 @@ Grafana에 추가할 지표:
 - `market.snapshot.staleness.seconds` by bounded `symbol`
 - `market.bitget.request.total` with `operation`, `result`
 - `market.bitget.request.duration` with `operation`
+- `market.bitget.request.rate.per_second` with `operation`, `result`
 - `market.bitget.fallback.total` with `operation`, `symbol`
 - `market.history.persist.total` with `result`, `symbol`
 - `market.history.retry.pending.current`

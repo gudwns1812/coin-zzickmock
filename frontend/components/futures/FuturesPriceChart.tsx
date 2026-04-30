@@ -53,10 +53,7 @@ import {
   formatChartTickInKst,
   formatChartTimeInKst,
 } from "./futuresChartTime";
-import {
-  getLiveCandleBucket,
-  mergeCandlesWithLivePrice,
-} from "./futuresLiveCandles";
+import { mergeCandlesWithRealtimeCandle } from "./futuresRealtimeCandles";
 import {
   getIntervalConfig,
   getLatestVisibleLogicalRange,
@@ -164,7 +161,7 @@ export default function FuturesPriceChart({
   const positionPriceLinesRef = useRef<OwnedPriceLine[]>([]);
   const orderPriceLinesRef = useRef<OwnedPriceLine[]>([]);
   const appliedInitialViewportKeyRef = useRef<string | null>(null);
-  const liveBucketOpenTimeRef = useRef<number | null>(null);
+  const realtimeCandleOpenTimeRef = useRef<string | null>(null);
   const [selectedInterval, setSelectedInterval] =
     useState<FuturesCandleInterval>(DEFAULT_FUTURES_CHART_INTERVAL);
   const [isIntervalPreferenceHydrated, setIsIntervalPreferenceHydrated] =
@@ -186,6 +183,8 @@ export default function FuturesPriceChart({
       value: currentPrice,
     },
   ]);
+  const [realtimeCandle, setRealtimeCandle] =
+    useState<CandleResponse | null>(null);
 
   const selectedConfig = getIntervalConfig(selectedInterval);
   const initialViewportKey = `${symbol}:${selectedInterval}`;
@@ -274,19 +273,8 @@ export default function FuturesPriceChart({
       return historicalCandles;
     }
 
-    return mergeCandlesWithLivePrice(
-      historicalCandles,
-      selectedInterval,
-      currentPrice,
-      currentPriceUpdatedAt
-    );
-  }, [
-    currentPrice,
-    currentPriceUpdatedAt,
-    hasFreshHistory,
-    historicalCandles,
-    selectedInterval,
-  ]);
+    return mergeCandlesWithRealtimeCandle(historicalCandles, realtimeCandle);
+  }, [hasFreshHistory, historicalCandles, realtimeCandle]);
   const latestVisibleCandle = displayCandles.at(-1) ?? null;
   const displayedOhlc = hoveredOhlc ?? toOhlcSnapshot(latestVisibleCandle);
   const displayedVolume = hoveredVolume ?? latestVisibleCandle?.volume ?? null;
@@ -299,7 +287,8 @@ export default function FuturesPriceChart({
   } = historyQuery;
 
   useEffect(() => {
-    liveBucketOpenTimeRef.current = null;
+    realtimeCandleOpenTimeRef.current = null;
+    setRealtimeCandle(null);
     setLivePoints([
       {
         time: toUnixSeconds(currentPriceUpdatedAt),
@@ -546,7 +535,6 @@ export default function FuturesPriceChart({
   }, []);
 
   useEffect(() => {
-    liveBucketOpenTimeRef.current = null;
     setHoveredOhlc(null);
     setHoveredVolume(null);
     setHoveredTime(null);
@@ -560,32 +548,41 @@ export default function FuturesPriceChart({
   }, [selectedConfig.rightOffset, selectedConfig.secondsVisible]);
 
   useEffect(() => {
-    if (!hasFreshHistory) {
-      liveBucketOpenTimeRef.current = null;
+    if (!isIntervalPreferenceHydrated) {
       return;
     }
 
-    const bucket = getLiveCandleBucket(selectedInterval, currentPriceUpdatedAt);
-    const previousBucketOpenTime = liveBucketOpenTimeRef.current;
-    liveBucketOpenTimeRef.current = bucket.openTimeMs;
+    realtimeCandleOpenTimeRef.current = null;
+    setRealtimeCandle(null);
 
-    if (
-      previousBucketOpenTime === null ||
-      previousBucketOpenTime === bucket.openTimeMs
-    ) {
-      return;
-    }
+    const stream = new EventSource(buildCandleStreamUrl(symbol, selectedInterval));
 
-    void queryClient.invalidateQueries({
-      queryKey: ["futures-candles", symbol, selectedInterval],
-    });
-  }, [
-    currentPriceUpdatedAt,
-    hasFreshHistory,
-    queryClient,
-    selectedInterval,
-    symbol,
-  ]);
+    stream.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as unknown;
+
+        if (!isCandleResponse(data)) {
+          return;
+        }
+
+        const previousOpenTime = realtimeCandleOpenTimeRef.current;
+        realtimeCandleOpenTimeRef.current = data.openTime;
+        setRealtimeCandle(data);
+
+        if (previousOpenTime && previousOpenTime !== data.openTime) {
+          void queryClient.invalidateQueries({
+            queryKey: ["futures-candles", symbol, selectedInterval],
+          });
+        }
+      } catch {
+        // Keep the current chart data when the stream sends malformed data.
+      }
+    };
+
+    return () => {
+      stream.close();
+    };
+  }, [isIntervalPreferenceHydrated, queryClient, selectedInterval, symbol]);
 
   useEffect(() => {
     liveSeriesRef.current?.applyOptions({
@@ -1231,6 +1228,33 @@ function buildCandleRequestUrl(
   }
 
   return `/proxy-futures/markets/${symbol}/candles?${params.toString()}`;
+}
+
+function buildCandleStreamUrl(
+  symbol: MarketSymbol,
+  interval: FuturesCandleInterval
+): string {
+  const params = new URLSearchParams({ interval });
+
+  return `/api/futures/markets/${encodeURIComponent(symbol)}/candles/stream?${params.toString()}`;
+}
+
+function isCandleResponse(value: unknown): value is CandleResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<CandleResponse>;
+
+  return (
+    typeof candidate.openTime === "string" &&
+    typeof candidate.closeTime === "string" &&
+    Number.isFinite(candidate.openPrice) &&
+    Number.isFinite(candidate.highPrice) &&
+    Number.isFinite(candidate.lowPrice) &&
+    Number.isFinite(candidate.closePrice) &&
+    Number.isFinite(candidate.volume)
+  );
 }
 
 function getChartHistoryBannerMessage(

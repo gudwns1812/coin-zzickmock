@@ -104,3 +104,10 @@ Push Parameters
 | > index[6] | String       | Trading volume of quote currency                                     |
 | > index[7] | String       | Trading volume of USDT                                               |
 | > ts       | String       | Data streaming time                                                  |
+
+## Repository Implementation Notes
+
+- The frontend chart does not subscribe to Bitget WebSocket directly. It subscribes to the backend candle SSE stream.
+- The backend uses `candle1m` WebSocket data for `1m/3m/5m/15m` live candle display and `candle1H` data for `1h/4h/12h/1D/1W/1M` live candle display.
+- The frontend replaces or appends candle buckets by SSE `openTime`. It does not synthesize OHLC from market-summary latest price.
+- Closed historical candles remain served by the REST candle API, DB persistence, and backend rollup path. Candle SSE is only the current incomplete bucket display overlay.

@@ -73,7 +73,18 @@
 - 직전 완료 1분봉 저장은 매 분 `0`초에 발행되는 `MarketMinuteClosedEvent` 경로에서 서버가 거래소 candle을 수집해 처리한다.
 - 거래소 candle이 아직 비어 있으면 해당 심볼/분봉을 pending retry로 등록하고, 별도 5초 재처리 경로가 다시 수집을 시도한다.
 - 저장 시 `volume`, `quote_volume`은 거래소 candle 응답 값을 함께 반영한다.
-- 프론트엔드는 화면 표시를 위해 아직 닫히지 않은 live candle을 임시로 합성할 수 있지만, 이 값은 DB 저장 원천으로 사용하지 않는다.
+- 프론트엔드는 아직 닫히지 않은 live candle을 market-summary 최신가로 직접 합성하지 않는다.
+- 프론트엔드는 백엔드의 candle SSE를 구독해 현재 버킷의 표시용 live candle만 덮어쓴다. 이 값은 DB 저장 원천으로 사용하지 않는다.
+
+### 실시간 캔들 표시 기준
+
+- 백엔드는 Bitget WebSocket candle 소스에서 `1m`, `1h` 기준 live candle을 수신한다.
+- `1m`, `3m`, `5m`, `15m` live candle은 `1m` WebSocket candle을 기준으로 제공한다.
+- `1h`, `4h`, `12h`, `1D`, `1W`, `1M` live candle은 `1h` WebSocket candle을 기준으로 제공한다.
+- `3m`, `5m`, `15m`, `4h`, `12h`, `1D`, `1W`, `1M`은 프론트엔드가 직접 집계하지 않고 백엔드가 UTC 경계 기준으로 집계해 SSE로 보낸다.
+- 프론트엔드는 REST candle 조회 결과를 닫힌 과거 캔들의 기준으로 사용하고, candle SSE 이벤트는 같은 `openTime` 버킷을 교체하거나 최신 버킷을 추가하는 화면 표시 레이어로만 사용한다.
+- candle SSE가 아직 열리지 않았거나 끊긴 경우 프론트엔드는 기존 REST candle history와 market-summary 최신가 라인 fallback을 유지한다. 이 fallback은 거래용 캔들 데이터가 아니라 히스토리 부재 표시용이다.
+- 현재 live candle state와 SSE fan-out은 애플리케이션 메모리 기반 단일 인스턴스 상태다. 다중 인스턴스 운영으로 확장할 때는 공유 스트림/캐시 또는 sticky routing 정책을 별도로 결정해야 한다.
 
 ### 파생 기간 계산 기준
 

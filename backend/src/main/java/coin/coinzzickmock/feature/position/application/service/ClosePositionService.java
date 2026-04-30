@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
@@ -15,7 +16,6 @@ import coin.coinzzickmock.feature.position.application.result.ClosePositionResul
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.providers.Providers;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ public class ClosePositionService {
 
     private final PositionRepository positionRepository;
     private final OrderRepository orderRepository;
-    private final Providers providers;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final OrderPlacementPolicy orderPlacementPolicy;
@@ -121,11 +121,7 @@ public class ClosePositionService {
     }
 
     private MarketSnapshot loadMarket(String symbol) {
-        MarketSnapshot snapshot = providers.connector().marketDataGateway().loadMarket(symbol);
-        if (snapshot == null) {
-            throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
-        }
-        return snapshot;
+        return realtimeMarketPriceReader.requireFreshMarket(symbol);
     }
 
     private void validateCloseRequest(

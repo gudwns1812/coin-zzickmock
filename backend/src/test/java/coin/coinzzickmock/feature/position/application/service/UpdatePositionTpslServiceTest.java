@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -13,13 +16,8 @@ import coin.coinzzickmock.feature.position.application.repository.PositionReposi
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.auth.Actor;
-import coin.coinzzickmock.providers.auth.AuthProvider;
-import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
-import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
-import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -122,7 +120,7 @@ class UpdatePositionTpslServiceTest {
                 positionRepository,
                 orderRepository,
                 new PendingCloseOrderCapReconciler(orderRepository),
-                new FakeProviders(markPrice)
+                realtimePriceReader(markPrice)
         );
     }
 
@@ -243,55 +241,28 @@ class UpdatePositionTpslServiceTest {
         }
     }
 
-    private record FakeProviders(double markPrice) implements Providers {
-        @Override
-        public AuthProvider auth() {
-            return new AuthProvider() {
-                @Override
-                public Actor currentActor() {
-                    return new Actor("demo-member", "demo@coinzzickmock.dev", "Demo");
-                }
-
-                @Override
-                public boolean isAuthenticated() {
-                    return true;
-                }
-            };
-        }
-
-        @Override
-        public ConnectorProvider connector() {
-            return () -> new FakeMarketDataGateway(markPrice);
-        }
-
-        @Override
-        public TelemetryProvider telemetry() {
-            return new TelemetryProvider() {
-                @Override
-                public void recordUseCase(String useCaseName) {
-                }
-
-                @Override
-                public void recordFailure(String useCaseName, String reason) {
-                }
-            };
-        }
-
-        @Override
-        public FeatureFlagProvider featureFlags() {
-            return flag -> true;
-        }
-    }
-
-    private record FakeMarketDataGateway(double markPrice) implements MarketDataGateway {
-        @Override
-        public List<MarketSnapshot> loadSupportedMarkets() {
-            return List.of(loadMarket("BTCUSDT"));
-        }
-
-        @Override
-        public MarketSnapshot loadMarket(String symbol) {
-            return new MarketSnapshot(symbol, symbol, markPrice, markPrice, markPrice, 0, 0);
-        }
+    private static RealtimeMarketPriceReader realtimePriceReader(double markPrice) {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        Instant now = Instant.now();
+        store.acceptTrade(new RealtimeMarketTradeTick(
+                "BTCUSDT",
+                "trade-" + markPrice,
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.ONE,
+                "buy",
+                now,
+                now
+        ));
+        store.acceptTicker(new RealtimeMarketTickerUpdate(
+                "BTCUSDT",
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.valueOf(0.0001),
+                now.plusSeconds(3600),
+                now,
+                now
+        ));
+        return new RealtimeMarketPriceReader(store);
     }
 }

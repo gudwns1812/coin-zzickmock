@@ -5,7 +5,10 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -22,15 +25,10 @@ import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProce
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointPolicy;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
-import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.auth.Actor;
-import coin.coinzzickmock.providers.auth.AuthProvider;
-import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
-import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
-import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,7 +64,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = new ClosePositionService(
                 positionRepository,
                 orderRepository,
-                new FakeProviders(110000, 110000),
+                realtimePriceReader(110000, 110000),
                 new PositionCloseFinalizer(
                         positionRepository,
                         accountRepository,
@@ -123,7 +121,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = new ClosePositionService(
                 positionRepository,
                 orderRepository,
-                new FakeProviders(90000, 90000),
+                realtimePriceReader(90000, 90000),
                 new PositionCloseFinalizer(
                         positionRepository,
                         accountRepository,
@@ -179,7 +177,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = new ClosePositionService(
                 positionRepository,
                 orderRepository,
-                new FakeProviders(110000, 110000),
+                realtimePriceReader(110000, 110000),
                 new PositionCloseFinalizer(
                         positionRepository,
                         accountRepository,
@@ -245,7 +243,7 @@ class ClosePositionServiceTest {
                 0,
                 110000
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(105000, 105000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(105000, 105000));
 
         service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 1, "MARKET", null);
 
@@ -297,7 +295,7 @@ class ClosePositionServiceTest {
                 0,
                 112000
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(105000, 105000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(105000, 105000));
 
         service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.6, "MARKET", null);
 
@@ -333,7 +331,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = new ClosePositionService(
                 positionRepository,
                 orderRepository,
-                new FakeProviders(110000, 110000),
+                realtimePriceReader(110000, 110000),
                 new PositionCloseFinalizer(
                         positionRepository,
                         accountRepository,
@@ -385,7 +383,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = new ClosePositionService(
                 positionRepository,
                 orderRepository,
-                new FakeProviders(110000, 110000),
+                realtimePriceReader(110000, 110000),
                 new PositionCloseFinalizer(
                         positionRepository,
                         accountRepository,
@@ -440,7 +438,7 @@ class ClosePositionServiceTest {
         ClosePositionService service = new ClosePositionService(
                 positionRepository,
                 orderRepository,
-                new FakeProviders(90000, 90000),
+                realtimePriceReader(90000, 90000),
                 new PositionCloseFinalizer(
                         positionRepository,
                         accountRepository,
@@ -486,7 +484,7 @@ class ClosePositionServiceTest {
                 100000,
                 100000
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(100000, 100000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(100000, 100000));
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.close(
                 "demo-member",
@@ -514,7 +512,7 @@ class ClosePositionServiceTest {
                 100000,
                 100000
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(100000, 100000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(100000, 100000));
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.close(
                 "demo-member",
@@ -557,7 +555,7 @@ class ClosePositionServiceTest {
                 0,
                 71000
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(70000, 70000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
         service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 72000.0);
 
@@ -600,7 +598,7 @@ class ClosePositionServiceTest {
                 0,
                 69000
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(70000, 70000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
         service.close("demo-member", "BTCUSDT", "SHORT", "ISOLATED", 0.1, "LIMIT", 68000.0);
 
@@ -642,7 +640,7 @@ class ClosePositionServiceTest {
                 73000.0,
                 java.time.Instant.parse("2026-04-27T00:01:00Z")
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(70000, 70000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
         service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 1, "LIMIT", 72000.0);
 
@@ -683,7 +681,7 @@ class ClosePositionServiceTest {
                 72000.0,
                 java.time.Instant.parse("2026-04-27T00:00:00Z")
         ));
-        ClosePositionService service = closeService(positionRepository, orderRepository, new FakeProviders(70000, 70000));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(70000, 70000));
 
         service.close("demo-member", "BTCUSDT", "LONG", "ISOLATED", 0.5, "LIMIT", 72000.0);
 
@@ -769,7 +767,7 @@ class ClosePositionServiceTest {
     private ClosePositionService closeService(
             InMemoryPositionRepository positionRepository,
             InMemoryOrderRepository orderRepository,
-            Providers providers
+            RealtimeMarketPriceReader realtimeMarketPriceReader
     ) {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(
                 new TradingAccount("demo-member", "demo@coinzzickmock.dev", "Demo", 100000, 95000)
@@ -777,7 +775,7 @@ class ClosePositionServiceTest {
         return new ClosePositionService(
                 positionRepository,
                 orderRepository,
-                providers,
+                realtimeMarketPriceReader,
                 new PositionCloseFinalizer(
                         positionRepository,
                         accountRepository,
@@ -1001,66 +999,28 @@ class ClosePositionServiceTest {
         }
     }
 
-    private static class FakeProviders implements Providers {
-        private final double lastPrice;
-        private final double markPrice;
-
-        private FakeProviders(double lastPrice, double markPrice) {
-            this.lastPrice = lastPrice;
-            this.markPrice = markPrice;
-        }
-
-        @Override
-        public AuthProvider auth() {
-            return new AuthProvider() {
-                @Override
-                public Actor currentActor() {
-                    return new Actor("demo-member", "demo@coinzzickmock.dev", "Demo");
-                }
-
-                @Override
-                public boolean isAuthenticated() {
-                    return true;
-                }
-            };
-        }
-
-        @Override
-        public ConnectorProvider connector() {
-            return new ConnectorProvider() {
-                @Override
-                public MarketDataGateway marketDataGateway() {
-                    return new MarketDataGateway() {
-                        @Override
-                        public List<MarketSnapshot> loadSupportedMarkets() {
-                            return List.of(loadMarket("BTCUSDT"));
-                        }
-
-                        @Override
-                        public MarketSnapshot loadMarket(String symbol) {
-                            return new MarketSnapshot(symbol, "Bitcoin Perpetual", lastPrice, markPrice, markPrice, 0.0001, 0.1);
-                        }
-                    };
-                }
-            };
-        }
-
-        @Override
-        public TelemetryProvider telemetry() {
-            return new TelemetryProvider() {
-                @Override
-                public void recordUseCase(String useCaseName) {
-                }
-
-                @Override
-                public void recordFailure(String useCaseName, String reason) {
-                }
-            };
-        }
-
-        @Override
-        public FeatureFlagProvider featureFlags() {
-            return key -> true;
-        }
+    private static RealtimeMarketPriceReader realtimePriceReader(double lastPrice, double markPrice) {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        Instant now = Instant.now();
+        store.acceptTrade(new RealtimeMarketTradeTick(
+                "BTCUSDT",
+                "trade-" + lastPrice,
+                BigDecimal.valueOf(lastPrice),
+                BigDecimal.ONE,
+                "buy",
+                now,
+                now
+        ));
+        store.acceptTicker(new RealtimeMarketTickerUpdate(
+                "BTCUSDT",
+                BigDecimal.valueOf(lastPrice),
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.valueOf(0.0001),
+                now.plusSeconds(3600),
+                now,
+                now
+        ));
+        return new RealtimeMarketPriceReader(store);
     }
 }

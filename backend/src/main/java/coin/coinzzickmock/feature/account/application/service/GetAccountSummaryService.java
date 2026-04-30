@@ -6,12 +6,11 @@ import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQue
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
-import coin.coinzzickmock.providers.Providers;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,7 @@ public class GetAccountSummaryService {
     private final AccountRepository accountRepository;
     private final RewardPointRepository rewardPointRepository;
     private final PositionRepository positionRepository;
-    private final Providers providers;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
 
     @Transactional(readOnly = true)
     public AccountSummaryResult execute(GetAccountSummaryQuery query) {
@@ -55,10 +54,8 @@ public class GetAccountSummaryService {
     }
 
     private PositionSnapshot markToMarketForRead(PositionSnapshot snapshot) {
-        MarketSnapshot market = providers.connector().marketDataGateway().loadMarket(snapshot.symbol());
-        if (market == null) {
-            return snapshot;
-        }
-        return snapshot.markToMarket(market.markPrice());
+        return realtimeMarketPriceReader.freshMarkPrice(snapshot.symbol())
+                .map(snapshot::markToMarket)
+                .orElse(snapshot);
     }
 }

@@ -7,6 +7,7 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
@@ -19,7 +20,6 @@ import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.providers.Providers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +35,7 @@ public class CreateOrderService {
 
     private final OrderPreviewPolicy orderPreviewPolicy;
     private final OrderPlacementPolicy orderPlacementPolicy;
-    private final Providers providers;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final OrderRepository orderRepository;
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
@@ -179,11 +179,7 @@ public class CreateOrderService {
     }
 
     private MarketSnapshot loadMarket(String symbol) {
-        MarketSnapshot snapshot = providers.connector().marketDataGateway().loadMarket(symbol);
-        if (snapshot == null) {
-            throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + symbol);
-        }
-        return snapshot;
+        return realtimeMarketPriceReader.requireFreshMarket(symbol);
     }
 
     private void validateOrderType(String orderType) {

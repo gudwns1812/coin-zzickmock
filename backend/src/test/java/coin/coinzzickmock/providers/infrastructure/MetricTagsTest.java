@@ -1,0 +1,80 @@
+package coin.coinzzickmock.providers.infrastructure;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.micrometer.core.instrument.Tags;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class MetricTagsTest {
+    @Test
+    void acceptsStableLowCardinalityTags() {
+        Tags tags = MetricTags.of(Map.of(
+                "symbol", "BTCUSDT",
+                "interval", "1m",
+                "range_bucket", "2026-04",
+                "source", "redis"
+        ));
+
+        assertThat(tags.stream().map(tag -> tag.getKey() + "=" + tag.getValue()))
+                .containsExactly("interval=1m", "range_bucket=2026-04", "source=redis", "symbol=BTCUSDT");
+    }
+
+    @Test
+    void rejectsForbiddenTagKeys() {
+        assertThatThrownBy(() -> MetricTags.of(Map.of("memberId", "123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("lowercase snake_case");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of("member_id", "123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("forbidden");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of("user_id", "123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("forbidden");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of("account_id", "123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("forbidden");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of("session_id", "abc")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("forbidden");
+    }
+
+    @Test
+    void rejectsTagKeysOutsideMetricSchemaAllowList() {
+        assertThatThrownBy(() -> MetricTags.of(Map.of("route", "api_futures_orders")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("allow-listed");
+    }
+
+    @Test
+    void rejectsUnstableRawValues() {
+        assertThatThrownBy(() -> MetricTags.of(Map.of("source", "/api/futures/orders")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unstable");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of(
+                "source",
+                "aaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbb.cccccccccccccccccccc"
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unstable");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of("reason", "java.lang.IllegalStateException: boom")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unstable");
+    }
+
+    @Test
+    void requiresLowercaseDotNotationMeterNames() {
+        assertThat(MetricTags.meterName("market.history.db.hit")).isEqualTo("market.history.db.hit");
+
+        assertThatThrownBy(() -> MetricTags.meterName("MarketHistoryHit"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("lowercase dot notation");
+    }
+}

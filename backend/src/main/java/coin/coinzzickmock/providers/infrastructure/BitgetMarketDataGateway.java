@@ -29,17 +29,29 @@ import org.springframework.web.client.RestClient;
 public class BitgetMarketDataGateway implements MarketDataGateway {
     private static final int BITGET_HISTORICAL_CANDLE_LIMIT = 200;
     private static final Duration BITGET_HISTORICAL_CANDLE_MAX_RANGE = Duration.ofDays(90);
+    private static final String OPERATION_TICKER = "ticker";
+    private static final String OPERATION_MINUTE_CANDLES = "minute_candles";
+    private static final String OPERATION_HISTORY_CANDLES = "history_candles";
 
     private final RestClient bitgetRestClient;
     private final BitgetTickerSnapshotMapper bitgetTickerSnapshotMapper;
     private final Clock clock;
+    private final BitgetTelemetry bitgetTelemetry;
 
     @Autowired
     public BitgetMarketDataGateway(
             RestClient bitgetRestClient,
+            BitgetTickerSnapshotMapper bitgetTickerSnapshotMapper,
+            BitgetTelemetry bitgetTelemetry
+    ) {
+        this(bitgetRestClient, bitgetTickerSnapshotMapper, Clock.systemUTC(), bitgetTelemetry);
+    }
+
+    BitgetMarketDataGateway(
+            RestClient bitgetRestClient,
             BitgetTickerSnapshotMapper bitgetTickerSnapshotMapper
     ) {
-        this(bitgetRestClient, bitgetTickerSnapshotMapper, Clock.systemUTC());
+        this(bitgetRestClient, bitgetTickerSnapshotMapper, Clock.systemUTC(), BitgetTelemetry.noop());
     }
 
     BitgetMarketDataGateway(
@@ -47,9 +59,19 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             BitgetTickerSnapshotMapper bitgetTickerSnapshotMapper,
             Clock clock
     ) {
+        this(bitgetRestClient, bitgetTickerSnapshotMapper, clock, BitgetTelemetry.noop());
+    }
+
+    BitgetMarketDataGateway(
+            RestClient bitgetRestClient,
+            BitgetTickerSnapshotMapper bitgetTickerSnapshotMapper,
+            Clock clock,
+            BitgetTelemetry bitgetTelemetry
+    ) {
         this.bitgetRestClient = bitgetRestClient;
         this.bitgetTickerSnapshotMapper = bitgetTickerSnapshotMapper;
         this.clock = clock;
+        this.bitgetTelemetry = bitgetTelemetry;
     }
 
     @Override
@@ -59,6 +81,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
 
     @Override
     public MarketSnapshot loadMarket(String symbol) {
+        long startedAt = System.nanoTime();
         try {
             BitgetTickerResponse response = bitgetRestClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -73,9 +96,18 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                 log.warn("Bitget ticker response is empty; using fallback market snapshot. symbol={} code={} message={}",
                         symbol, responseCode(response), responseMessage(response));
             }
-            return bitgetTickerSnapshotMapper.fromResponse(symbol, response);
+            MarketSnapshot market = bitgetTickerSnapshotMapper.fromResponse(symbol, response);
+            if (response == null || response.data() == null || response.data().isEmpty()) {
+                recordBitgetRequest(OPERATION_TICKER, "empty", startedAt);
+                recordBitgetFallback(OPERATION_TICKER, symbol, "empty");
+            } else {
+                recordBitgetRequest(OPERATION_TICKER, "success", startedAt);
+            }
+            return market;
         } catch (Exception exception) {
             log.warn("Failed to load Bitget ticker; using fallback market snapshot. symbol={}", symbol, exception);
+            recordBitgetRequest(OPERATION_TICKER, "failure", startedAt);
+            recordBitgetFallback(OPERATION_TICKER, symbol, "exception");
             return bitgetTickerSnapshotMapper.fallback(symbol);
         }
     }
@@ -86,6 +118,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             Instant fromInclusive,
             Instant toExclusive
     ) {
+        long startedAt = System.nanoTime();
         try {
             BitgetCandleResponse response = bitgetRestClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -105,19 +138,30 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                         "Bitget candle response is not usable; returning empty history. symbol={} from={} to={} code={} message={}",
                         symbol, fromInclusive, toExclusive, responseCode(response), responseMessage(response)
                 );
+                recordBitgetRequest(OPERATION_MINUTE_CANDLES, "invalid_response", startedAt);
+                recordBitgetFallback(OPERATION_MINUTE_CANDLES, symbol, "invalid_response");
                 return List.of();
             }
 
-            return response.data().stream()
+            List<MarketMinuteCandleSnapshot> candles = response.data().stream()
                     .map(this::toMinuteCandleSnapshot)
                     .filter(Objects::nonNull)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
                     .sorted(Comparator.comparing(MarketMinuteCandleSnapshot::openTime))
                     .toList();
+            if (candles.isEmpty()) {
+                recordBitgetRequest(OPERATION_MINUTE_CANDLES, "empty", startedAt);
+                recordBitgetFallback(OPERATION_MINUTE_CANDLES, symbol, "empty");
+            } else {
+                recordBitgetRequest(OPERATION_MINUTE_CANDLES, "success", startedAt);
+            }
+            return candles;
         } catch (Exception exception) {
             log.warn("Failed to load Bitget minute candles; returning empty history. symbol={} from={} to={}",
                     symbol, fromInclusive, toExclusive, exception);
+            recordBitgetRequest(OPERATION_MINUTE_CANDLES, "failure", startedAt);
+            recordBitgetFallback(OPERATION_MINUTE_CANDLES, symbol, "exception");
             return List.of();
         }
     }
@@ -178,6 +222,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             Instant toExclusive,
             int requestLimit
     ) {
+        long startedAt = System.nanoTime();
         try {
             BitgetCandleResponse response = bitgetRestClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -198,20 +243,47 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                         symbol, interval.value(), fromInclusive, toExclusive, responseCode(response),
                         responseMessage(response)
                 );
+                recordBitgetRequest(OPERATION_HISTORY_CANDLES, "invalid_response", startedAt);
+                recordBitgetFallback(OPERATION_HISTORY_CANDLES, symbol, "invalid_response");
                 return List.of();
             }
 
-            return response.data().stream()
+            List<MarketHistoricalCandleSnapshot> candles = response.data().stream()
                     .map(rawCandle -> toHistoricalCandleSnapshot(rawCandle, interval))
                     .filter(Objects::nonNull)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
                     .sorted(Comparator.comparing(MarketHistoricalCandleSnapshot::openTime))
                     .toList();
+            if (candles.isEmpty()) {
+                recordBitgetRequest(OPERATION_HISTORY_CANDLES, "empty", startedAt);
+                recordBitgetFallback(OPERATION_HISTORY_CANDLES, symbol, "empty");
+            } else {
+                recordBitgetRequest(OPERATION_HISTORY_CANDLES, "success", startedAt);
+            }
+            return candles;
         } catch (Exception exception) {
             log.warn("Failed to load Bitget historical candles. symbol={} interval={} from={} to={}",
                     symbol, interval.value(), fromInclusive, toExclusive, exception);
+            recordBitgetRequest(OPERATION_HISTORY_CANDLES, "failure", startedAt);
+            recordBitgetFallback(OPERATION_HISTORY_CANDLES, symbol, "exception");
             return List.of();
+        }
+    }
+
+    private void recordBitgetRequest(String operation, String result, long startedAt) {
+        try {
+            bitgetTelemetry.recordRequest(operation, result, Duration.ofNanos(System.nanoTime() - startedAt));
+        } catch (RuntimeException exception) {
+            log.warn("Failed to record Bitget request telemetry. operation={} result={}", operation, result, exception);
+        }
+    }
+
+    private void recordBitgetFallback(String operation, String symbol, String reason) {
+        try {
+            bitgetTelemetry.recordFallback(operation, symbol, reason);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to record Bitget fallback telemetry. operation={} reason={}", operation, reason, exception);
         }
     }
 

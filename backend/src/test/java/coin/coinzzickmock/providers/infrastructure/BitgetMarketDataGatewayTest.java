@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -54,6 +56,198 @@ class BitgetMarketDataGatewayTest {
 
         server.verify();
         assertThat(market.turnover24hUsdt()).isEqualTo(5_250_000_000d);
+    }
+
+    @Test
+    void recordsTickerSuccessTelemetryForRestAttempt() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper(),
+                new BitgetTelemetry(registry)
+        );
+        server.expect(requestTo("https://api.bitget.com/api/v2/mix/market/ticker"
+                        + "?symbol=BTCUSDT&productType=USDT-FUTURES"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {
+                          "code": "00000",
+                          "msg": "success",
+                          "data": [
+                            {
+                              "symbol": "BTCUSDT",
+                              "lastPr": "74000",
+                              "markPrice": "74010",
+                              "indexPrice": "74005",
+                              "fundingRate": "0.0001",
+                              "change24h": "0.2",
+                              "usdtVolume": "5250000000"
+                            }
+                          ]
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        gateway.loadMarket("BTCUSDT");
+
+        server.verify();
+        assertThat(registry.counter(
+                "market.bitget.request.total",
+                "operation",
+                "ticker",
+                "result",
+                "success"
+        ).count()).isEqualTo(1);
+        assertThat(registry.timer(
+                "market.bitget.request.duration",
+                "operation",
+                "ticker"
+        ).count()).isEqualTo(1);
+    }
+
+    @Test
+    void keepsTickerResponseWhenTelemetryRecordingFails() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper(),
+                new ThrowingBitgetTelemetry()
+        );
+        server.expect(requestTo("https://api.bitget.com/api/v2/mix/market/ticker"
+                        + "?symbol=BTCUSDT&productType=USDT-FUTURES"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {
+                          "code": "00000",
+                          "msg": "success",
+                          "data": [
+                            {
+                              "symbol": "BTCUSDT",
+                              "lastPr": "74000",
+                              "markPrice": "74010",
+                              "indexPrice": "74005",
+                              "fundingRate": "0.0001",
+                              "change24h": "0.2",
+                              "usdtVolume": "5250000000"
+                            }
+                          ]
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+
+        server.verify();
+        assertThat(market.lastPrice()).isEqualTo(74000);
+    }
+
+    @Test
+    void recordsTickerFailureAndFallbackTelemetryForRestException() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper(),
+                new BitgetTelemetry(registry)
+        );
+        server.expect(requestTo("https://api.bitget.com/api/v2/mix/market/ticker"
+                        + "?symbol=BTCUSDT&productType=USDT-FUTURES"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withServerError());
+
+        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+
+        server.verify();
+        assertThat(market.symbol()).isEqualTo("BTCUSDT");
+        assertThat(registry.counter(
+                "market.bitget.request.total",
+                "operation",
+                "ticker",
+                "result",
+                "failure"
+        ).count()).isEqualTo(1);
+        assertThat(registry.counter(
+                "market.bitget.fallback.total",
+                "operation",
+                "ticker",
+                "symbol",
+                "BTCUSDT",
+                "reason",
+                "exception"
+        ).count()).isEqualTo(1);
+    }
+
+    @Test
+    void keepsTickerFallbackWhenFallbackTelemetryRecordingFails() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper(),
+                new ThrowingFallbackBitgetTelemetry()
+        );
+        server.expect(requestTo("https://api.bitget.com/api/v2/mix/market/ticker"
+                        + "?symbol=BTCUSDT&productType=USDT-FUTURES"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {
+                          "code": "00000",
+                          "msg": "success",
+                          "data": []
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+
+        server.verify();
+        assertThat(market.symbol()).isEqualTo("BTCUSDT");
+    }
+
+
+    @Test
+    void recordsMinuteCandleInvalidResponseTelemetry() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.bitget.com");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        BitgetMarketDataGateway gateway = new BitgetMarketDataGateway(
+                builder.build(),
+                new BitgetTickerSnapshotMapper(),
+                new BitgetTelemetry(registry)
+        );
+        Instant fromInclusive = Instant.parse("2026-04-30T00:00:00Z");
+        Instant toExclusive = Instant.parse("2026-04-30T00:05:00Z");
+        server.expect(request -> assertThat(request.getURI().getPath())
+                        .isEqualTo("/api/v2/mix/market/candles"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {
+                          "code": "40001",
+                          "msg": "invalid",
+                          "data": null
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        gateway.loadMinuteCandles("BTCUSDT", fromInclusive, toExclusive);
+
+        server.verify();
+        assertThat(registry.counter(
+                "market.bitget.request.total",
+                "operation",
+                "minute_candles",
+                "result",
+                "invalid_response"
+        ).count()).isEqualTo(1);
+        assertThat(registry.counter(
+                "market.bitget.fallback.total",
+                "operation",
+                "minute_candles",
+                "symbol",
+                "BTCUSDT",
+                "reason",
+                "invalid_response"
+        ).count()).isEqualTo(1);
     }
 
     @Test
@@ -287,5 +481,31 @@ class BitgetMarketDataGatewayTest {
                   "data": []
                 }
                 """;
+    }
+
+    private static final class ThrowingBitgetTelemetry extends BitgetTelemetry {
+        private ThrowingBitgetTelemetry() {
+            super(null);
+        }
+
+        @Override
+        public void recordRequest(String operation, String result, java.time.Duration duration) {
+            throw new IllegalStateException("telemetry down");
+        }
+    }
+
+    private static final class ThrowingFallbackBitgetTelemetry extends BitgetTelemetry {
+        private ThrowingFallbackBitgetTelemetry() {
+            super(null);
+        }
+
+        @Override
+        public void recordRequest(String operation, String result, java.time.Duration duration) {
+        }
+
+        @Override
+        public void recordFallback(String operation, String symbol, String reason) {
+            throw new IllegalStateException("telemetry down");
+        }
     }
 }

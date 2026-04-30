@@ -70,6 +70,33 @@ class MetricTagsTest {
     }
 
     @Test
+    void acceptsStableRoutePatternsButRejectsRawQueries() {
+        assertThat(MetricTags.of(Map.of("route_pattern", "/api/futures/markets/{symbol}/candles")))
+                .isNotEmpty();
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of(
+                "route_pattern",
+                "/api/futures/markets/BTCUSDT/candles?before=123"
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unstable");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of(
+                "route_pattern",
+                "/api/futures/markets/BTCUSDT/candles"
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unstable");
+
+        assertThatThrownBy(() -> MetricTags.of(Map.of(
+                "route_pattern",
+                "/api/futures/orders/123/cancel"
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unstable");
+    }
+
+    @Test
     void requiresLowercaseDotNotationMeterNames() {
         assertThat(MetricTags.meterName("market.history.db.hit")).isEqualTo("market.history.db.hit");
 

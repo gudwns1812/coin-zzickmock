@@ -31,6 +31,8 @@
 API 응답속도, use-case duration, 외부 연동 latency 같은 횡단 관심사는 `Providers`의 `TelemetryProvider`
 또는 목적별 협력 객체 뒤에서 직접 구현한다.
 기능 코드와 도메인 모델은 계측 구현 세부사항을 알지 않는다.
+SSE처럼 feature API boundary가 connection lifecycle을 직접 소유하는 경우에는 `providers.telemetry.SseTelemetry`
+같은 좁은 목적형 interface를 주입해도 된다. 이 경우에도 Micrometer 구현은 `providers.infrastructure`에만 둔다.
 
 ## Grafana와 관리자 페이지의 경계
 
@@ -94,7 +96,7 @@ Grafana에 두지 않는 것:
 - 관리자 페이지는 민감 데이터를 보여 줄 수 있지만 역할 기반 접근 제어와 감사 로그 기준을 먼저 충족해야 한다.
 - 도메인 모델 안에서 Micrometer, logger, Sentry, Prometheus API를 직접 호출하지 않는다.
 - 애플리케이션 계층의 공통 계측은 `TelemetryProvider` 또는 목적별 협력 객체 뒤에 둔다.
-- API 응답속도 같은 공통 요청/응답 계측은 filter/interceptor 같은 경계에서 수집하되, 기록은 `TelemetryProvider`를 통해 수행한다.
+- API 응답속도 같은 공통 요청/응답 계측은 filter/interceptor 같은 경계에서 수집하되, 기록은 목적별 협력 객체를 통해 수행한다.
 - 외부 HTTP 연동 계측은 connector/infrastructure 경계에서 처리하고 기능 코드에 흩뿌리지 않는다.
 - 로그 메시지는 사람이 검색할 수 있는 안정적인 event name과 key-value context를 가져야 한다.
 - 알림은 "운영자가 바로 판단할 수 있는 증상"에 걸고, 원인 후보는 dashboard와 runbook으로 연결한다.
@@ -241,10 +243,11 @@ p95/p99는 단일 spike로 알림을 보내지 않는다.
 
 Grafana에 추가할 지표:
 
-- `http.server.requests`: route/method/status별 count, p50, p95, p99
-- `http.server.request.size`: 요청 size bucket
-- `http.server.response.size`: 응답 size bucket
-- `http.server.slow_requests.total`: 엔드포인트 그룹별 slow request 수
+- `http.request.total` with `method`, `route_pattern`, `endpoint_group`, `status`, `status_family`
+- `http.request.duration` with `method`, `route_pattern`, `endpoint_group`, `status_family`
+- `http.request.slow.total` with `method`, `route_pattern`, `endpoint_group`, `status_family`
+- `http.payload.size.bucket.total` with `method`, `route_pattern`, `endpoint_group`, `status_family`, `direction`, `size_bucket`
+- Spring Boot Actuator baseline: `jvm.*`, `process.*`, datasource/cache/runtime meters
 - `jvm.memory.used`, `jvm.gc.pause`, `jvm.threads.live`
 - `process.cpu.usage`, `system.cpu.usage`
 - DB connection pool active/idle/pending
@@ -328,15 +331,19 @@ Grafana에 추가할 지표:
 
 시장 데이터는 backend가 짧은 주기로 갱신하고 SSE로 전파하는 핵심 경로다.
 
-Grafana에 추가할 지표:
+현재 구현된 지표:
+
+- `market.bitget.request.total` with `operation`, `result`
+- `market.bitget.request.duration` with `operation`
+- `market.bitget.request.rate.per_second` with `operation`, `result`.
+  이는 애플리케이션 meter가 아니라 PromQL `rate(market_bitget_request_total[1m])`로 계산하는 dashboard 신호다.
+- `market.bitget.fallback.total` with `operation`, `symbol`
+
+계획 중인 지표:
 
 - `market.refresh.total` with `result`
 - `market.refresh.duration`
 - `market.snapshot.staleness.seconds` by bounded `symbol`
-- `market.bitget.request.total` with `operation`, `result`
-- `market.bitget.request.duration` with `operation`
-- `market.bitget.request.rate.per_second` with `operation`, `result`
-- `market.bitget.fallback.total` with `operation`, `symbol`
 - `market.history.persist.total` with `result`, `symbol`
 - `market.history.retry.pending.current`
 - `market.history.retry.total` with `result`
@@ -356,14 +363,15 @@ Grafana에 추가할 지표:
 
 Grafana에 추가할 지표:
 
-- `sse.connections.current` with `stream=market|trading`
+- `sse.connections.current` with `stream=market|market_candle|trading_execution`
 - `sse.connections.opened.total` with `stream`
 - `sse.connections.closed.total` with `stream`, `reason`
 - `sse.connections.rejected.total` with `stream`, `reason=total_limit|symbol_limit|member_limit`
 - `sse.send.total` with `stream`, `result`
-- `sse.send.duration` with `stream`
-- `sse.executor.queue.current`
-- `sse.executor.rejected.total`
+- `sse.send.duration` with `stream`, `result`
+- `sse.executor.rejected.total` with `stream`
+
+현재 구현은 executor rejection을 counter로 기록한다. executor queue depth는 queue 구현이 노출될 때 별도 gauge 이름을 정해 추가한다.
 
 중요 로그:
 
@@ -576,6 +584,8 @@ Grafana에 추가할 지표:
 - Micrometer는 infrastructure 또는 application orchestration 경계에서 사용한다.
 - domain model은 framework-free로 유지한다.
 - use-case와 business event 기록은 `TelemetryProvider`를 우선 사용한다.
+- HTTP, Bitget, SSE처럼 metric family별 label schema가 뚜렷한 경우에는 `HttpRequestTelemetry`, `BitgetTelemetry`, `SseTelemetry`처럼 목적형 협력 객체를 둔다.
+- 목적형 협력 객체가 feature API boundary에 주입되더라도 Micrometer import는 `providers.infrastructure` 밖으로 나가면 안 된다.
 - Bitget, SMTP 같은 외부 연동은 connector-level instrumentation으로 계측한다.
 - scheduled job은 scheduler-level instrumentation으로 계측한다.
 - meter 등록은 이름과 label이 일관되도록 충분히 중앙화한다.

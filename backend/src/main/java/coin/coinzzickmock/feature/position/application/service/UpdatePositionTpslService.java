@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -9,7 +10,6 @@ import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCa
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.providers.Providers;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +23,7 @@ public class UpdatePositionTpslService {
     private final PositionRepository positionRepository;
     private final OrderRepository orderRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
-    private final Providers providers;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
 
     @Transactional
     public PositionSnapshotResult update(
@@ -36,10 +36,7 @@ public class UpdatePositionTpslService {
     ) {
         PositionSnapshot current = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
                 .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
-        MarketSnapshot market = providers.connector().marketDataGateway().loadMarket(current.symbol());
-        if (market == null) {
-            throw new CoreException(ErrorCode.MARKET_NOT_FOUND);
-        }
+        MarketSnapshot market = realtimeMarketPriceReader.requireFreshMarket(current.symbol());
 
         double markPrice = market.markPrice();
         validateTargetPrices(current, takeProfitPrice, stopLossPrice, markPrice);

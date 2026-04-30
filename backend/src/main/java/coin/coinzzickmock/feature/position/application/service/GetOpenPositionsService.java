@@ -1,13 +1,12 @@
 package coin.coinzzickmock.feature.position.application.service;
 
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.providers.Providers;
 import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,7 +20,7 @@ public class GetOpenPositionsService {
     private final PositionRepository positionRepository;
     private final OrderRepository orderRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
-    private final Providers providers;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
 
     @Transactional(readOnly = true)
     public List<PositionSnapshotResult> getPositions(String memberId) {
@@ -32,11 +31,9 @@ public class GetOpenPositionsService {
     }
 
     private PositionSnapshot markToMarketForRead(PositionSnapshot snapshot) {
-        MarketSnapshot market = providers.connector().marketDataGateway().loadMarket(snapshot.symbol());
-        if (market == null) {
-            return snapshot;
-        }
-        return snapshot.markToMarket(market.markPrice());
+        return realtimeMarketPriceReader.freshMarkPrice(snapshot.symbol())
+                .map(snapshot::markToMarket)
+                .orElse(snapshot);
     }
 
     private PositionSnapshotResult toResult(String memberId, PositionSnapshot snapshot) {

@@ -12,7 +12,7 @@
 - [x] PR 2: Bitget WebSocket provider parser/connection lifecycle
 - [x] PR 3: realtime market data store와 REST bootstrap/recovery labeling
 - [x] PR 4: market summary read/SSE의 WS source 전환
-- [ ] PR 5: command/read service의 realtime source 전환
+- [x] PR 5: command/read service의 realtime source 전환
 - [ ] PR 6: trade/ticker semantics 기준 execution processor 분리
 - [ ] PR 7: live candle aggregation/persistence/SSE
 - [ ] PR 8: frontend consumer와 제품/provider 문서 업데이트
@@ -136,4 +136,7 @@ These references use already persisted position state or domain calculations and
 - PR 2 confirmed Bitget official field semantics for contract public trade, ticker, and candlestick WS payloads.
 - PR 4 added a realtime summary projector and a spy/fake test proving healthy market summary paths do not call
   `loadMarket()` or `loadSupportedMarkets()`.
-- PR 5 and PR 6 must convert every command/processor listed in the audit or explicitly document why a site is recovery/history-only.
+- PR 5 added `RealtimeMarketPriceReader` and moved order/close/TP-SL/account/open-position latest-price reads to
+  freshness-checked realtime store state, with read paths degrading to stored position marks when realtime mark price is
+  unavailable.
+- PR 6 must convert every processor listed in the audit or explicitly document why a site is recovery/history-only.

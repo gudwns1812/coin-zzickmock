@@ -5,7 +5,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
     private final BitgetWebSocketConnectionFactory connectionFactory;
     private final BitgetWebSocketMarketEventParser parser;
@@ -35,9 +37,14 @@ public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
         }
 
         reconnectState = MarketRealtimeReconnectState.CONNECTING;
-        connection = connectionFactory.connect(this);
-        reconnectState = MarketRealtimeReconnectState.CONNECTED;
-        subscribeAll();
+        try {
+            connection = connectionFactory.connect(this);
+            reconnectState = MarketRealtimeReconnectState.CONNECTED;
+            subscribeAll();
+        } catch (RuntimeException exception) {
+            reconnectState = MarketRealtimeReconnectState.DISCONNECTED;
+            log.warn("Bitget WebSocket connection failed; runtime will retry.", exception);
+        }
     }
 
     public void recover() {
@@ -55,6 +62,12 @@ public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
             connection.close();
         }
         reconnectState = MarketRealtimeReconnectState.DISCONNECTED;
+    }
+
+    public void heartbeat() {
+        if (reconnectState == MarketRealtimeReconnectState.CONNECTED && connection != null) {
+            connection.send("ping");
+        }
     }
 
     @Override

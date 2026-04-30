@@ -24,6 +24,9 @@ spring:
       enabled: false
 
 coin:
+  bitget:
+    websocket:
+      enabled: false
   market:
     startup-warmup:
       enabled: false

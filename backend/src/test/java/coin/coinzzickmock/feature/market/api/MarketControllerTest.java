@@ -14,10 +14,15 @@ import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdate;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
@@ -86,6 +91,44 @@ class MarketControllerTest {
         assertTrue(emitter != null);
         verify(broker).reserve("BTCUSDT");
         verify(broker).register(eq(permit), any(SseEmitter.class));
+    }
+
+    @Test
+    void doesNotRegisterCandleStreamWhenInitialSendFails() {
+        GetMarketSummaryService summaryService = mock(GetMarketSummaryService.class);
+        GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);
+        MarketRealtimeSseBroker marketBroker = mock(MarketRealtimeSseBroker.class);
+        MarketCandleRealtimeSseBroker candleBroker = mock(MarketCandleRealtimeSseBroker.class);
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        RealtimeMarketCandleProjector projector = new RealtimeMarketCandleProjector(store);
+        Instant open = Instant.parse("2026-04-30T04:00:00Z");
+        store.acceptCandle(new RealtimeMarketCandleUpdate(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_MINUTE,
+                open,
+                BigDecimal.valueOf(100),
+                BigDecimal.valueOf(105),
+                BigDecimal.valueOf(99),
+                BigDecimal.valueOf(102),
+                BigDecimal.ONE,
+                BigDecimal.valueOf(102),
+                BigDecimal.valueOf(102),
+                open.plusSeconds(1),
+                open.plusSeconds(1)
+        ));
+        MarketController controller = new TestableMarketController(
+                summaryService,
+                candleService,
+                marketBroker,
+                candleBroker,
+                projector,
+                SSE_TIMEOUT_MS
+        );
+
+        SseEmitter emitter = controller.candleStream("BTCUSDT", "1m");
+
+        assertTrue(((FailingSseEmitter) emitter).completed);
+        verify(candleBroker, never()).register(eq("BTCUSDT"), eq(MarketCandleInterval.ONE_MINUTE), any(SseEmitter.class));
     }
 
     @Test
@@ -193,6 +236,17 @@ class MarketControllerTest {
                 long timeoutMs
         ) {
             super(service, candleService, broker, timeoutMs);
+        }
+
+        private TestableMarketController(
+                GetMarketSummaryService service,
+                GetMarketCandlesService candleService,
+                MarketRealtimeSseBroker marketBroker,
+                MarketCandleRealtimeSseBroker candleBroker,
+                RealtimeMarketCandleProjector projector,
+                long timeoutMs
+        ) {
+            super(service, candleService, marketBroker, candleBroker, projector, timeoutMs);
         }
 
         @Override

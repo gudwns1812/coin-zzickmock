@@ -7,8 +7,11 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -222,6 +225,33 @@ class MarketRealtimeSseBrokerTest {
         assertThat(emitter.events()).hasSize(1);
     }
 
+    @Test
+    void recordsConnectionSendAndRejectionTelemetry() {
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 1, 2, telemetry);
+        CapturingSseEmitter healthyEmitter = new CapturingSseEmitter();
+        FailingSseEmitter failingEmitter = new FailingSseEmitter();
+        broker.register(broker.reserve("BTCUSDT"), healthyEmitter);
+        broker.register(broker.reserve("ETHUSDT"), failingEmitter);
+
+        assertThatThrownBy(() -> broker.reserve("BTCUSDT"))
+                .isInstanceOf(CoreException.class);
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("BTCUSDT", "Bitcoin Perpetual", 74000, 74010, 74005, 0.0001, 0.2)
+        ));
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("ETHUSDT", "Ethereum Perpetual", 3200, 3201, 3199, 0.0001, 0.2)
+        ));
+
+        assertThat(telemetry.events()).contains(
+                "opened:market",
+                "send:market:success",
+                "send:market:failure",
+                "closed:market:send_failure",
+                "rejected:market:total_limit"
+        );
+    }
+
     private static Executor directExecutor() {
         return Runnable::run;
     }
@@ -347,6 +377,39 @@ class MarketRealtimeSseBrokerTest {
 
         private List<Object> capturedEvents() {
             return events();
+        }
+    }
+
+    private static class RecordingSseTelemetry implements SseTelemetry {
+        private final List<String> events = new ArrayList<>();
+
+        @Override
+        public void connectionOpened(String stream) {
+            events.add("opened:" + stream);
+        }
+
+        @Override
+        public void connectionClosed(String stream, String reason) {
+            events.add("closed:" + stream + ":" + reason);
+        }
+
+        @Override
+        public void connectionRejected(String stream, String reason) {
+            events.add("rejected:" + stream + ":" + reason);
+        }
+
+        @Override
+        public void sendRecorded(String stream, String result, Duration duration) {
+            events.add("send:" + stream + ":" + result);
+        }
+
+        @Override
+        public void executorRejected(String stream) {
+            events.add("executor:" + stream);
+        }
+
+        private List<String> events() {
+            return List.copyOf(events);
         }
     }
 }

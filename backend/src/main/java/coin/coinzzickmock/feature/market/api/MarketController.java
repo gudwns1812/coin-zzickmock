@@ -125,9 +125,12 @@ public class MarketController {
     public SseEmitter candleStream(@PathVariable String symbol, @RequestParam String interval) {
         MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
         SseEmitter emitter = createEmitter();
-        realtimeMarketCandleProjector.latest(symbol, candleInterval)
-                .ifPresent(candle -> sendCandleEvent(emitter, candle));
-        marketCandleRealtimeSseBroker.register(symbol, candleInterval, emitter);
+        boolean initialSendSucceeded = realtimeMarketCandleProjector.latest(symbol, candleInterval)
+                .map(candle -> sendCandleEvent(emitter, candle))
+                .orElse(true);
+        if (initialSendSucceeded) {
+            marketCandleRealtimeSseBroker.register(symbol, candleInterval, emitter);
+        }
         return emitter;
     }
 

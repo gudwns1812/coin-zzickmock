@@ -2,7 +2,9 @@ package coin.coinzzickmock.feature.order.application.realtime;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
@@ -26,17 +28,45 @@ public class PositionTakeProfitStopLossProcessor {
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
 
     public void closeTriggeredPositions(MarketSummaryResult market) {
-        List<PendingOrderCandidate> candidates = orderRepository.findPendingBySymbol(market.symbol()).stream()
+        MarketSummaryResult realtimeMarket = freshMarket(market);
+        if (realtimeMarket == null) {
+            return;
+        }
+        double markPrice = realtimeMarket.markPrice();
+        List<PendingOrderCandidate> candidates = orderRepository.findPendingBySymbol(realtimeMarket.symbol()).stream()
                 .filter(candidate -> candidate.order().isConditionalCloseOrder())
                 .filter(candidate -> candidate.order().usesMarkPriceTrigger())
-                .filter(candidate -> isTriggered(candidate.order(), market.markPrice()))
+                .filter(candidate -> isTriggered(candidate.order(), markPrice))
                 .sorted(triggeredOrderComparator())
                 .toList();
         for (PendingOrderCandidate candidate : candidates) {
-            closeIfTriggered(candidate.memberId(), candidate.order(), market);
+            closeIfTriggered(candidate.memberId(), candidate.order(), realtimeMarket);
         }
+    }
+
+    private MarketSummaryResult freshMarket(MarketSummaryResult eventMarket) {
+        return realtimeMarketPriceReader.freshMarket(eventMarket.symbol())
+                .map(prices -> withRealtimePrices(eventMarket, prices))
+                .orElse(null);
+    }
+
+    private MarketSummaryResult withRealtimePrices(MarketSummaryResult eventMarket, MarketSnapshot prices) {
+        return new MarketSummaryResult(
+                eventMarket.symbol(),
+                eventMarket.displayName(),
+                prices.lastPrice(),
+                prices.markPrice(),
+                prices.indexPrice(),
+                eventMarket.fundingRate(),
+                eventMarket.change24h(),
+                eventMarket.turnover24hUsdt(),
+                eventMarket.serverTime(),
+                eventMarket.nextFundingAt(),
+                eventMarket.fundingIntervalHours()
+        );
     }
 
     private void closeIfTriggered(String memberId, FuturesOrder candidate, MarketSummaryResult market) {

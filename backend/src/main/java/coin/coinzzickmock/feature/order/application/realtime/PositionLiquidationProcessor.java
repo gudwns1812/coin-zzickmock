@@ -6,7 +6,9 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -33,25 +35,52 @@ public class PositionLiquidationProcessor {
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
 
     public void liquidateBreachedPositions(MarketSummaryResult market) {
-        List<OpenPositionCandidate> candidates = positionRepository.findOpenBySymbol(market.symbol());
+        MarketSummaryResult realtimeMarket = freshMarket(market);
+        if (realtimeMarket == null) {
+            return;
+        }
+        List<OpenPositionCandidate> candidates = positionRepository.findOpenBySymbol(realtimeMarket.symbol());
         Set<String> assessedCrossMembers = new HashSet<>();
 
         for (OpenPositionCandidate candidate : candidates) {
-            PositionSnapshot marked = candidate.position().markToMarket(market.markPrice());
+            PositionSnapshot marked = candidate.position().markToMarket(realtimeMarket.markPrice());
             if (marked.isCrossMargin()) {
                 if (assessedCrossMembers.add(candidate.memberId())) {
-                    liquidateCrossIfNeeded(candidate.memberId(), market);
+                    liquidateCrossIfNeeded(candidate.memberId(), realtimeMarket);
                 }
                 continue;
             }
 
-            IsolatedLiquidationAssessment assessment = liquidationPolicy.assessIsolated(marked, market.markPrice());
+            IsolatedLiquidationAssessment assessment = liquidationPolicy.assessIsolated(marked, realtimeMarket.markPrice());
             if (assessment.breached()) {
-                liquidate(candidate.memberId(), marked, market.lastPrice(), market.markPrice());
+                liquidate(candidate.memberId(), marked, realtimeMarket.lastPrice(), realtimeMarket.markPrice());
             }
         }
+    }
+
+    private MarketSummaryResult freshMarket(MarketSummaryResult eventMarket) {
+        return realtimeMarketPriceReader.freshMarket(eventMarket.symbol())
+                .map(prices -> withRealtimePrices(eventMarket, prices))
+                .orElse(null);
+    }
+
+    private MarketSummaryResult withRealtimePrices(MarketSummaryResult eventMarket, MarketSnapshot prices) {
+        return new MarketSummaryResult(
+                eventMarket.symbol(),
+                eventMarket.displayName(),
+                prices.lastPrice(),
+                prices.markPrice(),
+                prices.indexPrice(),
+                eventMarket.fundingRate(),
+                eventMarket.change24h(),
+                eventMarket.turnover24hUsdt(),
+                eventMarket.serverTime(),
+                eventMarket.nextFundingAt(),
+                eventMarket.fundingIntervalHours()
+        );
     }
 
     private void liquidateCrossIfNeeded(String memberId, MarketSummaryResult market) {

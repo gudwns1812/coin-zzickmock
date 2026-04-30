@@ -9,7 +9,9 @@ import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -38,6 +40,7 @@ public class PendingOrderFillProcessor {
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final RealtimeMarketPriceReader realtimeMarketPriceReader;
 
     @Transactional
     public void fillExecutablePendingOrders(MarketSummaryUpdatedEvent event) {
@@ -45,9 +48,20 @@ public class PendingOrderFillProcessor {
             return;
         }
 
-        MarketSummaryResult market = event.result();
+        MarketSummaryResult market = freshMarket(event);
+        if (market == null) {
+            return;
+        }
+        MarketSummaryUpdatedEvent realtimeEvent = new MarketSummaryUpdatedEvent(
+                market,
+                event.previousLastPrice(),
+                MarketPriceMovementDirection.between(event.previousLastPrice(), market.lastPrice())
+        );
+        if (!realtimeEvent.hasPriceMovement()) {
+            return;
+        }
         List<PendingOrderCandidate> candidates = executableCandidates(
-                event,
+                realtimeEvent,
                 pendingOrderExecutionCache.refresh(
                         market.symbol(),
                         orderRepository.findPendingBySymbol(market.symbol())
@@ -69,6 +83,28 @@ public class PendingOrderFillProcessor {
                 .filter(candidate -> isInsideMove(candidate.order(), event.previousLastPrice(), market.lastPrice()))
                 .sorted(candidateComparator(event.direction()))
                 .toList();
+    }
+
+    private MarketSummaryResult freshMarket(MarketSummaryUpdatedEvent event) {
+        return realtimeMarketPriceReader.freshMarket(event.result().symbol())
+                .map(prices -> withRealtimePrices(event.result(), prices))
+                .orElse(null);
+    }
+
+    private MarketSummaryResult withRealtimePrices(MarketSummaryResult eventMarket, MarketSnapshot prices) {
+        return new MarketSummaryResult(
+                eventMarket.symbol(),
+                eventMarket.displayName(),
+                prices.lastPrice(),
+                prices.markPrice(),
+                prices.indexPrice(),
+                eventMarket.fundingRate(),
+                eventMarket.change24h(),
+                eventMarket.turnover24hUsdt(),
+                eventMarket.serverTime(),
+                eventMarket.nextFundingAt(),
+                eventMarket.fundingIntervalHours()
+        );
     }
 
     private Comparator<PendingOrderCandidate> candidateComparator(MarketPriceMovementDirection direction) {

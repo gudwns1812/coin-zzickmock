@@ -10,7 +10,7 @@
 
 - [x] PR 1: realtime source contract와 latest-price audit 기준 추가
 - [x] PR 2: Bitget WebSocket provider parser/connection lifecycle
-- [ ] PR 3: realtime market data store와 REST bootstrap/recovery labeling
+- [x] PR 3: realtime market data store와 REST bootstrap/recovery labeling
 - [ ] PR 4: market summary read/SSE의 WS source 전환
 - [ ] PR 5: command/read service의 realtime source 전환
 - [ ] PR 6: trade/ticker semantics 기준 execution processor 분리

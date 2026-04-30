@@ -70,16 +70,16 @@ Please use the created Demo API Key for API calls, and add `paptrading` in the r
 - #### WebSocket
 
 Please use the created Demo API Key for WebSocket connections and request the demo trading service address:<br/>
-Public: wss://wspap.bitget.com/v3/ws/public<br/>
-Private: wss://wspap.bitget.com/v3/ws/private
+Public: wss://wspap.bitget.com/v2/ws/public<br/>
+Private: wss://wspap.bitget.com/v2/ws/private
 
 ## Domain Name
 
 | Domain Name               | Domain                            | Recommended                       |
 |---------------------------|-----------------------------------|-----------------------------------|
 | REST                      | https://api.bitget.com            | main domain name                  |
-| Websocket public channel  | wss://ws.bitget.com/v3/ws/public  | main domain name, public channel  |
-| websocket private channel | wss://ws.bitget.com/v3/ws/private | main domain name, private channel |
+| Websocket public channel  | wss://ws.bitget.com/v2/ws/public  | main domain name, public channel  |
+| websocket private channel | wss://ws.bitget.com/v2/ws/private | main domain name, private channel |
 
 ## Header
 

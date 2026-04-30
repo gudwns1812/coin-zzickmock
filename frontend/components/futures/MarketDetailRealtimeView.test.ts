@@ -41,6 +41,10 @@ test("close position button uses held quantity instead of closeable quantity gat
   assert.equal(source.includes("getCloseableQuantity"), false);
 });
 
+test("order entry panel receives displayed positions for close orders", () => {
+  assert.equal(source.includes("positions={displayedPositions}"), true);
+});
+
 test("Close amount displays accumulated closed quantity, not closeable quantity", () => {
   assert.equal(source.includes("getAccumulatedClosedQuantity(position)"), true);
   assert.equal(source.includes('label="Close amount"'), true);

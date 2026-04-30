@@ -310,6 +310,7 @@ export default function MarketDetailRealtimeView({
             accountSummary={accountSummary}
             currentPrice={market.lastPrice}
             isAuthenticated={isAuthenticated}
+            positions={displayedPositions}
             symbol={market.symbol}
           />
         </aside>
@@ -977,9 +978,6 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                 <td className="py-3 text-main-dark-gray/70">
                   <span className="block font-semibold text-main-dark-gray">
                     {formatOrderPurpose(order)}
-                  </span>
-                  <span className="mt-1 block text-xs-custom">
-                    #{order.orderId.slice(0, 8)}
                   </span>
                 </td>
                 <td className="py-3 text-main-dark-gray/70">

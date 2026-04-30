@@ -17,10 +17,6 @@ export default async function MyPageRedemptionsPage() {
             <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
               교환 내역
             </h1>
-            <p className="mt-3 text-sm-custom text-main-dark-gray/65 break-keep">
-              포인트 상점에서 신청한 교환권 상태와 신청 정보를 확인합니다.
-              대기 중인 신청은 이 화면에서 취소할 수 있습니다.
-            </p>
           </div>
           <Link
             className="flex items-center gap-2 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white"

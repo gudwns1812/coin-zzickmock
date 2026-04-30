@@ -108,9 +108,6 @@ export default function MarketsLanding({
             <h2 className="text-xl-custom font-semibold text-main-dark-gray">
               코인 시세
             </h2>
-            <p className="mt-2 text-sm-custom text-main-dark-gray/62 break-keep">
-              가격, 24시간 변동, 펀딩비와 거래대금을 한 번에 비교할 수 있습니다.
-            </p>
           </div>
           <div className="flex items-center gap-2 rounded-main bg-main-light-gray/30 p-1">
             {SORT_BUTTONS.map((button) => {
@@ -174,10 +171,6 @@ export default function MarketsLanding({
             <h2 className="text-xl-custom font-semibold text-main-dark-gray">
               실현 수익률 랭킹
             </h2>
-            <p className="mt-2 text-sm-custom text-main-dark-gray/62 break-keep">
-              실제 지갑 USDT에 반영된 정산 손익과 수수료 기준으로 상위 트레이더를
-              확인합니다.
-            </p>
           </div>
           <Link
             href="/portfolio"

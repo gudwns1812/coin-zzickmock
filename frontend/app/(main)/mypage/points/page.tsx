@@ -21,9 +21,6 @@ export default async function MyPagePointsPage() {
             <h1 className="mt-2 text-4xl-custom font-bold text-main-dark-gray">
               {reward.rewardPoint.toLocaleString("ko-KR")} P
             </h1>
-            <p className="mt-3 text-sm-custom text-main-dark-gray/65 break-keep">
-              실현 손익으로 적립된 포인트와 교환권 신청/환불 내역을 확인합니다.
-            </p>
           </div>
           <Link
             className="rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white"

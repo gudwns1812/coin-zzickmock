@@ -2,12 +2,14 @@
 
 import type {
   FuturesAccountSummary,
+  FuturesPosition,
   OrderExecutionResponse,
   OrderPreviewRequest,
   OrderPreviewResponse,
 } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
 import Modal from "@/components/ui/Modal";
+import { CircleHelp } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -19,6 +21,7 @@ type Props = {
   currentPrice: number;
   isAuthenticated: boolean;
   accountSummary: FuturesAccountSummary | null;
+  positions?: FuturesPosition[];
 };
 
 type Side = "LONG" | "SHORT";
@@ -32,21 +35,38 @@ type ClientApiResponse<T> = {
   message: string | null;
 };
 
+type ApiErrorPayload = {
+  code?: string | null;
+  message?: string | null;
+  success?: boolean;
+};
+
+type ClosePositionResponse = {
+  symbol: MarketSymbol;
+  closedQuantity: number;
+  realizedPnl: number;
+  grantedPoint: number;
+};
+
 const MIN_LEVERAGE = 1;
 const MAX_LEVERAGE = 50;
+const DEFAULT_MARGIN_MODE: MarginMode = "CROSS";
+const DEFAULT_LEVERAGE = 10;
+const NO_CLOSE_POSITION_MESSAGE = "종료할 포지션이 없습니다.";
 
 export default function OrderEntryPanel({
   symbol,
   currentPrice,
   isAuthenticated,
   accountSummary,
+  positions = [],
 }: Props) {
   const router = useRouter();
   const [positionSide, setPositionSide] = useState<Side>("LONG");
   const [ticketMode, setTicketMode] = useState<TicketMode>("OPEN");
   const [orderType, setOrderType] = useState<OrderType>("LIMIT");
-  const [marginMode, setMarginMode] = useState<MarginMode>("ISOLATED");
-  const [leverage, setLeverage] = useState(20);
+  const [marginMode, setMarginMode] = useState<MarginMode>(DEFAULT_MARGIN_MODE);
+  const [leverage, setLeverage] = useState(DEFAULT_LEVERAGE);
   const [quantity, setQuantity] = useState("0.01");
   const [limitPrice, setLimitPrice] = useState(currentPrice.toFixed(1));
   const [isLimitPriceDirty, setIsLimitPriceDirty] = useState(false);
@@ -55,6 +75,10 @@ export default function OrderEntryPanel({
   const [preview, setPreview] = useState<OrderPreviewResponse | null>(null);
   const [isPreviewPending, setIsPreviewPending] = useState(false);
   const [isSubmitPending, setIsSubmitPending] = useState(false);
+  const [isLeverageApplyPending, setIsLeverageApplyPending] = useState(false);
+  const [inlineErrorMessage, setInlineErrorMessage] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     if (priceSnapshotSymbolRef.current !== symbol) {
@@ -77,7 +101,7 @@ export default function OrderEntryPanel({
       }),
     [leverage, limitPrice, marginMode, orderType, positionSide, quantity, symbol]
   );
-  const hasValidOrder = orderPayload !== null && ticketMode === "OPEN";
+  const hasValidOrder = orderPayload !== null;
   const parsedQuantity = Number.parseFloat(quantity);
   const effectivePrice =
     orderType === "LIMIT" ? Number.parseFloat(limitPrice) : currentPrice;
@@ -86,17 +110,47 @@ export default function OrderEntryPanel({
       ? parsedQuantity * effectivePrice
       : 0;
   const costEstimate =
-    preview?.estimatedInitialMargin ?? (leverage > 0 ? orderNotional / leverage : 0);
+    preview?.estimatedInitialMargin ??
+    (leverage > 0 ? orderNotional / leverage : 0);
   const baseAsset = symbol.replace("USDT", "");
   const availableBalance = accountSummary?.available ?? 0;
-  const maxQuantity =
+  const selectedSidePosition = useMemo(
+    () => findPositionForSide(positions, symbol, positionSide),
+    [positionSide, positions, symbol]
+  );
+  const matchingPosition = useMemo(
+    () => findMatchingPosition(positions, symbol, positionSide, marginMode),
+    [marginMode, positionSide, positions, symbol]
+  );
+  const isMarginModeLocked = selectedSidePosition !== null;
+  const maxOpenQuantity =
     Number.isFinite(effectivePrice) && effectivePrice > 0
       ? (availableBalance * leverage) / effectivePrice
       : 0;
+  const maxCloseQuantity = matchingPosition?.quantity ?? 0;
+  const quantityControlMax =
+    ticketMode === "CLOSE" ? maxCloseQuantity : maxOpenQuantity;
   const quantityPercent =
-    maxQuantity > 0 && Number.isFinite(parsedQuantity)
-      ? clamp(Math.round((parsedQuantity / maxQuantity) * 100), 0, 100)
+    quantityControlMax > 0 && Number.isFinite(parsedQuantity)
+      ? clamp(Math.round((parsedQuantity / quantityControlMax) * 100), 0, 100)
       : 0;
+  const closePositionLabel = matchingPosition
+    ? `${formatQuantityInput(matchingPosition.quantity)} ${baseAsset}`
+    : "-";
+  const isCloseMode = ticketMode === "CLOSE";
+  const longButtonLabel = isCloseMode ? "Close long" : "Open long";
+  const shortButtonLabel = isCloseMode ? "Close short" : "Open short";
+
+  useEffect(() => {
+    if (selectedSidePosition) {
+      setMarginMode(selectedSidePosition.marginMode);
+      setLeverage(selectedSidePosition.leverage);
+      return;
+    }
+
+    setMarginMode(DEFAULT_MARGIN_MODE);
+    setLeverage(DEFAULT_LEVERAGE);
+  }, [selectedSidePosition]);
 
   useEffect(() => {
     if (!isAuthenticated || !orderPayload || ticketMode !== "OPEN") {
@@ -143,53 +197,164 @@ export default function OrderEntryPanel({
   }, [isAuthenticated, orderPayload, ticketMode]);
 
   async function handleSubmit(nextSide: Side) {
+    const nextSidePosition = findPositionForSide(positions, symbol, nextSide);
     const payload = buildOrderPayload({
       symbol,
       positionSide: nextSide,
       orderType,
-      marginMode,
-      leverage,
+      marginMode: nextSidePosition?.marginMode ?? marginMode,
+      leverage: nextSidePosition?.leverage ?? leverage,
       quantity,
       limitPrice,
     });
 
-    if (!isAuthenticated || !payload || ticketMode !== "OPEN") {
+    if (!isAuthenticated || !payload) {
       toast.error("수량과 가격을 다시 확인해주세요.");
       return;
     }
 
+    setInlineErrorMessage(null);
     setPositionSide(nextSide);
+
+    if (ticketMode === "CLOSE") {
+      const closePosition = findMatchingPosition(
+        positions,
+        symbol,
+        nextSide,
+        payload.marginMode
+      );
+
+      if (closePosition && payload.quantity > closePosition.quantity) {
+        setInlineErrorMessage("보유 수량 이하로 입력해주세요.");
+        return;
+      }
+    }
+
     setIsSubmitPending(true);
 
     try {
-      const response = await fetch("/proxy-futures/orders", {
-        method: "POST",
+      if (ticketMode === "CLOSE") {
+        await submitCloseOrder(payload);
+      } else {
+        await submitOpenOrder(payload);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "주문 생성에 실패했습니다.";
+
+      if (ticketMode === "CLOSE") {
+        setInlineErrorMessage(message);
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setIsSubmitPending(false);
+    }
+  }
+
+  async function submitOpenOrder(payload: OrderPreviewRequest) {
+    const response = await fetch("/proxy-futures/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const execution =
+      (await readJson<ClientApiResponse<OrderExecutionResponse>>(response)) ??
+      null;
+
+    if (!response.ok || !execution?.success || !execution.data) {
+      throw new Error(execution?.message ?? "주문 생성에 실패했습니다.");
+    }
+
+    setPreview(null);
+    toast.success(
+      execution.data.status === "FILLED"
+        ? `${symbol} 주문이 즉시 체결되었습니다.`
+        : `${symbol} 지정가 주문이 대기열에 등록되었습니다.`
+    );
+    router.refresh();
+  }
+
+  async function submitCloseOrder(payload: OrderPreviewRequest) {
+    const response = await fetch("/proxy-futures/positions/close", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(toClosePositionRequest(payload)),
+    });
+
+    const result =
+      (await readJson<
+        ClientApiResponse<ClosePositionResponse> & ApiErrorPayload
+      >(response)) ?? null;
+
+    if (!response.ok || !result?.success || !result.data) {
+      if (isPositionNotFound(result)) {
+        throw new Error(NO_CLOSE_POSITION_MESSAGE);
+      }
+
+      throw new Error(result?.message ?? "포지션 종료 주문에 실패했습니다.");
+    }
+
+    setPreview(null);
+    toast.success(
+      result.data.closedQuantity > 0
+        ? `${symbol} 포지션 종료가 완료되었습니다.`
+        : `${symbol} 종료 지정가 주문이 등록되었습니다.`
+    );
+    router.refresh();
+  }
+
+  async function handleApplyLeverage(nextLeverage: number) {
+    const safeLeverage = clampLeverage(nextLeverage);
+
+    if (!selectedSidePosition) {
+      setLeverage(safeLeverage);
+      setIsLeverageModalOpen(false);
+      setInlineErrorMessage(null);
+      return;
+    }
+
+    setIsLeverageApplyPending(true);
+    setInlineErrorMessage(null);
+
+    try {
+      const response = await fetch("/proxy-futures/positions/leverage", {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          symbol,
+          positionSide,
+          marginMode: selectedSidePosition.marginMode,
+          leverage: safeLeverage,
+        }),
       });
+      const result =
+        (await readJson<ClientApiResponse<FuturesPosition>>(response)) ?? null;
 
-      const execution =
-        (await response.json()) as ClientApiResponse<OrderExecutionResponse>;
-
-      if (!response.ok || !execution.success || !execution.data) {
-        throw new Error(execution.message ?? "주문 생성에 실패했습니다.");
+      if (!response.ok || !result?.success || !result.data) {
+        throw new Error(result?.message ?? "레버리지 변경에 실패했습니다.");
       }
 
-      setPreview(null);
+      setMarginMode(result.data.marginMode);
+      setLeverage(result.data.leverage);
+      setIsLeverageModalOpen(false);
       toast.success(
-        execution.data.status === "FILLED"
-          ? `${symbol} 주문이 즉시 체결되었습니다.`
-          : `${symbol} 지정가 주문이 대기열에 등록되었습니다.`
+        `${symbol} ${positionSide} 레버리지를 ${result.data.leverage}x로 적용했습니다.`
       );
       router.refresh();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "주문 생성에 실패했습니다."
-      );
+      const message =
+        error instanceof Error ? error.message : "레버리지 변경에 실패했습니다.";
+      setInlineErrorMessage(message);
     } finally {
-      setIsSubmitPending(false);
+      setIsLeverageApplyPending(false);
     }
   }
 
@@ -197,9 +362,13 @@ export default function OrderEntryPanel({
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-2">
         <SelectControl
+          disabled={isMarginModeLocked}
           label="마진"
           value={marginMode}
-          onChange={(value) => setMarginMode(value as MarginMode)}
+          onChange={(value) => {
+            setMarginMode(value as MarginMode);
+            setInlineErrorMessage(null);
+          }}
           options={[
             { label: "Isolated", value: "ISOLATED" },
             { label: "Cross", value: "CROSS" },
@@ -210,28 +379,36 @@ export default function OrderEntryPanel({
           leverage={leverage}
           onClick={() => setIsLeverageModalOpen(true)}
         />
-        <button
-          className={[
-            "rounded-main border border-main-light-gray bg-main-light-gray/35",
-            "px-3 py-2 text-xs-custom font-semibold text-main-dark-gray",
-          ].join(" ")}
-          type="button"
-        >
-          {positionSide === "LONG" ? "L" : "S"}
-        </button>
+        <SideToggle
+          onChange={(side) => {
+            setPositionSide(side);
+            setInlineErrorMessage(null);
+          }}
+          value={positionSide}
+        />
       </div>
+
+      {isMarginModeLocked ? (
+        <p className="text-[11px] font-semibold text-main-dark-gray/50">
+          기존 {positionSide} 포지션 기준으로 마진 모드와 레버리지가 적용됩니다.
+        </p>
+      ) : null}
 
       <SegmentedControl
         options={[
           { label: "Open", value: "OPEN" },
-          { label: "Close", value: "CLOSE", disabled: true },
+          { label: "Close", value: "CLOSE" },
         ]}
         value={ticketMode}
-        onChange={(value) => setTicketMode(value as TicketMode)}
+        onChange={(value) => {
+          setTicketMode(value as TicketMode);
+          setInlineErrorMessage(null);
+          setPreview(null);
+        }}
       />
 
       <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
           {(["LIMIT", "MARKET"] as OrderType[]).map((type) => (
             <button
               className={[
@@ -241,12 +418,16 @@ export default function OrderEntryPanel({
                   : "border-transparent text-main-dark-gray/45 hover:text-main-dark-gray",
               ].join(" ")}
               key={type}
-              onClick={() => setOrderType(type)}
+              onClick={() => {
+                setOrderType(type);
+                setInlineErrorMessage(null);
+              }}
               type="button"
             >
               {type === "LIMIT" ? "Limit" : "Market"}
             </button>
           ))}
+          <OrderHelpTooltip />
         </div>
         <span className="text-xs-custom font-semibold text-main-dark-gray/45">
           Post only
@@ -254,9 +435,9 @@ export default function OrderEntryPanel({
       </div>
 
       <div className="flex items-center justify-between text-xs-custom text-main-dark-gray/60">
-        <span>Available</span>
+        <span>{isCloseMode ? "Position" : "Available"}</span>
         <span className="font-semibold text-main-dark-gray">
-          {formatUsd(availableBalance)}
+          {isCloseMode ? closePositionLabel : formatUsd(availableBalance)}
         </span>
       </div>
 
@@ -271,6 +452,7 @@ export default function OrderEntryPanel({
           onChange={(event) => {
             setLimitPrice(event.target.value);
             setIsLimitPriceDirty(true);
+            setInlineErrorMessage(null);
           }}
           step="0.1"
           type="number"
@@ -285,7 +467,10 @@ export default function OrderEntryPanel({
         <input
           className="w-full bg-transparent text-sm-custom font-semibold text-main-dark-gray outline-none"
           min="0.001"
-          onChange={(event) => setQuantity(event.target.value)}
+          onChange={(event) => {
+            setQuantity(event.target.value);
+            setInlineErrorMessage(null);
+          }}
           step="0.001"
           type="number"
           value={quantity}
@@ -302,13 +487,15 @@ export default function OrderEntryPanel({
         min="0"
         onChange={(event) => {
           const nextPercent = Number.parseInt(event.target.value, 10);
-          const nextQuantity = (maxQuantity * nextPercent) / 100;
+          const nextQuantity = (quantityControlMax * nextPercent) / 100;
           setQuantity(formatQuantityInput(nextQuantity));
+          setInlineErrorMessage(null);
         }}
         onInput={(event) => {
           const nextPercent = Number.parseInt(event.currentTarget.value, 10);
-          const nextQuantity = (maxQuantity * nextPercent) / 100;
+          const nextQuantity = (quantityControlMax * nextPercent) / 100;
           setQuantity(formatQuantityInput(nextQuantity));
+          setInlineErrorMessage(null);
         }}
         step="1"
         type="range"
@@ -321,11 +508,18 @@ export default function OrderEntryPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs-custom">
-        <SummaryLine label="Cost" value={formatUsd(costEstimate)} />
         <SummaryLine
-          label={isPreviewPending ? "Risk" : "Liq. price"}
+          label={isCloseMode ? "Close value" : "Cost"}
+          value={formatUsd(isCloseMode ? orderNotional : costEstimate)}
+        />
+        <SummaryLine
+          label={
+            isCloseMode ? "Held size" : isPreviewPending ? "Risk" : "Liq. price"
+          }
           value={
-            isPreviewPending
+            isCloseMode
+              ? closePositionLabel
+              : isPreviewPending
               ? "계산 중"
               : preview?.estimatedLiquidationPrice
                 ? formatUsd(preview.estimatedLiquidationPrice)
@@ -333,6 +527,12 @@ export default function OrderEntryPanel({
           }
         />
       </div>
+
+      {inlineErrorMessage ? (
+        <p className="rounded-main bg-rose-50 px-3 py-2 text-xs-custom font-semibold text-main-red">
+          {inlineErrorMessage}
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-2">
         {isAuthenticated ? (
@@ -349,7 +549,7 @@ export default function OrderEntryPanel({
             >
               {isSubmitPending && positionSide === "LONG"
                 ? "Sending..."
-                : "Open long"}
+                : longButtonLabel}
             </button>
             <button
               className={[
@@ -363,7 +563,7 @@ export default function OrderEntryPanel({
             >
               {isSubmitPending && positionSide === "SHORT"
                 ? "Sending..."
-                : "Open short"}
+                : shortButtonLabel}
             </button>
           </>
         ) : (
@@ -426,9 +626,10 @@ export default function OrderEntryPanel({
       </div>
 
       <LeverageModal
+        isApplying={isLeverageApplyPending}
         leverage={leverage}
-        onChange={setLeverage}
         onClose={() => setIsLeverageModalOpen(false)}
+        onApply={handleApplyLeverage}
         open={isLeverageModalOpen}
       />
     </div>
@@ -480,12 +681,73 @@ function buildOrderPayload({
   };
 }
 
+function toClosePositionRequest(payload: OrderPreviewRequest) {
+  return {
+    symbol: payload.symbol,
+    positionSide: payload.positionSide,
+    marginMode: payload.marginMode,
+    quantity: payload.quantity,
+    orderType: payload.orderType,
+    limitPrice: payload.limitPrice,
+  };
+}
+
+function findMatchingPosition(
+  positions: FuturesPosition[],
+  symbol: MarketSymbol,
+  positionSide: Side,
+  marginMode: MarginMode
+): FuturesPosition | null {
+  return (
+    positions.find(
+      (position) =>
+        position.symbol === symbol &&
+        position.positionSide === positionSide &&
+        position.marginMode === marginMode
+    ) ?? null
+  );
+}
+
+function findPositionForSide(
+  positions: FuturesPosition[],
+  symbol: MarketSymbol,
+  positionSide: Side
+): FuturesPosition | null {
+  return (
+    positions.find(
+      (position) =>
+        position.symbol === symbol && position.positionSide === positionSide
+    ) ?? null
+  );
+}
+
+async function readJson<T>(response: Response): Promise<T | null> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function isPositionNotFound(payload: ApiErrorPayload | null): boolean {
+  const message = payload?.message ?? "";
+
+  return (
+    payload?.code === "POSITION_NOT_FOUND" ||
+    message === NO_CLOSE_POSITION_MESSAGE ||
+    (message.includes("포지션") &&
+      (message.includes("없") || message.includes("찾을 수")))
+  );
+}
+
 function SelectControl({
+  disabled = false,
   label,
   options,
   value,
   onChange,
 }: {
+  disabled?: boolean;
   label: string;
   options: Array<{ label: string; value: string }>;
   value: string;
@@ -497,7 +759,8 @@ function SelectControl({
         {label}
       </span>
       <select
-        className="mt-1 w-full bg-transparent text-xs-custom font-bold text-main-dark-gray outline-none"
+        className="mt-1 w-full bg-transparent text-xs-custom font-bold text-main-dark-gray outline-none disabled:text-main-dark-gray/45"
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -536,19 +799,63 @@ function LeverageButton({
   );
 }
 
+function SideToggle({
+  value,
+  onChange,
+}: {
+  value: Side;
+  onChange: (value: Side) => void;
+}) {
+  return (
+    <div
+      aria-label="Position side"
+      className="grid grid-cols-2 rounded-main border border-main-light-gray bg-main-light-gray/20 p-1"
+    >
+      {(["LONG", "SHORT"] as Side[]).map((side) => {
+        const active = value === side;
+        return (
+          <button
+            className={[
+              "rounded-main px-2 py-2 text-xs-custom font-bold transition-colors",
+              active
+                ? "bg-white text-main-dark-gray shadow-sm"
+                : "text-main-dark-gray/45 hover:text-main-dark-gray",
+            ].join(" ")}
+            key={side}
+            onClick={() => onChange(side)}
+            type="button"
+          >
+            {side === "LONG" ? "L" : "S"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function LeverageModal({
+  isApplying,
   leverage,
   open,
-  onChange,
+  onApply,
   onClose,
 }: {
+  isApplying: boolean;
   leverage: number;
   open: boolean;
-  onChange: (value: number) => void;
+  onApply: (value: number) => void;
   onClose: () => void;
 }) {
+  const [draftLeverage, setDraftLeverage] = useState(leverage);
+
+  useEffect(() => {
+    if (open) {
+      setDraftLeverage(leverage);
+    }
+  }, [leverage, open]);
+
   function setNextLeverage(value: number) {
-    onChange(clampLeverage(value));
+    setDraftLeverage(clampLeverage(value));
   }
 
   function handleSliderValue(value: string) {
@@ -592,7 +899,7 @@ function LeverageModal({
               }
               step={1}
               type="number"
-              value={leverage}
+              value={draftLeverage}
             />
             <span className="text-lg-custom font-bold text-main-dark-gray/50">
               x
@@ -609,7 +916,7 @@ function LeverageModal({
           onInput={(event) => handleSliderValue(event.currentTarget.value)}
           step={1}
           type="range"
-          value={leverage}
+          value={draftLeverage}
         />
         <div
           className={[
@@ -618,7 +925,7 @@ function LeverageModal({
           ].join(" ")}
         >
           <span>1x</span>
-          <span>{leverage}x</span>
+          <span>{draftLeverage}x</span>
           <span>50x</span>
         </div>
 
@@ -627,7 +934,7 @@ function LeverageModal({
             <button
               className={[
                 "rounded-main border px-3 py-2 text-sm-custom font-semibold",
-                leverage === value
+                draftLeverage === value
                   ? "border-main-blue bg-main-blue/10 text-main-blue"
                   : "border-main-light-gray text-main-dark-gray/70",
               ].join(" ")}
@@ -643,15 +950,62 @@ function LeverageModal({
         <button
           className={[
             "mt-6 w-full rounded-main bg-main-dark-gray px-main py-3",
-            "text-sm-custom font-bold text-white",
+            "text-sm-custom font-bold text-white disabled:cursor-not-allowed disabled:opacity-60",
           ].join(" ")}
-          onClick={onClose}
+          disabled={isApplying}
+          onClick={() => onApply(draftLeverage)}
           type="button"
         >
-          적용
+          {isApplying ? "적용 중..." : "적용"}
         </button>
       </div>
     </Modal>
+  );
+}
+
+function OrderHelpTooltip() {
+  return (
+    <div className="group relative inline-flex">
+      <button
+        aria-label="주문 도움말"
+        className={[
+          "inline-flex h-6 w-6 items-center justify-center rounded-full",
+          "border border-main-light-gray text-main-dark-gray/55",
+          "transition-colors hover:text-main-dark-gray focus:outline-none",
+          "focus:ring-2 focus:ring-main-blue/30",
+        ].join(" ")}
+        type="button"
+      >
+        <CircleHelp size={14} aria-hidden="true" />
+      </button>
+      <div
+        className={[
+          "pointer-events-none absolute left-0 top-8 z-20 w-72 rounded-main",
+          "border border-main-light-gray bg-white p-3 text-[11px]",
+          "font-medium leading-5 text-main-dark-gray/70 opacity-0 shadow-lg",
+          "transition-opacity group-focus-within:opacity-100 group-hover:opacity-100",
+        ].join(" ")}
+      >
+        <p className="font-bold text-main-dark-gray">주문 도움말</p>
+        <p className="mt-2">
+          Cross는 계정 가용 증거금을 함께 쓰고, Isolated는 포지션 단위로
+          증거금을 분리합니다. 기존 포지션이 있으면 마진 모드는 바꿀 수
+          없습니다.
+        </p>
+        <p className="mt-2">
+          레버리지는 포지션 증거금과 청산가에 영향을 줍니다. 기존 포지션의
+          레버리지는 적용 버튼을 누르는 순간 포지션에 반영됩니다.
+        </p>
+        <p className="mt-2">
+          Limit은 지정 가격에 대기하고, Market은 현재 시장가로 즉시
+          체결합니다. Long은 상승 방향, Short은 하락 방향 포지션입니다.
+        </p>
+        <p className="mt-2">
+          Cost는 예상 증거금, Liq. price는 예상 청산가, Fee는 주문 체결
+          수수료입니다.
+        </p>
+      </div>
+    </div>
   );
 }
 

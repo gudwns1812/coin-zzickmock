@@ -71,6 +71,10 @@ import {
   writeStoredFuturesChartInterval,
 } from "./futuresChartIntervalPreference";
 import {
+  getFuturesChartRenderMode,
+  getFuturesChartStatus,
+} from "./futuresChartRenderMode";
+import {
   getOrderPriceLineColor,
   getOrderPriceLineTitle,
   getPositionPriceLineTitle,
@@ -351,6 +355,13 @@ export default function FuturesPriceChart({
   }, [displayCandles]);
 
   const hasCandleData = candlestickData.length > 0;
+  const chartRenderMode = getFuturesChartRenderMode({
+    hasCandleData,
+    hasQueryData: historyQuery.data !== undefined,
+    historyStatus,
+    isError,
+    isLoading,
+  });
   const indicatorControlsEnabled = canEditIndicators(hasFreshHistory);
   const indicatorFallbackMessage = getIndicatorFallbackMessage(hasFreshHistory);
   const enabledIndicatorCount = getEnabledIndicatorCount(indicatorConfigs);
@@ -592,19 +603,23 @@ export default function FuturesPriceChart({
       return;
     }
 
-    if (hasCandleData) {
+    if (chartRenderMode === "candles") {
       liveSeries.setData([]);
       candleSeries.setData(candlestickData);
       volumeSeries.setData(volumeData);
-    } else {
+    } else if (chartRenderMode === "live-fallback") {
       candleSeries.setData([]);
       volumeSeries.setData([]);
       liveSeries.setData(livePoints);
+    } else if (chartRenderMode === "loading-empty") {
+      candleSeries.setData([]);
+      volumeSeries.setData([]);
+      liveSeries.setData([]);
     }
 
     if (
       appliedInitialViewportKeyRef.current === initialViewportKey ||
-      !hasCandleData ||
+      chartRenderMode !== "candles" ||
       historyStatus !== "ready"
     ) {
       return;
@@ -627,7 +642,7 @@ export default function FuturesPriceChart({
     }
   }, [
     candlestickData,
-    hasCandleData,
+    chartRenderMode,
     historyStatus,
     initialViewportKey,
     livePoints,
@@ -657,9 +672,12 @@ export default function FuturesPriceChart({
     positionPriceLinesRef.current = [];
     orderPriceLinesRef.current = [];
 
-    const activeSeries = hasCandleData
-      ? candleSeriesRef.current
-      : liveSeriesRef.current;
+    const activeSeries =
+      chartRenderMode === "candles"
+        ? candleSeriesRef.current
+        : chartRenderMode === "live-fallback"
+          ? liveSeriesRef.current
+          : null;
 
     if (!activeSeries) {
       return;
@@ -699,7 +717,7 @@ export default function FuturesPriceChart({
           title: getOrderPriceLineTitle(order.order, formatUsd(order.price)),
         }),
       }));
-  }, [hasCandleData, openOrders, positions]);
+  }, [chartRenderMode, openOrders, positions]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -751,10 +769,10 @@ export default function FuturesPriceChart({
     selectedConfig,
   ]);
 
-  const activeChartStatus = getActiveChartStatus({
-    hasCandleData,
+  const activeChartStatus = getFuturesChartStatus({
     hasNextPage,
     historyStatus,
+    renderMode: chartRenderMode,
   });
 
   return (
@@ -1213,26 +1231,6 @@ function buildCandleRequestUrl(
   }
 
   return `/proxy-futures/markets/${symbol}/candles?${params.toString()}`;
-}
-
-function getActiveChartStatus({
-  hasCandleData,
-  hasNextPage,
-  historyStatus,
-}: {
-  hasCandleData: boolean;
-  hasNextPage: boolean | undefined;
-  historyStatus: "missing" | "ready" | "stale";
-}): string {
-  if (hasCandleData) {
-    return hasNextPage ? "과거 로드 가능" : "전체 히스토리 로드";
-  }
-
-  if (historyStatus === "stale") {
-    return "오래된 히스토리 차단";
-  }
-
-  return "실시간 라인 셸";
 }
 
 function getChartHistoryBannerMessage(

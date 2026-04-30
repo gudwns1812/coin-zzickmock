@@ -243,7 +243,7 @@ export default function AdminShopItemsClient({
               <TextInput
                 label="설명"
                 onChange={(value) => updateForm("description", value)}
-                placeholder="관리자가 휴대폰 번호로 발송"
+                placeholder="상품 설명"
                 value={form.description}
               />
               <TextInput

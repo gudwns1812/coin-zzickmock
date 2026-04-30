@@ -280,7 +280,7 @@ const SHOP_ITEM_FALLBACKS: ShopItem[] = [
     code: "voucher.coffee",
     name: "커피 교환권",
     price: 50,
-    description: "관리자 확인 후 입력한 휴대폰 번호로 발송되는 커피 교환권",
+    description: "커피 교환권",
     active: true,
     totalStock: null,
     soldQuantity: 0,

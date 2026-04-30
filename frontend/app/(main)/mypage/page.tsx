@@ -34,10 +34,6 @@ export default async function MyPage() {
             <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
               {token?.memberName ?? account.memberName}
             </h1>
-            <p className="mt-3 text-sm-custom text-main-dark-gray/65 break-keep">
-              데모 선물 계정의 자산, 포인트, 열린 포지션 흐름을 한곳에서
-              확인합니다.
-            </p>
           </div>
           <div className="flex size-[72px] items-center justify-center rounded-main bg-main-blue text-white">
             <UserRound size={32} />
@@ -75,19 +71,16 @@ export default async function MyPage() {
           href="/mypage/assets"
           icon={<CalendarDays size={20} />}
           label="Assets"
-          value="자산과 일별 실현 손익"
         />
         <QuickLink
           href="/mypage/points"
           icon={<ShieldCheck size={20} />}
           label="Point"
-          value="보유 포인트와 히스토리"
         />
         <QuickLink
           href="/mypage/redemptions"
           icon={<ClipboardList size={20} />}
           label="교환 내역"
-          value="상점 신청 상태와 취소"
         />
       </section>
     </div>
@@ -131,12 +124,10 @@ function QuickLink({
   href,
   icon,
   label,
-  value,
 }: {
   href: string;
   icon: ReactNode;
   label: string;
-  value: string;
 }) {
   return (
     <Link
@@ -147,7 +138,6 @@ function QuickLink({
         {icon}
         <span className="text-lg-custom font-bold">{label}</span>
       </div>
-      <p className="mt-2 text-sm-custom text-main-dark-gray/60">{value}</p>
     </Link>
   );
 }

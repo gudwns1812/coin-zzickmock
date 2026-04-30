@@ -33,3 +33,13 @@ test("chart header avoids instructional helper copy", () => {
   assert.equal(source.includes("왼쪽으로 이동하면"), false);
   assert.equal(source.includes("최신 이동은 버튼으로만 수행합니다"), false);
 });
+
+test("chart loading-empty mode does not render live points", () => {
+  assert.equal(source.includes("chartRenderMode === \"live-fallback\""), true);
+  assert.equal(source.includes("liveSeries.setData(livePoints);"), true);
+  assert.equal(source.includes("chartRenderMode === \"loading-empty\""), true);
+  assert.equal(
+    source.includes("} else if (chartRenderMode === \"loading-empty\") {\n      candleSeries.setData([]);\n      volumeSeries.setData([]);\n      liveSeries.setData([]);\n    }"),
+    true
+  );
+});

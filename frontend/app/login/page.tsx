@@ -53,10 +53,6 @@ export default function LoginPage() {
         <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
           코인 선물 계정 로그인
         </h1>
-        <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
-          현재 로그인 API는 기존 인증 스펙을 그대로 사용합니다. 다음 단계에서
-          회원가입 입력 구조와 함께 정리할 예정입니다.
-        </p>
 
         <form className="mt-8 flex flex-col gap-main" onSubmit={handleSubmit}>
           <Input
@@ -92,4 +88,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

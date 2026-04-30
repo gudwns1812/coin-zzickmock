@@ -100,10 +100,6 @@ export default function ShopRedemptionClient({
           <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
             포인트 상점
           </h1>
-          <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
-            실현 손익으로 모은 포인트를 교환권으로 바꾸는 공간입니다.
-            신청하면 포인트가 즉시 차감되고 관리자가 발송 상태를 처리합니다.
-          </p>
         </div>
 
         <div className="rounded-main bg-main-blue text-white p-main-2 shadow-sm">
@@ -111,9 +107,6 @@ export default function ShopRedemptionClient({
           <h2 className="mt-3 text-4xl-custom font-bold">
             {reward.rewardPoint.toLocaleString("ko-KR")} P
           </h2>
-          <p className="mt-3 text-sm-custom text-white/80 break-keep">
-            포인트는 교환권 신청 시점에 바로 차감됩니다.
-          </p>
           <Link
             className="mt-main inline-flex items-center gap-2 rounded-main bg-white/15 px-main py-2 text-sm-custom font-semibold text-white transition-colors hover:bg-white/25"
             href="/mypage/redemptions"
@@ -151,9 +144,6 @@ export default function ShopRedemptionClient({
                     {getShopItemAvailabilityLabel(item)}
                   </span>
                 </div>
-                <p className="mt-2 text-sm-custom text-main-dark-gray/60 break-keep">
-                  {item.description}
-                </p>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs-custom text-main-dark-gray/55">
                 <span>판매 {item.soldQuantity.toLocaleString("ko-KR")}개</span>

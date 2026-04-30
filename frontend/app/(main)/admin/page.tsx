@@ -40,9 +40,6 @@ export default async function AdminPage() {
             <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
               관리자 페이지
             </h1>
-            <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
-              교환권 신청 처리와 상점 상품 운영 업무로 이동합니다.
-            </p>
           </div>
           <div className="flex size-[72px] items-center justify-center rounded-main bg-main-blue text-white">
             <ShieldCheck size={32} />
@@ -55,13 +52,11 @@ export default async function AdminPage() {
           href="/admin/reward-redemptions"
           icon={<TicketCheck size={22} />}
           label="교환권 관리"
-          value="대기 중인 교환 신청 승인과 반려"
         />
         <AdminLink
           href="/admin/shop-items"
           icon={<Package size={22} />}
           label="상품 관리"
-          value="상점 상품 생성, 수정, 판매 중지"
         />
       </section>
     </div>
@@ -72,12 +67,10 @@ function AdminLink({
   href,
   icon,
   label,
-  value,
 }: {
   href: string;
   icon: ReactNode;
   label: string;
-  value: string;
 }) {
   return (
     <Link
@@ -88,7 +81,6 @@ function AdminLink({
         {icon}
         <span className="text-lg-custom font-bold">{label}</span>
       </div>
-      <p className="mt-2 text-sm-custom text-main-dark-gray/60">{value}</p>
     </Link>
   );
 }

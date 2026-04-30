@@ -7,7 +7,6 @@ import UserInfo from "./UserInfo";
 import LogoutForm from "./LogoutForm";
 import Navigation from "./Navigation";
 import WithdrawalForm from "./WithdrawalForm";
-import { TrendingUp } from "lucide-react";
 
 const Header = async () => {
   const token = await getJwtToken();
@@ -22,23 +21,25 @@ const Header = async () => {
   return (
     <header className="absolute w-full py-3 px-main-2 z-50 backdrop-blur-sm min-w-[1200px]">
       <div className="w-full flex relative gap-5 justify-between items-center">
-        <div className="font-bold text-base-custom flex items-center gap-2">
-          <Link
-            href="/markets"
-            className="size-[34px] rounded-main bg-main-blue text-white flex items-center justify-center shadow-sm"
-            aria-label="코인 선물 찍먹 홈"
-          >
-            <TrendingUp size={18} />
-          </Link>
-          <div className="flex flex-col">
-            <span className="font-bold text-base-custom text-main-dark-gray">
-              코인 선물 찍먹
+        <Link
+          href="/markets"
+          className="flex shrink-0 items-center gap-2.5"
+          aria-label="코인 찍먹 홈"
+        >
+          <img
+            src="/favicon.ico"
+            alt=""
+            className="size-10 rounded-main object-contain"
+          />
+          <span className="flex flex-col leading-tight">
+            <span className="text-lg font-bold text-main-dark-gray">
+              코인 찍먹
             </span>
-            <span className="sr-only">
-              Bitget 기반 선물 마켓과 포지션 흐름을 연습하는 공간
+            <span className="text-xs font-medium text-sub">
+              쉽고 가볍게, 코인 투자
             </span>
-          </div>
-        </div>
+          </span>
+        </Link>
 
         <Navigation />
 

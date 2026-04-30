@@ -78,9 +78,6 @@ export default function AdminRewardRedemptionsClient({
             <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
               교환권 신청 관리
             </h1>
-            <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
-              대기 중인 커피 교환권 신청을 승인 완료하거나 반려 처리합니다.
-            </p>
           </div>
           <div className="flex items-center gap-2">
             <Link

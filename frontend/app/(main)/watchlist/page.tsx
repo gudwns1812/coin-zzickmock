@@ -12,10 +12,6 @@ export default async function WatchlistPage() {
         <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
           관심 심볼
         </h1>
-        <p className="mt-3 text-sm-custom text-main-dark-gray/70 break-keep">
-          MVP에서는 `BTCUSDT`, `ETHUSDT` 두 심볼만 지원하므로 그룹 대신 단일
-          관심 목록으로 단순화합니다.
-        </p>
       </section>
 
       <section className="grid grid-cols-2 gap-main-2">

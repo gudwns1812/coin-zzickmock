@@ -23,9 +23,6 @@ const Footer = ({ className }: { className?: string }) => {
           <span className="font-bold text-lg-custom text-black">
             코인 선물 찍먹
           </span>
-          <span className="text-sm-custom text-main-dark-gray">
-            Bitget 기반 선물 체험과 포지션 흐름 정리
-          </span>
         </div>
       </div>
 
@@ -50,10 +47,6 @@ const Footer = ({ className }: { className?: string }) => {
         </Link>
       </nav>
 
-      <div className="text-sm-custom text-gray-700">
-        선물 마켓 탐색, 포지션 체험, 포인트 상점 흐름에 집중한 프론트엔드
-        워크스페이스
-      </div>
       <div className="text-xs-custom text-gray-400">© 2025 코인 선물 찍먹</div>
     </footer>
   );

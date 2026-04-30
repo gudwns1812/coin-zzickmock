@@ -149,7 +149,8 @@ test("chart initial viewport uses latest logical window while preserving free sc
   assert.equal(source.includes("getLatestVisibleLogicalRange"), true);
   assert.equal(source.includes("getRenderedCandleVisibleTimeRange"), false);
   assert.equal(logicalRangeCallCount, 1);
-  assert.equal(source.includes("!hasCandleData ||\n      historyStatus !== \"ready\""), true);
+  assert.equal(source.includes("chartRenderMode !== \"candles\""), true);
+  assert.equal(source.includes("historyStatus !== \"ready\""), true);
   assert.equal(source.includes("activeViewportResetKeyRef"), false);
   assert.equal(source.includes("scrollToRealTime()"), true);
   assert.equal(source.includes("subscribeVisibleLogicalRangeChange"), true);

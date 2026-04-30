@@ -15,9 +15,13 @@ final class MetricTags {
     private static final Pattern SYMBOL_PATTERN = Pattern.compile("[A-Z0-9_:-]{1,32}");
     private static final Pattern INTERVAL_PATTERN = Pattern.compile("[0-9]+[mhdwM]");
     private static final Pattern RANGE_BUCKET_PATTERN = Pattern.compile("[0-9]{4}(-[0-9]{2})?");
+    private static final Pattern ROUTE_PATTERN = Pattern.compile("/[A-Za-z0-9_{}./-]{1,119}");
     private static final Pattern STATUS_PATTERN = Pattern.compile("[1-5][0-9]{2}");
     private static final Pattern STATUS_FAMILY_PATTERN = Pattern.compile("[1-5]xx");
     private static final Pattern BOUNDED_WORD_PATTERN = Pattern.compile("[a-z][a-z0-9_.:-]{0,63}");
+    private static final Pattern RAW_DYNAMIC_ROUTE_SEGMENT = Pattern.compile(
+            "([0-9]+)|([A-Z0-9]{5,})|([A-Fa-f0-9-]{16,})"
+    );
     private static final Pattern JWT_SHAPED_VALUE = Pattern.compile(
             "[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}"
     );
@@ -51,6 +55,7 @@ final class MetricTags {
     );
     private static final Set<String> ALLOWED_TAG_KEYS = Set.of(
             "channel",
+            "direction",
             "endpoint_group",
             "failure_category",
             "interval",
@@ -59,6 +64,7 @@ final class MetricTags {
             "range_bucket",
             "reason",
             "result",
+            "route_pattern",
             "size_bucket",
             "source",
             "state",
@@ -87,6 +93,7 @@ final class MetricTags {
             "sse",
             "websocket"
     );
+    private static final Set<String> DIRECTIONS = Set.of("request", "response");
 
     private MetricTags() {
     }
@@ -131,14 +138,36 @@ final class MetricTags {
     private static Predicate<String> validatorFor(String key) {
         return switch (tagKey(key)) {
             case "method" -> HTTP_METHODS::contains;
+            case "direction" -> DIRECTIONS::contains;
             case "source" -> SOURCES::contains;
             case "status" -> value -> STATUS_PATTERN.matcher(value).matches();
             case "status_family" -> value -> STATUS_FAMILY_PATTERN.matcher(value).matches();
             case "symbol" -> value -> SYMBOL_PATTERN.matcher(value).matches();
             case "interval" -> value -> INTERVAL_PATTERN.matcher(value).matches();
             case "range_bucket" -> value -> RANGE_BUCKET_PATTERN.matcher(value).matches();
+            case "route_pattern" -> MetricTags::isStableRoutePattern;
             default -> value -> BOUNDED_WORD_PATTERN.matcher(value).matches();
         };
+    }
+
+    private static boolean isStableRoutePattern(String value) {
+        return "unmatched".equals(value)
+                || (!value.contains("?")
+                && !value.contains("=")
+                && ROUTE_PATTERN.matcher(value).matches()
+                && hasNoRawDynamicRouteSegment(value));
+    }
+
+    private static boolean hasNoRawDynamicRouteSegment(String routePattern) {
+        for (String segment : routePattern.split("/")) {
+            if (segment.isBlank() || segment.contains("{")) {
+                continue;
+            }
+            if (RAW_DYNAMIC_ROUTE_SEGMENT.matcher(segment).matches()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String normalizeKey(String key) {

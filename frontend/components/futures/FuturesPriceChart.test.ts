@@ -50,3 +50,14 @@ test("chart consumes backend candle stream instead of synthesizing candles from 
   assert.equal(source.includes("mergeCandlesWithLivePrice"), false);
   assert.equal(source.includes("getLiveCandleBucket"), false);
 });
+
+test("chart reports realtime candle close price to the trading header", () => {
+  assert.equal(
+    source.includes("onLatestCandleClosePriceChange?: (closePrice: number, receivedAt: number) => void"),
+    true
+  );
+  assert.equal(
+    source.includes("onLatestCandleClosePriceChange?.(data.closePrice, Date.now())"),
+    true
+  );
+});

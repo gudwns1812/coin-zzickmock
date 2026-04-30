@@ -45,6 +45,12 @@ test("order entry panel receives displayed positions for close orders", () => {
   assert.equal(source.includes("positions={displayedPositions}"), true);
 });
 
+test("top latest trade price displays the realtime candle close when available", () => {
+  assert.equal(source.includes("latestCandleClosePrice"), true);
+  assert.equal(source.includes("formatUsd(latestCandleClosePrice ?? market.lastPrice)"), true);
+  assert.equal(source.includes("onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}"), true);
+});
+
 test("Close amount displays accumulated closed quantity, not closeable quantity", () => {
   assert.equal(source.includes("getAccumulatedClosedQuantity(position)"), true);
   assert.equal(source.includes('label="Close amount"'), true);
@@ -59,6 +65,10 @@ test("position cards display held position size", () => {
     ),
     true
   );
+});
+
+test("position card header includes margin mode next to side", () => {
+  assert.equal(source.includes("{position.marginMode} · {position.positionSide}"), true);
 });
 
 test("TP/SL editor is opened from an edit affordance", () => {

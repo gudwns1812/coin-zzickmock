@@ -31,7 +31,14 @@ import {
 import { Pencil } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { toast } from "react-toastify";
 
 type Props = {
@@ -72,6 +79,9 @@ export default function MarketDetailRealtimeView({
   const router = useRouter();
   const [market, setMarket] = useState(initialMarket);
   const [marketUpdatedAt, setMarketUpdatedAt] = useState(() => Date.now());
+  const [latestCandleClosePrice, setLatestCandleClosePrice] = useState<
+    number | null
+  >(null);
   const [fundingCountdownNow, setFundingCountdownNow] = useState(() =>
     Date.now()
   );
@@ -117,6 +127,17 @@ export default function MarketDetailRealtimeView({
       stream.close();
     };
   }, [initialMarket.symbol]);
+
+  useEffect(() => {
+    setLatestCandleClosePrice(null);
+  }, [initialMarket.symbol]);
+
+  const handleLatestCandleClosePriceChange = useCallback(
+    (closePrice: number) => {
+      setLatestCandleClosePrice(closePrice);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -240,7 +261,7 @@ export default function MarketDetailRealtimeView({
               <Stat
                 label="최신 체결가"
                 tone={market.change24h >= 0 ? "positive" : "negative"}
-                value={formatUsd(market.lastPrice)}
+                value={formatUsd(latestCandleClosePrice ?? market.lastPrice)}
               />
               <Stat label="Mark Price" value={formatUsd(market.markPrice)} />
               <Stat label="Index Price" value={formatUsd(market.indexPrice)} />
@@ -261,6 +282,7 @@ export default function MarketDetailRealtimeView({
             change24h={market.change24h}
             currentPrice={market.lastPrice}
             currentPriceUpdatedAt={marketUpdatedAt}
+            onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}
             openOrders={chartOpenOrders}
             positions={displayedChartPositions}
             symbol={market.symbol}
@@ -510,7 +532,7 @@ function PositionCard({ position }: { position: FuturesPosition }) {
               {position.symbol}
             </span>
             <span className={`text-sm-custom font-bold ${sideTone}`}>
-              {position.positionSide}
+              {position.marginMode} · {position.positionSide}
             </span>
             <span className="text-sm-custom font-semibold text-main-dark-gray/55">
               {position.leverage}x

@@ -388,12 +388,6 @@ export default function OrderEntryPanel({
         />
       </div>
 
-      {isMarginModeLocked ? (
-        <p className="text-[11px] font-semibold text-main-dark-gray/50">
-          기존 {positionSide} 포지션 기준으로 마진 모드와 레버리지가 적용됩니다.
-        </p>
-      ) : null}
-
       <SegmentedControl
         options={[
           { label: "Open", value: "OPEN" },
@@ -980,7 +974,8 @@ function OrderHelpTooltip() {
       </button>
       <div
         className={[
-          "pointer-events-none absolute left-0 top-8 z-20 w-72 rounded-main",
+          "pointer-events-none absolute left-1/2 top-8 z-50 w-72",
+          "max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-main",
           "border border-main-light-gray bg-white p-3 text-[11px]",
           "font-medium leading-5 text-main-dark-gray/70 opacity-0 shadow-lg",
           "transition-opacity group-focus-within:opacity-100 group-hover:opacity-100",

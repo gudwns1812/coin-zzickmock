@@ -84,6 +84,7 @@ type Props = {
   change24h: number;
   positions: FuturesPosition[];
   openOrders: FuturesOpenOrder[];
+  onLatestCandleClosePriceChange?: (closePrice: number, receivedAt: number) => void;
 };
 
 type CandleResponse = {
@@ -150,6 +151,7 @@ export default function FuturesPriceChart({
   change24h,
   positions,
   openOrders,
+  onLatestCandleClosePriceChange,
 }: Props) {
   const queryClient = useQueryClient();
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
@@ -568,6 +570,7 @@ export default function FuturesPriceChart({
         const previousOpenTime = realtimeCandleOpenTimeRef.current;
         realtimeCandleOpenTimeRef.current = data.openTime;
         setRealtimeCandle(data);
+        onLatestCandleClosePriceChange?.(data.closePrice, Date.now());
 
         if (previousOpenTime && previousOpenTime !== data.openTime) {
           void queryClient.invalidateQueries({
@@ -582,7 +585,13 @@ export default function FuturesPriceChart({
     return () => {
       stream.close();
     };
-  }, [isIntervalPreferenceHydrated, queryClient, selectedInterval, symbol]);
+  }, [
+    isIntervalPreferenceHydrated,
+    onLatestCandleClosePriceChange,
+    queryClient,
+    selectedInterval,
+    symbol,
+  ]);
 
   useEffect(() => {
     liveSeriesRef.current?.applyOptions({

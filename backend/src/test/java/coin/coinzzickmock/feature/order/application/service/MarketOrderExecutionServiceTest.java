@@ -8,6 +8,10 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
@@ -29,18 +33,23 @@ import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProce
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointPolicy;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 class MarketOrderExecutionServiceTest {
+    private final RealtimeMarketDataStore realtimeMarketDataStore = new RealtimeMarketDataStore();
+    private final AtomicInteger tradeSequence = new AtomicInteger();
+
     @Test
     void fillsExecutablePendingOrderFromMarketEventAndPublishesSignal() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
@@ -76,6 +85,40 @@ class MarketOrderExecutionServiceTest {
         assertEquals(99, filled.executionPrice(), 0.0001);
         assertTrue(positionRepository.findOpenPosition("demo-member", "BTCUSDT", "LONG", "ISOLATED").isPresent());
         assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
+    }
+
+    @Test
+    void skipsExecutionWhenRealtimeTradeOrTickerIsUnavailable() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save("demo-member", new FuturesOrder(
+                "order-1",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                0.1,
+                99.0,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                99
+        ));
+        MarketOrderExecutionService service = service(
+                orderRepository,
+                positionRepository,
+                accountRepository,
+                eventPublisher
+        );
+
+        service.onMarketUpdated(MarketSummaryUpdatedEvent.from(rawMarket(101, 101), rawMarket(98, 98)));
+
+        FuturesOrder pending = orderRepository.findByMemberIdAndOrderId("demo-member", "order-1").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, pending.status());
+        assertTrue(eventPublisher.events.isEmpty());
     }
 
     @Test
@@ -623,6 +666,7 @@ class MarketOrderExecutionServiceTest {
                 afterCommitEventPublisher
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
+        RealtimeMarketPriceReader realtimeMarketPriceReader = new RealtimeMarketPriceReader(realtimeMarketDataStore);
         return new MarketOrderExecutionService(
                 new PendingOrderFillProcessor(
                         orderRepository,
@@ -631,7 +675,8 @@ class MarketOrderExecutionServiceTest {
                         new PendingOrderExecutionCache(),
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
-                        afterCommitEventPublisher
+                        afterCommitEventPublisher,
+                        realtimeMarketPriceReader
                 ),
                 new PositionLiquidationProcessor(
                         positionRepository,
@@ -639,19 +684,26 @@ class MarketOrderExecutionServiceTest {
                         new LiquidationPolicy(),
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
-                        afterCommitEventPublisher
+                        afterCommitEventPublisher,
+                        realtimeMarketPriceReader
                 ),
                 new PositionTakeProfitStopLossProcessor(
                         orderRepository,
                         positionRepository,
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
-                        afterCommitEventPublisher
+                        afterCommitEventPublisher,
+                        realtimeMarketPriceReader
                 )
         );
     }
 
     private MarketSummaryResult market(double lastPrice, double markPrice) {
+        seedRealtimeMarket(lastPrice, markPrice);
+        return rawMarket(lastPrice, markPrice);
+    }
+
+    private MarketSummaryResult rawMarket(double lastPrice, double markPrice) {
         return new MarketSummaryResult(
                 "BTCUSDT",
                 "Bitcoin Perpetual",
@@ -661,6 +713,29 @@ class MarketOrderExecutionServiceTest {
                 0.0001,
                 0.1
         );
+    }
+
+    private void seedRealtimeMarket(double lastPrice, double markPrice) {
+        Instant now = Instant.now();
+        realtimeMarketDataStore.acceptTrade(new RealtimeMarketTradeTick(
+                "BTCUSDT",
+                "trade-" + tradeSequence.incrementAndGet(),
+                BigDecimal.valueOf(lastPrice),
+                BigDecimal.ONE,
+                "buy",
+                now,
+                now
+        ));
+        realtimeMarketDataStore.acceptTicker(new RealtimeMarketTickerUpdate(
+                "BTCUSDT",
+                BigDecimal.valueOf(lastPrice),
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.valueOf(markPrice),
+                BigDecimal.valueOf(0.0001),
+                now.plusSeconds(3600),
+                now,
+                now
+        ));
     }
 
     private MarketSummaryUpdatedEvent marketEvent(double previousLastPrice, double lastPrice, double markPrice) {

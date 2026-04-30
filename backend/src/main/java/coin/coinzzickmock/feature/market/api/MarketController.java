@@ -4,13 +4,16 @@ import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,18 +30,48 @@ public class MarketController {
     private final GetMarketSummaryService getMarketSummaryService;
     private final GetMarketCandlesService getMarketCandlesService;
     private final MarketRealtimeSseBroker marketRealtimeSseBroker;
+    private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker;
+    private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
     private final long streamTimeoutMs;
 
+    @Autowired
     public MarketController(
             GetMarketSummaryService getMarketSummaryService,
             GetMarketCandlesService getMarketCandlesService,
             MarketRealtimeSseBroker marketRealtimeSseBroker,
+            MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
+            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             @Value("${coin.market.sse.timeout-ms:300000}") long streamTimeoutMs
     ) {
         this.getMarketSummaryService = getMarketSummaryService;
         this.getMarketCandlesService = getMarketCandlesService;
         this.marketRealtimeSseBroker = marketRealtimeSseBroker;
+        this.marketCandleRealtimeSseBroker = marketCandleRealtimeSseBroker;
+        this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
         this.streamTimeoutMs = streamTimeoutMs;
+    }
+
+    MarketController(
+            GetMarketSummaryService getMarketSummaryService,
+            GetMarketCandlesService getMarketCandlesService,
+            MarketRealtimeSseBroker marketRealtimeSseBroker,
+            long streamTimeoutMs
+    ) {
+        this(
+                getMarketSummaryService,
+                getMarketCandlesService,
+                marketRealtimeSseBroker,
+                new MarketCandleRealtimeSseBroker(
+                        Runnable::run,
+                        new RealtimeMarketCandleProjector(
+                                new coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore()
+                        )
+                ),
+                new RealtimeMarketCandleProjector(
+                        new coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore()
+                ),
+                streamTimeoutMs
+        );
     }
 
     @GetMapping
@@ -88,6 +121,16 @@ public class MarketController {
         }
     }
 
+    @GetMapping(value = "/{symbol}/candles/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter candleStream(@PathVariable String symbol, @RequestParam String interval) {
+        MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
+        SseEmitter emitter = createEmitter();
+        realtimeMarketCandleProjector.latest(symbol, candleInterval)
+                .ifPresent(candle -> sendCandleEvent(emitter, candle));
+        marketCandleRealtimeSseBroker.register(symbol, candleInterval, emitter);
+        return emitter;
+    }
+
     private MarketSummaryResponse toResponse(MarketSummaryResult result) {
         return MarketSummaryResponse.from(result);
     }
@@ -105,6 +148,18 @@ public class MarketController {
             return true;
         } catch (IOException exception) {
             log.debug("Initial market SSE send failed; completing emitter. symbol={}", result.symbol(), exception);
+            emitter.complete();
+            return false;
+        }
+    }
+
+    boolean sendCandleEvent(SseEmitter emitter, MarketCandleResult result) {
+        try {
+            emitter.send(MarketCandleResponse.from(result));
+            return true;
+        } catch (IOException exception) {
+            log.debug("Initial market candle SSE send failed; completing emitter. openTime={}",
+                    result.openTime(), exception);
             emitter.complete();
             return false;
         }

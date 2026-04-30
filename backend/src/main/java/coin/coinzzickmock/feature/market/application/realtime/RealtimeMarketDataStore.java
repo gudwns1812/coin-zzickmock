@@ -125,6 +125,30 @@ public class RealtimeMarketDataStore {
         return Optional.ofNullable(candles.get(new CandleKey(symbol, interval, openTime)));
     }
 
+    public Optional<RealtimeMarketCandleState> latestCandle(String symbol, MarketCandleInterval interval) {
+        return candles.entrySet().stream()
+                .filter(entry -> entry.getKey().symbol().equals(symbol))
+                .filter(entry -> entry.getKey().interval() == interval)
+                .map(Map.Entry::getValue)
+                .max((first, second) -> first.openTime().compareTo(second.openTime()));
+    }
+
+    public java.util.List<RealtimeMarketCandleState> candles(
+            String symbol,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        return candles.entrySet().stream()
+                .filter(entry -> entry.getKey().symbol().equals(symbol))
+                .filter(entry -> entry.getKey().interval() == interval)
+                .map(Map.Entry::getValue)
+                .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                .filter(candle -> candle.openTime().isBefore(toExclusive))
+                .sorted(java.util.Comparator.comparing(RealtimeMarketCandleState::openTime))
+                .toList();
+    }
+
     public Optional<MarketRealtimeSourceSnapshot> fallbackSource(String symbol, MarketRealtimeSourceType sourceType) {
         return Optional.ofNullable(fallbackSources.get(new SourceKey(symbol, sourceType)));
     }

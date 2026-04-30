@@ -14,7 +14,7 @@
 - [x] PR 4: market summary read/SSE의 WS source 전환
 - [x] PR 5: command/read service의 realtime source 전환
 - [x] PR 6: trade/ticker semantics 기준 execution processor 분리
-- [ ] PR 7: live candle aggregation/persistence/SSE
+- [x] PR 7: live candle aggregation/persistence/SSE
 - [ ] PR 8: frontend consumer와 제품/provider 문서 업데이트
 
 ## 의사결정 기록
@@ -141,3 +141,5 @@ These references use already persisted position state or domain calculations and
   unavailable.
 - PR 6 made execution processors re-check fresh realtime trade+ticker state before pending fills, liquidation, and TP/SL
   execution; processor tests cover the unavailable-realtime skip path.
+- PR 7 added live candle projection from realtime `1m`/`1h` state and a candle SSE stream endpoint. Existing DB candle
+  persistence and historical interval rollup remain the persistence source for closed candles.

@@ -15,7 +15,7 @@
 - [x] PR 5: command/read service의 realtime source 전환
 - [x] PR 6: trade/ticker semantics 기준 execution processor 분리
 - [x] PR 7: live candle aggregation/persistence/SSE
-- [ ] PR 8: frontend consumer와 제품/provider 문서 업데이트
+- [x] PR 8: frontend consumer와 제품/provider 문서 업데이트
 
 ## 의사결정 기록
 
@@ -143,3 +143,6 @@ These references use already persisted position state or domain calculations and
   execution; processor tests cover the unavailable-realtime skip path.
 - PR 7 added live candle projection from realtime `1m`/`1h` state and a candle SSE stream endpoint. Existing DB candle
   persistence and historical interval rollup remain the persistence source for closed candles.
+- PR 8 moved the frontend chart's in-progress candle input from market-summary latest price synthesis to the backend
+  candle SSE stream. The frontend keeps REST candle history for closed candles and uses SSE candle events only as the
+  display overlay for the current bucket.

@@ -43,3 +43,10 @@ test("chart loading-empty mode does not render live points", () => {
     true
   );
 });
+
+test("chart consumes backend candle stream instead of synthesizing candles from market price", () => {
+  assert.equal(source.includes("/candles/stream?"), true);
+  assert.equal(source.includes("mergeCandlesWithRealtimeCandle"), true);
+  assert.equal(source.includes("mergeCandlesWithLivePrice"), false);
+  assert.equal(source.includes("getLiveCandleBucket"), false);
+});

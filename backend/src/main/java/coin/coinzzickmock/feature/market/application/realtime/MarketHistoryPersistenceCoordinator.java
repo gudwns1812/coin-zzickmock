@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -20,7 +19,6 @@ public class MarketHistoryPersistenceCoordinator {
     private final MarketHistoryRecorder marketHistoryRecorder;
     private final Map<String, Instant> recordedClosedMinuteOpenTimes = new ConcurrentHashMap<>();
 
-    @Transactional
     public List<MarketHistoryPersistenceResult> persistClosedMinuteCandles(
             List<String> symbols,
             Instant openTime,

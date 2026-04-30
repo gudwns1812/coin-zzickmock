@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @SpringBootTest(
         classes = {CoinZzickmockApplication.class, MarketRealtimeFeedPersistenceTest.MarketRealtimeFeedTestConfiguration.class},
@@ -51,6 +52,7 @@ class MarketRealtimeFeedPersistenceTest {
     void setUp() {
         jdbcTemplate.update("DELETE FROM market_candles_1h");
         jdbcTemplate.update("DELETE FROM market_candles_1m");
+        marketDataGateway.clearObservedTransactions();
         marketDataGateway.replaceSnapshots(List.of(
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2),
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
@@ -68,6 +70,7 @@ class MarketRealtimeFeedPersistenceTest {
         assertThat(count("market_candles_1m")).isEqualTo(2);
         assertThat(count("market_candles_1h")).isEqualTo(2);
         assertThat(volume("market_candles_1m")).isGreaterThan(0.0);
+        assertThat(marketDataGateway.minuteCandleLoadTransactionStates()).containsOnly(false);
     }
 
     private int count(String tableName) {
@@ -146,6 +149,7 @@ class MarketRealtimeFeedPersistenceTest {
 
     static class FakeMarketDataGateway implements MarketDataGateway {
         private List<MarketSnapshot> supportedMarkets = new ArrayList<>();
+        private final List<Boolean> minuteCandleLoadTransactionStates = new ArrayList<>();
 
         @Override
         public List<MarketSnapshot> loadSupportedMarkets() {
@@ -166,6 +170,7 @@ class MarketRealtimeFeedPersistenceTest {
                 Instant fromInclusive,
                 Instant toExclusive
         ) {
+            minuteCandleLoadTransactionStates.add(TransactionSynchronizationManager.isActualTransactionActive());
             MarketSnapshot snapshot = loadMarket(symbol);
             if (snapshot == null) {
                 return List.of();
@@ -185,6 +190,14 @@ class MarketRealtimeFeedPersistenceTest {
 
         void replaceSnapshots(List<MarketSnapshot> snapshots) {
             this.supportedMarkets = new ArrayList<>(snapshots);
+        }
+
+        void clearObservedTransactions() {
+            minuteCandleLoadTransactionStates.clear();
+        }
+
+        List<Boolean> minuteCandleLoadTransactionStates() {
+            return List.copyOf(minuteCandleLoadTransactionStates);
         }
     }
 }

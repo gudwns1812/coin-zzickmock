@@ -13,12 +13,14 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
 public class MarketHistoryRecorder {
     private final MarketHistoryRepository marketHistoryRepository;
 
+    @Transactional
     public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(
             Map<String, List<MarketMinuteCandleSnapshot>> minuteCandlesBySymbol
     ) {
@@ -53,6 +55,7 @@ public class MarketHistoryRecorder {
         return saveResults;
     }
 
+    @Transactional
     public void recordHistoricalMinuteCandles(long symbolId, List<MarketMinuteCandleSnapshot> minuteCandles) {
         if (minuteCandles == null || minuteCandles.isEmpty()) {
             return;

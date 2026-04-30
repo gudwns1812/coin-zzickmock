@@ -9,7 +9,7 @@
 ## 진행 현황
 
 - [x] PR 1: realtime source contract와 latest-price audit 기준 추가
-- [ ] PR 2: Bitget WebSocket provider parser/connection lifecycle
+- [x] PR 2: Bitget WebSocket provider parser/connection lifecycle
 - [ ] PR 3: realtime market data store와 REST bootstrap/recovery labeling
 - [ ] PR 4: market summary read/SSE의 WS source 전환
 - [ ] PR 5: command/read service의 realtime source 전환
@@ -133,6 +133,6 @@ These references use already persisted position state or domain calculations and
 
 ## 후속 PR 메모
 
-- PR 2 must confirm Bitget official field semantics before parser code is finalized.
+- PR 2 confirmed Bitget official field semantics for contract public trade, ticker, and candlestick WS payloads.
 - PR 4 must include a spy/fake test proving healthy market summary paths do not call `loadMarket()` or `loadSupportedMarkets()`.
 - PR 5 and PR 6 must convert every command/processor listed in the audit or explicitly document why a site is recovery/history-only.

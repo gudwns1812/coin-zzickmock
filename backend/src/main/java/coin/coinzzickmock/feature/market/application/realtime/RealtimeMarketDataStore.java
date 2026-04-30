@@ -8,7 +8,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.stereotype.Component;
 
+@Component
 public class RealtimeMarketDataStore {
     private final AtomicLong receiveSequence = new AtomicLong();
     private final Map<String, RealtimeMarketTradeState> trades = new ConcurrentHashMap<>();

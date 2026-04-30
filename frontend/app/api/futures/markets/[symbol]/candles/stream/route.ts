@@ -47,6 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
       {
         headers: upstreamHeaders,
         cache: "no-store",
+        signal: request.signal,
       }
     );
 

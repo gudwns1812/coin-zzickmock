@@ -5,6 +5,8 @@ import type {
   PriceFlashRenderState,
 } from "@/components/router/(main)/markets/MarketsLanding";
 import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
+import { useResilientEventSource } from "@/hooks/useResilientEventSource";
+import type { EventSourceReconnectStatus } from "@/hooks/resilientEventSourcePolicy";
 import type { MarketApiResponse } from "@/lib/futures-api";
 import {
   isSupportedMarketSymbol,
@@ -12,7 +14,13 @@ import {
   type MarketSnapshot,
   type MarketSymbol,
 } from "@/lib/markets";
-import { startTransition, useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 type PriceFlashTone = "rise" | "fall";
 type PriceFlashMetadata = {
@@ -31,6 +39,8 @@ type MarketsLandingRealtimeViewProps = {
 type MarketSnapshotMap = Record<MarketSymbol, MarketSnapshot>;
 type PriceFlashMetadataMap = Partial<Record<MarketSymbol, PriceFlashMetadata>>;
 type PriceFlashRenderMap = Partial<Record<MarketSymbol, PriceFlashRenderState>>;
+type RecoveredSymbolMap = Partial<Record<MarketSymbol, true>>;
+type StreamStatusMap = Partial<Record<MarketSymbol, EventSourceReconnectStatus>>;
 
 const FLASH_PEAK_WINDOW_MS = 110;
 const FLASH_DECAY_WINDOW_MS = 520;
@@ -116,6 +126,10 @@ function computeFlashIntensity(nowMs: number, metadata: PriceFlashMetadata) {
   return remaining * remaining;
 }
 
+function isRecoveringStatus(status: EventSourceReconnectStatus | undefined) {
+  return status === "degraded" || status === "reconnecting";
+}
+
 export default function MarketsLandingRealtimeView({
   initialMarkets,
   isMarketDataDegraded,
@@ -127,10 +141,12 @@ export default function MarketsLandingRealtimeView({
   );
   const [priceFlashBySymbol, setPriceFlashBySymbol] =
     useState<PriceFlashRenderMap>({});
-  const [isStreamDegraded, setIsStreamDegraded] = useState(isMarketDataDegraded);
+  const [recoveredStreamSymbols, setRecoveredStreamSymbols] =
+    useState<RecoveredSymbolMap>({});
+  const [streamStatusBySymbol, setStreamStatusBySymbol] =
+    useState<StreamStatusMap>({});
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
   const marketMapRef = useRef(marketMap);
-  const isStreamDegradedRef = useRef(isMarketDataDegraded);
   const flashMetadataRef = useRef<PriceFlashMetadataMap>({});
   const animationFrameRef = useRef<number | null>(null);
 
@@ -143,161 +159,216 @@ export default function MarketsLandingRealtimeView({
   useEffect(() => {
     flashMetadataRef.current = {};
     setPriceFlashBySymbol({});
+    setRecoveredStreamSymbols({});
+    setStreamStatusBySymbol({});
   }, [initialMarkets]);
 
-  useEffect(() => {
-    setIsStreamDegraded(isMarketDataDegraded);
-    isStreamDegradedRef.current = isMarketDataDegraded;
-  }, [isMarketDataDegraded]);
+  const clearFlashState = useCallback(() => {
+    flashMetadataRef.current = {};
+    setPriceFlashBySymbol({});
 
-  useEffect(() => {
-    const clearFlashState = () => {
-      flashMetadataRef.current = {};
-      setPriceFlashBySymbol({});
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  }, []);
 
-      if (animationFrameRef.current !== null) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
+  const syncFlashRenderState = useCallback((nowMs: number) => {
+    const nextMetadata: PriceFlashMetadataMap = {};
+    const nextRenderState: PriceFlashRenderMap = {};
 
-    const syncFlashRenderState = (nowMs: number) => {
-      const nextMetadata: PriceFlashMetadataMap = {};
-      const nextRenderState: PriceFlashRenderMap = {};
+    for (const symbol of Object.keys(flashMetadataRef.current) as MarketSymbol[]) {
+      const metadata = flashMetadataRef.current[symbol];
 
-      for (const symbol of Object.keys(flashMetadataRef.current) as MarketSymbol[]) {
-        const metadata = flashMetadataRef.current[symbol];
-
-        if (!metadata || nowMs >= metadata.endsAtMs) {
-          continue;
-        }
-
-        nextMetadata[symbol] = metadata;
-
-        const intensity = computeFlashIntensity(nowMs, metadata);
-
-        if (intensity > FLASH_VISIBILITY_EPSILON) {
-          nextRenderState[symbol] = {
-            tone: metadata.tone,
-            intensity,
-          };
-        }
+      if (!metadata || nowMs >= metadata.endsAtMs) {
+        continue;
       }
 
-      flashMetadataRef.current = nextMetadata;
-      setPriceFlashBySymbol(nextRenderState);
+      nextMetadata[symbol] = metadata;
 
-      if (Object.keys(nextMetadata).length === 0) {
-        animationFrameRef.current = null;
-        return;
+      const intensity = computeFlashIntensity(nowMs, metadata);
+
+      if (intensity > FLASH_VISIBILITY_EPSILON) {
+        nextRenderState[symbol] = {
+          tone: metadata.tone,
+          intensity,
+        };
       }
+    }
 
-      animationFrameRef.current = requestAnimationFrame(syncFlashRenderState);
-    };
+    flashMetadataRef.current = nextMetadata;
+    setPriceFlashBySymbol(nextRenderState);
 
-    const ensureFlashClock = () => {
-      if (animationFrameRef.current !== null || isStreamDegraded) {
-        return;
-      }
-
-      animationFrameRef.current = requestAnimationFrame(syncFlashRenderState);
-    };
-
-    if (isStreamDegraded) {
-      clearFlashState();
+    if (Object.keys(nextMetadata).length === 0) {
+      animationFrameRef.current = null;
       return;
     }
 
-    const streams = initialMarkets.map((market) => {
-      const symbol = market.symbol;
-      const stream = new EventSource(
-        `/api/futures/markets/${encodeURIComponent(symbol)}/stream`
-      );
+    animationFrameRef.current = requestAnimationFrame(syncFlashRenderState);
+  }, []);
 
-      stream.onmessage = (event) => {
-        try {
-          if (isStreamDegradedRef.current) {
-            return;
-          }
+  const ensureFlashClock = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      return;
+    }
 
-          const data = JSON.parse(event.data) as MarketApiResponse;
+    animationFrameRef.current = requestAnimationFrame(syncFlashRenderState);
+  }, [syncFlashRenderState]);
 
-          if (!isSupportedMarketSymbol(data.symbol)) {
-            return;
-          }
-
-          const nextSymbol: MarketSymbol = data.symbol;
-          const currentSnapshot = marketMapRef.current[nextSymbol];
-          const nextSnapshot = mergeSnapshot(currentSnapshot, data);
-          const priceFlashTone =
-            nextSnapshot.lastPrice > currentSnapshot.lastPrice
-              ? "rise"
-              : nextSnapshot.lastPrice < currentSnapshot.lastPrice
-                ? "fall"
-                : null;
-
-          startTransition(() => {
-            setMarketMap((current) => {
-              const updated = {
-                ...current,
-                [nextSymbol]: nextSnapshot,
-              };
-              marketMapRef.current = updated;
-              return updated;
-            });
-            setLastUpdatedAt(new Date());
-
-            if (!priceFlashTone || isStreamDegradedRef.current) {
-              return;
-            }
-
-            const nowMs = performance.now();
-            flashMetadataRef.current = {
-              ...flashMetadataRef.current,
-              [nextSymbol]: buildFlashMetadata(
-                flashMetadataRef.current[nextSymbol],
-                priceFlashTone,
-                nowMs
-              ),
-            };
-            ensureFlashClock();
-          });
-        } catch {
-          // Ignore malformed events and keep the last known snapshot.
-        }
-      };
-      stream.onerror = () => {
-        clearFlashState();
-        isStreamDegradedRef.current = true;
-        setIsStreamDegraded(true);
-        stream.close();
-      };
-
-      return stream;
-    });
-
+  useEffect(() => {
     return () => {
-      streams.forEach((stream) => stream.close());
       clearFlashState();
     };
-  }, [initialMarkets, isStreamDegraded]);
+  }, [clearFlashState]);
+
+  const handleStreamStatusChange = useCallback(
+    (symbol: MarketSymbol, status: EventSourceReconnectStatus) => {
+      setStreamStatusBySymbol((current) => ({
+        ...current,
+        [symbol]: status,
+      }));
+    },
+    []
+  );
+
+  const handleStreamRecovering = useCallback(() => {
+    clearFlashState();
+  }, [clearFlashState]);
+
+  const handleMarketMessage = useCallback(
+    (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data) as MarketApiResponse;
+
+        if (!isSupportedMarketSymbol(data.symbol)) {
+          return;
+        }
+
+        const nextSymbol: MarketSymbol = data.symbol;
+        const currentSnapshot = marketMapRef.current[nextSymbol];
+
+        if (!currentSnapshot) {
+          return;
+        }
+
+        setRecoveredStreamSymbols((current) => {
+          if (current[nextSymbol]) {
+            return current;
+          }
+
+          return {
+            ...current,
+            [nextSymbol]: true,
+          };
+        });
+
+        const nextSnapshot = mergeSnapshot(currentSnapshot, data);
+        const priceFlashTone =
+          nextSnapshot.lastPrice > currentSnapshot.lastPrice
+            ? "rise"
+            : nextSnapshot.lastPrice < currentSnapshot.lastPrice
+              ? "fall"
+              : null;
+
+        startTransition(() => {
+          setMarketMap((current) => {
+            const updated = {
+              ...current,
+              [nextSymbol]: nextSnapshot,
+            };
+            marketMapRef.current = updated;
+            return updated;
+          });
+          setLastUpdatedAt(new Date());
+
+          if (!priceFlashTone) {
+            return;
+          }
+
+          const nowMs = performance.now();
+          flashMetadataRef.current = {
+            ...flashMetadataRef.current,
+            [nextSymbol]: buildFlashMetadata(
+              flashMetadataRef.current[nextSymbol],
+              priceFlashTone,
+              nowMs
+            ),
+          };
+          ensureFlashClock();
+        });
+      } catch {
+        // Ignore malformed events and keep the last known snapshot.
+      }
+    },
+    [ensureFlashClock]
+  );
+
+  const isInitialFallbackRecovering =
+    isMarketDataDegraded &&
+    initialMarkets.some((market) => !recoveredStreamSymbols[market.symbol]);
+  const isStreamRecovering =
+    isInitialFallbackRecovering ||
+    Object.values(streamStatusBySymbol).some((status) =>
+      isRecoveringStatus(status)
+    );
 
   return (
-    <MarketsLanding
-      isMarketDataDegraded={isStreamDegraded}
-      markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
-      rankingEntries={rankingEntries}
-      summaryCards={summaryCards}
-      priceFlashBySymbol={priceFlashBySymbol}
-      lastUpdatedLabel={
-        isStreamDegraded
-          ? "데이터 복구 중"
-          : new Intl.DateTimeFormat("ko-KR", {
-              hour: "numeric",
-              minute: "2-digit",
-              second: "2-digit",
-            }).format(lastUpdatedAt)
-      }
-    />
+    <>
+      {initialMarkets.map((market) => (
+        <MarketLandingStreamSubscription
+          key={market.symbol}
+          symbol={market.symbol}
+          onMessage={handleMarketMessage}
+          onRecovering={handleStreamRecovering}
+          onStatusChange={handleStreamStatusChange}
+        />
+      ))}
+      <MarketsLanding
+        isMarketDataDegraded={isStreamRecovering}
+        markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
+        rankingEntries={rankingEntries}
+        summaryCards={summaryCards}
+        priceFlashBySymbol={priceFlashBySymbol}
+        lastUpdatedLabel={
+          isStreamRecovering
+            ? "데이터 복구 중"
+            : new Intl.DateTimeFormat("ko-KR", {
+                hour: "numeric",
+                minute: "2-digit",
+                second: "2-digit",
+              }).format(lastUpdatedAt)
+        }
+      />
+    </>
   );
+}
+
+type MarketLandingStreamSubscriptionProps = {
+  symbol: MarketSymbol;
+  onMessage: (event: MessageEvent) => void;
+  onRecovering: () => void;
+  onStatusChange: (
+    symbol: MarketSymbol,
+    status: EventSourceReconnectStatus
+  ) => void;
+};
+
+function MarketLandingStreamSubscription({
+  symbol,
+  onMessage,
+  onRecovering,
+  onStatusChange,
+}: MarketLandingStreamSubscriptionProps) {
+  const { status } = useResilientEventSource({
+    onError: onRecovering,
+    onMessage,
+    onReconnect: onRecovering,
+    url: `/api/futures/markets/${encodeURIComponent(symbol)}/stream`,
+  });
+
+  useEffect(() => {
+    onStatusChange(symbol, status);
+  }, [onStatusChange, status, symbol]);
+
+  return null;
 }

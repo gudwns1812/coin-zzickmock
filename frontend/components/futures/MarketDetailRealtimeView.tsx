@@ -9,6 +9,8 @@ import {
 } from "@/components/futures/livePositionDisplay";
 import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
 import Modal from "@/components/ui/Modal";
+import { useResilientEventSource } from "@/hooks/useResilientEventSource";
+import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
 import type {
   FuturesAccountSummary,
   FuturesOpenOrder,
@@ -65,6 +67,8 @@ type ClientApiResponse<T> = {
   message: string | null;
 };
 
+const ORDER_STREAM_RESUME_REFRESH_THROTTLE_MS = 2_000;
+
 export default function MarketDetailRealtimeView({
   initialMarket,
   isAuthenticated,
@@ -89,44 +93,40 @@ export default function MarketDetailRealtimeView({
   const [executionEvents, setExecutionEvents] = useState<
     FuturesTradingExecutionEvent[]
   >([]);
+  const lastOrderResumeRefreshAtRef = useRef(0);
 
-  useEffect(() => {
-    const stream = new EventSource(
-      `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`
-    );
+  const handleMarketStreamMessage = useCallback((event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data) as MarketApiResponse;
+      const receivedAt = Date.now();
 
-    stream.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data) as MarketApiResponse;
-        const receivedAt = Date.now();
+      setMarket((current) => ({
+        ...current,
+        displayName: data.displayName,
+        lastPrice: data.lastPrice,
+        markPrice: data.markPrice,
+        indexPrice: data.indexPrice,
+        fundingRate: data.fundingRate,
+        nextFundingAt: data.nextFundingAt ?? current.nextFundingAt,
+        fundingIntervalHours:
+          data.fundingIntervalHours ?? current.fundingIntervalHours,
+        serverTime: data.serverTime ?? current.serverTime,
+        change24h: data.change24h,
+        turnover24hUsdt:
+          data.turnover24hUsdt ?? data.volume24h ?? current.turnover24hUsdt,
+        volume24h: data.volume24h ?? data.turnover24hUsdt ?? current.volume24h,
+      }));
+      setMarketUpdatedAt(receivedAt);
+      setFundingCountdownNow(receivedAt);
+    } catch {
+      // Keep the last known snapshot when the stream sends malformed data.
+    }
+  }, []);
 
-        setMarket((current) => ({
-          ...current,
-          displayName: data.displayName,
-          lastPrice: data.lastPrice,
-          markPrice: data.markPrice,
-          indexPrice: data.indexPrice,
-          fundingRate: data.fundingRate,
-          nextFundingAt: data.nextFundingAt ?? current.nextFundingAt,
-          fundingIntervalHours:
-            data.fundingIntervalHours ?? current.fundingIntervalHours,
-          serverTime: data.serverTime ?? current.serverTime,
-          change24h: data.change24h,
-          turnover24hUsdt:
-            data.turnover24hUsdt ?? data.volume24h ?? current.turnover24hUsdt,
-          volume24h: data.volume24h ?? data.turnover24hUsdt ?? current.volume24h,
-        }));
-        setMarketUpdatedAt(receivedAt);
-        setFundingCountdownNow(receivedAt);
-      } catch {
-        // Keep the last known snapshot when the stream sends malformed data.
-      }
-    };
-
-    return () => {
-      stream.close();
-    };
-  }, [initialMarket.symbol]);
+  useResilientEventSource({
+    onMessage: handleMarketStreamMessage,
+    url: `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`,
+  });
 
   useEffect(() => {
     setLatestCandleClosePrice(null);
@@ -139,14 +139,29 @@ export default function MarketDetailRealtimeView({
     []
   );
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
+  const refreshOnOrderStreamResume = useCallback(
+    (reason: EventSourceReconnectReason) => {
+      if (reason === "error") {
+        return;
+      }
 
-    const stream = new EventSource("/api/futures/orders/stream");
+      const nowMs = Date.now();
 
-    stream.onmessage = (event) => {
+      if (
+        nowMs - lastOrderResumeRefreshAtRef.current <
+        ORDER_STREAM_RESUME_REFRESH_THROTTLE_MS
+      ) {
+        return;
+      }
+
+      lastOrderResumeRefreshAtRef.current = nowMs;
+      router.refresh();
+    },
+    [router]
+  );
+
+  const handleOrderStreamMessage = useCallback(
+    (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as FuturesTradingExecutionEvent;
 
@@ -160,12 +175,16 @@ export default function MarketDetailRealtimeView({
       } catch {
         // Keep the stream alive when a malformed event slips through.
       }
-    };
+    },
+    [initialMarket.symbol, router]
+  );
 
-    return () => {
-      stream.close();
-    };
-  }, [initialMarket.symbol, isAuthenticated, router]);
+  useResilientEventSource({
+    enabled: isAuthenticated,
+    onMessage: handleOrderStreamMessage,
+    onReconnect: refreshOnOrderStreamResume,
+    url: "/api/futures/orders/stream",
+  });
 
   useEffect(() => {
     if (!market.nextFundingAt) {

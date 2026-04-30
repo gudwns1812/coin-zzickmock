@@ -3,6 +3,7 @@
 import type { FuturesOpenOrder, FuturesPosition } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
 import Modal from "@/components/ui/Modal";
+import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
@@ -27,7 +28,7 @@ import {
   type UTCTimestamp,
   createChart,
 } from "lightweight-charts";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   canEditIndicators,
   calculateIndicatorValueRows,
@@ -556,10 +557,17 @@ export default function FuturesPriceChart({
 
     realtimeCandleOpenTimeRef.current = null;
     setRealtimeCandle(null);
+  }, [isIntervalPreferenceHydrated, selectedInterval, symbol]);
 
-    const stream = new EventSource(buildCandleStreamUrl(symbol, selectedInterval));
+  const invalidateCurrentCandleQueries = useCallback(() => {
+    void queryClient.invalidateQueries({
+      exact: false,
+      queryKey: ["futures-candles", symbol, selectedInterval],
+    });
+  }, [queryClient, selectedInterval, symbol]);
 
-    stream.onmessage = (event) => {
+  const handleCandleStreamMessage = useCallback(
+    (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as unknown;
 
@@ -573,25 +581,21 @@ export default function FuturesPriceChart({
         onLatestCandleClosePriceChange?.(data.closePrice, Date.now());
 
         if (previousOpenTime && previousOpenTime !== data.openTime) {
-          void queryClient.invalidateQueries({
-            queryKey: ["futures-candles", symbol, selectedInterval],
-          });
+          invalidateCurrentCandleQueries();
         }
       } catch {
         // Keep the current chart data when the stream sends malformed data.
       }
-    };
+    },
+    [invalidateCurrentCandleQueries, onLatestCandleClosePriceChange]
+  );
 
-    return () => {
-      stream.close();
-    };
-  }, [
-    isIntervalPreferenceHydrated,
-    onLatestCandleClosePriceChange,
-    queryClient,
-    selectedInterval,
-    symbol,
-  ]);
+  useResilientEventSource({
+    enabled: isIntervalPreferenceHydrated,
+    onMessage: handleCandleStreamMessage,
+    onReconnect: invalidateCurrentCandleQueries,
+    url: buildCandleStreamUrl(symbol, selectedInterval),
+  });
 
   useEffect(() => {
     liveSeriesRef.current?.applyOptions({

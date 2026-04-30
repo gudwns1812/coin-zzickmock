@@ -21,6 +21,7 @@ export async function GET(request: Request) {
       {
         headers: upstreamHeaders,
         cache: "no-store",
+        signal: request.signal,
       }
     );
 

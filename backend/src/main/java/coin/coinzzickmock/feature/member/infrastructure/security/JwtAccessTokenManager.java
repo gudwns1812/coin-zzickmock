@@ -29,7 +29,7 @@ public class JwtAccessTokenManager {
     private final boolean secureCookie;
 
     public JwtAccessTokenManager(
-            @Value("${JWT_SECRET:}") String jwtSecret,
+            @Value("${app.auth.jwt-secret:}") String jwtSecret,
             @Value("${APP_AUTH_ACCESS_TOKEN_EXPIRATION_SECONDS:3600}") long accessTokenExpirationSeconds,
             @Value("${APP_AUTH_COOKIE_SECURE:true}") boolean secureCookie,
             Environment environment

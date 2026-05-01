@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.api;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
@@ -51,7 +52,7 @@ public class MarketRealtimeSseBroker {
             int maxSubscribersPerSymbol,
             int maxSubscribersTotal
     ) {
-        this(sseEventExecutor, maxSubscribersPerSymbol, maxSubscribersTotal, SseTelemetry.noop());
+        this(sseEventExecutor, maxSubscribersPerSymbol, maxSubscribersTotal, NoopSseTelemetry.INSTANCE);
     }
 
     public SseSubscriptionPermit reserve(String symbol) {

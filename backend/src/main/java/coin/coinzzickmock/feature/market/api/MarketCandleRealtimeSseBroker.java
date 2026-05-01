@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.api;
 import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
@@ -43,7 +44,7 @@ public class MarketCandleRealtimeSseBroker {
             Executor sseEventExecutor,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector
     ) {
-        this(sseEventExecutor, realtimeMarketCandleProjector, SseTelemetry.noop());
+        this(sseEventExecutor, realtimeMarketCandleProjector, NoopSseTelemetry.INSTANCE);
     }
 
     public void register(String symbol, MarketCandleInterval interval, SseEmitter emitter) {

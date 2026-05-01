@@ -12,28 +12,4 @@ public interface SseTelemetry {
     void sendRecorded(String stream, String result, Duration duration);
 
     void executorRejected(String stream);
-
-    static SseTelemetry noop() {
-        return new SseTelemetry() {
-            @Override
-            public void connectionOpened(String stream) {
-            }
-
-            @Override
-            public void connectionClosed(String stream, String reason) {
-            }
-
-            @Override
-            public void connectionRejected(String stream, String reason) {
-            }
-
-            @Override
-            public void sendRecorded(String stream, String result, Duration duration) {
-            }
-
-            @Override
-            public void executorRejected(String stream) {
-            }
-        };
-    }
 }

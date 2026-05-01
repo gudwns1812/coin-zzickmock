@@ -89,9 +89,12 @@ final class MetricTags {
             "cache",
             "db",
             "http",
+            "login",
             "redis",
             "sse",
-            "websocket"
+            "websocket",
+            "authenticated_api",
+            "unknown"
     );
     private static final Set<String> DIRECTIONS = Set.of("request", "response");
 

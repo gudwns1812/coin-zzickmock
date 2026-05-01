@@ -2,16 +2,22 @@ package coin.coinzzickmock.feature.member.api;
 
 import jakarta.servlet.http.Cookie;
 import com.jayway.jsonpath.JsonPath;
+import coin.coinzzickmock.feature.activity.application.service.SnapshotDailyActiveUserSummaryService;
+import coin.coinzzickmock.feature.activity.domain.ActivityDate;
+import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,6 +33,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthControllerTest {
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private SnapshotDailyActiveUserSummaryService snapshotDailyActiveUserSummaryService;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void demoAccountCanLoginAndReadAccountSummary() throws Exception {
@@ -54,6 +69,33 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.account").value("test"))
                 .andExpect(jsonPath("$.data.memberName").value("demo-trader"));
+    }
+
+    @Test
+    void loginAndAuthenticatedApiRecordDailyActivity() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "test@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Long memberId = memberId(loginResult);
+
+        assertThat(activityCount(memberId)).isEqualTo(1);
+        assertThat(activityColumn(memberId, "first_source")).isEqualTo("LOGIN");
+        assertThat(activityColumn(memberId, "last_source")).isEqualTo("LOGIN");
+
+        mockMvc.perform(get("/api/futures/account/me").cookie(accessTokenCookie(loginResult)))
+                .andExpect(status().isOk());
+
+        assertThat(activityCount(memberId)).isEqualTo(2);
+        assertThat(activityColumn(memberId, "first_source")).isEqualTo("LOGIN");
+        assertThat(activityColumn(memberId, "last_source")).isEqualTo("AUTHENTICATED_API");
     }
 
     @Test
@@ -224,6 +266,10 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
         Long memberId = memberId(loginResult);
+        LocalDate activityDate = LocalDate.now(ActivityDate.REPORTING_ZONE);
+
+        snapshotDailyActiveUserSummaryService.snapshot(activityDate);
+        assertThat(summaryCount(activityDate)).isEqualTo(1);
 
         mockMvc.perform(delete("/api/futures/auth/withdraw")
                         .cookie(accessTokenCookie(loginResult))
@@ -235,6 +281,10 @@ class AuthControllerTest {
                                 """.formatted(memberId)))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")));
+
+        entityManager.flush();
+        assertThat(activityRows(memberId)).isZero();
+        assertThat(summaryCount(activityDate)).isEqualTo(1);
 
         mockMvc.perform(post("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -355,5 +405,37 @@ class AuthControllerTest {
     private Long memberId(MvcResult result) throws Exception {
         Number value = JsonPath.read(result.getResponse().getContentAsString(), "$.data.memberId");
         return value.longValue();
+    }
+
+    private long activityCount(Long memberId) {
+        return jdbcTemplate.queryForObject(
+                "select activity_count from member_daily_activity where member_id = ?",
+                Long.class,
+                memberId
+        );
+    }
+
+    private String activityColumn(Long memberId, String column) {
+        return jdbcTemplate.queryForObject(
+                "select " + column + " from member_daily_activity where member_id = ?",
+                String.class,
+                memberId
+        );
+    }
+
+    private long activityRows(Long memberId) {
+        return jdbcTemplate.queryForObject(
+                "select count(*) from member_daily_activity where member_id = ?",
+                Long.class,
+                memberId
+        );
+    }
+
+    private long summaryCount(LocalDate activityDate) {
+        return jdbcTemplate.queryForObject(
+                "select active_user_count from daily_active_user_summary where activity_date = ?",
+                Long.class,
+                activityDate
+        );
     }
 }

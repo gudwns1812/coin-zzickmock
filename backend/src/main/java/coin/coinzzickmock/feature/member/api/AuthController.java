@@ -3,6 +3,8 @@ package coin.coinzzickmock.feature.member.api;
 import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.activity.application.service.RecordMemberActivityService;
+import coin.coinzzickmock.feature.activity.domain.ActivitySource;
 import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
 import coin.coinzzickmock.feature.member.application.service.AuthenticateMemberService;
 import coin.coinzzickmock.feature.member.application.service.CheckMemberAvailabilityService;
@@ -33,6 +35,7 @@ public class AuthController {
     private final WithdrawMemberService withdrawMemberService;
     private final JwtAccessTokenManager jwtAccessTokenManager;
     private final Providers providers;
+    private final RecordMemberActivityService recordMemberActivityService;
 
     @PostMapping("/register")
     public ApiResponse<AuthUserResponse> register(@RequestBody RegisterMemberRequest request) {
@@ -67,6 +70,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthUserResponse>> login(@RequestBody LoginRequest request) {
         MemberProfileResult memberProfile = authenticateMemberService.authenticate(request.account(), request.password());
+        recordMemberActivityService.record(memberProfile.memberId(), ActivitySource.LOGIN);
         return withAccessToken(ApiResponse.success(AuthUserResponse.from(memberProfile)), memberProfile);
     }
 

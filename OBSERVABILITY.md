@@ -48,6 +48,7 @@ Grafana가 답해야 하는 질문:
 - 5xx, timeout, rejected SSE connection, 큐 backlog가 증가했는가?
 - Bitget, Redis, MySQL, SMTP 같은 외부 의존성이 정상인가?
 - 캐시 hit/miss, eviction, read/write failure가 평소와 다르게 변했는가?
+- 인증된 사용자 활동 수집이 정상이며 DAU 집계가 최신인가?
 - 최근 배포 이후 에러율, p95, p99, 캐시 miss율이 나빠졌는가?
 - 장애가 특정 symbol, 엔드포인트, job, environment에 한정되는가?
 
@@ -125,6 +126,7 @@ Grafana에 두지 않는 것:
 - `provider`: `bitget`, `redis`, `mysql`, `smtp`
 - `cache`: `market_snapshot`, `market_supported_symbols`, `market_history`, `leaderboard`
 - `operation`: `read`, `write`, `evict`, `refresh`, `fill`, `invalidate`
+- `source`: `login`, `authenticated_api`처럼 집합이 닫힌 수집 원천
 
 금지 labels:
 

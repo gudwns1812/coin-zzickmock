@@ -94,7 +94,7 @@ backend/src/main/java/coin/coinzzickmock/
 
 - Spring이 관리하는 협력 객체는 concrete class라도 생성자 주입으로 연결한다.
 - 같은 객체를 여러 유스케이스나 인프라 어댑터가 재사용할 수 있다면, 생성 책임은 실제 소유 layer의 config 또는 provider configuration으로 모은다.
-- MVC/interceptor/SSE delivery config는 `web`, scheduler/startup/background trigger wiring은 `job`, JPA/Redis/external API/SMTP/JWT/provider implementation wiring은 `infrastructure`가 소유한다.
+- MVC/interceptor/SSE delivery config는 feature `web` 또는 shared `common/web`, scheduler/startup/background trigger wiring은 `job`, JPA/Redis/external API/SMTP/JWT/provider implementation wiring은 `infrastructure`가 소유한다.
 - domain 조립의 상세 기준은 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)를 따른다.
 - `new`를 써도 되는 경우는 값 객체, 엔티티, 결과 DTO, 컬렉션처럼 한 유스케이스 안에서 즉시 소비되는 짧은 수명 객체다.
 - `new`를 피해야 하는 경우는 정책 객체, 암호화기, 파서, 재사용 계산기처럼 장기 협력 객체를 Spring 관리 클래스 내부에서 붙드는 경우다.

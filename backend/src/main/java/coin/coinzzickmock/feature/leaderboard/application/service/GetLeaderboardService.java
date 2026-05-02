@@ -2,8 +2,8 @@ package coin.coinzzickmock.feature.leaderboard.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardProjectionRepository;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardEntryResult;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;

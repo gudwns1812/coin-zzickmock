@@ -1,53 +1,50 @@
 package coin.coinzzickmock.feature.leaderboard.infrastructure.persistence;
 
-import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.infrastructure.persistence.TradingAccountEntity;
-import coin.coinzzickmock.feature.account.infrastructure.persistence.TradingAccountEntityRepository;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardProjectionRepository;
+import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
-import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
 public class LeaderboardProjectionPersistenceRepository implements LeaderboardProjectionRepository {
-    private final TradingAccountEntityRepository tradingAccountEntityRepository;
-    private final MemberCredentialRepository memberCredentialRepository;
+    private static final String ACTIVE_LEADERBOARD_SQL = """
+            SELECT account.member_id,
+                   member.nickname,
+                   account.wallet_balance
+              FROM trading_accounts account
+              JOIN member_credentials member
+                ON member.id = account.member_id
+             WHERE member.withdrawn_at IS NULL
+            """;
+    private static final String LEADERBOARD_ORDER = " ORDER BY account.wallet_balance DESC, account.member_id ASC";
+
+    private final JdbcTemplate jdbcTemplate;
+    private final RowMapper<LeaderboardEntry> rowMapper = (resultSet, rowNumber) ->
+            LeaderboardEntry.fromWalletBalance(
+                    resultSet.getLong("member_id"),
+                    resultSet.getString("nickname"),
+                    resultSet.getBigDecimal("wallet_balance"),
+                    Instant.now()
+            );
 
     @Override
     public List<LeaderboardEntry> findAll() {
-        return tradingAccountEntityRepository.findAll().stream()
-                .map(TradingAccountEntity::toDomain)
-                .map(this::toActiveEntry)
-                .flatMap(Optional::stream)
-                .toList();
+        return jdbcTemplate.query(ACTIVE_LEADERBOARD_SQL + LEADERBOARD_ORDER, rowMapper);
     }
 
     @Override
     public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
-        return tradingAccountEntityRepository.findById(memberId)
-                .map(TradingAccountEntity::toDomain)
-                .flatMap(this::toActiveEntry);
-    }
-
-    private Optional<LeaderboardEntry> toActiveEntry(TradingAccount account) {
-        return memberCredentialRepository.findActiveByMemberId(account.memberId())
-                .map(member -> toEntry(account, member.nickname()));
-    }
-
-    private LeaderboardEntry toEntry(TradingAccount account, String nickname) {
-        double profitRate = (account.walletBalance() - TradingAccount.INITIAL_WALLET_BALANCE)
-                / TradingAccount.INITIAL_WALLET_BALANCE;
-        return new LeaderboardEntry(
-                account.memberId(),
-                nickname,
-                account.walletBalance(),
-                profitRate,
-                Instant.now()
-        );
+        return jdbcTemplate.query(
+                        ACTIVE_LEADERBOARD_SQL + " AND account.member_id = ?" + LEADERBOARD_ORDER,
+                        rowMapper,
+                        memberId
+                ).stream()
+                .findFirst();
     }
 }

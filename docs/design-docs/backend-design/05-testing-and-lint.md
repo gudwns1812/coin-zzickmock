@@ -73,6 +73,7 @@ PR-1에서 시작한 advisory rule:
 `INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY` advisory는 PR-4 config split 이후 `INFRASTRUCTURE_NO_INBOUND_DELIVERY` 실패 조건으로 흡수되었다.
 PR-5부터 `WEB_NO_INFRASTRUCTURE_IMPORTS`와 `PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS`가 auth/provider boundary 회귀를 막는다.
 PR-6부터 `CROSS_FEATURE_INFRASTRUCTURE_IMPORTS`가 member withdrawal cleaner 회귀를 막고, `ACTIVE_MEMBER_LOOKUP_GUARD`가 auth/member/profile active-only 조회 convention을 막는다.
+PR-7부터 `CROSS_FEATURE_INFRASTRUCTURE_IMPORTS`는 전체 feature infrastructure에 적용되고, leaderboard는 dedicated projection query로 account/member table coupling을 repository 내부 SQL로만 가진다.
 이 advisory는 `violations`에 포함되지 않으며 `architectureLint` 성공 여부를 바꾸지 않는다.
 후속 PR에서 같은 개념의 strict rule을 켤 때는 해당 PR이 현재 위반도 함께 제거해야 한다.
 

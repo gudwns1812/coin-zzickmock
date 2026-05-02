@@ -5,9 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardProjectionRepository;
+import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,11 +29,29 @@ class LeaderboardProjectionPersistenceRepositoryTest {
     @Autowired
     private AccountRepository accountRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
+    @Test
+    void findAllBuildsEntriesWithMemberNickname() {
+        MemberCredential member = saveMemberWithAccount("leaderboard-nickname");
+
+        assertThat(leaderboardProjectionRepository.findAll())
+                .filteredOn(entry -> entry.memberId().equals(member.memberId()))
+                .singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.nickname()).isEqualTo(member.nickname());
+                    assertThat(entry.walletBalance()).isEqualTo(120_000);
+                    assertThat(entry.profitRate()).isEqualTo(0.2);
+                });
+    }
+
     @Test
     void findAllExcludesWithdrawnMembers() {
         MemberCredential active = saveMemberWithAccount("leaderboard-active");
         MemberCredential withdrawn = saveMemberWithAccount("leaderboard-withdrawn");
         memberCredentialRepository.save(withdrawn.withdraw(Instant.parse("2026-05-02T00:00:00Z")));
+        entityManager.flush();
 
         assertThat(leaderboardProjectionRepository.findAll())
                 .extracting(entry -> entry.memberId())
@@ -44,8 +63,21 @@ class LeaderboardProjectionPersistenceRepositoryTest {
     void findByMemberIdReturnsEmptyForWithdrawnMember() {
         MemberCredential withdrawn = saveMemberWithAccount("leaderboard-single-withdrawn");
         memberCredentialRepository.save(withdrawn.withdraw(Instant.parse("2026-05-02T00:00:00Z")));
+        entityManager.flush();
 
         assertThat(leaderboardProjectionRepository.findByMemberId(withdrawn.memberId())).isEmpty();
+    }
+
+    @Test
+    void findByMemberIdReturnsSingleProjectedEntry() {
+        MemberCredential member = saveMemberWithAccount("leaderboard-single-active");
+
+        assertThat(leaderboardProjectionRepository.findByMemberId(member.memberId()))
+                .get()
+                .satisfies(entry -> {
+                    assertThat(entry.memberId()).isEqualTo(member.memberId());
+                    assertThat(entry.nickname()).isEqualTo(member.nickname());
+                });
     }
 
     private MemberCredential saveMemberWithAccount(String account) {
@@ -68,6 +100,7 @@ class LeaderboardProjectionPersistenceRepositoryTest {
                 120_000,
                 120_000
         ));
+        entityManager.flush();
         return member;
     }
 }

@@ -32,8 +32,8 @@
 - `job` -> HTTP/SSE type
 - `application/service` -> 다른 `application/service`
 
-전환 기간에는 기존 `api` package가 남아 있을 수 있지만, 이는 `web` migration 대상이다.
-새 코드와 최종 구조에서는 `api` 대신 `web`을 사용한다.
+HTTP delivery Java package는 `web`이다.
+예전 `api` package 이름은 더 이상 사용하지 않는다.
 
 여기서 말하는 "계약"은 무조건 인터페이스를 만들라는 뜻이 아니다.
 기본값은 concrete class 의존이다.

@@ -46,8 +46,8 @@
 이 집합은 고정이다.
 새 기능을 만든다고 `service`, `util`, `helper`, `manager`, `common` 같은 임의 레이어를 추가하지 않는다.
 
-기존 `api` package는 `web`으로 이동하는 migration 대상이다.
-이름이 바뀌어도 HTTP URL path의 `/api/futures/**`는 그대로 유지한다.
+HTTP delivery Java package는 `web`이다.
+예전 `api` package 이름은 더 이상 사용하지 않지만 HTTP URL path의 `/api/futures/**`는 그대로 유지한다.
 
 ### `web`
 

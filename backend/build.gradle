@@ -54,7 +54,7 @@ tasks.named('test') {
 def architectureRootPackage = 'coin.coinzzickmock'
 def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
 def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
-def architectureLayers = ['api', 'web', 'job', 'application', 'domain', 'infrastructure'] as Set
+def architectureLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
 def architectureTargetLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
 def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
 
@@ -96,14 +96,13 @@ tasks.register('architectureLint') {
                     'TOP_LEVEL_PACKAGE_ALLOWED',
                     'FORBIDDEN_LEGACY_TOP_LEVEL',
                     'FEATURE_LAYER_REQUIRED',
-                    'FEATURE_API_LAYER_MIGRATION_TARGET',
                     'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
                     'JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY',
                     'INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY',
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
                     'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
-                    'API_NO_PERSISTENCE_IMPORTS',
+                    'WEB_NO_PERSISTENCE_IMPORTS',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
                 ],
@@ -236,17 +235,8 @@ tasks.register('architectureLint') {
                             packageLine,
                             'FEATURE_LAYER_REQUIRED',
                             "feature 레이어는 `${architectureLayers.join(', ')}` 중 하나여야 합니다. 현재 값: `${packageSegments[2]}`.",
-                            '`web`, `job`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요. 전환 중인 `api`는 migration 대상입니다.',
+                            '`web`, `job`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요. `api` Java package는 더 이상 허용하지 않습니다.',
                             [packageName: packageName, layer: packageSegments[2]]
-                        )
-                    } else if (packageSegments[2] == 'api') {
-                        logAdvisory(
-                            sourceFile,
-                            packageLine,
-                            'FEATURE_API_LAYER_MIGRATION_TARGET',
-                            '`api` feature layer는 `web` migration 대상입니다.',
-                            'HTTP/SSE delivery class는 다음 package migration PR에서 `feature.<name>.web`으로 이동하세요. URL path는 변경하지 않습니다.',
-                            [packageName: packageName, targetLayer: 'web']
                         )
                     }
                 }
@@ -364,15 +354,15 @@ tasks.register('architectureLint') {
                     }
                 }
 
-                if (layer == 'api') {
+                if (layer == 'web') {
                     lines.eachWithIndex { lineText, index ->
                         def trimmed = lineText.trim()
                         if (trimmed.startsWith('import org.springframework.data.') || trimmed.startsWith('import jakarta.persistence.')) {
                             logViolation(
                                 sourceFile,
                                 index + 1,
-                                'API_NO_PERSISTENCE_IMPORTS',
-                                'api 레이어는 persistence import에 직접 의존하면 안 됩니다.',
+                                'WEB_NO_PERSISTENCE_IMPORTS',
+                                'web 레이어는 persistence import에 직접 의존하면 안 됩니다.',
                                 '영속성 의존은 `application` port 또는 `infrastructure` adapter 뒤로 숨기세요.',
                                 [packageName: packageName, importLine: trimmed]
                             )
@@ -395,7 +385,7 @@ tasks.register('architectureLint') {
                             text.contains('WebMvcConfigurer') ||
                             ['@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping']
                                     .any { text.contains(it) }
-                    if (usesHttpDelivery && !(layer in ['api', 'web'])) {
+                    if (usesHttpDelivery && layer != 'web') {
                         logAdvisory(
                             sourceFile,
                             firstInterestingLine(['@RestController', 'SseEmitter', 'HandlerInterceptor', 'WebMvcConfigurer', '@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping']),

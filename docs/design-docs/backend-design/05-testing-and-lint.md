@@ -42,7 +42,7 @@
 - `support`, `core`, `extern`, `storage` 같은 레거시 광역 패키지 금지
 - `feature.<name>.<layer>` 구조 강제
 - 최종 feature layer는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정
-- 전환 기간의 `api` package는 `web` migration advisory로 보고하고, package migration PR 이후 fail로 전환
+- `api` Java package는 금지하고 HTTP/SSE delivery는 `web` package 아래에 둠
 - `domain` 레이어의 Spring/JPA 의존 금지
 - `application` 레이어의 SecurityContext 직접 접근 금지
 - `web` 레이어의 persistence/infrastructure import 직접 의존 금지
@@ -59,13 +59,13 @@
 3. Slice-specific fail: 해당 PR이 소유한 위반만 fail로 전환한다.
 4. Final strict: `api` layer와 inbound-infrastructure drift를 금지한다.
 
-PR-1의 advisory rule:
+PR-1에서 시작한 advisory rule:
 
-- `FEATURE_API_LAYER_MIGRATION_TARGET`
 - `WEB_OWNS_HTTP_DELIVERY_ADVISORY`
 - `JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY`
 - `INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY`
 
+`FEATURE_API_LAYER_MIGRATION_TARGET` advisory는 PR-2 package migration 이후 `FEATURE_LAYER_REQUIRED` 실패 조건으로 흡수되었다.
 이 advisory는 `violations`에 포함되지 않으며 `architectureLint` 성공 여부를 바꾸지 않는다.
 후속 PR에서 같은 개념의 strict rule을 켤 때는 해당 PR이 현재 위반도 함께 제거해야 한다.
 

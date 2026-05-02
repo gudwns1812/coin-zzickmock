@@ -1,10 +1,11 @@
-package coin.coinzzickmock.feature.member.infrastructure.security;
+package coin.coinzzickmock.providers.infrastructure.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import coin.coinzzickmock.feature.member.domain.MemberRole;
+import coin.coinzzickmock.providers.auth.ActorRole;
+import coin.coinzzickmock.providers.auth.AuthSessionClaims;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
@@ -22,18 +23,24 @@ class JwtAccessTokenManagerTest {
         environment.setActiveProfiles("test");
 
         JwtAccessTokenManager manager = new JwtAccessTokenManager("", 3600, true, environment);
-        String token = manager.issue(1L, "demo-member", "Demo User", "demo@example.com", MemberRole.ADMIN);
+        String token = manager.issue(new AuthSessionClaims(
+                1L,
+                "demo-member",
+                "Demo User",
+                "demo@example.com",
+                ActorRole.ADMIN
+        ));
 
-        JwtSessionClaims claims = manager.parse(token);
+        AuthSessionClaims claims = manager.parse(token);
         assertEquals(1L, claims.memberId());
         assertEquals("demo-member", claims.account());
         assertEquals("Demo User", claims.nickname());
         assertEquals("demo@example.com", claims.email());
-        assertEquals(MemberRole.ADMIN, claims.role());
+        assertEquals(ActorRole.ADMIN, claims.role());
     }
 
     @Test
-    void buildsSecureCookieByDefault() {
+    void exposesCookiePolicyValues() {
         MockEnvironment environment = new MockEnvironment();
         JwtAccessTokenManager manager = new JwtAccessTokenManager(
                 "12345678901234567890123456789012",
@@ -42,9 +49,8 @@ class JwtAccessTokenManagerTest {
                 environment
         );
 
-        String cookie = manager.buildAccessTokenCookie("token").toString();
-
-        assertTrue(cookie.contains("Secure"));
-        assertTrue(cookie.contains("HttpOnly"));
+        assertEquals("accessToken", manager.accessTokenCookieName());
+        assertEquals(3600, manager.accessTokenExpirationSeconds());
+        assertTrue(manager.secureCookie());
     }
 }

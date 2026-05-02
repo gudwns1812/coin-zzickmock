@@ -31,6 +31,7 @@
 - `job` -> `infrastructure`
 - `job` -> HTTP/SSE type
 - `application/service` -> 다른 `application/service`
+- `providers` -> feature `infrastructure`
 
 HTTP delivery Java package는 `web`이다.
 예전 `api` package 이름은 더 이상 사용하지 않는다.
@@ -64,6 +65,8 @@ public interface Providers {
 
 `Providers`는 교차 관심사의 유일한 진입점이다.
 애플리케이션 유스케이스와 인프라 어댑터는 필요한 경우 이 인터페이스를 통해 기능을 사용한다.
+provider auth 모델은 feature domain type을 직접 담지 않는다.
+예를 들어 `providers.auth.Actor`는 member domain의 `MemberRole`이 아니라 provider-owned `ActorRole`을 사용한다.
 
 ### Why Providers Exists
 

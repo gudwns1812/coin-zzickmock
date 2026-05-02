@@ -103,7 +103,8 @@ tasks.register('architectureLint') {
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
                     'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
-                    'WEB_NO_PERSISTENCE_IMPORTS',
+                    'WEB_NO_INFRASTRUCTURE_IMPORTS',
+                    'PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
                 ],
@@ -358,13 +359,17 @@ tasks.register('architectureLint') {
                 if (layer == 'web') {
                     lines.eachWithIndex { lineText, index ->
                         def trimmed = lineText.trim()
-                        if (trimmed.startsWith('import org.springframework.data.') || trimmed.startsWith('import jakarta.persistence.')) {
+                        if (trimmed.startsWith('import org.springframework.data.') ||
+                                trimmed.startsWith('import jakarta.persistence.') ||
+                                trimmed.startsWith("import ${architectureRootPackage}.providers.infrastructure.") ||
+                                (trimmed.startsWith("import ${architectureRootPackage}.feature.") &&
+                                        trimmed.contains('.infrastructure.'))) {
                             logViolation(
                                 sourceFile,
                                 index + 1,
-                                'WEB_NO_PERSISTENCE_IMPORTS',
-                                'web 레이어는 persistence import에 직접 의존하면 안 됩니다.',
-                                '영속성 의존은 `application` port 또는 `infrastructure` adapter 뒤로 숨기세요.',
+                                'WEB_NO_INFRASTRUCTURE_IMPORTS',
+                                'web 레이어는 persistence/provider infrastructure/feature infrastructure 구현에 직접 의존하면 안 됩니다.',
+                                '영속성/보안 구현 의존은 `application` 또는 `providers` 계약 뒤로 숨기세요.',
                                 [packageName: packageName, importLine: trimmed]
                             )
                         }
@@ -446,6 +451,23 @@ tasks.register('architectureLint') {
                                 'feature infrastructure는 inbound web delivery나 feature job runtime을 소유하면 안 됩니다.',
                                 'MVC/SSE delivery config는 `web` 또는 shared web config로, scheduler/startup trigger wiring은 `job`으로 이동하세요.',
                                 [packageName: packageName, webConfigCandidate: hasInboundDelivery, jobConfigCandidate: hasFeatureJobRuntime]
+                            )
+                        }
+                    }
+                }
+
+                if (topLevel == 'providers') {
+                    lines.eachWithIndex { lineText, index ->
+                        def trimmed = lineText.trim()
+                        if (trimmed.startsWith("import ${architectureRootPackage}.feature.") &&
+                                trimmed.contains('.infrastructure.')) {
+                            logViolation(
+                                sourceFile,
+                                index + 1,
+                                'PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS',
+                                'providers package는 feature infrastructure 구현을 직접 import하면 안 됩니다.',
+                                'provider 구현은 provider-owned infrastructure에 두고 feature와는 contract/domain/application 경계로만 연결하세요.',
+                                [packageName: packageName, importLine: trimmed]
                             )
                         }
                     }

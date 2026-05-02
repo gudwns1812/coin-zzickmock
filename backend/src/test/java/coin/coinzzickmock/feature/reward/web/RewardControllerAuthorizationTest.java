@@ -2,9 +2,9 @@ package coin.coinzzickmock.feature.reward.web;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.member.domain.MemberRole;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
+import coin.coinzzickmock.providers.auth.ActorRole;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
@@ -26,7 +26,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
-                providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
+                providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", ActorRole.USER))
         );
 
         CoreException thrown = assertThrows(
@@ -48,7 +48,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
-                providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", MemberRole.USER))
+                providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", ActorRole.USER))
         );
 
         CoreException thrown = assertThrows(
@@ -70,7 +70,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
-                providers(new Actor(99L, "admin", "admin@coinzzickmock.dev", "Admin", MemberRole.ADMIN))
+                providers(new Actor(99L, "admin", "admin@coinzzickmock.dev", "Admin", ActorRole.ADMIN))
         );
 
         CoreException thrown = assertThrows(

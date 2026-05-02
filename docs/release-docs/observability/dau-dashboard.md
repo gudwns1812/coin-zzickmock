@@ -14,6 +14,10 @@ Grafana provisioning 파일은 아직 저장소에 두지 않고, 운영 Grafana
 - 수집 건강도:
   `dau.activity.record.total`
 
+DAU ingestion은 로그인/인증 API 응답 경로에서 직접 DB write를 기다리지 않는 비동기 best-effort 처리다.
+`member_daily_activity`는 `(activity_date, member_id)` unique key와 DB upsert로 멱등성을 보장한다.
+프로세스가 응답 직후 종료되면 아직 처리되지 않은 이벤트는 유실될 수 있으므로, 수집 실패/거절 metric을 함께 본다.
+
 ## SQL Panels
 
 오늘 DAU:
@@ -56,7 +60,7 @@ SELECT activity_date, active_user_count
 DAU 기록 실패율:
 
 ```promql
-sum(rate(dau_activity_record_total{result="failure"}[5m]))
+sum(rate(dau_activity_record_total{result=~"failure|rejected"}[5m]))
 /
 sum(rate(dau_activity_record_total[5m]))
 ```

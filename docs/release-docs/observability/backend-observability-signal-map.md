@@ -79,6 +79,7 @@ Executor queue depth is not implemented yet; add a separate bounded queue gauge 
 ### Implemented: Daily Active Users
 
 - DAU source of truth: `member_daily_activity` table, one row per KST `activity_date` and `member_id`.
+- DAU ingestion is async best-effort. Login/authenticated API request paths enqueue activity events; DB writes use the `(activity_date, member_id)` unique key with idempotent upsert.
 - Long-term identifier-free trend: `daily_active_user_summary`.
 - Default summary schedule: every day 00:05 KST snapshots yesterday's DAU. Configure with `DAU_SUMMARY_ENABLED` and `DAU_SUMMARY_CRON`.
 - `dau.activity.record.total` with `source`, `result`
@@ -90,9 +91,11 @@ Implemented `source` values:
 
 Implemented `result` values:
 
+- `queued`
 - `success`
 - `failure`
 - `skipped`
+- `rejected`
 
 ### Planned: Market Realtime, WebSocket, History, And Cache
 
@@ -136,7 +139,7 @@ Implemented `result` values:
 - `market.snapshot.staleness.seconds`가 구현된 뒤 10초 이상 지속되면 Bitget WebSocket state, reconnect count, REST fallback을 함께 확인한다.
 - SSE rejection이 증가하면 active connection, symbol/member limit, executor queue를 함께 확인한다.
 - trading write 실패가 증가하면 order fill claim miss, liquidation, TP/SL trigger metric과 error log를 함께 확인한다.
-- `dau.activity.record.total{result="failure"}`가 증가하면 인증 API 응답 상태, DB write latency, `member_daily_activity` unique key 충돌 로그를 함께 확인한다.
+- `dau.activity.record.total{result=~"failure|rejected"}`가 증가하면 activity executor saturation, DB write latency, `member_daily_activity` upsert failure log를 함께 확인한다.
 
 ## Label And Privacy Guardrails
 

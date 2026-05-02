@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.activity.infrastructure.web;
+package coin.coinzzickmock.feature.activity.api;
 
 import coin.coinzzickmock.feature.activity.application.service.RecordMemberActivityService;
 import coin.coinzzickmock.feature.activity.domain.ActivitySource;

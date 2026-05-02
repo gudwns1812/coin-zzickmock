@@ -49,6 +49,7 @@
 HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매핑만 담당한다.
 
 - `@RestController`
+- feature가 소유한 `HandlerInterceptor`, `WebMvcConfigurer` 같은 Spring MVC 요청 경계 어댑터와 API 경로 정책
 - request/response DTO
 - request validation
 - application input/result 매핑
@@ -59,6 +60,9 @@ HTTP 요청/응답, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매
 - 비즈니스 규칙 구현
 - 리포지토리 직접 호출
 - 외부 SDK 직접 호출
+
+Spring MVC configuration이라도 feature의 HTTP API 경로, 인증된 요청 컨텍스트, interceptor 등록처럼 요청 경계 동작 자체를 설명한다면 `api`에 둔다.
+일반 bean 조립, 외부 기술 설정, 스케줄러/시드/초기화 wiring은 계속 `infrastructure/config`가 소유한다.
 
 ### `application`
 

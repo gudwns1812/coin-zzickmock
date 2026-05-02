@@ -1,6 +1,5 @@
-package coin.coinzzickmock.feature.activity.infrastructure.config;
+package coin.coinzzickmock.feature.activity.api;
 
-import coin.coinzzickmock.feature.activity.infrastructure.web.AuthenticatedActivityInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;

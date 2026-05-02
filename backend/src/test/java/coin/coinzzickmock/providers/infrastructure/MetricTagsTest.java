@@ -14,11 +14,19 @@ class MetricTagsTest {
                 "symbol", "BTCUSDT",
                 "interval", "1m",
                 "range_bucket", "2026-04",
-                "source", "redis"
+                "source", "login"
         ));
 
         assertThat(tags.stream().map(tag -> tag.getKey() + "=" + tag.getValue()))
-                .containsExactly("interval=1m", "range_bucket=2026-04", "source=redis", "symbol=BTCUSDT");
+                .containsExactly("interval=1m", "range_bucket=2026-04", "source=login", "symbol=BTCUSDT");
+    }
+
+    @Test
+    void acceptsDauActivitySourceTags() {
+        assertThat(MetricTags.of(Map.of(
+                "source", "authenticated_api",
+                "result", "success"
+        ))).isNotEmpty();
     }
 
     @Test

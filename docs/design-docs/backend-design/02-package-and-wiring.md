@@ -109,7 +109,9 @@ annotation 위치와 configuration 소유권을 명확히 드러내야 한다.
 규칙:
 
 - `@RestController`는 `api`에만 둔다.
-- `@Configuration`은 owner가 드러나는 `feature/.../infrastructure/config` 또는 `providers/infrastructure/config`에 둔다.
+- `@Configuration`은 기본적으로 owner가 드러나는 `feature/.../infrastructure/config` 또는 `providers/infrastructure/config`에 둔다.
+- 예외적으로 `WebMvcConfigurer`, `HandlerInterceptor` 등록, CORS/path pattern처럼 feature의 HTTP API 경계와 요청 정책을 설명하는 Spring MVC configuration은 해당 feature의 `api`에 둔다.
+- 이 예외는 독자가 웹 관련 동작을 찾을 때 `api`에서 시작할 수 있게 하기 위한 규칙이다. 일반 bean 조립, 외부 기술 설정, lifecycle wiring에는 적용하지 않는다.
 - 앱 시작 시 필요한 seed나 초기화도 전역 bucket이 아니라 소유 feature의 `infrastructure/config`에서 선언한다.
 - `@Entity`, `@Embeddable`은 infrastructure persistence 쪽에 둔다.
 - `@Transactional`은 application 유스케이스 경계에서 사용한다.

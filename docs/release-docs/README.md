@@ -30,6 +30,8 @@
 
 - [observability/backend-observability-signal-map.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/observability/backend-observability-signal-map.md)
   backend 관측성 metric, trace, log 우선순위와 릴리즈 확인 기준.
+- [observability/dau-dashboard.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/observability/dau-dashboard.md)
+  DB 기반 DAU 집계와 Grafana 패널 구성을 위한 SQL/PromQL 기준.
 
 ### Release Record Template
 

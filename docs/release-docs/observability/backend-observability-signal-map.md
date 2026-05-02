@@ -22,7 +22,7 @@
 | 2 | Market realtime and Bitget | market refresh, Bitget REST/WS latency, failure, fallback, REST requests per second, snapshot staleness | 실시간 시장 데이터가 stale이거나 Bitget 호출량이 튀는가? |
 | 3 | SSE streams | active/opened/closed/rejected connections, send success/failure/duration, executor queue/rejection | stream 연결이 밀리거나 거절되는가? |
 | 4 | Trading execution and risk | order preview/create/fill, fill claim miss, TP/SL trigger, liquidation, wallet balance changed | 가격 이벤트 이후 주문/포지션 상태 전이가 정상인가? |
-| 5 | Reward, admin, leaderboard | reward notification sent/skipped/failure, admin transition result, leaderboard refresh/snapshot age/Redis failure | 운영자가 조치해야 할 업무 실패가 쌓이는가? |
+| 5 | Activity, reward, admin, leaderboard | DAU recording result, reward notification sent/skipped/failure, admin transition result, leaderboard refresh/snapshot age/Redis failure | 서비스 활동 수집이나 운영자 조치 실패가 쌓이는가? |
 
 ## Backend Metric Catalog
 
@@ -76,6 +76,27 @@ Implemented `reason` values:
 
 Executor queue depth is not implemented yet; add a separate bounded queue gauge only if the executor exposes stable queue depth.
 
+### Implemented: Daily Active Users
+
+- DAU source of truth: `member_daily_activity` table, one row per KST `activity_date` and `member_id`.
+- DAU ingestion is async best-effort. Login/authenticated API request paths enqueue activity events; DB writes use the `(activity_date, member_id)` unique key with idempotent upsert.
+- Long-term identifier-free trend: `daily_active_user_summary`.
+- Default summary schedule: every day 00:05 KST snapshots yesterday's DAU. Configure with `DAU_SUMMARY_ENABLED` and `DAU_SUMMARY_CRON`.
+- `dau.activity.record.total` with `source`, `result`
+
+Implemented `source` values:
+
+- `login`
+- `authenticated_api`
+
+Implemented `result` values:
+
+- `queued`
+- `success`
+- `failure`
+- `skipped`
+- `rejected`
+
 ### Planned: Market Realtime, WebSocket, History, And Cache
 
 - `market.refresh.total` with `result`
@@ -118,6 +139,7 @@ Executor queue depth is not implemented yet; add a separate bounded queue gauge 
 - `market.snapshot.staleness.seconds`가 구현된 뒤 10초 이상 지속되면 Bitget WebSocket state, reconnect count, REST fallback을 함께 확인한다.
 - SSE rejection이 증가하면 active connection, symbol/member limit, executor queue를 함께 확인한다.
 - trading write 실패가 증가하면 order fill claim miss, liquidation, TP/SL trigger metric과 error log를 함께 확인한다.
+- `dau.activity.record.total{result=~"failure|rejected"}`가 증가하면 activity executor saturation, DB write latency, `member_daily_activity` upsert failure log를 함께 확인한다.
 
 ## Label And Privacy Guardrails
 

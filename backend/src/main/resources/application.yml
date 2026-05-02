@@ -68,3 +68,7 @@ coin:
       initial-delay-ms: ${LEADERBOARD_REFRESH_INITIAL_DELAY_MS:0}
     warmup:
       enabled: ${LEADERBOARD_WARMUP_ENABLED:true}
+  activity:
+    summary:
+      enabled: ${DAU_SUMMARY_ENABLED:true}
+      cron: ${DAU_SUMMARY_CRON:0 5 0 * * *}

@@ -32,7 +32,7 @@
   백엔드 목표 구조, 고정 레이어, 어떤 작업에서 어떤 세부 문서를 읽어야 하는지 정하는 첫 진입 문서.
 
 - [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
-  패키지 형태, concrete class 우선 원칙, bean wiring boundary, Spring configuration 배치 규칙.
+  패키지 형태, concrete class 우선 원칙, bean wiring boundary, Spring configuration 배치 규칙과 Spring MVC 요청 경계 예외.
 
 - [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
   dependency rule, `Providers`, application service 경계, 공유 메커니즘 분리, 캐시 경계, 유스케이스 형태.

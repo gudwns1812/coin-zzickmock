@@ -58,6 +58,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
   [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql)
   [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V15__add_wallet_history.sql)
+  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -168,6 +169,46 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+
+### `member_daily_activity`
+
+- 목적:
+  KST 기준 하루 동안 인증된 서비스 활동이 있었던 회원을 회원별 1 row로 저장한다.
+- PK:
+  `id` (auto increment surrogate key)
+- 유니크:
+  `activity_date`, `member_id`
+- 주요 컬럼:
+  `activity_date`, `member_id`, `first_seen_at`, `last_seen_at`, `activity_count`, `first_source`, `last_source`, `created_at`, `updated_at`
+- 날짜 기준:
+  `activity_date`는 KST 리포팅 날짜이고, `first_seen_at`/`last_seen_at`은 UTC timestamp다.
+- 활동 원천:
+  `LOGIN`, `AUTHENTICATED_API`
+- 보존/삭제:
+  `member_id`는 `member_credentials.id`를 `ON DELETE CASCADE`로 참조한다. 탈퇴 회원의 raw 활동 row는 삭제되며, 장기 추세는 식별자 없는 `daily_active_user_summary`에 남긴다.
+- 관련 엔티티/모듈:
+  `feature.activity`
+- 관련 migration 또는 schema 파일:
+  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql),
+  [MemberDailyActivityEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/activity/infrastructure/persistence/MemberDailyActivityEntity.java)
+
+### `daily_active_user_summary`
+
+- 목적:
+  특정 KST 날짜의 DAU count를 회원 식별자 없이 보존한다.
+- PK:
+  `activity_date`
+- 주요 컬럼:
+  `active_user_count`, `sampled_at`, `created_at`, `updated_at`
+- 집계 기준:
+  `member_daily_activity`의 해당 날짜 row count를 snapshot한다.
+- 기본 생성:
+  `DailyActiveUserSummaryScheduler`가 매일 00:05 KST에 전날 DAU를 snapshot한다. `DAU_SUMMARY_ENABLED`, `DAU_SUMMARY_CRON`으로 조정한다.
+- 관련 엔티티/모듈:
+  `feature.activity`
+- 관련 migration 또는 schema 파일:
+  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql),
+  [DailyActiveUserSummaryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/activity/infrastructure/persistence/DailyActiveUserSummaryEntity.java)
 
 ### `reward_shop_items`
 
@@ -388,6 +429,10 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   동일 심볼에서 같은 시작 시각의 1분봉은 하나만 존재한다.
 - `market_candles_1h(symbol_id, open_time)`:
   동일 심볼에서 같은 시작 시각의 1시간봉은 하나만 존재한다.
+- `member_daily_activity.member_id -> member_credentials.id`:
+  DAU raw 활동 row는 회원 자격 증명에 속하며 회원 삭제 시 함께 삭제된다.
+- `daily_active_user_summary.activity_date`:
+  회원 식별자 없는 날짜별 DAU 집계 snapshot이다.
 
 ## Change Log
 
@@ -423,6 +468,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V17__shorten_coffee_voucher_description.sql`로 기존 적용된 `V12` checksum을 유지하면서 기본 커피 교환권 seed 설명 문구를 짧게 갱신했다.
 - 2026-04-30:
   `V18__member_surrogate_pk_and_nickname.sql`로 `member_credentials.id` surrogate PK와 `account` unique key, `nickname` 표시명을 추가하고 모든 `member_id` 참조 컬럼을 숫자 FK로 백필했다. migration 시작 전에는 모든 회원 참조 테이블과 `reward_redemption_requests.admin_member_id`에 대해 orphan preflight를 수행한다.
+- 2026-05-01:
+  `V19__add_member_daily_activity.sql`로 DB 기반 DAU 수집용 `member_daily_activity`와 식별자 없는 장기 집계용 `daily_active_user_summary`를 추가했다.
 
 ## Update Rule
 

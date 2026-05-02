@@ -65,7 +65,7 @@ backend/src/main/java/coin/coinzzickmock/
 - 기능 코드는 반드시 `feature/<feature-name>/` 아래에 둔다.
 - `feature` 바깥에 새 업무용 패키지를 만들지 않는다.
 - 최종 feature layer는 `web`, `job`, `application`, `domain`, `infrastructure`만 사용한다.
-- 기존 `api` package는 `web`으로 이동하는 migration 대상이다. Java package 이름과 HTTP URL path는 별개이며 `/api/futures/**` path는 유지한다.
+- HTTP delivery Java package는 `web`이다. Java package 이름과 HTTP URL path는 별개이며 `/api/futures/**` path는 유지한다.
 - `support`, `core`, `extern`, `storage`처럼 기술/성격 기준의 광역 패키지는 새로 만들지 않는다.
 - `application/usecase`, `application/port`는 기본 골격이 아니다. 실제로 필요한 경우에만 추가한다.
 

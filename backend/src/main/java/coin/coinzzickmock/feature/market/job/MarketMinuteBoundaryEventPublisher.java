@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.infrastructure.config;
+package coin.coinzzickmock.feature.market.job;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketMinuteClosedEvent;
 import coin.coinzzickmock.feature.market.domain.MarketTime;

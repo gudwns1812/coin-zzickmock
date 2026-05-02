@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.market.infrastructure.config.MarketStartupWarmupReadyEventListener;
+import coin.coinzzickmock.feature.market.job.MarketStartupWarmupReadyEventListener;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;

@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.leaderboard.infrastructure.config;
+package coin.coinzzickmock.feature.leaderboard.job;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

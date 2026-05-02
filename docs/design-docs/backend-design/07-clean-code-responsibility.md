@@ -92,11 +92,17 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 
 ## Layer-Specific Clean Code Rules
 
-### `api`
+### `web`
 
 - controller는 request validation, 인증된 요청 컨텍스트 파싱, application 호출, response mapping만 맡는다.
 - controller private method가 비즈니스 규칙을 담기 시작하면 application 또는 domain으로 옮긴다.
 - 엔티티나 persistence DTO를 HTTP 응답으로 직접 노출하지 않는다.
+
+### `job`
+
+- scheduler/startup/backfill/retry trigger는 application service/coordinator 호출만 맡는다.
+- repository/entity/JPA/Redis/SMTP/external SDK를 직접 다루기 시작하면 application 또는 infrastructure로 책임을 옮긴다.
+- trigger class 안에서 비즈니스 규칙이나 트랜잭션 흐름을 새로 만들지 않는다.
 
 ### `application`
 

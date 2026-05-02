@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.activity.infrastructure.config;
+package coin.coinzzickmock.feature.activity.job;
 
 import coin.coinzzickmock.feature.activity.application.service.SnapshotDailyActiveUserSummaryService;
 import coin.coinzzickmock.feature.activity.domain.ActivityDate;

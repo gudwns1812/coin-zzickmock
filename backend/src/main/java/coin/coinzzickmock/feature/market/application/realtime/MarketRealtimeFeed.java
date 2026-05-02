@@ -6,7 +6,6 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -39,7 +38,6 @@ public class MarketRealtimeFeed {
         );
     }
 
-    @Scheduled(fixedDelayString = "${coin.market.refresh-delay-ms:1000}")
     public void refreshSupportedMarkets() {
         marketSupportedMarketRefresher.refreshSupportedMarkets();
     }

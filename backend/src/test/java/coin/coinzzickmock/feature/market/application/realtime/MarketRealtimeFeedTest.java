@@ -37,6 +37,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.scheduling.annotation.Scheduled;
 
 class MarketRealtimeFeedTest {
     @Test
@@ -56,6 +57,15 @@ class MarketRealtimeFeedTest {
                 .count();
 
         assertEquals(0, postConstructMethodCount);
+    }
+
+    @Test
+    void doesNotDeclareScheduledTrigger() {
+        long scheduledMethodCount = Arrays.stream(MarketRealtimeFeed.class.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(Scheduled.class))
+                .count();
+
+        assertEquals(0, scheduledMethodCount);
     }
 
     @Test

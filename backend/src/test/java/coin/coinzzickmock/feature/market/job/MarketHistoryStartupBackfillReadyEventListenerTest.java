@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.job;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import coin.coinzzickmock.feature.market.infrastructure.config.MarketHistoryStartupBackfillReadyEventListener;
+import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryStartupBackfill;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;

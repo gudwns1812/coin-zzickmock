@@ -97,7 +97,8 @@ tasks.register('architectureLint') {
                     'FORBIDDEN_LEGACY_TOP_LEVEL',
                     'FEATURE_LAYER_REQUIRED',
                     'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
-                    'JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY',
+                    'JOB_OWNS_BACKGROUND_TRIGGERS',
+                    'JOB_TRIGGER_ONLY',
                     'INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY',
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
@@ -398,15 +399,38 @@ tasks.register('architectureLint') {
 
                     def usesBackgroundTrigger = text.contains('@Scheduled') ||
                             text.contains('ApplicationReadyEvent')
-                    if (usesBackgroundTrigger && packageName.contains('.feature.') && !(layer in ['job', 'application', 'api', 'web'])) {
-                        logAdvisory(
+                    if (usesBackgroundTrigger && packageName.contains('.feature.') && layer != 'job') {
+                        logViolation(
                             sourceFile,
                             firstInterestingLine(['@Scheduled', 'ApplicationReadyEvent']),
-                            'JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY',
-                            'feature scheduler/startup/background trigger 후보는 최종적으로 `job` layer가 소유해야 합니다.',
-                            '`@EventListener`는 성격별로 분류하되, feature use case를 실행하는 scheduler/startup/backfill/retry trigger는 PR-3에서 `feature.<name>.job`으로 이동하세요.',
+                            'JOB_OWNS_BACKGROUND_TRIGGERS',
+                            'feature scheduler/startup/background trigger는 `job` layer가 소유해야 합니다.',
+                            'feature use case를 실행하는 scheduler/startup/backfill/retry trigger는 `feature.<name>.job`으로 이동하세요.',
                             [packageName: packageName, currentLayer: layer, targetLayer: 'job']
                         )
+                    }
+
+                    if (layer == 'job') {
+                        lines.eachWithIndex { lineText, index ->
+                            def trimmed = lineText.trim()
+                            def importsForbiddenRuntime = trimmed.startsWith('import org.springframework.data.') ||
+                                    trimmed.startsWith('import jakarta.persistence.') ||
+                                    trimmed.startsWith('import org.springframework.web.') ||
+                                    trimmed.contains('SseEmitter') ||
+                                    trimmed.startsWith("import ${architectureRootPackage}.providers.infrastructure.") ||
+                                    (trimmed.startsWith("import ${architectureRootPackage}.feature.") &&
+                                            trimmed.contains('.infrastructure.'))
+                            if (importsForbiddenRuntime) {
+                                logViolation(
+                                    sourceFile,
+                                    index + 1,
+                                    'JOB_TRIGGER_ONLY',
+                                    'job layer는 persistence, web, provider infrastructure, feature infrastructure 구현을 직접 import하면 안 됩니다.',
+                                    'job class는 얇은 trigger로 유지하고 application service/coordinator 또는 provider 계약만 호출하세요.',
+                                    [packageName: packageName, importLine: trimmed]
+                                )
+                            }
+                        }
                     }
 
                     if (packageName.contains('.infrastructure.config')) {

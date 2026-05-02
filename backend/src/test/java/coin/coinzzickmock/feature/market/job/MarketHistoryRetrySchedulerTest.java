@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.infrastructure.config;
+package coin.coinzzickmock.feature.market.job;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.leaderboard.infrastructure.config;
+package coin.coinzzickmock.feature.leaderboard.job;
 
 import coin.coinzzickmock.feature.leaderboard.application.service.RefreshLeaderboardService;
 import lombok.RequiredArgsConstructor;

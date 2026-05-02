@@ -125,6 +125,30 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
         });
     }
 
+    @Override
+    public void remove(Long memberId) {
+        String version = redisTemplate.opsForValue().get(activePointerKey());
+        if (version == null || version.isBlank()) {
+            return;
+        }
+
+        String profitRateKey = zsetKey(version, LeaderboardMode.PROFIT_RATE);
+        String walletBalanceKey = zsetKey(version, LeaderboardMode.WALLET_BALANCE);
+        String membersKey = membersKey(version);
+        redisTemplate.execute(new SessionCallback<List<Object>>() {
+            @Override
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            public List<Object> execute(RedisOperations operations) {
+                operations.multi();
+                String memberKey = memberKey(memberId);
+                operations.opsForZSet().remove(profitRateKey, memberKey);
+                operations.opsForZSet().remove(walletBalanceKey, memberKey);
+                operations.opsForHash().delete(membersKey, memberKey);
+                return operations.exec();
+            }
+        });
+    }
+
     private LeaderboardEntry readEntry(Object value) {
         if (!(value instanceof String json)) {
             return null;

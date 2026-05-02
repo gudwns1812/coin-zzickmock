@@ -148,7 +148,7 @@ class RewardControllerIntegrationTest {
     }
 
     private Long memberId(String account) {
-        return memberCredentialRepository.findByAccount(account).orElseThrow().memberId();
+        return memberCredentialRepository.findActiveByAccount(account).orElseThrow().memberId();
     }
 
     private Cookie login(String account, String password) throws Exception {

@@ -22,7 +22,8 @@ public class LeaderboardProjectionPersistenceRepository implements LeaderboardPr
     public List<LeaderboardEntry> findAll() {
         return tradingAccountEntityRepository.findAll().stream()
                 .map(TradingAccountEntity::toDomain)
-                .map(account -> toEntry(account, nicknameOf(account)))
+                .map(this::toActiveEntry)
+                .flatMap(Optional::stream)
                 .toList();
     }
 
@@ -30,13 +31,12 @@ public class LeaderboardProjectionPersistenceRepository implements LeaderboardPr
     public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
         return tradingAccountEntityRepository.findById(memberId)
                 .map(TradingAccountEntity::toDomain)
-                .map(account -> toEntry(account, nicknameOf(account)));
+                .flatMap(this::toActiveEntry);
     }
 
-    private String nicknameOf(TradingAccount account) {
-        return memberCredentialRepository.findByMemberId(account.memberId())
-                .map(member -> member.nickname())
-                .orElse(account.memberName());
+    private Optional<LeaderboardEntry> toActiveEntry(TradingAccount account) {
+        return memberCredentialRepository.findActiveByMemberId(account.memberId())
+                .map(member -> toEntry(account, member.nickname()));
     }
 
     private LeaderboardEntry toEntry(TradingAccount account, String nickname) {

@@ -65,7 +65,7 @@ class GetAccountSummaryServiceTest {
                 realtimePriceReader(110),
                 new MemberCredentialRepository() {
                     @Override
-                    public Optional<MemberCredential> findByMemberId(Long memberId) {
+                    public Optional<MemberCredential> findActiveByMemberId(Long memberId) {
                         return Optional.of(MemberCredential.register(
                                 "demo",
                                 "hashed",
@@ -81,7 +81,12 @@ class GetAccountSummaryServiceTest {
                     }
 
                     @Override
-                    public Optional<MemberCredential> findByAccount(String account) {
+                    public Optional<MemberCredential> findActiveByAccount(String account) {
+                        return Optional.empty();
+                    }
+
+                    @Override
+                    public Optional<MemberCredential> findByAccountIncludingWithdrawn(String account) {
                         return Optional.empty();
                     }
 
@@ -94,11 +99,6 @@ class GetAccountSummaryServiceTest {
                     public MemberCredential save(MemberCredential memberCredential) {
                         fail("account summary read must not save member");
                         return memberCredential;
-                    }
-
-                    @Override
-                    public void deleteByMemberId(Long memberId) {
-                        fail("account summary read must not delete member");
                     }
                 }
         );

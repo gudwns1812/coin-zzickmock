@@ -283,7 +283,9 @@ class AuthControllerTest {
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")));
 
         entityManager.flush();
-        assertThat(activityRows(memberId)).isZero();
+        assertThat(memberCredentialRows(memberId)).isOne();
+        assertThat(withdrawnAt(memberId)).isNotNull();
+        assertThat(activityRows(memberId)).isEqualTo(1);
         assertThat(summaryCount(activityDate)).isEqualTo(1);
 
         mockMvc.perform(post("/api/futures/auth/login")
@@ -295,6 +297,26 @@ class AuthControllerTest {
                                 }
                                 """))
                 .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/futures/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "withdraw-user",
+                                  "password": "withdraw@1234",
+                                  "name": "withdraw-user",
+                                  "nickname": "withdraw-user",
+                                  "phoneNumber": "010-7777-8888",
+                                  "email": "withdraw-user-again@coinzzickmock.dev",
+                                  "fgOffset": "unused",
+                                  "address": {
+                                    "zipcode": "06236",
+                                    "address": "서울 강남구 논현로 507",
+                                    "addressDetail": "7층"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -427,6 +449,22 @@ class AuthControllerTest {
         return jdbcTemplate.queryForObject(
                 "select count(*) from member_daily_activity where member_id = ?",
                 Long.class,
+                memberId
+        );
+    }
+
+    private long memberCredentialRows(Long memberId) {
+        return jdbcTemplate.queryForObject(
+                "select count(*) from member_credentials where id = ?",
+                Long.class,
+                memberId
+        );
+    }
+
+    private java.sql.Timestamp withdrawnAt(Long memberId) {
+        return jdbcTemplate.queryForObject(
+                "select withdrawn_at from member_credentials where id = ?",
+                java.sql.Timestamp.class,
                 memberId
         );
     }

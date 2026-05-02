@@ -42,7 +42,7 @@ public class RefreshLeaderboardService {
 
         LeaderboardEntry entry = projectionRepository.findByMemberId(memberId).orElse(null);
         if (entry == null) {
-            log.debug("Leaderboard member refresh skipped because account projection is missing. memberId={}", memberId);
+            removeMember(memberId);
             return;
         }
 
@@ -51,6 +51,16 @@ public class RefreshLeaderboardService {
                 snapshotStore.update(entry);
             } catch (RuntimeException exception) {
                 log.warn("Leaderboard member refresh failed. memberId={}", memberId, exception);
+            }
+        }
+    }
+
+    private void removeMember(Long memberId) {
+        for (LeaderboardSnapshotStore snapshotStore : snapshotStores) {
+            try {
+                snapshotStore.remove(memberId);
+            } catch (RuntimeException exception) {
+                log.warn("Leaderboard member removal failed. memberId={}", memberId, exception);
             }
         }
     }

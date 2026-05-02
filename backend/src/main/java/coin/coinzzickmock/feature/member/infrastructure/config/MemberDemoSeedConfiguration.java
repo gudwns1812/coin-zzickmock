@@ -30,7 +30,7 @@ public class MemberDemoSeedConfiguration {
             MemberPasswordHasher memberPasswordHasher
     ) {
         return args -> {
-            MemberCredential credential = memberCredentialRepository.findByAccount(DEMO_ACCOUNT)
+            MemberCredential credential = memberCredentialRepository.findByAccountIncludingWithdrawn(DEMO_ACCOUNT)
                     .map(existing -> existing.role().equals(MemberRole.ADMIN)
                             ? existing
                             : memberCredentialRepository.save(existing.asAdmin()))

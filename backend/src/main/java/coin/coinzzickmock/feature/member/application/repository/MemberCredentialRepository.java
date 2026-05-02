@@ -5,13 +5,13 @@ import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import java.util.Optional;
 
 public interface MemberCredentialRepository {
-    Optional<MemberCredential> findByMemberId(Long memberId);
+    Optional<MemberCredential> findActiveByMemberId(Long memberId);
 
-    Optional<MemberCredential> findByAccount(String account);
+    Optional<MemberCredential> findActiveByAccount(String account);
+
+    Optional<MemberCredential> findByAccountIncludingWithdrawn(String account);
 
     boolean existsByAccount(String account);
 
     MemberCredential save(MemberCredential memberCredential);
-
-    void deleteByMemberId(Long memberId);
 }

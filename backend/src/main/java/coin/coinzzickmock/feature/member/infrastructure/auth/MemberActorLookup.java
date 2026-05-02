@@ -17,13 +17,13 @@ public class MemberActorLookup implements ActorLookup {
 
     @Override
     public Optional<Actor> findByMemberId(Long memberId) {
-        return memberCredentialRepository.findByMemberId(memberId)
+        return memberCredentialRepository.findActiveByMemberId(memberId)
                 .map(this::toActor);
     }
 
     @Override
     public Optional<Actor> findByAccount(String account) {
-        return memberCredentialRepository.findByAccount(account)
+        return memberCredentialRepository.findActiveByAccount(account)
                 .map(this::toActor);
     }
 

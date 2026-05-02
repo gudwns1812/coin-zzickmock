@@ -105,6 +105,8 @@ tasks.register('architectureLint') {
                     'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
                     'WEB_NO_INFRASTRUCTURE_IMPORTS',
                     'PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS',
+                    'CROSS_FEATURE_INFRASTRUCTURE_IMPORTS',
+                    'ACTIVE_MEMBER_LOOKUP_GUARD',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
                 ],
@@ -377,6 +379,7 @@ tasks.register('architectureLint') {
                 }
 
                 if (topLevel == 'feature') {
+                    def featureName = packageSegments.size() > 1 ? packageSegments[1] : null
                     def firstInterestingLine = { List<String> patterns ->
                         def found = lines.findIndexOf { lineText ->
                             def trimmed = lineText.trim()
@@ -439,6 +442,27 @@ tasks.register('architectureLint') {
                     }
 
                     if (layer == 'infrastructure') {
+                        lines.eachWithIndex { lineText, index ->
+                            def trimmed = lineText.trim()
+                            def featureImportPrefix = "import ${architectureRootPackage}.feature."
+                            if (featureName == 'member' &&
+                                    trimmed.startsWith(featureImportPrefix) &&
+                                    trimmed.contains('.infrastructure.')) {
+                                def importedRemainder = trimmed.substring(featureImportPrefix.length())
+                                def importedFeature = importedRemainder.tokenize('.')[0]
+                                if (importedFeature != featureName) {
+                                    logViolation(
+                                        sourceFile,
+                                        index + 1,
+                                        'CROSS_FEATURE_INFRASTRUCTURE_IMPORTS',
+                                        'member infrastructure는 다른 feature infrastructure 구현을 직접 import하면 안 됩니다.',
+                                        '회원 탈퇴는 FK 순서 기반 hard cleanup이 아니라 member credential soft delete와 active lookup filtering으로 처리하세요.',
+                                        [packageName: packageName, importLine: trimmed, importedFeature: importedFeature]
+                                    )
+                                }
+                            }
+                        }
+
                         def hasInboundDelivery = usesHttpDelivery ||
                                 text.contains('org.springframework.web.')
                         def hasFeatureJobRuntime = usesBackgroundTrigger ||
@@ -452,6 +476,23 @@ tasks.register('architectureLint') {
                                 'MVC/SSE delivery config는 `web` 또는 shared web config로, scheduler/startup trigger wiring은 `job`으로 이동하세요.',
                                 [packageName: packageName, webConfigCandidate: hasInboundDelivery, jobConfigCandidate: hasFeatureJobRuntime]
                             )
+                        }
+                    }
+
+                    if (featureName == 'member') {
+                        lines.eachWithIndex { lineText, index ->
+                            def trimmed = lineText.trim()
+                            if (trimmed.contains('memberCredentialRepository.findByAccount(') ||
+                                    trimmed.contains('memberCredentialRepository.findByMemberId(')) {
+                                logViolation(
+                                    sourceFile,
+                                    index + 1,
+                                    'ACTIVE_MEMBER_LOOKUP_GUARD',
+                                    'auth/member/profile 실행 경로는 active 여부가 드러나지 않는 member credential 조회를 쓰면 안 됩니다.',
+                                    '`findActiveByAccount`, `findActiveByMemberId`, 또는 의도가 드러나는 `IncludingWithdrawn`/`ForAudit` 조회로 바꾸세요.',
+                                    [packageName: packageName, code: trimmed]
+                                )
+                            }
                         }
                     }
                 }

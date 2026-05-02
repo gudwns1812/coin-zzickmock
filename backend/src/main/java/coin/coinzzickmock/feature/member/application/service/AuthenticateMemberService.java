@@ -22,7 +22,7 @@ public class AuthenticateMemberService {
         String normalizedAccount = MemberIdentityRules.normalizeAccount(account);
         String requiredPassword = MemberIdentityRules.requirePasswordInput(rawPassword);
 
-        MemberCredential memberCredential = memberCredentialRepository.findByAccount(normalizedAccount)
+        MemberCredential memberCredential = memberCredentialRepository.findActiveByAccount(normalizedAccount)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_CREDENTIALS));
 
         if (!memberPasswordHasher.matches(requiredPassword, memberCredential.passwordHash())) {

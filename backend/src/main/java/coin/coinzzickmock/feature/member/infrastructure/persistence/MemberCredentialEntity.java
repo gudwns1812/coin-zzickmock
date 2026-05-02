@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 
 @Entity
 @Table(name = "member_credentials")
@@ -54,6 +55,9 @@ public class MemberCredentialEntity extends AuditableEntity {
     @Column(name = "role", nullable = false, length = 20)
     private MemberRole role;
 
+    @Column(name = "withdrawn_at")
+    private Instant withdrawnAt;
+
     protected MemberCredentialEntity() {
     }
 
@@ -69,7 +73,8 @@ public class MemberCredentialEntity extends AuditableEntity {
             String address,
             String addressDetail,
             int investScore,
-            MemberRole role
+            MemberRole role,
+            Instant withdrawnAt
     ) {
         this.id = id;
         this.account = account;
@@ -83,6 +88,7 @@ public class MemberCredentialEntity extends AuditableEntity {
         this.addressDetail = addressDetail;
         this.investScore = investScore;
         this.role = role == null ? MemberRole.USER : role;
+        this.withdrawnAt = withdrawnAt;
     }
 
     public static MemberCredentialEntity from(MemberCredential memberCredential) {
@@ -98,7 +104,8 @@ public class MemberCredentialEntity extends AuditableEntity {
                 memberCredential.address(),
                 memberCredential.addressDetail(),
                 memberCredential.investScore(),
-                memberCredential.role()
+                memberCredential.role(),
+                memberCredential.withdrawnAt()
         );
     }
 
@@ -114,6 +121,7 @@ public class MemberCredentialEntity extends AuditableEntity {
         this.addressDetail = memberCredential.addressDetail();
         this.investScore = memberCredential.investScore();
         this.role = memberCredential.role() == null ? MemberRole.USER : memberCredential.role();
+        this.withdrawnAt = memberCredential.withdrawnAt();
     }
 
     public MemberCredential toDomain() {
@@ -129,7 +137,8 @@ public class MemberCredentialEntity extends AuditableEntity {
                 address,
                 addressDetail,
                 investScore,
-                role
+                role,
+                withdrawnAt
         );
     }
 }

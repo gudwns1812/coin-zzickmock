@@ -68,7 +68,8 @@ backend/src/main/java/coin/coinzzickmock/
   providers/
   feature/
     <feature-name>/
-      api/
+      web/
+      job/
       application/
       domain/
       infrastructure/
@@ -77,11 +78,12 @@ backend/src/main/java/coin/coinzzickmock/
 백엔드의 고정 규칙:
 
 - 기능은 `feature/<feature-name>` 아래에서 수직으로 자른다.
-- 기능 레이어는 `api`, `application`, `domain`, `infrastructure`로 고정한다.
-- `api`는 HTTP 요청/응답, DTO 검증, application 호출, 응답 매핑을 맡는다.
+- 기능 레이어는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정한다.
+- `web`은 HTTP/SSE 요청/응답, DTO 검증, application 호출, 응답 매핑을 맡는다. Java package 이름과 HTTP URL path의 `/api/futures/**`는 별개다.
+- `job`은 scheduler/startup/backfill/retry 같은 feature runtime trigger를 맡고, application service/coordinator 호출만 수행한다.
 - `application`은 유스케이스 오케스트레이션, command/query/result, repository/provider 계약 호출을 맡는다.
 - `domain`은 프레임워크와 저장소를 모르는 비즈니스 규칙, 값, 정책, 상태 전이를 맡는다.
-- `infrastructure`는 JPA, 외부 연동, mapper, config, framework adapter를 맡는다.
+- `infrastructure`는 DB/JPA, Redis/cache adapter, 외부 API, SMTP, JWT signing/parsing 구현, provider 구현처럼 outbound/external technology 구현을 맡는다.
 - 인증, 커넥터, 텔레메트리, 기능 플래그 같은 교차 관심사는 `providers/Providers.java` 경계 뒤로 모은다.
 - 인터페이스는 기본값이 아니며, 실제 외부 경계나 다중 구현이 있을 때만 둔다.
 
@@ -187,7 +189,8 @@ Spring Boot 기반 서비스다.
 백엔드 내부에서는 기능별 수직 분리와 고정 레이어를 동시에 유지한다.
 
 - 기능 경계: `feature/market`, `feature/order`, `feature/position`, `feature/account`, `feature/member`, `feature/reward`, `feature/leaderboard`
-- 진입 경계: `api`
+- HTTP/SSE 진입 경계: `web`
+- runtime trigger 경계: `job`
 - 유스케이스 경계: `application`
 - 비즈니스 의미와 상태 전이: `domain`
 - DB, 외부 API, Spring config: `infrastructure`
@@ -200,7 +203,7 @@ Spring Boot 기반 서비스다.
 - URL 수준에서 판단 가능한 접근 제어는 가능한 한 요청 경계에서 먼저 처리한다.
 - 프론트에 임시 규칙이 있더라도, 영구적인 비즈니스 규칙은 백엔드로 수렴해야 한다.
 - 문서는 구조와 의도를 설명하되, 자주 바뀌는 구현 디테일을 과하게 복제하지 않는다.
-- 백엔드 feature 코드는 `feature/<name>/{api,application,domain,infrastructure}` 형태를 벗어나지 않는다.
+- 백엔드 feature 코드는 `feature/<name>/{web,job,application,domain,infrastructure}` 형태를 벗어나지 않는다.
 - 도메인 레이어는 Spring/JPA/HTTP/외부 SDK 세부사항을 모른다.
 - 교차 관심사는 개별 feature에 직접 흩어지지 않고 `Providers` 경계를 우선 통과한다.
 

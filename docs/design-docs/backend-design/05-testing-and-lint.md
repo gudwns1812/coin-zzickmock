@@ -17,7 +17,8 @@
 - domain: 빠른 단위 테스트
 - application: 유스케이스 테스트, provider/필요한 계약 fake 사용
 - infrastructure: repository/connector 통합 테스트
-- api: controller slice 또는 통합 테스트
+- web: controller/SSE delivery slice 또는 통합 테스트
+- job: trigger가 application service/coordinator만 호출하는지 확인하는 얇은 단위 테스트
 
 중요:
 
@@ -40,20 +41,44 @@
 - 루트 패키지에는 `*Application`만 허용하고, 최상위 하위 패키지는 `common`, `providers`, `feature`만 허용
 - `support`, `core`, `extern`, `storage` 같은 레거시 광역 패키지 금지
 - `feature.<name>.<layer>` 구조 강제
+- 최종 feature layer는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정
+- 전환 기간의 `api` package는 `web` migration advisory로 보고하고, package migration PR 이후 fail로 전환
 - `domain` 레이어의 Spring/JPA 의존 금지
 - `application` 레이어의 SecurityContext 직접 접근 금지
-- `api` 레이어의 persistence import 직접 의존 금지
+- `web` 레이어의 persistence/infrastructure import 직접 의존 금지
+- `job` 레이어의 persistence/entity/external SDK/HTTP/SSE 직접 의존 금지
 - `application/service`가 다른 `application/service`를 직접 참조하는 구조 금지
+
+### Lint Ratchet
+
+`web/job` migration은 한 번에 모든 rule을 fail로 켜지 않는다.
+`architectureLint`는 아래 순서로 강화한다.
+
+1. Inventory report: old `api`, misplaced trigger, web-owned class, config split 후보를 `architecture_advisory`로 출력하고 fail하지 않는다.
+2. Advisory warning: 새 규칙 위반을 계속 report하되 migration 중 CI를 막지 않는다.
+3. Slice-specific fail: 해당 PR이 소유한 위반만 fail로 전환한다.
+4. Final strict: `api` layer와 inbound-infrastructure drift를 금지한다.
+
+PR-1의 advisory rule:
+
+- `FEATURE_API_LAYER_MIGRATION_TARGET`
+- `WEB_OWNS_HTTP_DELIVERY_ADVISORY`
+- `JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY`
+- `INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY`
+
+이 advisory는 `violations`에 포함되지 않으며 `architectureLint` 성공 여부를 바꾸지 않는다.
+후속 PR에서 같은 개념의 strict rule을 켤 때는 해당 PR이 현재 위반도 함께 제거해야 한다.
 
 로그 출력 규칙:
 
 - stdout에도 JSON line으로 출력한다.
 - 같은 내용을 `violations.jsonl`에도 남긴다.
-- 각 레코드는 `tool`, `event`, `rule`, `file`, `line`, `message`, `suggestedFix`를 가진다.
+- 각 violation/advisory 레코드는 `tool`, `event`, `rule`, `file`, `line`, `message`, `suggestedFix`를 가진다.
 
 권장 조회 예:
 
 - `rg '"event":"architecture_violation"' backend/build/reports/architecture-lint/violations.jsonl`
+- `rg '"event":"architecture_advisory"' backend/build/reports/architecture-lint/violations.jsonl`
 - `rg '"rule":"DOMAIN_FRAMEWORK_FREE"' backend/build/reports/architecture-lint/violations.jsonl`
 
 즉, 루프는 아래처럼 동작한다.

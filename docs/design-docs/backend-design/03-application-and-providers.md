@@ -14,7 +14,8 @@
 
 의존 방향은 아래만 허용한다.
 
-- `api` -> `application`
+- `web` -> `application`
+- `job` -> `application`
 - `application` -> `domain`
 - `application` -> `providers`
 - `application` -> 필요할 때만 `application` 또는 `domain`이 소유한 계약
@@ -26,8 +27,13 @@
 - `domain` -> `application`
 - `domain` -> `infrastructure`
 - `application` -> 구체 SDK 클라이언트
-- `api` -> `infrastructure`
+- `web` -> `infrastructure`
+- `job` -> `infrastructure`
+- `job` -> HTTP/SSE type
 - `application/service` -> 다른 `application/service`
+
+전환 기간에는 기존 `api` package가 남아 있을 수 있지만, 이는 `web` migration 대상이다.
+새 코드와 최종 구조에서는 `api` 대신 `web`을 사용한다.
 
 여기서 말하는 "계약"은 무조건 인터페이스를 만들라는 뜻이 아니다.
 기본값은 concrete class 의존이다.
@@ -126,6 +132,23 @@ public interface Providers {
 - 공유 로직이 필요하면 먼저 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md) 기준으로 `domain` 후보인지 본다.
 - `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 하위 패키지로 분리한다.
 - `application/service`는 "무슨 일을 시작하는가"를, 목적형 협력 객체는 "그 일을 어떤 메커니즘으로 지원하는가"를 드러내야 한다.
+
+## Job Boundary
+
+`job`은 유스케이스를 직접 구현하는 레이어가 아니라 application을 깨우는 얇은 trigger다.
+
+허용:
+
+- scheduled tick에서 application service/coordinator 호출
+- startup warmup/backfill trigger에서 application service/coordinator 호출
+- retry/background trigger에서 application service/coordinator 호출
+
+금지:
+
+- repository/entity/JPA/Redis/SMTP/external SDK 직접 호출
+- HTTP/SSE type 의존
+- transaction orchestration이나 business policy 직접 구현
+- application service 사이의 우회 호출을 만들기 위한 second application layer 역할
 
 ## Cache Boundary
 

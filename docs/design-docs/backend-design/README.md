@@ -29,10 +29,10 @@
 ## Documents
 
 - [01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
-  백엔드 목표 구조, 고정 레이어, 어떤 작업에서 어떤 세부 문서를 읽어야 하는지 정하는 첫 진입 문서.
+  백엔드 목표 구조, `web/job/application/domain/infrastructure` 고정 레이어, 어떤 작업에서 어떤 세부 문서를 읽어야 하는지 정하는 첫 진입 문서.
 
 - [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
-  패키지 형태, concrete class 우선 원칙, bean wiring boundary, Spring configuration 배치 규칙과 Spring MVC 요청 경계 예외.
+  패키지 형태, concrete class 우선 원칙, bean wiring boundary, Spring configuration 배치 규칙, `web`/`job`/`infrastructure` config 소유권.
 
 - [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
   dependency rule, `Providers`, application service 경계, 공유 메커니즘 분리, 캐시 경계, 유스케이스 형태.
@@ -41,7 +41,7 @@
   도메인 모델, 정책, 상태 전이, 값 검증, domain/application 경계 판단의 원문 문서.
 
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
-  테스트 레이어 기준과 `architectureLint` 계약, 로그 조회 방법.
+  테스트 레이어 기준과 `architectureLint` 계약, advisory-to-strict lint ratchet, 로그 조회 방법.
 
 - [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
   영속성, 외부 연동, 예외 번역, 기술 중심 네이밍 규칙.

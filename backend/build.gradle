@@ -54,7 +54,8 @@ tasks.named('test') {
 def architectureRootPackage = 'coin.coinzzickmock'
 def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
 def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
-def architectureLayers = ['api', 'application', 'domain', 'infrastructure'] as Set
+def architectureLayers = ['api', 'web', 'job', 'application', 'domain', 'infrastructure'] as Set
+def architectureTargetLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
 def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
 
 def architectureEmit = { Writer writer, String level, String event, Map payload ->
@@ -82,6 +83,7 @@ tasks.register('architectureLint') {
         reportFile.parentFile.mkdirs()
 
         int violationCount = 0
+        int advisoryCount = 0
         def sourceFiles = fileTree('src/main/java') { include '**/*.java' }.files.sort { it.path }
 
         reportFile.withWriter('UTF-8') { writer ->
@@ -94,6 +96,10 @@ tasks.register('architectureLint') {
                     'TOP_LEVEL_PACKAGE_ALLOWED',
                     'FORBIDDEN_LEGACY_TOP_LEVEL',
                     'FEATURE_LAYER_REQUIRED',
+                    'FEATURE_API_LAYER_MIGRATION_TARGET',
+                    'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
+                    'JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY',
+                    'INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY',
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
                     'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
@@ -101,6 +107,7 @@ tasks.register('architectureLint') {
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
                 ],
+                targetLayers: architectureTargetLayers,
             ])
 
             def logViolation = { File file, int line, String rule, String message, String suggestedFix, Map extras = [:] ->
@@ -109,6 +116,19 @@ tasks.register('architectureLint') {
                     rule        : rule,
                     category    : 'architecture',
                     severity    : 'ERROR',
+                    file        : project.relativePath(file).replace('\\', '/'),
+                    line        : line,
+                    message     : message,
+                    suggestedFix: suggestedFix,
+                ] + extras)
+            }
+
+            def logAdvisory = { File file, int line, String rule, String message, String suggestedFix, Map extras = [:] ->
+                advisoryCount++
+                architectureEmit(writer, 'WARN', 'architecture_advisory', [
+                    rule        : rule,
+                    category    : 'architecture',
+                    severity    : 'WARN',
                     file        : project.relativePath(file).replace('\\', '/'),
                     line        : line,
                     message     : message,
@@ -216,8 +236,17 @@ tasks.register('architectureLint') {
                             packageLine,
                             'FEATURE_LAYER_REQUIRED',
                             "feature 레이어는 `${architectureLayers.join(', ')}` 중 하나여야 합니다. 현재 값: `${packageSegments[2]}`.",
-                            '`api`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요.',
+                            '`web`, `job`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요. 전환 중인 `api`는 migration 대상입니다.',
                             [packageName: packageName, layer: packageSegments[2]]
+                        )
+                    } else if (packageSegments[2] == 'api') {
+                        logAdvisory(
+                            sourceFile,
+                            packageLine,
+                            'FEATURE_API_LAYER_MIGRATION_TARGET',
+                            '`api` feature layer는 `web` migration 대상입니다.',
+                            'HTTP/SSE delivery class는 다음 package migration PR에서 `feature.<name>.web`으로 이동하세요. URL path는 변경하지 않습니다.',
+                            [packageName: packageName, targetLayer: 'web']
                         )
                     }
                 }
@@ -350,11 +379,72 @@ tasks.register('architectureLint') {
                         }
                     }
                 }
+
+                if (topLevel == 'feature') {
+                    def firstInterestingLine = { List<String> patterns ->
+                        def found = lines.findIndexOf { lineText ->
+                            def trimmed = lineText.trim()
+                            patterns.any { pattern -> trimmed.contains(pattern) }
+                        }
+                        found >= 0 ? found + 1 : packageLine
+                    }
+
+                    def usesHttpDelivery = text.contains('@RestController') ||
+                            text.contains('SseEmitter') ||
+                            text.contains('HandlerInterceptor') ||
+                            text.contains('WebMvcConfigurer') ||
+                            ['@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping']
+                                    .any { text.contains(it) }
+                    if (usesHttpDelivery && !(layer in ['api', 'web'])) {
+                        logAdvisory(
+                            sourceFile,
+                            firstInterestingLine(['@RestController', 'SseEmitter', 'HandlerInterceptor', 'WebMvcConfigurer', '@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping']),
+                            'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
+                            'HTTP/SSE delivery class는 최종적으로 `web` layer가 소유해야 합니다.',
+                            'PR-2에서 controller/DTO/interceptor/WebMvcConfigurer/SSE broker를 `feature.<name>.web`으로 이동하세요.',
+                            [packageName: packageName, currentLayer: layer, targetLayer: 'web']
+                        )
+                    }
+
+                    def usesBackgroundTrigger = text.contains('@Scheduled') ||
+                            text.contains('ApplicationReadyEvent')
+                    if (usesBackgroundTrigger && packageName.contains('.feature.') && !(layer in ['job', 'application', 'api', 'web'])) {
+                        logAdvisory(
+                            sourceFile,
+                            firstInterestingLine(['@Scheduled', 'ApplicationReadyEvent']),
+                            'JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY',
+                            'feature scheduler/startup/background trigger 후보는 최종적으로 `job` layer가 소유해야 합니다.',
+                            '`@EventListener`는 성격별로 분류하되, feature use case를 실행하는 scheduler/startup/backfill/retry trigger는 PR-3에서 `feature.<name>.job`으로 이동하세요.',
+                            [packageName: packageName, currentLayer: layer, targetLayer: 'job']
+                        )
+                    }
+
+                    if (packageName.contains('.infrastructure.config')) {
+                        def hasWebConfig = text.contains('WebMvcConfigurer') ||
+                                text.contains('HandlerInterceptor') ||
+                                text.contains('SseEmitter') ||
+                                text.contains('org.springframework.web.')
+                        def hasJobConfig = text.contains('@Scheduled') ||
+                                text.contains('TaskScheduler') ||
+                                text.contains('ApplicationReadyEvent')
+                        if (hasWebConfig || hasJobConfig) {
+                            logAdvisory(
+                                sourceFile,
+                                firstInterestingLine(['WebMvcConfigurer', 'HandlerInterceptor', 'SseEmitter', '@Scheduled', 'TaskScheduler', 'ApplicationReadyEvent', '@Bean']),
+                                'INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY',
+                                '`infrastructure/config` 안의 web/job runtime config 후보입니다.',
+                                'PR-4에서 MVC/SSE delivery config는 `web`, scheduler/startup trigger wiring은 `job`, outbound technology wiring만 `infrastructure`에 남기세요.',
+                                [packageName: packageName, webConfigCandidate: hasWebConfig, jobConfigCandidate: hasJobConfig]
+                            )
+                        }
+                    }
+                }
             }
 
             architectureEmit(writer, 'INFO', 'architecture_lint_summary', [
                 status     : violationCount == 0 ? 'passed' : 'failed',
                 violations : violationCount,
+                advisories : advisoryCount,
                 reportPath : project.relativePath(reportFile),
             ])
         }

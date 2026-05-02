@@ -17,14 +17,14 @@ public class MemberDailyActivityPersistenceRepository implements MemberDailyActi
 
     @Override
     public Optional<MemberDailyActivity> findByDateAndMemberIdForUpdate(LocalDate activityDate, Long memberId) {
-        return entityRepository.findByIdForUpdate(new MemberDailyActivityId(activityDate, memberId))
+        return entityRepository.findByDateAndMemberIdForUpdate(activityDate, memberId)
                 .map(MemberDailyActivityEntity::toDomain);
     }
 
     @Override
     public MemberDailyActivity save(MemberDailyActivity activity) {
-        MemberDailyActivityId id = new MemberDailyActivityId(activity.activityDate(), activity.memberId());
-        MemberDailyActivityEntity entity = entityRepository.findById(id)
+        MemberDailyActivityEntity entity = entityRepository
+                .findByActivityDateAndMemberId(activity.activityDate(), activity.memberId())
                 .map(existing -> {
                     existing.apply(activity);
                     return existing;
@@ -40,6 +40,6 @@ public class MemberDailyActivityPersistenceRepository implements MemberDailyActi
 
     @Override
     public long countByDate(LocalDate activityDate) {
-        return entityRepository.countByIdActivityDate(activityDate);
+        return entityRepository.countByActivityDate(activityDate);
     }
 }

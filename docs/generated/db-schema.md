@@ -175,9 +175,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 목적:
   KST 기준 하루 동안 인증된 서비스 활동이 있었던 회원을 회원별 1 row로 저장한다.
 - PK:
+  `id` (auto increment surrogate key)
+- 유니크:
   `activity_date`, `member_id`
 - 주요 컬럼:
-  `first_seen_at`, `last_seen_at`, `activity_count`, `first_source`, `last_source`, `created_at`, `updated_at`
+  `activity_date`, `member_id`, `first_seen_at`, `last_seen_at`, `activity_count`, `first_source`, `last_source`, `created_at`, `updated_at`
 - 날짜 기준:
   `activity_date`는 KST 리포팅 날짜이고, `first_seen_at`/`last_seen_at`은 UTC timestamp다.
 - 활동 원천:

@@ -73,7 +73,10 @@
 
 - 문서의 내용과 다르게 유저의 지시사항으로 변경되거나 추가되면 반드시 문서도 업데이트를 한다.
 - 백엔드는 `feature-first`로 자른다.
-- 레이어는 `api`, `application`, `domain`, `infrastructure`로 고정한다.
+- 레이어는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정한다.
+- `web` package 이름 변경은 Java package 책임을 바꾸는 일이며, HTTP URL path의 `/api/futures/**` 명칭을 바꾸지 않는다.
+- `job`은 scheduler/startup/backfill/retry 같은 feature runtime trigger만 맡고, application service/coordinator 호출만 수행한다.
+- `infrastructure`는 DB/JPA, Redis/cache adapter, 외부 API, SMTP, JWT signing/parsing 구현, provider 구현처럼 outbound/external technology 구현으로 좁힌다.
 - 클래스는 하나의 변경 이유를, 메서드는 한 단계의 추상화 수준에서 한 가지 일을 갖도록 작성한다.
 - 긴 유스케이스 메서드는 흐름만 남기고 검증, 조회, 정책 판단, 저장, 이벤트 발행, 응답 변환을 이름 있는 책임으로 분리한다.
 - 인증, 커넥터, 텔레메트리, 기능 플래그는 `Providers` 뒤로 숨긴다.

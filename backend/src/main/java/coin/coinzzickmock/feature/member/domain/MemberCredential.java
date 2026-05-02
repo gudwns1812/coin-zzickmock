@@ -1,5 +1,8 @@
 package coin.coinzzickmock.feature.member.domain;
 
+import java.time.Instant;
+import java.util.Objects;
+
 public record MemberCredential(
         Long memberId,
         String account,
@@ -12,8 +15,40 @@ public record MemberCredential(
         String address,
         String addressDetail,
         int investScore,
-        MemberRole role
+        MemberRole role,
+        Instant withdrawnAt
 ) {
+    public MemberCredential(
+            Long memberId,
+            String account,
+            String passwordHash,
+            String memberName,
+            String nickname,
+            String memberEmail,
+            String phoneNumber,
+            String zipCode,
+            String address,
+            String addressDetail,
+            int investScore,
+            MemberRole role
+    ) {
+        this(
+                memberId,
+                account,
+                passwordHash,
+                memberName,
+                nickname,
+                memberEmail,
+                phoneNumber,
+                zipCode,
+                address,
+                addressDetail,
+                investScore,
+                role,
+                null
+        );
+    }
+
     public static MemberCredential register(
             String account,
             String passwordHash,
@@ -38,7 +73,8 @@ public record MemberCredential(
                 MemberIdentityRules.normalizeRequired(address, "주소"),
                 MemberIdentityRules.normalizeAddressDetail(addressDetail),
                 investScore,
-                MemberRole.USER
+                MemberRole.USER,
+                null
         );
     }
 
@@ -55,7 +91,8 @@ public record MemberCredential(
                 address,
                 addressDetail,
                 investScore,
-                role
+                role,
+                withdrawnAt
         );
     }
 
@@ -76,7 +113,30 @@ public record MemberCredential(
                 address,
                 addressDetail,
                 investScore,
-                role == null ? MemberRole.USER : role
+                role == null ? MemberRole.USER : role,
+                withdrawnAt
+        );
+    }
+
+    public boolean withdrawn() {
+        return withdrawnAt != null;
+    }
+
+    public MemberCredential withdraw(Instant withdrawnAt) {
+        return new MemberCredential(
+                memberId,
+                account,
+                passwordHash,
+                memberName,
+                nickname,
+                memberEmail,
+                phoneNumber,
+                zipCode,
+                address,
+                addressDetail,
+                investScore,
+                role,
+                Objects.requireNonNull(withdrawnAt, "withdrawnAt")
         );
     }
 }

@@ -31,7 +31,7 @@ public class GetAccountSummaryService {
     public AccountSummaryResult execute(GetAccountSummaryQuery query) {
         TradingAccount account = accountRepository.findByMemberId(query.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        MemberCredential member = memberCredentialRepository.findByMemberId(query.memberId())
+        MemberCredential member = memberCredentialRepository.findActiveByMemberId(query.memberId())
                 .orElseThrow(() -> new CoreException(ErrorCode.MEMBER_NOT_FOUND));
         RewardPointWallet rewardPointWallet = rewardPointRepository.findByMemberId(query.memberId())
                 .orElse(RewardPointWallet.empty(query.memberId()));

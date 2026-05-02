@@ -67,6 +67,10 @@ public interface Providers {
 애플리케이션 유스케이스와 인프라 어댑터는 필요한 경우 이 인터페이스를 통해 기능을 사용한다.
 provider auth 모델은 feature domain type을 직접 담지 않는다.
 예를 들어 `providers.auth.Actor`는 member domain의 `MemberRole`이 아니라 provider-owned `ActorRole`을 사용한다.
+member 인증과 프로필 조회는 active member만 다룬다.
+탈퇴 회원까지 포함해야 하는 account 중복/감사 성격 조회는 `IncludingWithdrawn` 또는 `ForAudit`처럼 method name에 의도를 드러낸다.
+현재 auth/member/profile 조회 경로에는 별도 Spring/Redis cache surface가 없으므로 탈퇴 stale 노출은 active DB lookup filtering으로 차단한다.
+leaderboard는 PR-6에서 withdrawal 이벤트로 snapshot entry를 제거하고 projection에서 active member만 반환하는 임시 no-exposure guard를 둔다. PR-7은 이 정책을 dedicated projection query와 cache refresh 설계로 정리한다.
 
 ### Why Providers Exists
 

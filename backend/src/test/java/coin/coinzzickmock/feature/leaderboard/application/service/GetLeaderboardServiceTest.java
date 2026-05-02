@@ -145,5 +145,9 @@ class GetLeaderboardServiceTest {
         @Override
         public void update(LeaderboardEntry entry) {
         }
+
+        @Override
+        public void remove(Long memberId) {
+        }
     }
 }

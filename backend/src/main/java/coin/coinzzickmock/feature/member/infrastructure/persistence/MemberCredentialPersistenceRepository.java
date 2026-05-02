@@ -15,14 +15,21 @@ public class MemberCredentialPersistenceRepository implements MemberCredentialRe
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<MemberCredential> findByMemberId(Long memberId) {
-        return memberCredentialEntityRepository.findById(memberId)
+    public Optional<MemberCredential> findActiveByMemberId(Long memberId) {
+        return memberCredentialEntityRepository.findByIdAndWithdrawnAtIsNull(memberId)
                 .map(MemberCredentialEntity::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<MemberCredential> findByAccount(String account) {
+    public Optional<MemberCredential> findActiveByAccount(String account) {
+        return memberCredentialEntityRepository.findByAccountAndWithdrawnAtIsNull(account)
+                .map(MemberCredentialEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MemberCredential> findByAccountIncludingWithdrawn(String account) {
         return memberCredentialEntityRepository.findByAccount(account)
                 .map(MemberCredentialEntity::toDomain);
     }
@@ -49,9 +56,4 @@ public class MemberCredentialPersistenceRepository implements MemberCredentialRe
         return memberCredentialEntityRepository.save(entity).toDomain();
     }
 
-    @Override
-    @Transactional
-    public void deleteByMemberId(Long memberId) {
-        memberCredentialEntityRepository.deleteById(memberId);
-    }
 }

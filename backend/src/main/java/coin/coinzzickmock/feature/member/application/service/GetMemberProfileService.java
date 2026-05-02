@@ -15,7 +15,7 @@ public class GetMemberProfileService {
 
     @Transactional(readOnly = true)
     public MemberProfileResult get(Long memberId) {
-        return memberCredentialRepository.findByMemberId(memberId)
+        return memberCredentialRepository.findActiveByMemberId(memberId)
                 .map(MemberProfileResult::from)
                 .orElseThrow(() -> new CoreException(ErrorCode.MEMBER_NOT_FOUND));
     }

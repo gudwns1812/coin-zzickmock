@@ -64,7 +64,7 @@ class RewardPersistenceFoundationTest {
     void demoMemberSeedCreatesOrPromotesTestAccountAsAdmin() {
         assertEquals(
                 MemberRole.ADMIN,
-                memberCredentialRepository.findByAccount(DEMO_ACCOUNT).orElseThrow().role()
+                memberCredentialRepository.findActiveByAccount(DEMO_ACCOUNT).orElseThrow().role()
         );
     }
 
@@ -90,6 +90,6 @@ class RewardPersistenceFoundationTest {
     }
 
     private Long demoMemberId() {
-        return memberCredentialRepository.findByAccount(DEMO_ACCOUNT).orElseThrow().memberId();
+        return memberCredentialRepository.findActiveByAccount(DEMO_ACCOUNT).orElseThrow().memberId();
     }
 }

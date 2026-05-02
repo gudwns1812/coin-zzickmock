@@ -16,7 +16,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ## Status
 
 - 상태: 구현 반영됨
-- 마지막 스키마 동기화: 2026-04-20
+- 마지막 스키마 동기화: 2026-05-03
 - 기준 소스: Flyway migration + JPA entity + Spring Boot datasource 설정
 
 ## Source Of Truth
@@ -58,7 +58,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
   [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql)
   [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V15__add_wallet_history.sql)
+  [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql)
+  [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql)
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql)
   [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql)
+  [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -157,17 +161,22 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 유니크:
   `account`
 - 주요 컬럼:
-  `account`, `password_hash`, `member_name`, `nickname`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `role`, `created_at`, `updated_at`
+  `account`, `password_hash`, `member_name`, `nickname`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `role`, `withdrawn_at`, `created_at`, `updated_at`
 - 닉네임 정책:
   저장 전 trim 및 연속 공백 축약을 적용하고, 2~30자 Unicode 문자/숫자/공백/`_`/`-`만 허용한다. 화면 표시명은 `member_name`이 아니라 `nickname`을 사용한다.
 - 권한:
   `role`은 `USER`/`ADMIN` 문자열로 저장한다. 기존 `test` 계정과 fresh test-profile seed는 관리자 처리를 위해 `ADMIN`이 된다.
+- 탈퇴:
+  회원 탈퇴는 FK child row를 물리 삭제하지 않고 `withdrawn_at`을 채우는 soft delete로 처리한다. 로그인/current actor/profile 조회는 `withdrawn_at IS NULL` active member만 반환하고, `account` unique 제약은 유지되어 탈퇴한 account도 재가입 중복으로 취급한다.
+- 조회 인덱스:
+  `idx_member_credentials_withdrawn_at`는 active-only 조회와 탈퇴 상태 점검을 보조한다.
 - 관련 엔티티/모듈:
   `feature.member`
 - 관련 migration 또는 schema 파일:
   [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql),
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
+  [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql),
   [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
 
 ### `member_daily_activity`
@@ -185,7 +194,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 활동 원천:
   `LOGIN`, `AUTHENTICATED_API`
 - 보존/삭제:
-  `member_id`는 `member_credentials.id`를 `ON DELETE CASCADE`로 참조한다. 탈퇴 회원의 raw 활동 row는 삭제되며, 장기 추세는 식별자 없는 `daily_active_user_summary`에 남긴다.
+  `member_id`는 `member_credentials.id`를 `ON DELETE CASCADE`로 참조한다. 회원 탈퇴는 `member_credentials.withdrawn_at` soft delete로 처리하므로 raw 활동 row는 탈퇴 시 삭제되지 않는다. 장기 추세는 식별자 없는 `daily_active_user_summary`에도 남긴다.
 - 관련 엔티티/모듈:
   `feature.activity`
 - 관련 migration 또는 schema 파일:
@@ -430,7 +439,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - `market_candles_1h(symbol_id, open_time)`:
   동일 심볼에서 같은 시작 시각의 1시간봉은 하나만 존재한다.
 - `member_daily_activity.member_id -> member_credentials.id`:
-  DAU raw 활동 row는 회원 자격 증명에 속하며 회원 삭제 시 함께 삭제된다.
+  DAU raw 활동 row는 회원 자격 증명에 속한다. 탈퇴는 soft delete라 이 row를 즉시 삭제하지 않으며, 실제 회원 row를 물리 삭제하는 별도 purge가 생길 때만 FK cascade 대상이 된다.
 - `daily_active_user_summary.activity_date`:
   회원 식별자 없는 날짜별 DAU 집계 snapshot이다.
 
@@ -470,6 +479,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V18__member_surrogate_pk_and_nickname.sql`로 `member_credentials.id` surrogate PK와 `account` unique key, `nickname` 표시명을 추가하고 모든 `member_id` 참조 컬럼을 숫자 FK로 백필했다. migration 시작 전에는 모든 회원 참조 테이블과 `reward_redemption_requests.admin_member_id`에 대해 orphan preflight를 수행한다.
 - 2026-05-01:
   `V19__add_member_daily_activity.sql`로 DB 기반 DAU 수집용 `member_daily_activity`와 식별자 없는 장기 집계용 `daily_active_user_summary`를 추가했다.
+- 2026-05-03:
+  `V20__add_member_withdrawn_at.sql`로 `member_credentials.withdrawn_at` nullable soft-delete column과 보조 index를 추가했다. 기존 row는 `withdrawn_at IS NULL` active member로 해석하며, `account` unique 제약은 유지한다.
 
 ## Update Rule
 

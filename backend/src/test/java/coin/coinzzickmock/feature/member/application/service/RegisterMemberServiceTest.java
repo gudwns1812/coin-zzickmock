@@ -74,12 +74,19 @@ class RegisterMemberServiceTest {
         private long nextId = 1L;
 
         @Override
-        public Optional<MemberCredential> findByMemberId(Long memberId) {
-            return Optional.ofNullable(credentialsById.get(memberId));
+        public Optional<MemberCredential> findActiveByMemberId(Long memberId) {
+            return Optional.ofNullable(credentialsById.get(memberId))
+                    .filter(memberCredential -> !memberCredential.withdrawn());
         }
 
         @Override
-        public Optional<MemberCredential> findByAccount(String account) {
+        public Optional<MemberCredential> findActiveByAccount(String account) {
+            return Optional.ofNullable(credentialsByAccount.get(account))
+                    .filter(memberCredential -> !memberCredential.withdrawn());
+        }
+
+        @Override
+        public Optional<MemberCredential> findByAccountIncludingWithdrawn(String account) {
             return Optional.ofNullable(credentialsByAccount.get(account));
         }
 
@@ -98,13 +105,6 @@ class RegisterMemberServiceTest {
             return saved;
         }
 
-        @Override
-        public void deleteByMemberId(Long memberId) {
-            MemberCredential removed = credentialsById.remove(memberId);
-            if (removed != null) {
-                credentialsByAccount.remove(removed.account());
-            }
-        }
     }
 
     private static class InMemoryAccountRepository implements AccountRepository {

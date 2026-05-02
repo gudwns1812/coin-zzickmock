@@ -11,4 +11,6 @@ public interface LeaderboardSnapshotStore {
     void replace(LeaderboardSnapshot snapshot);
 
     void update(LeaderboardEntry entry);
+
+    void remove(Long memberId);
 }

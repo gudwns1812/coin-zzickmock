@@ -2,9 +2,8 @@ package coin.coinzzickmock.feature.leaderboard.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardProjectionRepository;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
@@ -44,11 +43,10 @@ class RefreshLeaderboardServiceTest {
     }
 
     private static LeaderboardEntry entry(Long memberId, String nickname, double walletBalance) {
-        return new LeaderboardEntry(
+        return LeaderboardEntry.fromWalletBalance(
                 memberId,
                 nickname,
                 walletBalance,
-                (walletBalance - TradingAccount.INITIAL_WALLET_BALANCE) / TradingAccount.INITIAL_WALLET_BALANCE,
                 Instant.parse("2026-05-02T00:00:00Z")
         );
     }

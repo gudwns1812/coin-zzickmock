@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.leaderboard.application.port;
+package coin.coinzzickmock.feature.leaderboard.application.store;
 
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;

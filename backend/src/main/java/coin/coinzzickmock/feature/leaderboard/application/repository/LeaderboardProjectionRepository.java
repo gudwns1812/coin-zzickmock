@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.leaderboard.application.port;
+package coin.coinzzickmock.feature.leaderboard.application.repository;
 
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import java.util.List;

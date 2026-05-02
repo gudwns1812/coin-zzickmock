@@ -5,9 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardProjectionRepository;
-import coin.coinzzickmock.feature.leaderboard.application.port.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
@@ -103,11 +102,10 @@ class GetLeaderboardServiceTest {
     }
 
     private static LeaderboardEntry entry(Long memberId, String nickname, double walletBalance) {
-        return new LeaderboardEntry(
+        return LeaderboardEntry.fromWalletBalance(
                 memberId,
                 nickname,
                 walletBalance,
-                (walletBalance - TradingAccount.INITIAL_WALLET_BALANCE) / TradingAccount.INITIAL_WALLET_BALANCE,
                 Instant.parse("2026-04-26T00:00:00Z")
         );
     }

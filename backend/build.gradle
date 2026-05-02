@@ -445,8 +445,7 @@ tasks.register('architectureLint') {
                         lines.eachWithIndex { lineText, index ->
                             def trimmed = lineText.trim()
                             def featureImportPrefix = "import ${architectureRootPackage}.feature."
-                            if (featureName == 'member' &&
-                                    trimmed.startsWith(featureImportPrefix) &&
+                            if (trimmed.startsWith(featureImportPrefix) &&
                                     trimmed.contains('.infrastructure.')) {
                                 def importedRemainder = trimmed.substring(featureImportPrefix.length())
                                 def importedFeature = importedRemainder.tokenize('.')[0]
@@ -455,8 +454,8 @@ tasks.register('architectureLint') {
                                         sourceFile,
                                         index + 1,
                                         'CROSS_FEATURE_INFRASTRUCTURE_IMPORTS',
-                                        'member infrastructure는 다른 feature infrastructure 구현을 직접 import하면 안 됩니다.',
-                                        '회원 탈퇴는 FK 순서 기반 hard cleanup이 아니라 member credential soft delete와 active lookup filtering으로 처리하세요.',
+                                        'feature infrastructure는 다른 feature infrastructure 구현을 직접 import하면 안 됩니다.',
+                                        'cross-feature read가 필요하면 application/domain contract 또는 feature-owned dedicated projection query로 격리하세요.',
                                         [packageName: packageName, importLine: trimmed, importedFeature: importedFeature]
                                     )
                                 }
@@ -479,7 +478,7 @@ tasks.register('architectureLint') {
                         }
                     }
 
-                    if (featureName == 'member') {
+                    if (featureName == 'member' || featureName == 'leaderboard') {
                         lines.eachWithIndex { lineText, index ->
                             def trimmed = lineText.trim()
                             if (trimmed.contains('memberCredentialRepository.findByAccount(') ||

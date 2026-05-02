@@ -99,7 +99,7 @@ tasks.register('architectureLint') {
                     'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
                     'JOB_OWNS_BACKGROUND_TRIGGERS',
                     'JOB_TRIGGER_ONLY',
-                    'INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY',
+                    'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
                     'DOMAIN_FRAMEWORK_FREE',
                     'APPLICATION_NO_SECURITY_CONTEXT',
                     'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
@@ -433,22 +433,19 @@ tasks.register('architectureLint') {
                         }
                     }
 
-                    if (packageName.contains('.infrastructure.config')) {
-                        def hasWebConfig = text.contains('WebMvcConfigurer') ||
-                                text.contains('HandlerInterceptor') ||
-                                text.contains('SseEmitter') ||
+                    if (layer == 'infrastructure') {
+                        def hasInboundDelivery = usesHttpDelivery ||
                                 text.contains('org.springframework.web.')
-                        def hasJobConfig = text.contains('@Scheduled') ||
-                                text.contains('TaskScheduler') ||
-                                text.contains('ApplicationReadyEvent')
-                        if (hasWebConfig || hasJobConfig) {
-                            logAdvisory(
+                        def hasFeatureJobRuntime = usesBackgroundTrigger ||
+                                text.contains('TaskScheduler')
+                        if (hasInboundDelivery || hasFeatureJobRuntime) {
+                            logViolation(
                                 sourceFile,
                                 firstInterestingLine(['WebMvcConfigurer', 'HandlerInterceptor', 'SseEmitter', '@Scheduled', 'TaskScheduler', 'ApplicationReadyEvent', '@Bean']),
-                                'INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY',
-                                '`infrastructure/config` 안의 web/job runtime config 후보입니다.',
-                                'PR-4에서 MVC/SSE delivery config는 `web`, scheduler/startup trigger wiring은 `job`, outbound technology wiring만 `infrastructure`에 남기세요.',
-                                [packageName: packageName, webConfigCandidate: hasWebConfig, jobConfigCandidate: hasJobConfig]
+                                'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
+                                'feature infrastructure는 inbound web delivery나 feature job runtime을 소유하면 안 됩니다.',
+                                'MVC/SSE delivery config는 `web` 또는 shared web config로, scheduler/startup trigger wiring은 `job`으로 이동하세요.',
+                                [packageName: packageName, webConfigCandidate: hasInboundDelivery, jobConfigCandidate: hasFeatureJobRuntime]
                             )
                         }
                     }

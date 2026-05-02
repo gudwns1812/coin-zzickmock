@@ -1,14 +1,14 @@
-package coin.coinzzickmock.feature.market.infrastructure.config;
+package coin.coinzzickmock.feature.market.job;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-class MarketRealtimeConfigTest {
+class MarketSchedulingConfigurationTest {
     @Test
     void configuresSchedulerPoolSoHistoryRetryDoesNotBlockTickerRefresh() {
-        ThreadPoolTaskScheduler scheduler = new MarketRealtimeConfig().marketTaskScheduler();
+        ThreadPoolTaskScheduler scheduler = new MarketSchedulingConfiguration().marketTaskScheduler();
 
         assertEquals(4, scheduler.getScheduledThreadPoolExecutor().getCorePoolSize());
         assertEquals("market-scheduler-", scheduler.getThreadNamePrefix());

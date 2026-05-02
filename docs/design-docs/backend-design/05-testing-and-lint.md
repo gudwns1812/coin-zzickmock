@@ -48,6 +48,7 @@
 - `web` 레이어의 persistence/infrastructure import 직접 의존 금지
 - feature scheduler/startup/background trigger는 `job` package 아래에 둠
 - `job` 레이어의 persistence/entity/provider infrastructure/feature infrastructure/HTTP/SSE 직접 의존 금지
+- `infrastructure` 레이어의 inbound web delivery와 feature job runtime 소유 금지
 - `application/service`가 다른 `application/service`를 직접 참조하는 구조 금지
 
 ### Lint Ratchet
@@ -63,10 +64,10 @@
 PR-1에서 시작한 advisory rule:
 
 - `WEB_OWNS_HTTP_DELIVERY_ADVISORY`
-- `INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY`
 
 `FEATURE_API_LAYER_MIGRATION_TARGET` advisory는 PR-2 package migration 이후 `FEATURE_LAYER_REQUIRED` 실패 조건으로 흡수되었다.
 `JOB_OWNS_BACKGROUND_TRIGGERS_ADVISORY` advisory는 PR-3 trigger extraction 이후 `JOB_OWNS_BACKGROUND_TRIGGERS` 실패 조건으로 흡수되었다.
+`INFRASTRUCTURE_CONFIG_SPLIT_ADVISORY` advisory는 PR-4 config split 이후 `INFRASTRUCTURE_NO_INBOUND_DELIVERY` 실패 조건으로 흡수되었다.
 이 advisory는 `violations`에 포함되지 않으며 `architectureLint` 성공 여부를 바꾸지 않는다.
 후속 PR에서 같은 개념의 strict rule을 켤 때는 해당 PR이 현재 위반도 함께 제거해야 한다.
 

@@ -11,7 +11,6 @@ import coin.coinzzickmock.feature.member.application.service.CheckMemberAvailabi
 import coin.coinzzickmock.feature.member.application.service.GetMemberProfileService;
 import coin.coinzzickmock.feature.member.application.service.RegisterMemberService;
 import coin.coinzzickmock.feature.member.application.service.WithdrawMemberService;
-import coin.coinzzickmock.feature.member.infrastructure.security.JwtAccessTokenManager;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,7 @@ public class AuthController {
     private final CheckMemberAvailabilityService checkMemberAvailabilityService;
     private final GetMemberProfileService getMemberProfileService;
     private final WithdrawMemberService withdrawMemberService;
-    private final JwtAccessTokenManager jwtAccessTokenManager;
+    private final AccessTokenCookieFactory accessTokenCookieFactory;
     private final Providers providers;
     private final RecordMemberActivityService recordMemberActivityService;
 
@@ -77,7 +76,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.expireAccessTokenCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, accessTokenCookieFactory.expire().toString())
                 .body(ApiResponse.success(null));
     }
 
@@ -93,7 +92,7 @@ public class AuthController {
         Actor actor = providers.auth().currentActor();
         withdrawMemberService.withdraw(actor.memberId(), request.memberId());
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.expireAccessTokenCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, accessTokenCookieFactory.expire().toString())
                 .body(ApiResponse.success(null));
     }
 
@@ -102,15 +101,7 @@ public class AuthController {
             MemberProfileResult memberProfile
     ) {
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, jwtAccessTokenManager.buildAccessTokenCookie(
-                        jwtAccessTokenManager.issue(
-                                memberProfile.memberId(),
-                                memberProfile.account(),
-                                memberProfile.nickname(),
-                                memberProfile.memberEmail(),
-                                memberProfile.role()
-                        )
-                ).toString())
+                .header(HttpHeaders.SET_COOKIE, accessTokenCookieFactory.issue(memberProfile).toString())
                 .body(body);
     }
 }

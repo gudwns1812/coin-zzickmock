@@ -2,10 +2,10 @@ package coin.coinzzickmock.providers.infrastructure;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.member.infrastructure.security.JwtAccessTokenManager;
-import coin.coinzzickmock.feature.member.infrastructure.security.JwtSessionClaims;
+import coin.coinzzickmock.providers.auth.AccessTokenManager;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.ActorLookup;
+import coin.coinzzickmock.providers.auth.AuthSessionClaims;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,12 +20,12 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Component
 @RequiredArgsConstructor
 public class JwtCookieAuthProvider implements AuthProvider {
-    private final JwtAccessTokenManager jwtAccessTokenManager;
+    private final AccessTokenManager accessTokenManager;
     private final ActorLookup actorLookup;
 
     @Override
     public Actor currentActor() {
-        JwtSessionClaims claims = parseRequiredClaims();
+        AuthSessionClaims claims = parseRequiredClaims();
         return lookupActor(claims)
                 .orElseThrow(() -> new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다."));
     }
@@ -33,7 +33,7 @@ public class JwtCookieAuthProvider implements AuthProvider {
     @Override
     public boolean isAuthenticated() {
         try {
-            JwtSessionClaims claims = parseOptionalClaims();
+            AuthSessionClaims claims = parseOptionalClaims();
             return claims != null && lookupActor(claims).isPresent();
         } catch (CoreException exception) {
             log.debug("Optional authentication failed; treating request as anonymous.", exception);
@@ -41,30 +41,30 @@ public class JwtCookieAuthProvider implements AuthProvider {
         }
     }
 
-    private JwtSessionClaims parseRequiredClaims() {
-        JwtSessionClaims claims = parseOptionalClaims();
+    private AuthSessionClaims parseRequiredClaims() {
+        AuthSessionClaims claims = parseOptionalClaims();
         if (claims == null) {
             throw new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
         }
         return claims;
     }
 
-    private JwtSessionClaims parseOptionalClaims() {
+    private AuthSessionClaims parseOptionalClaims() {
         HttpServletRequest request = currentRequest();
         if (request == null || request.getCookies() == null) {
             return null;
         }
 
         return Arrays.stream(request.getCookies())
-                .filter(cookie -> jwtAccessTokenManager.accessTokenCookieName().equals(cookie.getName()))
+                .filter(cookie -> accessTokenManager.accessTokenCookieName().equals(cookie.getName()))
                 .findFirst()
                 .map(Cookie::getValue)
                 .filter(value -> value != null && !value.isBlank())
-                .map(jwtAccessTokenManager::parse)
+                .map(accessTokenManager::parse)
                 .orElse(null);
     }
 
-    private java.util.Optional<Actor> lookupActor(JwtSessionClaims claims) {
+    private java.util.Optional<Actor> lookupActor(AuthSessionClaims claims) {
         if (claims.memberId() != null) {
             return actorLookup.findByMemberId(claims.memberId());
         }

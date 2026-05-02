@@ -1,8 +1,11 @@
 package coin.coinzzickmock.feature.member.infrastructure.auth;
 
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
+import coin.coinzzickmock.feature.member.domain.MemberCredential;
+import coin.coinzzickmock.feature.member.domain.MemberRole;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.ActorLookup;
+import coin.coinzzickmock.providers.auth.ActorRole;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,13 +27,17 @@ public class MemberActorLookup implements ActorLookup {
                 .map(this::toActor);
     }
 
-    private Actor toActor(coin.coinzzickmock.feature.member.domain.MemberCredential memberCredential) {
+    private Actor toActor(MemberCredential memberCredential) {
         return new Actor(
                 memberCredential.memberId(),
                 memberCredential.account(),
                 memberCredential.memberEmail(),
                 memberCredential.nickname(),
-                memberCredential.role()
+                toActorRole(memberCredential.role())
         );
+    }
+
+    private ActorRole toActorRole(MemberRole role) {
+        return role == MemberRole.ADMIN ? ActorRole.ADMIN : ActorRole.USER;
     }
 }

@@ -79,17 +79,13 @@ public class PendingCloseOrderCapReconciler {
             }
             double reduction = Math.min(bucket.exposureQuantity(), excessQuantity);
             double nextQuantity = bucket.exposureQuantity() - reduction;
+            List<String> orderIds = bucket.orders().stream()
+                    .map(FuturesOrder::orderId)
+                    .toList();
             if (nextQuantity <= 0) {
-                bucket.orders().forEach(order ->
-                        orderRepository.updateStatus(memberId, order.orderId(), FuturesOrder.STATUS_CANCELLED));
+                orderRepository.cancelPendingOrders(memberId, orderIds);
             } else {
-                bucket.orders().forEach(order -> orderRepository.updateQuantityAndStatus(
-                                memberId,
-                                order.orderId(),
-                                Math.min(order.quantity(), nextQuantity),
-                                FuturesOrder.STATUS_PENDING
-                        )
-                );
+                orderRepository.capPendingOrderQuantity(memberId, orderIds, nextQuantity);
             }
             excessQuantity -= reduction;
         }

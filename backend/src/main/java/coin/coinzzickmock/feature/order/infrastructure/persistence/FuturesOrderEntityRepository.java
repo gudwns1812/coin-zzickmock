@@ -54,5 +54,40 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
             @Param("cancelledStatus") String cancelledStatus
     );
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update FuturesOrderEntity order
+               set order.status = :cancelledStatus,
+                   order.activeConditionalTriggerType = null
+             where order.memberId = :memberId
+               and order.orderId in :orderIds
+               and order.status = :pendingStatus
+            """)
+    int cancelAllPendingByOrderIdIn(
+            @Param("memberId") Long memberId,
+            @Param("orderIds") List<String> orderIds,
+            @Param("pendingStatus") String pendingStatus,
+            @Param("cancelledStatus") String cancelledStatus
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update FuturesOrderEntity order
+               set order.quantity = case
+                        when order.quantity > :maxQuantity then :maxQuantity
+                        else order.quantity
+                   end,
+                   order.status = :pendingStatus
+             where order.memberId = :memberId
+               and order.orderId in :orderIds
+               and order.status = :pendingStatus
+            """)
+    int capAllPendingQuantityByOrderIdIn(
+            @Param("memberId") Long memberId,
+            @Param("orderIds") List<String> orderIds,
+            @Param("maxQuantity") BigDecimal maxQuantity,
+            @Param("pendingStatus") String pendingStatus
+    );
+
     void deleteAllByMemberId(Long memberId);
 }

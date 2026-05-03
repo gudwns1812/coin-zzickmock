@@ -69,6 +69,12 @@ public interface OrderRepository {
 
     FuturesOrder updateStatus(Long memberId, String orderId, String status);
 
+    default int cancelPendingOrders(Long memberId, List<String> orderIds) {
+        return (int) orderIds.stream()
+                .filter(orderId -> cancelPending(memberId, orderId))
+                .count();
+    }
+
     default boolean cancelPending(Long memberId, String orderId) {
         FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElse(null);
         if (order == null || !order.isPending()) {
@@ -83,5 +89,24 @@ public interface OrderRepository {
             return updateStatus(memberId, orderId, status);
         }
         throw new UnsupportedOperationException("Order quantity updates are not implemented");
+    }
+
+    default int capPendingOrderQuantity(Long memberId, List<String> orderIds, double maxQuantity) {
+        int updated = 0;
+        for (String orderId : orderIds) {
+            Optional<FuturesOrder> order = findByMemberIdAndOrderId(memberId, orderId)
+                    .filter(FuturesOrder::isPending);
+            if (order.isPresent()) {
+                FuturesOrder current = order.orElseThrow();
+                updateQuantityAndStatus(
+                        memberId,
+                        orderId,
+                        Math.min(current.quantity(), maxQuantity),
+                        FuturesOrder.STATUS_PENDING
+                );
+                updated++;
+            }
+        }
+        return updated;
     }
 }

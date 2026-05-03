@@ -7,7 +7,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class BitgetWebSocketMarketEventParser {
     private final ObjectMapper objectMapper;
 
@@ -33,7 +35,8 @@ public class BitgetWebSocketMarketEventParser {
             return BitgetWebSocketChannel.from(channelName)
                     .map(channel -> parseChannel(channel, symbol, root, data, receivedAt))
                     .orElseGet(List::of);
-        } catch (Exception ignored) {
+        } catch (Exception exception) {
+            log.debug("Failed to parse Bitget WebSocket market event payload.", exception);
             return List.of();
         }
     }

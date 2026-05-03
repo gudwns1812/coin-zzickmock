@@ -63,6 +63,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql)
   [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql)
   [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql)
+  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -104,12 +105,15 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `member_id`
 - 주요 컬럼:
-  `member_email`, `member_name`, `wallet_balance`, `available_margin`, `created_at`, `updated_at`
+  `member_email`, `member_name`, `wallet_balance`, `available_margin`, `version`, `created_at`, `updated_at`
+- 동시성:
+  `version`은 주문 체결, 포지션 종료, 레버리지 변경처럼 잔고/증거금을 바꾸는 거래성 mutation의 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 이력과 후속 상태 변경을 진행하지 않고 재조회가 필요한 충돌로 처리한다.
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
+  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
 
 ### `reward_point_wallets`
@@ -334,6 +338,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `version`은 포지션 종료/청산/종료 주문 체결 시 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 정산, 포지션 이력, 리워드, SSE 이벤트를 수행하지 않고 재조회가 필요한 충돌로 처리한다.
 - 유일성:
   `uk_open_position_member_symbol_side`는 같은 `member_id + symbol + position_side` 안에서 열린 포지션을 하나만 허용한다. 포지션이 열려 있는 동안 마진 모드는 해당 포지션 값으로 고정되며, `margin_mode`별 별도 오픈 포지션을 만들 수 없다.
+- 조회 인덱스:
+  `idx_open_positions_symbol_member_side_margin(symbol, member_id, position_side, margin_mode)`는 실시간 가격 이벤트에서 `symbol` 기준 열린 포지션을 스캔하는 경로에 사용한다.
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
@@ -341,6 +347,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
   [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql),
   [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql),
+  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
 
 ### `position_history`
@@ -469,6 +476,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V10__add_futures_order_conditional_trigger_fields.sql`로 `futures_orders.trigger_price`, `trigger_type`, `trigger_source`, `oco_group_id`를 추가했다. TP/SL source of truth는 open position 컬럼에서 pending conditional close order로 이동했다.
 - 2026-04-28:
   `V11__backfill_and_constrain_conditional_close_orders.sql`로 V9 legacy `open_positions.take_profit_price`, `stop_loss_price`를 pending conditional close order로 backfill하고, active conditional TP/SL 중복을 막는 unique index를 추가했다.
+- 2026-05-03:
+  `V21__add_account_version_and_position_symbol_index.sql`로 `trading_accounts.version`을 추가하고, `open_positions`의 `symbol` 선두 실시간 스캔 인덱스를 추가했다.
 - 2026-04-28:
   `V15__add_wallet_history.sql`로 `wallet_history`를 추가했다. Assets 차트는 기본적으로 현재 시각 기준 30일 범위를 조회하고, `source_type + source_reference` unique key로 체결/반환/청산 같은 지갑 변경 이벤트의 중복 기록을 방지한다.
 - 2026-04-30:

@@ -8,10 +8,21 @@ public record TradingAccount(
         String memberEmail,
         String memberName,
         double walletBalance,
-        double availableMargin
+        double availableMargin,
+        long version
 ) {
     public static final double INITIAL_WALLET_BALANCE = 100_000d;
     private static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
+
+    public TradingAccount(
+            Long memberId,
+            String memberEmail,
+            String memberName,
+            double walletBalance,
+            double availableMargin
+    ) {
+        this(memberId, memberEmail, memberName, walletBalance, availableMargin, 0);
+    }
 
     public static TradingAccount openDefault(Long memberId, String memberEmail, String memberName) {
         return new TradingAccount(
@@ -19,8 +30,13 @@ public record TradingAccount(
                 memberEmail,
                 memberName,
                 INITIAL_WALLET_BALANCE,
-                INITIAL_AVAILABLE_MARGIN
+                INITIAL_AVAILABLE_MARGIN,
+                0
         );
+    }
+
+    public TradingAccount withVersion(long version) {
+        return new TradingAccount(memberId, memberEmail, memberName, walletBalance, availableMargin, version);
     }
 
     public TradingAccount reserveForFilledOrder(double estimatedFee, double estimatedInitialMargin) {
@@ -33,7 +49,8 @@ public record TradingAccount(
                 memberEmail,
                 memberName,
                 walletBalance - estimatedFee,
-                availableMargin - requiredMargin
+                availableMargin - requiredMargin,
+                version
         );
     }
 
@@ -48,7 +65,8 @@ public record TradingAccount(
                 memberEmail,
                 memberName,
                 walletBalance,
-                nextAvailableMargin
+                nextAvailableMargin,
+                version
         );
     }
 
@@ -58,7 +76,8 @@ public record TradingAccount(
                 memberEmail,
                 memberName,
                 walletBalance + grossRealizedPnl - closeFee,
-                availableMargin + releasedMargin + grossRealizedPnl - closeFee
+                availableMargin + releasedMargin + grossRealizedPnl - closeFee,
+                version
         );
     }
 }

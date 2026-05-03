@@ -1,16 +1,11 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
-import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
-import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -21,7 +16,6 @@ import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,9 +33,8 @@ public class CreateOrderService {
     private final OrderPlacementPolicy orderPlacementPolicy;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final OrderRepository orderRepository;
-    private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
-    private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final FilledOpenOrderApplier filledOpenOrderApplier;
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
@@ -102,70 +95,20 @@ public class CreateOrderService {
             OrderPreview preview,
             double executionPrice
     ) {
-        TradingAccount account = accountRepository.findByMemberId(command.memberId())
-                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        validateAccountMutation(accountRepository.updateWithVersion(
-                account,
-                account.reserveForFilledOrder(preview.estimatedFee(), preview.estimatedInitialMargin()),
-                WalletHistorySource.orderFill(orderId)
-        ));
-        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(command.memberId()));
-
-        PositionSnapshot existing = positionRepository.findOpenPosition(
+        filledOpenOrderApplier.apply(new FilledOpenOrder(
                 command.memberId(),
+                orderId,
                 command.symbol(),
-                command.positionSide()
-        ).orElse(null);
-
-        if (existing != null && !existing.marginMode().equalsIgnoreCase(command.marginMode())) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "기존 포지션과 다른 마진 모드로 주문할 수 없습니다.");
-        }
-
-        if (existing == null) {
-            positionRepository.save(command.memberId(), PositionSnapshot.open(
-                    command.symbol(),
-                    command.positionSide(),
-                    command.marginMode(),
-                    command.leverage(),
-                    command.quantity(),
-                    executionPrice,
-                    marketSnapshot.markPrice(),
-                    preview.estimatedFee()
-            ));
-            return;
-        }
-
-        validatePositionMutation(positionRepository.updateWithVersion(
-                command.memberId(),
-                existing,
-                existing.increase(
-                        command.leverage(),
-                        command.quantity(),
-                        executionPrice,
-                        marketSnapshot.markPrice(),
-                        preview.estimatedFee()
-                )
+                command.positionSide(),
+                command.marginMode(),
+                command.leverage(),
+                command.quantity(),
+                executionPrice,
+                marketSnapshot.markPrice(),
+                preview.estimatedFee(),
+                preview.estimatedInitialMargin(),
+                null
         ));
-    }
-
-    private void validateAccountMutation(AccountMutationResult mutationResult) {
-        if (mutationResult.succeeded()) {
-            return;
-        }
-        if (mutationResult.status() == AccountMutationResult.Status.NOT_FOUND) {
-            throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);
-        }
-        throw new CoreException(ErrorCode.ACCOUNT_CHANGED);
-    }
-
-    private void validatePositionMutation(PositionMutationResult mutationResult) {
-        if (mutationResult.succeeded()) {
-            return;
-        }
-        if (mutationResult.status() == PositionMutationResult.Status.NOT_FOUND) {
-            throw new CoreException(ErrorCode.POSITION_NOT_FOUND);
-        }
-        throw new CoreException(ErrorCode.POSITION_CHANGED);
     }
 
     private OrderPreview preview(CreateOrderCommand command, MarketSnapshot marketSnapshot) {

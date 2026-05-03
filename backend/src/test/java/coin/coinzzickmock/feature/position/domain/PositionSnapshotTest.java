@@ -4,9 +4,59 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 class PositionSnapshotTest {
+    @Test
+    void restorePreservesPersistedAccountingRiskAndTriggerFields() {
+        Instant openedAt = Instant.parse("2026-05-03T00:00:00Z");
+
+        PositionSnapshot restored = PositionSnapshot.restore(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.7,
+                100_000,
+                101_000,
+                90_000.0,
+                700,
+                openedAt,
+                1.0,
+                0.3,
+                30_600,
+                600,
+                5,
+                3,
+                2,
+                120_000.0,
+                95_000.0,
+                7
+        );
+
+        assertEquals("BTCUSDT", restored.symbol());
+        assertEquals("LONG", restored.positionSide());
+        assertEquals("ISOLATED", restored.marginMode());
+        assertEquals(10, restored.leverage());
+        assertEquals(0.7, restored.quantity(), 0.0001);
+        assertEquals(100_000, restored.entryPrice(), 0.0001);
+        assertEquals(101_000, restored.markPrice(), 0.0001);
+        assertEquals(90_000.0, restored.liquidationPrice(), 0.0001);
+        assertEquals(700, restored.unrealizedPnl(), 0.0001);
+        assertEquals(openedAt, restored.openedAt());
+        assertEquals(1.0, restored.originalQuantity(), 0.0001);
+        assertEquals(0.3, restored.accumulatedClosedQuantity(), 0.0001);
+        assertEquals(30_600, restored.accumulatedExitNotional(), 0.0001);
+        assertEquals(600, restored.accumulatedRealizedPnl(), 0.0001);
+        assertEquals(5, restored.accumulatedOpenFee(), 0.0001);
+        assertEquals(3, restored.accumulatedCloseFee(), 0.0001);
+        assertEquals(2, restored.accumulatedFundingCost(), 0.0001);
+        assertEquals(120_000.0, restored.takeProfitPrice(), 0.0001);
+        assertEquals(95_000.0, restored.stopLossPrice(), 0.0001);
+        assertEquals(7, restored.version());
+    }
+
     @Test
     void longCloseSeparatesEventNetPnlFromWholePositionNetPnl() {
         PositionSnapshot position = PositionSnapshot.open(

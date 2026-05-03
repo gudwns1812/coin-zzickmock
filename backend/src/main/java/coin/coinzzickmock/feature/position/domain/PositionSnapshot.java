@@ -28,6 +28,7 @@ public record PositionSnapshot(
     private static final int MIN_LEVERAGE = 1;
     private static final int MAX_LEVERAGE = 50;
 
+    @Deprecated(since = "2026-05-03", forRemoval = false)
     public PositionSnapshot(
             String symbol,
             String positionSide,
@@ -69,6 +70,7 @@ public record PositionSnapshot(
         );
     }
 
+    @Deprecated(since = "2026-05-03", forRemoval = false)
     public PositionSnapshot(
             String symbol,
             String positionSide,
@@ -112,6 +114,7 @@ public record PositionSnapshot(
         );
     }
 
+    @Deprecated(since = "2026-05-03", forRemoval = false)
     public PositionSnapshot(
             String symbol,
             String positionSide,
@@ -144,6 +147,52 @@ public record PositionSnapshot(
                 null,
                 null,
                 0
+        );
+    }
+
+    public static PositionSnapshot restore(
+            String symbol,
+            String positionSide,
+            String marginMode,
+            int leverage,
+            double quantity,
+            double entryPrice,
+            double markPrice,
+            Double liquidationPrice,
+            double unrealizedPnl,
+            Instant openedAt,
+            double originalQuantity,
+            double accumulatedClosedQuantity,
+            double accumulatedExitNotional,
+            double accumulatedRealizedPnl,
+            double accumulatedOpenFee,
+            double accumulatedCloseFee,
+            double accumulatedFundingCost,
+            Double takeProfitPrice,
+            Double stopLossPrice,
+            long version
+    ) {
+        return new PositionSnapshot(
+                symbol,
+                positionSide,
+                marginMode,
+                leverage,
+                quantity,
+                entryPrice,
+                markPrice,
+                liquidationPrice,
+                unrealizedPnl,
+                openedAt,
+                originalQuantity,
+                accumulatedClosedQuantity,
+                accumulatedExitNotional,
+                accumulatedRealizedPnl,
+                accumulatedOpenFee,
+                accumulatedCloseFee,
+                accumulatedFundingCost,
+                takeProfitPrice,
+                stopLossPrice,
+                version
         );
     }
 

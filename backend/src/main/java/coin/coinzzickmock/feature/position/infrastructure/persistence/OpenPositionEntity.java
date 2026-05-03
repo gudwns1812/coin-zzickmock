@@ -123,7 +123,7 @@ public class OpenPositionEntity extends AuditableEntity {
     }
 
     public PositionSnapshot toDomain() {
-        return new PositionSnapshot(
+        return PositionSnapshot.restore(
                 symbol,
                 positionSide,
                 marginMode,

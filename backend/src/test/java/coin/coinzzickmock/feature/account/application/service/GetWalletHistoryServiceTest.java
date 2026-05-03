@@ -8,6 +8,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.query.GetWalletHistoryQuery;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.application.result.WalletHistoryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySnapshot;
@@ -70,8 +71,12 @@ class GetWalletHistoryServiceTest {
                     }
 
                     @Override
-                    public TradingAccount save(TradingAccount account) {
-                        throw new AssertionError("wallet history read must not create account");
+                    public AccountMutationResult updateWithVersion(
+                            TradingAccount expectedAccount,
+                            TradingAccount nextAccount,
+                            WalletHistorySource source
+                    ) {
+                        throw new AssertionError("wallet history read must not mutate account");
                     }
                 }
         );
@@ -90,8 +95,12 @@ class GetWalletHistoryServiceTest {
             }
 
             @Override
-            public TradingAccount save(TradingAccount account) {
-                return account;
+            public AccountMutationResult updateWithVersion(
+                    TradingAccount expectedAccount,
+                    TradingAccount nextAccount,
+                    WalletHistorySource source
+            ) {
+                throw new AssertionError("wallet history read must not mutate account");
             }
         };
     }

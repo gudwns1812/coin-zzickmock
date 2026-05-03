@@ -4,7 +4,9 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
@@ -827,9 +829,16 @@ class ClosePositionServiceTest {
         }
 
         @Override
-        public TradingAccount save(TradingAccount account) {
-            this.account = account;
-            return account;
+        public AccountMutationResult updateWithVersion(
+                TradingAccount expectedAccount,
+                TradingAccount nextAccount,
+                WalletHistorySource source
+        ) {
+            if (account.version() != expectedAccount.version()) {
+                return AccountMutationResult.staleVersion(account);
+            }
+            account = nextAccount.withVersion(expectedAccount.version() + 1);
+            return AccountMutationResult.updated(1, account);
         }
     }
 

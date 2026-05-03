@@ -236,7 +236,7 @@ class PositionPersistenceRepositoryTest {
                 String.valueOf(memberId),
                 memberId + "@coinzzickmock.dev"
         );
-        accountRepository.save(new TradingAccount(
+        accountRepository.create(new TradingAccount(
                 memberId,
                 memberId + "@coinzzickmock.dev",
                 String.valueOf(memberId),

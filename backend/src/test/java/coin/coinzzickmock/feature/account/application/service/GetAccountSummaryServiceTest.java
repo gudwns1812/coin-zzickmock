@@ -1,8 +1,11 @@
 package coin.coinzzickmock.feature.account.application.service;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQuery;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
@@ -112,6 +115,52 @@ class GetAccountSummaryServiceTest {
         assertEquals(100, positionRepository.position.markPrice(), 0.0001);
     }
 
+    @Test
+    void throwsDataErrorWhenTradingAccountIsMissing() {
+        GetAccountSummaryService service = new GetAccountSummaryService(
+                new AccountRepository() {
+                    @Override
+                    public Optional<TradingAccount> findByMemberId(Long memberId) {
+                        return Optional.empty();
+                    }
+
+                    @Override
+                    public TradingAccount save(TradingAccount account) {
+                        fail("missing account read must not create account");
+                        return account;
+                    }
+                },
+                new RewardPointRepository() {
+                    @Override
+                    public Optional<RewardPointWallet> findByMemberId(Long memberId) {
+                        return Optional.empty();
+                    }
+
+                    @Override
+                    public RewardPointWallet save(RewardPointWallet rewardPointWallet) {
+                        fail("missing account read must not save reward wallet");
+                        return rewardPointWallet;
+                    }
+                },
+                new ReadOnlyPositionRepository(PositionSnapshot.open(
+                        "BTCUSDT",
+                        "LONG",
+                        "ISOLATED",
+                        1,
+                        1,
+                        100,
+                        100
+                )),
+                realtimePriceReader(100),
+                memberRepository()
+        );
+
+        assertThatThrownBy(() -> service.execute(new GetAccountSummaryQuery(1L)))
+                .isInstanceOf(CoreException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ACCOUNT_NOT_FOUND);
+    }
+
     private static class ReadOnlyPositionRepository implements PositionRepository {
         private final PositionSnapshot position;
 
@@ -175,5 +224,46 @@ class GetAccountSummaryServiceTest {
                 now
         ));
         return new RealtimeMarketPriceReader(store);
+    }
+
+    private static MemberCredentialRepository memberRepository() {
+        return new MemberCredentialRepository() {
+            @Override
+            public Optional<MemberCredential> findActiveByMemberId(Long memberId) {
+                return Optional.of(MemberCredential.register(
+                        "demo",
+                        "hashed",
+                        "Demo",
+                        "DemoNick",
+                        "demo@coinzzickmock.dev",
+                        "010-0000-0000",
+                        "04524",
+                        "서울",
+                        "",
+                        0
+                ).withMemberId(memberId));
+            }
+
+            @Override
+            public Optional<MemberCredential> findActiveByAccount(String account) {
+                return Optional.empty();
+            }
+
+            @Override
+            public Optional<MemberCredential> findByAccountIncludingWithdrawn(String account) {
+                return Optional.empty();
+            }
+
+            @Override
+            public boolean existsByAccount(String account) {
+                return false;
+            }
+
+            @Override
+            public MemberCredential save(MemberCredential memberCredential) {
+                fail("account summary read must not save member");
+                return memberCredential;
+            }
+        };
     }
 }

@@ -126,6 +126,8 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 - 외부 응답, JPA entity, query 결과를 application/domain 언어로 번역하는 책임을 가진다.
 - 도메인 정책의 원본을 infrastructure에 두지 않는다.
 - retry, timeout, connection 설정 같은 운영 정책은 config나 provider 구현 쪽에 모은다.
+- persistence adapter는 create/update/bulk/read 계약의 의미를 흐리지 않는다. 조회 중 생성, generic upsert, 단건 수정 후 `saveAndFlush` 남발은 책임이 섞인 신호로 본다.
+- managed JPA entity 단건 수정은 dirty checking을 기본으로 삼고, 다건 상태 변경은 application에서 결정한 의도를 bulk/batch repository method로 명시한다.
 
 ## Naming Rules
 

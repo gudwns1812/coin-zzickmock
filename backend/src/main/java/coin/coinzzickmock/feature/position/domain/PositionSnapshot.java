@@ -396,6 +396,18 @@ public record PositionSnapshot(
         );
     }
 
+    public PositionAccounting accounting() {
+        return new PositionAccounting(
+                originalQuantity,
+                accumulatedClosedQuantity,
+                accumulatedExitNotional,
+                accumulatedRealizedPnl,
+                accumulatedOpenFee,
+                accumulatedCloseFee,
+                accumulatedFundingCost
+        );
+    }
+
     public boolean isCrossMargin() {
         return identity().isCrossMargin();
     }
@@ -421,14 +433,7 @@ public record PositionSnapshot(
     }
 
     public double realizedPnl() {
-        if (originalQuantity <= 0 || accumulatedClosedQuantity <= 0) {
-            return 0;
-        }
-        double closedRatio = Math.min(1, accumulatedClosedQuantity / originalQuantity);
-        return accumulatedRealizedPnl
-                - accumulatedCloseFee
-                - (accumulatedOpenFee * closedRatio)
-                - (accumulatedFundingCost * closedRatio);
+        return accounting().netRealizedPnl();
     }
 
     public String stableKey() {

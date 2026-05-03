@@ -41,6 +41,34 @@ class PositionSnapshotTest {
     }
 
     @Test
+    void exposesAccountingValueObjectWithoutChangingRealizedPnl() {
+        PositionSnapshot position = PositionSnapshot.open(
+                        "BTCUSDT",
+                        "LONG",
+                        "ISOLATED",
+                        10,
+                        1,
+                        100,
+                        100,
+                        5
+                )
+                .increase(10, 1, 110, 110, 7)
+                .close(1, 120, 120, 0.0005)
+                .remainingPosition();
+
+        PositionAccounting accounting = position.accounting();
+
+        assertEquals(position.originalQuantity(), accounting.originalQuantity(), 0.0001);
+        assertEquals(position.accumulatedClosedQuantity(), accounting.accumulatedClosedQuantity(), 0.0001);
+        assertEquals(position.accumulatedExitNotional(), accounting.accumulatedExitNotional(), 0.0001);
+        assertEquals(position.accumulatedRealizedPnl(), accounting.accumulatedRealizedPnl(), 0.0001);
+        assertEquals(position.accumulatedOpenFee(), accounting.accumulatedOpenFee(), 0.0001);
+        assertEquals(position.accumulatedCloseFee(), accounting.accumulatedCloseFee(), 0.0001);
+        assertEquals(position.accumulatedFundingCost(), accounting.accumulatedFundingCost(), 0.0001);
+        assertEquals(position.realizedPnl(), accounting.netRealizedPnl(), 0.0001);
+    }
+
+    @Test
     void restorePreservesPersistedAccountingRiskAndTriggerFields() {
         Instant openedAt = Instant.parse("2026-05-03T00:00:00Z");
 

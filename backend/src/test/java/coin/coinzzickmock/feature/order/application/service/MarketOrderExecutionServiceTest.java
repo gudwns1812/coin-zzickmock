@@ -673,12 +673,12 @@ class MarketOrderExecutionServiceTest {
                 new PendingOrderFillProcessor(
                         orderRepository,
                         positionRepository,
-                        accountRepository,
                         new PendingOrderExecutionCache(),
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
                         afterCommitEventPublisher,
-                        realtimeMarketPriceReader
+                        realtimeMarketPriceReader,
+                        new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher)
                 ),
                 new PositionLiquidationProcessor(
                         positionRepository,

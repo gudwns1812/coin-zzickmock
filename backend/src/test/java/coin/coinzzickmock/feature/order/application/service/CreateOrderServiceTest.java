@@ -46,15 +46,13 @@ class CreateOrderServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
 
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(),
                 orderRepository,
                 accountRepository,
                 positionRepository,
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
 
         CreateOrderResult result = service.execute(new CreateOrderCommand(
@@ -91,15 +89,13 @@ class CreateOrderServiceTest {
                 0
         ));
 
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(110000, 110000),
                 orderRepository,
                 accountRepository,
                 positionRepository,
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
 
         service.execute(new CreateOrderCommand(
@@ -122,15 +118,13 @@ class CreateOrderServiceTest {
 
     @Test
     void previewsMakerLimitOrderWithEntryPriceAndExecutionFlag() {
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),
                 new InMemoryPositionRepository(),
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
 
         OrderPreview preview = service.preview(new CreateOrderCommand(
@@ -154,15 +148,13 @@ class CreateOrderServiceTest {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(74700, 74700),
                 orderRepository,
                 accountRepository,
                 positionRepository,
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
         CreateOrderCommand command = new CreateOrderCommand(
                 1L,
@@ -204,15 +196,13 @@ class CreateOrderServiceTest {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(75000, 75000),
                 orderRepository,
                 accountRepository,
                 positionRepository,
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
         CreateOrderCommand command = new CreateOrderCommand(
                 1L,
@@ -255,14 +245,12 @@ class CreateOrderServiceTest {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(),
                 orderRepository,
                 accountRepository,
                 positionRepository,
-                new AfterCommitEventPublisher(eventPublisher)
+                eventPublisher
         );
 
         TransactionSynchronizationManager.initSynchronization();
@@ -290,16 +278,46 @@ class CreateOrderServiceTest {
     }
 
     @Test
+    void filledMarketOrderReservesPreviewInitialMarginPrecision() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        CreateOrderService service = service(
+                realtimePriceReader(100, 100),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                event -> {
+                }
+        );
+
+        service.execute(new CreateOrderCommand(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "MARKET",
+                "ISOLATED",
+                3,
+                1,
+                null
+        ));
+
+        assertEquals(
+                99_966.61666667,
+                accountRepository.findByMemberId(1L).orElseThrow().availableMargin(),
+                0.000000001
+        );
+    }
+
+    @Test
     void previewRejectsUnsupportedOrderType() {
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),
                 new InMemoryPositionRepository(),
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.preview(new CreateOrderCommand(
@@ -328,15 +346,13 @@ class CreateOrderServiceTest {
                 100000,
                 100000
         ));
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),
                 positionRepository,
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.preview(new CreateOrderCommand(
@@ -365,15 +381,13 @@ class CreateOrderServiceTest {
                 100000,
                 100000
         ));
-        CreateOrderService service = new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+        CreateOrderService service = service(
                 realtimePriceReader(),
                 new InMemoryOrderRepository(),
                 new InMemoryAccountRepository(),
                 positionRepository,
-                new AfterCommitEventPublisher(event -> {
-                })
+                event -> {
+                }
         );
 
         CoreException thrown = assertThrows(CoreException.class, () -> service.execute(new CreateOrderCommand(
@@ -388,6 +402,24 @@ class CreateOrderServiceTest {
         )));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
+
+    private static CreateOrderService service(
+            RealtimeMarketPriceReader realtimeMarketPriceReader,
+            OrderRepository orderRepository,
+            AccountRepository accountRepository,
+            PositionRepository positionRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
+        AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
+        return new CreateOrderService(
+                new OrderPreviewPolicy(),
+                new OrderPlacementPolicy(),
+                realtimeMarketPriceReader,
+                orderRepository,
+                positionRepository,
+                new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher)
+        );
     }
 
     private static class CapturingEventPublisher implements ApplicationEventPublisher {

@@ -14,11 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
-@Transactional
 class AccountPersistenceRepositoryTest {
     @Autowired
     private AccountRepository accountRepository;
@@ -40,6 +38,11 @@ class AccountPersistenceRepositoryTest {
         assertThat(created.memberId()).isEqualTo(member.memberId());
         assertThatThrownBy(() -> accountRepository.create(account))
                 .isInstanceOf(RuntimeException.class);
+
+        TradingAccount persisted = accountRepository.findByMemberId(member.memberId()).orElseThrow();
+        assertThat(persisted.walletBalance()).isEqualTo(TradingAccount.INITIAL_WALLET_BALANCE);
+        assertThat(persisted.availableMargin()).isEqualTo(TradingAccount.INITIAL_WALLET_BALANCE);
+        assertThat(persisted.version()).isZero();
     }
 
     @Test
@@ -91,6 +94,22 @@ class AccountPersistenceRepositoryTest {
 
         assertThat(result.status()).isEqualTo(AccountMutationResult.Status.NOT_FOUND);
         assertThat(accountRepository.findByMemberId(missing.memberId())).isEmpty();
+    }
+
+    @Test
+    void updateWithVersionRequiresWalletHistorySource() {
+        MemberCredential member = memberCredentialRepository.save(member("account-source-required-" + System.nanoTime()));
+        TradingAccount created = accountRepository.create(TradingAccount.openDefault(
+                member.memberId(),
+                member.memberEmail(),
+                member.memberName()
+        ));
+
+        assertThatThrownBy(() -> accountRepository.updateWithVersion(
+                created,
+                created.reserveForFilledOrder(10, 100),
+                null
+        )).hasMessageContaining("WalletHistorySource");
     }
 
     private MemberCredential member(String account) {

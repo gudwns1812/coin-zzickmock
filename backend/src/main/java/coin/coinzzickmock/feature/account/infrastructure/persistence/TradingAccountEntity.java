@@ -31,7 +31,7 @@ public class TradingAccountEntity extends AuditableEntity {
 
     @Version
     @Column(name = "version", nullable = false)
-    private long version;
+    private Long version;
 
     protected TradingAccountEntity() {
     }
@@ -74,7 +74,7 @@ public class TradingAccountEntity extends AuditableEntity {
                 memberName,
                 walletBalance.doubleValue(),
                 availableMargin.doubleValue(),
-                version
+                version()
         );
     }
 
@@ -87,7 +87,7 @@ public class TradingAccountEntity extends AuditableEntity {
     }
 
     public long version() {
-        return version;
+        return version == null ? 0 : version;
     }
 
     private static BigDecimal decimal(double value) {

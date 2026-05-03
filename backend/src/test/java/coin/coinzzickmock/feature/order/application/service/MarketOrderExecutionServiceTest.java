@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
@@ -816,9 +818,30 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
-        public TradingAccount save(TradingAccount account) {
+        public TradingAccount create(TradingAccount account) {
+            if (accounts.containsKey(account.memberId())) {
+                throw new IllegalStateException("account already exists");
+            }
             accounts.put(account.memberId(), account);
             return account;
+        }
+
+        @Override
+        public AccountMutationResult updateWithVersion(
+                TradingAccount expectedAccount,
+                TradingAccount nextAccount,
+                WalletHistorySource source
+        ) {
+            TradingAccount current = accounts.get(expectedAccount.memberId());
+            if (current == null) {
+                return AccountMutationResult.notFound();
+            }
+            if (current.version() != expectedAccount.version()) {
+                return AccountMutationResult.staleVersion(current);
+            }
+            TradingAccount saved = nextAccount.withVersion(expectedAccount.version() + 1);
+            accounts.put(saved.memberId(), saved);
+            return AccountMutationResult.updated(1, saved);
         }
     }
 

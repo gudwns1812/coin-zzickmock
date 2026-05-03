@@ -8,8 +8,10 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQuery;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
@@ -47,9 +49,19 @@ class GetAccountSummaryServiceTest {
                     }
 
                     @Override
-                    public TradingAccount save(TradingAccount account) {
-                        fail("account summary read must not save account");
+                    public TradingAccount create(TradingAccount account) {
+                        fail("account summary read must not create account");
                         return account;
+                    }
+
+                    @Override
+                    public AccountMutationResult updateWithVersion(
+                            TradingAccount expectedAccount,
+                            TradingAccount nextAccount,
+                            WalletHistorySource source
+                    ) {
+                        fail("account summary read must not mutate account");
+                        return AccountMutationResult.notFound();
                     }
                 },
                 new RewardPointRepository() {
@@ -125,9 +137,19 @@ class GetAccountSummaryServiceTest {
                     }
 
                     @Override
-                    public TradingAccount save(TradingAccount account) {
+                    public TradingAccount create(TradingAccount account) {
                         fail("missing account read must not create account");
                         return account;
+                    }
+
+                    @Override
+                    public AccountMutationResult updateWithVersion(
+                            TradingAccount expectedAccount,
+                            TradingAccount nextAccount,
+                            WalletHistorySource source
+                    ) {
+                        fail("missing account read must not mutate account");
+                        return AccountMutationResult.notFound();
                     }
                 },
                 new RewardPointRepository() {

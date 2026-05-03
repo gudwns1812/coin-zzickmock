@@ -93,7 +93,7 @@ class LeaderboardProjectionPersistenceRepositoryTest {
                 "101",
                 0
         ));
-        accountRepository.save(new TradingAccount(
+        accountRepository.create(new TradingAccount(
                 member.memberId(),
                 member.memberEmail(),
                 member.memberName(),

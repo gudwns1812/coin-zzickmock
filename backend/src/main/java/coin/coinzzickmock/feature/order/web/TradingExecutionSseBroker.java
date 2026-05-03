@@ -2,18 +2,16 @@ package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
+import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,11 +26,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class TradingExecutionSseBroker {
     private static final String STREAM = "trading_execution";
 
-    private final ConcurrentMap<Long, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Long, Semaphore> memberSubscriberLimits = new ConcurrentHashMap<>();
+    private final SseSubscriptionRegistry<Long> subscriptions;
     private final Executor sseEventExecutor;
-    private final int maxSubscribersPerMember;
-    private final Semaphore totalSubscriberLimit;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
@@ -43,8 +38,7 @@ public class TradingExecutionSseBroker {
             SseTelemetry sseTelemetry
     ) {
         this.sseEventExecutor = sseEventExecutor;
-        this.maxSubscribersPerMember = maxSubscribersPerMember;
-        this.totalSubscriberLimit = new Semaphore(maxSubscribersTotal, true);
+        this.subscriptions = new SseSubscriptionRegistry<>(maxSubscribersPerMember, maxSubscribersTotal);
         this.sseTelemetry = sseTelemetry;
     }
 
@@ -57,28 +51,22 @@ public class TradingExecutionSseBroker {
     }
 
     public SseSubscriptionPermit reserve(Long memberId) {
-        if (!totalSubscriberLimit.tryAcquire()) {
+        var reservation = subscriptions.reserve(memberId);
+        if (reservation.accepted()) {
+            return new SseSubscriptionPermit(reservation.permit());
+        }
+        if (reservation.rejection() == ReservationRejection.TOTAL_LIMIT) {
             recordConnectionRejected("total_limit");
             throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         }
 
-        Semaphore memberLimit = memberSubscriberLimits.computeIfAbsent(
-                memberId,
-                key -> new Semaphore(maxSubscribersPerMember, true)
-        );
-        if (!memberLimit.tryAcquire()) {
-            totalSubscriberLimit.release();
-            recordConnectionRejected("member_limit");
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS, "거래 이벤트 스트림 연결이 너무 많습니다.");
-        }
-
-        return new SseSubscriptionPermit(memberId, memberLimit);
+        recordConnectionRejected("member_limit");
+        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS, "거래 이벤트 스트림 연결이 너무 많습니다.");
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
         bindLifecycle(permit, emitter);
-        emitters.computeIfAbsent(permit.memberId(), key -> new CopyOnWriteArrayList<>()).add(emitter);
-        permit.markRegistered();
+        subscriptions.register(permit.delegate, emitter);
         recordConnectionOpened();
     }
 
@@ -87,30 +75,18 @@ public class TradingExecutionSseBroker {
     }
 
     private void unregister(Long memberId, SseEmitter emitter, String reason) {
-        CopyOnWriteArrayList<SseEmitter> memberEmitters = emitters.get(memberId);
-        if (memberEmitters == null) {
-            return;
-        }
-
-        boolean removed = memberEmitters.remove(emitter);
-        if (memberEmitters.isEmpty()) {
-            emitters.remove(memberId, memberEmitters);
-        }
-        if (removed) {
-            release(memberId);
+        if (subscriptions.unregister(memberId, emitter)) {
             recordConnectionClosed(reason);
         }
     }
 
     public void release(SseSubscriptionPermit permit) {
-        if (permit.markReleased()) {
-            release(permit.memberId());
-        }
+        subscriptions.release(permit.delegate);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTradingExecution(TradingExecutionEvent event) {
-        CopyOnWriteArrayList<SseEmitter> memberEmitters = emitters.get(event.memberId());
+        CopyOnWriteArrayList<SseEmitter> memberEmitters = subscriptions.subscribers(event.memberId());
         if (memberEmitters == null || memberEmitters.isEmpty()) {
             return;
         }
@@ -196,42 +172,15 @@ public class TradingExecutionSseBroker {
         memberEmitters.forEach(emitter -> send(memberId, emitter, response));
     }
 
-    private void release(Long memberId) {
-        totalSubscriberLimit.release();
-        Semaphore memberLimit = memberSubscriberLimits.get(memberId);
-        if (memberLimit != null) {
-            memberLimit.release();
-            cleanupMemberLimit(memberId, memberLimit);
-        }
-    }
-
-    private void cleanupMemberLimit(Long memberId, Semaphore memberLimit) {
-        if (memberLimit.availablePermits() == maxSubscribersPerMember && !emitters.containsKey(memberId)) {
-            memberSubscriberLimits.remove(memberId, memberLimit);
-        }
-    }
-
     public static final class SseSubscriptionPermit {
-        private final Long memberId;
-        private final Semaphore memberLimit;
-        private final AtomicBoolean released = new AtomicBoolean(false);
-        private final AtomicBoolean registered = new AtomicBoolean(false);
+        private final SseSubscriptionRegistry.Permit<Long> delegate;
 
-        private SseSubscriptionPermit(Long memberId, Semaphore memberLimit) {
-            this.memberId = memberId;
-            this.memberLimit = memberLimit;
+        private SseSubscriptionPermit(SseSubscriptionRegistry.Permit<Long> delegate) {
+            this.delegate = delegate;
         }
 
         public Long memberId() {
-            return memberId;
-        }
-
-        private void markRegistered() {
-            registered.set(true);
-        }
-
-        private boolean markReleased() {
-            return !registered.get() && released.compareAndSet(false, true);
+            return delegate.key();
         }
     }
 }

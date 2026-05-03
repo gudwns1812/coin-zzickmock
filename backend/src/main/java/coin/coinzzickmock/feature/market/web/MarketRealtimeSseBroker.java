@@ -2,18 +2,16 @@ package coin.coinzzickmock.feature.market.web;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
+import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,11 +25,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class MarketRealtimeSseBroker {
     private static final String STREAM = "market";
 
-    private final ConcurrentMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, Semaphore> symbolSubscriberLimits = new ConcurrentHashMap<>();
+    private final SseSubscriptionRegistry<String> subscriptions;
     private final Executor sseEventExecutor;
-    private final int maxSubscribersPerSymbol;
-    private final Semaphore totalSubscriberLimit;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
@@ -42,8 +37,7 @@ public class MarketRealtimeSseBroker {
             SseTelemetry sseTelemetry
     ) {
         this.sseEventExecutor = sseEventExecutor;
-        this.maxSubscribersPerSymbol = maxSubscribersPerSymbol;
-        this.totalSubscriberLimit = new Semaphore(maxSubscribersTotal, true);
+        this.subscriptions = new SseSubscriptionRegistry<>(maxSubscribersPerSymbol, maxSubscribersTotal);
         this.sseTelemetry = sseTelemetry;
     }
 
@@ -56,28 +50,22 @@ public class MarketRealtimeSseBroker {
     }
 
     public SseSubscriptionPermit reserve(String symbol) {
-        if (!totalSubscriberLimit.tryAcquire()) {
+        var reservation = subscriptions.reserve(symbol);
+        if (reservation.accepted()) {
+            return new SseSubscriptionPermit(reservation.permit());
+        }
+        if (reservation.rejection() == ReservationRejection.TOTAL_LIMIT) {
             recordConnectionRejected("total_limit");
             throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         }
 
-        Semaphore symbolLimit = symbolSubscriberLimits.computeIfAbsent(
-                symbol,
-                key -> new Semaphore(maxSubscribersPerSymbol, true)
-        );
-        if (!symbolLimit.tryAcquire()) {
-            totalSubscriberLimit.release();
-            recordConnectionRejected("symbol_limit");
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS, "실시간 스트림 연결이 너무 많습니다: " + symbol);
-        }
-
-        return new SseSubscriptionPermit(symbol, symbolLimit);
+        recordConnectionRejected("symbol_limit");
+        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS, "실시간 스트림 연결이 너무 많습니다: " + symbol);
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
         bindLifecycle(permit, emitter);
-        emitters.computeIfAbsent(permit.symbol(), key -> new CopyOnWriteArrayList<>()).add(emitter);
-        permit.markRegistered();
+        subscriptions.register(permit.delegate, emitter);
         recordConnectionOpened();
     }
 
@@ -86,31 +74,19 @@ public class MarketRealtimeSseBroker {
     }
 
     private void unregister(String symbol, SseEmitter emitter, String reason) {
-        CopyOnWriteArrayList<SseEmitter> symbolEmitters = emitters.get(symbol);
-        if (symbolEmitters == null) {
-            return;
-        }
-
-        boolean removed = symbolEmitters.remove(emitter);
-        if (symbolEmitters.isEmpty()) {
-            emitters.remove(symbol, symbolEmitters);
-        }
-        if (removed) {
-            release(symbol);
+        if (subscriptions.unregister(symbol, emitter)) {
             recordConnectionClosed(reason);
         }
     }
 
     public void release(SseSubscriptionPermit permit) {
-        if (permit.markReleased()) {
-            release(permit.symbol());
-        }
+        subscriptions.release(permit.delegate);
     }
 
     @EventListener
     public void onMarketUpdated(MarketSummaryUpdatedEvent event) {
         String symbol = event.result().symbol();
-        CopyOnWriteArrayList<SseEmitter> symbolEmitters = emitters.get(symbol);
+        CopyOnWriteArrayList<SseEmitter> symbolEmitters = subscriptions.subscribers(symbol);
         if (symbolEmitters == null || symbolEmitters.isEmpty()) {
             return;
         }
@@ -153,21 +129,6 @@ public class MarketRealtimeSseBroker {
         symbolEmitters.forEach(emitter -> send(symbol, emitter, response));
     }
 
-    private void release(String symbol) {
-        totalSubscriberLimit.release();
-        Semaphore symbolLimit = symbolSubscriberLimits.get(symbol);
-        if (symbolLimit != null) {
-            symbolLimit.release();
-            cleanupSymbolLimit(symbol, symbolLimit);
-        }
-    }
-
-    private void cleanupSymbolLimit(String symbol, Semaphore symbolLimit) {
-        if (symbolLimit.availablePermits() == maxSubscribersPerSymbol && !emitters.containsKey(symbol)) {
-            symbolSubscriberLimits.remove(symbol, symbolLimit);
-        }
-    }
-
     private void recordConnectionOpened() {
         try {
             sseTelemetry.connectionOpened(STREAM);
@@ -208,27 +169,19 @@ public class MarketRealtimeSseBroker {
         }
     }
 
-    public static final class SseSubscriptionPermit {
-        private final String symbol;
-        private final Semaphore symbolLimit;
-        private final AtomicBoolean released = new AtomicBoolean(false);
-        private final AtomicBoolean registered = new AtomicBoolean(false);
+    boolean hasSubscriberLimit(String symbol) {
+        return subscriptions.hasSubscriberLimit(symbol);
+    }
 
-        private SseSubscriptionPermit(String symbol, Semaphore symbolLimit) {
-            this.symbol = symbol;
-            this.symbolLimit = symbolLimit;
+    public static final class SseSubscriptionPermit {
+        private final SseSubscriptionRegistry.Permit<String> delegate;
+
+        private SseSubscriptionPermit(SseSubscriptionRegistry.Permit<String> delegate) {
+            this.delegate = delegate;
         }
 
         public String symbol() {
-            return symbol;
-        }
-
-        private void markRegistered() {
-            registered.set(true);
-        }
-
-        private boolean markReleased() {
-            return !registered.get() && released.compareAndSet(false, true);
+            return delegate.key();
         }
     }
 }

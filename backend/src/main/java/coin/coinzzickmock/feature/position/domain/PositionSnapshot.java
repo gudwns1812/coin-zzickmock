@@ -24,7 +24,6 @@ public record PositionSnapshot(
         Double stopLossPrice,
         long version
 ) {
-    private static final String MARGIN_MODE_CROSS = "CROSS";
     private static final int MIN_LEVERAGE = 1;
     private static final int MAX_LEVERAGE = 50;
 
@@ -382,16 +381,31 @@ public record PositionSnapshot(
         );
     }
 
+    public PositionIdentity identity() {
+        return new PositionIdentity(symbol, positionSide, marginMode);
+    }
+
+    public PositionExposure exposure() {
+        return new PositionExposure(
+                leverage,
+                quantity,
+                entryPrice,
+                markPrice,
+                liquidationPrice,
+                unrealizedPnl
+        );
+    }
+
     public boolean isCrossMargin() {
-        return MARGIN_MODE_CROSS.equalsIgnoreCase(marginMode);
+        return identity().isCrossMargin();
     }
 
     public double notional(double targetMarkPrice) {
-        return targetMarkPrice * quantity;
+        return exposure().notional(targetMarkPrice);
     }
 
     public double initialMargin() {
-        return (entryPrice * quantity) / leverage;
+        return exposure().initialMargin();
     }
 
     public double originalInitialMargin() {
@@ -399,11 +413,7 @@ public record PositionSnapshot(
     }
 
     public double roi() {
-        double margin = initialMargin();
-        if (margin == 0) {
-            return 0;
-        }
-        return unrealizedPnl / margin;
+        return exposure().roi();
     }
 
     public double unrealizedPnl(double targetMarkPrice) {
@@ -422,7 +432,7 @@ public record PositionSnapshot(
     }
 
     public String stableKey() {
-        return String.join(":", symbol, positionSide, marginMode);
+        return identity().stableKey();
     }
 
     public boolean triggersTakeProfit(double targetMarkPrice) {
@@ -515,7 +525,7 @@ public record PositionSnapshot(
     }
 
     private boolean isLong() {
-        return "LONG".equalsIgnoreCase(positionSide);
+        return identity().isLong();
     }
 
     private static double liquidationPrice(String positionSide, int leverage, double entryPrice) {

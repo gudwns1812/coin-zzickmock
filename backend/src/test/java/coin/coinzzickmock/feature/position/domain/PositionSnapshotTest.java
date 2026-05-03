@@ -9,6 +9,38 @@ import org.junit.jupiter.api.Test;
 
 class PositionSnapshotTest {
     @Test
+    void exposesIdentityAndExposureValueObjectsWithoutChangingAccessors() {
+        PositionSnapshot position = PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                2,
+                100,
+                105
+        ).markToMarket(110);
+
+        PositionIdentity identity = position.identity();
+        PositionExposure exposure = position.exposure();
+
+        assertEquals("BTCUSDT", identity.symbol());
+        assertEquals("LONG", identity.positionSide());
+        assertEquals("CROSS", identity.marginMode());
+        assertTrue(identity.isLong());
+        assertTrue(identity.isCrossMargin());
+        assertEquals(position.stableKey(), identity.stableKey());
+        assertEquals(position.leverage(), exposure.leverage());
+        assertEquals(position.quantity(), exposure.quantity(), 0.0001);
+        assertEquals(position.entryPrice(), exposure.entryPrice(), 0.0001);
+        assertEquals(position.markPrice(), exposure.markPrice(), 0.0001);
+        assertEquals(position.liquidationPrice(), exposure.liquidationPrice(), 0.0001);
+        assertEquals(position.unrealizedPnl(), exposure.unrealizedPnl(), 0.0001);
+        assertEquals(position.notional(120), exposure.notional(120), 0.0001);
+        assertEquals(position.initialMargin(), exposure.initialMargin(), 0.0001);
+        assertEquals(position.roi(), exposure.roi(), 0.0001);
+    }
+
+    @Test
     void restorePreservesPersistedAccountingRiskAndTriggerFields() {
         Instant openedAt = Instant.parse("2026-05-03T00:00:00Z");
 

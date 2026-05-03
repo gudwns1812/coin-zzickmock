@@ -2,11 +2,15 @@ package coin.coinzzickmock.feature.market.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import coin.coinzzickmock.feature.market.application.history.MarketCandleRollupProjector;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleAppender;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleCache;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentFetcher;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentPolicy;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleSegmentStore;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleTelemetry;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryLookupTelemetry;
+import coin.coinzzickmock.feature.market.application.history.MarketPersistedCandleReader;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
@@ -347,6 +351,26 @@ class GetMarketCandlesServiceTest {
         assertEquals(1, gateway.historicalCallCount);
     }
 
+    @Test
+    void recordsDbLookupTelemetryBeforeHistoricalSupplement() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        repository.saveMinuteCandle(minute(1L, "2026-04-21T00:00:00Z", 100, 101, 99, 100.5, 10));
+        FakeProviders providers = new FakeProviders(FakeMarketDataGateway.empty());
+        GetMarketCandlesService service = service(repository, providers, distributedCacheManager());
+
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 2, null));
+
+        RecordedEvent dbLookup = providers.telemetry().events.stream()
+                .filter(event -> "db".equals(event.tags().get("source")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("market.history.db.miss", dbLookup.eventName());
+        assertEquals("BTCUSDT", dbLookup.tags().get("symbol"));
+        assertEquals("1m", dbLookup.tags().get("interval"));
+        assertEquals("2026-04", dbLookup.tags().get("range_bucket"));
+        assertEquals("partial", dbLookup.tags().get("result"));
+    }
+
     private static GetMarketCandlesService service(InMemoryMarketHistoryRepository repository) {
         return service(repository, FakeMarketDataGateway.empty(), distributedCacheManager());
     }
@@ -356,14 +380,27 @@ class GetMarketCandlesServiceTest {
             FakeMarketDataGateway gateway,
             CacheManager cacheManager
     ) {
-        FakeProviders providers = new FakeProviders(gateway);
+        return service(repository, new FakeProviders(gateway), cacheManager);
+    }
+
+    private static GetMarketCandlesService service(
+            InMemoryMarketHistoryRepository repository,
+            FakeProviders providers,
+            CacheManager cacheManager
+    ) {
         MarketHistoricalCandleTelemetry telemetry = new MarketHistoricalCandleTelemetry(providers);
         MarketHistoricalCandleCache cache = new MarketHistoricalCandleCache(
                 new MarketHistoricalCandleSegmentPolicy(),
                 new MarketHistoricalCandleSegmentStore(telemetry, objectProvider(cacheManager)),
                 new MarketHistoricalCandleSegmentFetcher(providers, telemetry)
         );
-        return new GetMarketCandlesService(repository, cache, providers);
+        MarketCandleRollupProjector rollupProjector = new MarketCandleRollupProjector();
+        return new GetMarketCandlesService(
+                repository,
+                new MarketPersistedCandleReader(repository, rollupProjector),
+                new MarketHistoricalCandleAppender(cache),
+                new MarketHistoryLookupTelemetry(providers)
+        );
     }
 
     private static CacheManager distributedCacheManager() {
@@ -569,7 +606,14 @@ class GetMarketCandlesServiceTest {
         }
     }
 
-    private record FakeProviders(FakeMarketDataGateway marketDataGateway) implements Providers {
+    private static class FakeProviders implements Providers {
+        private final FakeMarketDataGateway marketDataGateway;
+        private final RecordingTelemetryProvider telemetry = new RecordingTelemetryProvider();
+
+        private FakeProviders(FakeMarketDataGateway marketDataGateway) {
+            this.marketDataGateway = marketDataGateway;
+        }
+
         @Override
         public AuthProvider auth() {
             return null;
@@ -581,22 +625,34 @@ class GetMarketCandlesServiceTest {
         }
 
         @Override
-        public TelemetryProvider telemetry() {
-            return new TelemetryProvider() {
-                @Override
-                public void recordUseCase(String useCaseName) {
-                }
-
-                @Override
-                public void recordFailure(String useCaseName, String reason) {
-                }
-            };
+        public RecordingTelemetryProvider telemetry() {
+            return telemetry;
         }
 
         @Override
         public FeatureFlagProvider featureFlags() {
             return null;
         }
+    }
+
+    private static class RecordingTelemetryProvider implements TelemetryProvider {
+        private final List<RecordedEvent> events = new ArrayList<>();
+
+        @Override
+        public void recordUseCase(String useCaseName) {
+        }
+
+        @Override
+        public void recordFailure(String useCaseName, String reason) {
+        }
+
+        @Override
+        public void recordEvent(String eventName, Map<String, String> tags) {
+            events.add(new RecordedEvent(eventName, tags));
+        }
+    }
+
+    private record RecordedEvent(String eventName, Map<String, String> tags) {
     }
 
     private static class FakeMarketDataGateway implements MarketDataGateway {

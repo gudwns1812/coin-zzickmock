@@ -15,6 +15,23 @@ public interface OrderRepository {
 
     List<PendingOrderCandidate> findPendingBySymbol(String symbol);
 
+    default List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+            String symbol,
+            double lowerPrice,
+            double upperPrice,
+            boolean sellSide
+    ) {
+        return findPendingBySymbol(symbol).stream()
+                .filter(candidate -> !candidate.order().isConditionalOrder())
+                .filter(candidate -> candidate.order().limitPrice() != null)
+                .filter(candidate -> candidate.order().limitPrice() >= lowerPrice)
+                .filter(candidate -> candidate.order().limitPrice() <= upperPrice)
+                .filter(candidate -> sellSide
+                        ? candidate.order().isSellSideLimitOrder()
+                        : candidate.order().isBuySideLimitOrder())
+                .toList();
+    }
+
     default List<FuturesOrder> findPendingCloseOrders(
             Long memberId,
             String symbol,

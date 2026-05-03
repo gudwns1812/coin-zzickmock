@@ -64,6 +64,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql)
   [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql)
   [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql)
+  [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -316,12 +317,15 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   TP/SL은 pending `CLOSE_POSITION` 주문으로 저장한다. `trigger_source`는 `MARK_PRICE`, `trigger_type`은 `TAKE_PROFIT` 또는 `STOP_LOSS`다. TP/SL sibling은 같은 `oco_group_id`를 공유할 수 있다.
 - 조건부 주문 유일성:
   `active_conditional_trigger_type`은 pending conditional close order일 때만 `trigger_type`을 복사하고, 그 외 주문/상태에서는 `NULL`이다. `uk_futures_orders_active_conditional_close`는 같은 `member_id + symbol + position_side + margin_mode` 안에서 active pending TP와 SL을 trigger type별 하나씩만 허용한다.
+- 조회 인덱스:
+  `idx_futures_orders_pending_limit_symbol_price(symbol, status, limit_price, order_purpose, position_side)`는 실시간 가격 이동 범위 안에서 체결 가능한 pending limit 주문 후보를 먼저 좁히는 데 사용한다.
 - 관련 엔티티/모듈:
   `feature.order`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
   [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql),
   [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql),
+  [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql),
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
 
 ### `open_positions`
@@ -478,6 +482,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V11__backfill_and_constrain_conditional_close_orders.sql`로 V9 legacy `open_positions.take_profit_price`, `stop_loss_price`를 pending conditional close order로 backfill하고, active conditional TP/SL 중복을 막는 unique index를 추가했다.
 - 2026-05-03:
   `V21__add_account_version_and_position_symbol_index.sql`로 `trading_accounts.version`을 추가하고, `open_positions`의 `symbol` 선두 실시간 스캔 인덱스를 추가했다.
+- 2026-05-03:
+  `V22__add_executable_pending_order_index.sql`로 가격 이동 범위 기반 pending limit 주문 후보 조회 인덱스를 추가했다.
 - 2026-04-28:
   `V15__add_wallet_history.sql`로 `wallet_history`를 추가했다. Assets 차트는 기본적으로 현재 시각 기준 30일 범위를 조회하고, `source_type + source_reference` unique key로 체결/반환/청산 같은 지갑 변경 이벤트의 중복 기록을 방지한다.
 - 2026-04-30:

@@ -50,6 +50,29 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+            String symbol,
+            double lowerPrice,
+            double upperPrice,
+            boolean sellSide
+    ) {
+        return futuresOrderEntityRepository.findExecutablePendingLimitOrders(
+                        symbol,
+                        FuturesOrder.STATUS_PENDING,
+                        BigDecimal.valueOf(lowerPrice),
+                        BigDecimal.valueOf(upperPrice),
+                        sellSide,
+                        FuturesOrder.PURPOSE_OPEN_POSITION,
+                        FuturesOrder.PURPOSE_CLOSE_POSITION,
+                        "LONG",
+                        "SHORT"
+                ).stream()
+                .map(entity -> new PendingOrderCandidate(entity.memberId(), entity.toDomain()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<FuturesOrder> findPendingCloseOrders(
             Long memberId,
             String symbol,

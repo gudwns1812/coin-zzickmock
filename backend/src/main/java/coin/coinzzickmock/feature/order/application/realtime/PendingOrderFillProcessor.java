@@ -62,11 +62,19 @@ public class PendingOrderFillProcessor {
         if (!realtimeEvent.hasPriceMovement()) {
             return;
         }
+        double lowerPrice = Math.min(realtimeEvent.previousLastPrice(), market.lastPrice());
+        double upperPrice = Math.max(realtimeEvent.previousLastPrice(), market.lastPrice());
+        boolean sellSide = realtimeEvent.direction() == MarketPriceMovementDirection.UP;
         List<PendingOrderCandidate> candidates = executableCandidates(
                 realtimeEvent,
                 pendingOrderExecutionCache.refresh(
                         market.symbol(),
-                        orderRepository.findPendingBySymbol(market.symbol())
+                        orderRepository.findExecutablePendingLimitOrders(
+                                market.symbol(),
+                                lowerPrice,
+                                upperPrice,
+                                sellSide
+                        )
                 )
         );
 

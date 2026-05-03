@@ -14,6 +14,41 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
 
     List<FuturesOrderEntity> findAllBySymbolAndStatusOrderByCreatedAtAsc(String symbol, String status);
 
+    @Query("""
+            select order
+              from FuturesOrderEntity order
+             where order.symbol = :symbol
+               and order.status = :pendingStatus
+               and order.limitPrice is not null
+               and order.limitPrice between :lowerPrice and :upperPrice
+               and order.triggerPrice is null
+               and order.triggerType is null
+               and order.triggerSource is null
+               and order.ocoGroupId is null
+               and (
+                    (:sellSide = true and (
+                        (order.orderPurpose = :openPurpose and order.positionSide = :shortSide)
+                        or (order.orderPurpose = :closePurpose and order.positionSide = :longSide)
+                    ))
+                    or (:sellSide = false and (
+                        (order.orderPurpose = :openPurpose and order.positionSide = :longSide)
+                        or (order.orderPurpose = :closePurpose and order.positionSide = :shortSide)
+                    ))
+               )
+             order by order.createdAt asc
+            """)
+    List<FuturesOrderEntity> findExecutablePendingLimitOrders(
+            @Param("symbol") String symbol,
+            @Param("pendingStatus") String pendingStatus,
+            @Param("lowerPrice") BigDecimal lowerPrice,
+            @Param("upperPrice") BigDecimal upperPrice,
+            @Param("sellSide") boolean sellSide,
+            @Param("openPurpose") String openPurpose,
+            @Param("closePurpose") String closePurpose,
+            @Param("longSide") String longSide,
+            @Param("shortSide") String shortSide
+    );
+
     Optional<FuturesOrderEntity> findByMemberIdAndOrderId(Long memberId, String orderId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

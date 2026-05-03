@@ -87,6 +87,57 @@ class OrderPersistenceRepositoryContractTest {
     }
 
     @Test
+    void narrowsExecutablePendingLimitCandidatesByPriceRangeAndSide() {
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+        saveAccount(memberId);
+        String openLongId = "open-long-" + UUID.randomUUID();
+        String openShortId = "open-short-" + UUID.randomUUID();
+        String closeLongId = "close-long-" + UUID.randomUUID();
+        String closeShortId = "close-short-" + UUID.randomUUID();
+        String outOfRangeId = "out-of-range-" + UUID.randomUUID();
+        String conditionalId = "conditional-" + UUID.randomUUID();
+
+        orderRepository.save(memberId, FuturesOrder.place(
+                openLongId, "ETHUSDT", "LONG", "LIMIT", "ISOLATED", 10,
+                0.1, 101.0, false, "MAKER", 0, 101.0
+        ));
+        orderRepository.save(memberId, FuturesOrder.place(
+                openShortId, "ETHUSDT", "SHORT", "LIMIT", "ISOLATED", 10,
+                0.1, 102.0, false, "MAKER", 0, 102.0
+        ));
+        orderRepository.save(memberId, FuturesOrder.place(
+                closeLongId, "ETHUSDT", "LONG", "LIMIT", FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED", 10, 0.1, 103.0, false, "MAKER", 0, 103.0
+        ));
+        orderRepository.save(memberId, FuturesOrder.place(
+                closeShortId, "ETHUSDT", "SHORT", "LIMIT", FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED", 10, 0.1, 104.0, false, "MAKER", 0, 104.0
+        ));
+        orderRepository.save(memberId, FuturesOrder.place(
+                outOfRangeId, "ETHUSDT", "SHORT", "LIMIT", "ISOLATED", 10,
+                0.1, 120.0, false, "MAKER", 0, 120.0
+        ));
+        orderRepository.save(memberId, FuturesOrder.conditionalClose(
+                conditionalId, "ETHUSDT", "LONG", "ISOLATED", 10, 0.1,
+                103.0, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT, "oco-" + UUID.randomUUID()
+        ));
+
+        List<String> upMoveIds = orderRepository.findExecutablePendingLimitOrders("ETHUSDT", 100.0, 110.0, true)
+                .stream()
+                .map(PendingOrderCandidate::orderId)
+                .toList();
+        List<String> downMoveIds = orderRepository.findExecutablePendingLimitOrders("ETHUSDT", 100.0, 110.0, false)
+                .stream()
+                .map(PendingOrderCandidate::orderId)
+                .toList();
+
+        assertEquals(List.of(openShortId, closeLongId), upMoveIds);
+        assertEquals(List.of(openLongId, closeShortId), downMoveIds);
+        assertFalse(upMoveIds.contains(outOfRangeId));
+        assertFalse(upMoveIds.contains(conditionalId));
+    }
+
+    @Test
     void claimsPendingFillExactlyOnce() {
         Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         String orderId = "order-" + UUID.randomUUID();

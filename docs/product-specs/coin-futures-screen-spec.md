@@ -331,9 +331,9 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 거래소성 액션 버튼(`Deposit`, `Buy crypto`, `Withdraw`, `Transfer`, `Sell crypto`)은 제공하지 않는다.
 - 총 평가 잔고는 wallet balance와 열린 포지션의 unrealized PnL을 합산해 표시한다.
 - 사용 가능 잔고를 함께 표시한다.
-- wallet history가 비어 있거나 오늘 최종 스냅샷이 아직 없으면 백엔드가 현재 잔고 fallback point를 표시 전용으로 내려줄 수 있고, 차트 라벨은 KST 날짜로 표시한다.
-- 하단에는 KST 일자별 `dailyRealizedPnl` 캘린더를 제공한다.
-- 일별 값은 `wallet_history.snapshotDate` 기준의 `dailyRealizedPnl`을 사용한다. 포지션 히스토리는 일별 손익을 검증하거나 스냅샷을 생성할 때 참고할 수 있지만, 화면의 캘린더 데이터 소스는 `wallet_history`다.
+- 오늘 KST 스냅샷은 장중 provisional 값으로 표시할 수 있다. 오늘 `dailyWalletChange`는 현재 `walletBalance`에서 오늘 baseline `walletBalance`를 뺀 값이다.
+- 하단에는 KST 일자별 `dailyWalletChange` 캘린더를 제공한다.
+- 일별 값은 `wallet_history.snapshotDate` 기준의 `dailyWalletChange`를 사용한다. 포지션 히스토리는 일별 손익을 검증하거나 스냅샷을 생성할 때 참고할 수 있지만, 화면의 캘린더 데이터 소스는 `wallet_history`다.
 
 ### `/mypage/points`
 

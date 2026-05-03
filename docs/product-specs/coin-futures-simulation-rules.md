@@ -528,9 +528,15 @@ type PositionSnapshot = {
 
 - `wallet_history` is a KST daily wallet snapshot table, not a per-event ledger.
 - One persisted row represents one member's wallet state for one `snapshotDate` in `Asia/Seoul`.
-- The snapshot stores the end-of-day realized wallet balance, available margin, and the day's realized PnL.
-- The daily realized PnL is the net wallet result settled during that KST day. It includes realized position PnL and fees that are already reflected in `trading_accounts.wallet_balance`; it does not include unrealized PnL from still-open positions.
+- The snapshot stores wallet balance, available margin, and the day's wallet balance change.
+- `dailyWalletChange` is the net settled change from that KST day's baseline wallet balance:
+  `dailyWalletChange = snapshot.walletBalance - baselineWalletBalance`.
+- Because `walletBalance` excludes unrealized PnL, `dailyWalletChange` also excludes unrealized PnL from still-open positions. It includes settled realized outcomes and fees when they are reflected in `trading_accounts.wallet_balance`.
+- The baseline row for a KST day starts with `dailyWalletChange = 0`.
 - The recent 30-day Assets balance chart reads `wallet_history.walletBalance` ordered by `snapshotDate`.
-- The Assets calendar reads `wallet_history.dailyRealizedPnl` by KST `snapshotDate`.
-- The API defaults to the latest 30 KST snapshot dates through today. If no persisted snapshots exist yet, or today's final snapshot has not been captured, the API may append a non-persisted current account fallback point for display continuity. That fallback is explicitly marked by the response contract and must not be treated as the final daily snapshot.
-- Snapshot persistence must be idempotent with one row per `(memberId, snapshotDate)`. Retries update or no-op the same daily row; they must not create duplicate chart points.
+- The Assets calendar reads `wallet_history.dailyWalletChange` by KST `snapshotDate`.
+- The KST day starts with an idempotent baseline write for each active account. Implementations may use `INSERT ... ON DUPLICATE KEY UPDATE`-style semantics over `UNIQUE(member_id, snapshot_date)` so retries or duplicate scheduler runs do not create duplicate rows.
+- Whenever `trading_accounts.wallet_balance` or `trading_accounts.available_margin` changes during that KST day, the existing daily row is updated with the latest wallet balance, available margin, and `dailyWalletChange`.
+- The current KST day's row is provisional until the day is finalized. The UI may show provisional `dailyWalletChange` for today by subtracting today's baseline wallet balance from the current wallet balance.
+- The database enforces one row per day with `UNIQUE(member_id, snapshot_date)`.
+- The finalization scheduler runs shortly after the KST day boundary and only marks the KST date that just ended as finalized. It must not compute yesterday's snapshot from the post-midnight current account balance because that would mix after-midnight wallet changes into the previous day.

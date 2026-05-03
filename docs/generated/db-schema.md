@@ -65,6 +65,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql)
   [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql)
   [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql)
+  [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -204,6 +205,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `feature.activity`
 - 관련 migration 또는 schema 파일:
   [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql),
+  [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql),
   [MemberDailyActivityEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/activity/infrastructure/persistence/MemberDailyActivityEntity.java)
 
 ### `daily_active_user_summary`
@@ -484,6 +486,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V21__add_account_version_and_position_symbol_index.sql`로 `trading_accounts.version`을 추가하고, `open_positions`의 `symbol` 선두 실시간 스캔 인덱스를 추가했다.
 - 2026-05-03:
   `V22__add_executable_pending_order_index.sql`로 가격 이동 범위 기반 pending limit 주문 후보 조회 인덱스를 추가했다.
+- 2026-05-03:
+  `V23__surrogate_key_member_daily_activity.sql`로 기존 적용된 `V19` checksum을 유지하면서 `member_daily_activity.id` surrogate PK와 `activity_date + member_id` unique key를 추가했다.
 - 2026-04-28:
   `V15__add_wallet_history.sql`로 `wallet_history`를 추가했다. Assets 차트는 기본적으로 현재 시각 기준 30일 범위를 조회하고, `source_type + source_reference` unique key로 체결/반환/청산 같은 지갑 변경 이벤트의 중복 기록을 방지한다.
 - 2026-04-30:

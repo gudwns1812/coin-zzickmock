@@ -1,5 +1,4 @@
 CREATE TABLE member_daily_activity (
-    id BIGINT NOT NULL AUTO_INCREMENT,
     activity_date DATE NOT NULL,
     member_id BIGINT NOT NULL,
     first_seen_at TIMESTAMP(6) NOT NULL,
@@ -9,11 +8,13 @@ CREATE TABLE member_daily_activity (
     last_source VARCHAR(40) NOT NULL,
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    CONSTRAINT pk_member_daily_activity PRIMARY KEY (id),
-    CONSTRAINT uk_member_daily_activity_date_member UNIQUE (activity_date, member_id),
+    CONSTRAINT pk_member_daily_activity PRIMARY KEY (activity_date, member_id),
     CONSTRAINT fk_member_daily_activity_member
         FOREIGN KEY (member_id) REFERENCES member_credentials (id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_member_daily_activity_date
+    ON member_daily_activity (activity_date);
 
 CREATE INDEX idx_member_daily_activity_member
     ON member_daily_activity (member_id);

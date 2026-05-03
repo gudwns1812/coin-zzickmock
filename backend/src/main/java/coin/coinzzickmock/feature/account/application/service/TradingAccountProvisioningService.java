@@ -5,6 +5,7 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +21,18 @@ public class TradingAccountProvisioningService {
         return openDefaultAccount(memberId, memberEmail, memberName);
     }
 
-    @Transactional
     public TradingAccount openForSeedIfMissing(Long memberId, String memberEmail, String memberName) {
         return accountRepository.findByMemberId(memberId)
-                .orElseGet(() -> openDefaultAccount(memberId, memberEmail, memberName));
+                .orElseGet(() -> openForSeedOrFindExisting(memberId, memberEmail, memberName));
+    }
+
+    private TradingAccount openForSeedOrFindExisting(Long memberId, String memberEmail, String memberName) {
+        try {
+            return openDefaultAccount(memberId, memberEmail, memberName);
+        } catch (DataIntegrityViolationException exception) {
+            return accountRepository.findByMemberId(memberId)
+                    .orElseThrow(() -> exception);
+        }
     }
 
     private TradingAccount openDefaultAccount(Long memberId, String memberEmail, String memberName) {

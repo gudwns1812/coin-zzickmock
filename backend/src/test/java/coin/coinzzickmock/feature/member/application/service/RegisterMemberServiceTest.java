@@ -38,9 +38,6 @@ class RegisterMemberServiceTest {
         assertEquals(1, eventPublisher.events.size());
         MemberRegisteredEvent event = eventPublisher.events.get(1L);
         assertEquals(1L, event.memberId());
-        assertEquals("new-ranker", event.account());
-        assertEquals("New Ranker", event.memberName());
-        assertEquals("new-ranker@coinzzickmock.dev", event.memberEmail());
     }
 
     private static class CapturingEventPublisher implements ApplicationEventPublisher {

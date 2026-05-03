@@ -53,12 +53,7 @@ public class RegisterMemberService {
         );
         MemberCredential savedMemberCredential = memberCredentialRepository.save(memberCredential);
 
-        applicationEventPublisher.publishEvent(new MemberRegisteredEvent(
-                savedMemberCredential.memberId(),
-                savedMemberCredential.account(),
-                savedMemberCredential.memberName(),
-                savedMemberCredential.memberEmail()
-        ));
+        applicationEventPublisher.publishEvent(new MemberRegisteredEvent(savedMemberCredential.memberId()));
         return MemberProfileResult.from(savedMemberCredential);
     }
 }

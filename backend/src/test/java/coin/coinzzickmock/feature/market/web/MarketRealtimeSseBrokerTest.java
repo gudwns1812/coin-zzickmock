@@ -9,11 +9,9 @@ import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdat
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import org.junit.jupiter.api.Test;
@@ -192,7 +190,7 @@ class MarketRealtimeSseBrokerTest {
 
         broker.release(permit);
 
-        assertThat(symbolSubscriberLimits(broker)).doesNotContainKey("UNSUPPORTED");
+        assertThat(broker.hasSubscriberLimit("UNSUPPORTED")).isFalse();
     }
 
     @Test
@@ -203,7 +201,7 @@ class MarketRealtimeSseBrokerTest {
 
         broker.unregister("BTCUSDT", emitter);
 
-        assertThat(symbolSubscriberLimits(broker)).doesNotContainKey("BTCUSDT");
+        assertThat(broker.hasSubscriberLimit("BTCUSDT")).isFalse();
     }
 
     @Test
@@ -254,17 +252,6 @@ class MarketRealtimeSseBrokerTest {
 
     private static Executor directExecutor() {
         return Runnable::run;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> symbolSubscriberLimits(MarketRealtimeSseBroker broker) {
-        try {
-            Field field = MarketRealtimeSseBroker.class.getDeclaredField("symbolSubscriberLimits");
-            field.setAccessible(true);
-            return (Map<String, Object>) field.get(broker);
-        } catch (ReflectiveOperationException exception) {
-            throw new AssertionError(exception);
-        }
     }
 
     private static class RecordingExecutor implements Executor {

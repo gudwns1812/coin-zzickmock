@@ -31,6 +31,7 @@ class RewardPointGrantProcessorTest {
 
         assertEquals(7, result.rewardPoint());
         assertEquals("NONE", result.tierLabel());
+        assertEquals(1, repository.lockingFindCount);
         assertEquals(0, repository.saveCount);
         assertEquals(0, historyRepository.histories.size());
     }
@@ -48,6 +49,7 @@ class RewardPointGrantProcessorTest {
         RewardPointResult result = processor.grant(new GrantProfitPointCommand(1L, 20_000));
 
         assertEquals(17, result.rewardPoint());
+        assertEquals(1, repository.lockingFindCount);
         assertEquals(1, repository.saveCount);
         assertEquals(1, historyRepository.histories.size());
         RewardPointHistory history = historyRepository.histories.get(0);
@@ -58,6 +60,7 @@ class RewardPointGrantProcessorTest {
 
     private static class InMemoryRewardPointRepository implements RewardPointRepository {
         private RewardPointWallet wallet;
+        private int lockingFindCount;
         private int saveCount;
 
         private InMemoryRewardPointRepository(RewardPointWallet wallet) {
@@ -67,6 +70,12 @@ class RewardPointGrantProcessorTest {
         @Override
         public Optional<RewardPointWallet> findByMemberId(Long memberId) {
             return Optional.ofNullable(wallet).filter(current -> current.memberId().equals(memberId));
+        }
+
+        @Override
+        public Optional<RewardPointWallet> findByMemberIdForUpdate(Long memberId) {
+            lockingFindCount++;
+            return findByMemberId(memberId);
         }
 
         @Override

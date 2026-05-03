@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
@@ -84,14 +85,15 @@ public class PositionCloseFinalizer {
 
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        accountRepository.save(
+        validateAccountMutation(accountRepository.updateWithVersion(
+                account,
                 account.settlePositionClose(
                         closeOutcome.grossRealizedPnl(),
                         closeOutcome.closeFee(),
                         closeOutcome.releasedMargin()
                 ),
                 walletHistorySource
-        );
+        ));
         afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
 
         RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(
@@ -104,6 +106,16 @@ public class PositionCloseFinalizer {
                 closeOutcome.netRealizedPnl(),
                 rewardPointResult.rewardPoint()
         );
+    }
+
+    private void validateAccountMutation(AccountMutationResult mutationResult) {
+        if (mutationResult.succeeded()) {
+            return;
+        }
+        if (mutationResult.status() == AccountMutationResult.Status.NOT_FOUND) {
+            throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+        throw new CoreException(ErrorCode.ACCOUNT_CHANGED);
     }
 
     private void validateGuardedMutation(PositionMutationResult mutationResult) {

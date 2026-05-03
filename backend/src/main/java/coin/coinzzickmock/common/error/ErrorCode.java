@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
     ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "계정을 찾을 수 없습니다."),
+    ACCOUNT_CHANGED(HttpStatus.CONFLICT, "계정 잔고가 변경되었습니다. 다시 조회 후 시도해주세요."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원 정보를 찾을 수 없습니다."),
     POSITION_NOT_FOUND(HttpStatus.NOT_FOUND, "포지션을 찾을 수 없습니다."),
     POSITION_CHANGED(HttpStatus.CONFLICT, "포지션이 변경되었습니다. 다시 조회 후 시도해주세요."),

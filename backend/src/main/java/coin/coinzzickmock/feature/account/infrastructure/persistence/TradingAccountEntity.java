@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 
@@ -27,6 +28,10 @@ public class TradingAccountEntity extends AuditableEntity {
 
     @Column(name = "available_margin", nullable = false, precision = 19, scale = 4)
     private BigDecimal availableMargin;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     protected TradingAccountEntity() {
     }
@@ -68,7 +73,8 @@ public class TradingAccountEntity extends AuditableEntity {
                 memberEmail,
                 memberName,
                 walletBalance.doubleValue(),
-                availableMargin.doubleValue()
+                availableMargin.doubleValue(),
+                version
         );
     }
 
@@ -78,6 +84,10 @@ public class TradingAccountEntity extends AuditableEntity {
 
     public String memberEmail() {
         return memberEmail;
+    }
+
+    public long version() {
+        return version;
     }
 
     private static BigDecimal decimal(double value) {

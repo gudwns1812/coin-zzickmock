@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
@@ -20,6 +21,7 @@ import coin.coinzzickmock.feature.position.application.close.PositionCloseFinali
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -225,10 +227,11 @@ public class PendingOrderFillProcessor {
         double initialMargin = (executionPrice * order.quantity()) / effectiveLeverage;
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        accountRepository.save(
+        validateAccountMutation(accountRepository.updateWithVersion(
+                account,
                 account.reserveForFilledOrder(order.estimatedFee(), initialMargin),
                 WalletHistorySource.orderFill(order.orderId())
-        );
+        ));
         afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
 
         if (existing == null) {
@@ -245,10 +248,31 @@ public class PendingOrderFillProcessor {
             return;
         }
 
-        positionRepository.save(
+        validatePositionMutation(positionRepository.updateWithVersion(
                 memberId,
+                existing,
                 existing.increase(effectiveLeverage, order.quantity(), executionPrice, markPrice, order.estimatedFee())
-        );
+        ));
+    }
+
+    private void validateAccountMutation(AccountMutationResult mutationResult) {
+        if (mutationResult.succeeded()) {
+            return;
+        }
+        if (mutationResult.status() == AccountMutationResult.Status.NOT_FOUND) {
+            throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+        throw new CoreException(ErrorCode.ACCOUNT_CHANGED);
+    }
+
+    private void validatePositionMutation(PositionMutationResult mutationResult) {
+        if (mutationResult.succeeded()) {
+            return;
+        }
+        if (mutationResult.status() == PositionMutationResult.Status.NOT_FOUND) {
+            throw new CoreException(ErrorCode.POSITION_NOT_FOUND);
+        }
+        throw new CoreException(ErrorCode.POSITION_CHANGED);
     }
 
     private void applyFilledCloseOrder(Long memberId, FuturesOrder order, double executionPrice, double markPrice) {

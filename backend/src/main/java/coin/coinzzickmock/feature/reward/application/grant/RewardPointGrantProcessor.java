@@ -60,12 +60,12 @@ public class RewardPointGrantProcessor {
     public RewardPointResult grant(GrantProfitPointCommand command) {
         int grantedPoint = rewardPointPolicy.pointsFor(command.realizedProfit());
         if (grantedPoint == 0) {
-            RewardPointWallet current = rewardPointRepository.findByMemberId(command.memberId())
+            RewardPointWallet current = rewardPointRepository.findByMemberIdForUpdate(command.memberId())
                     .orElse(RewardPointWallet.empty(command.memberId()));
             return new RewardPointResult(current.rewardPoint(), rewardPointPolicy.tierLabel(grantedPoint));
         }
 
-        RewardPointWallet current = rewardPointRepository.findByMemberId(command.memberId())
+        RewardPointWallet current = rewardPointRepository.findByMemberIdForUpdate(command.memberId())
                 .orElse(RewardPointWallet.empty(command.memberId()));
         RewardPointWallet updated = rewardPointRepository.save(current.grant(grantedPoint));
         rewardPointHistoryRepository.save(RewardPointHistory.grant(

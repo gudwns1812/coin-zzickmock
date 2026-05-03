@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
@@ -58,10 +59,11 @@ public class UpdatePositionLeverageService {
                 next.initialMargin()
         );
 
-        accountRepository.save(
+        validateAccountMutation(accountRepository.updateWithVersion(
+                account,
                 adjusted,
                 WalletHistorySource.positionLeverageChange(symbol, positionSide, marginMode, Instant.now())
-        );
+        ));
 
         PositionMutationResult mutation = positionRepository.updateWithVersion(memberId, current, next);
         if (!mutation.succeeded()) {
@@ -70,6 +72,16 @@ public class UpdatePositionLeverageService {
 
         afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
         return toResult(memberId, mutation.updatedSnapshot());
+    }
+
+    private void validateAccountMutation(AccountMutationResult mutationResult) {
+        if (mutationResult.succeeded()) {
+            return;
+        }
+        if (mutationResult.status() == AccountMutationResult.Status.NOT_FOUND) {
+            throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+        throw new CoreException(ErrorCode.ACCOUNT_CHANGED);
     }
 
     private void validateLeverage(int leverage) {

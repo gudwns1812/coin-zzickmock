@@ -3,7 +3,6 @@ package coin.coinzzickmock.feature.order.application.realtime;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
@@ -247,8 +246,7 @@ public class PendingOrderFillProcessor {
                 markPrice,
                 executionPrice,
                 MAKER_FEE_RATE,
-                PositionHistory.CLOSE_REASON_LIMIT_CLOSE,
-                WalletHistorySource.positionCloseOrderFill(order.orderId())
+                PositionHistory.CLOSE_REASON_LIMIT_CLOSE
         );
         pendingCloseOrderCapReconciler.reconcile(
                 memberId,

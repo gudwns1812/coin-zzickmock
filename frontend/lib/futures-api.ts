@@ -59,10 +59,9 @@ export type FuturesAccountSummary = {
 };
 
 export type FuturesWalletHistoryPoint = {
+  snapshotDate: string;
   walletBalance: number;
-  availableMargin: number;
-  sourceType: string;
-  sourceReference: string;
+  dailyWalletChange: number;
   recordedAt: string;
 };
 

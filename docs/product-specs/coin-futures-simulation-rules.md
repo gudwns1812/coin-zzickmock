@@ -528,7 +528,7 @@ type PositionSnapshot = {
 
 - `wallet_history` is a KST daily wallet snapshot table, not a per-event ledger.
 - One persisted row represents one member's wallet state for one `snapshotDate` in `Asia/Seoul`.
-- The snapshot stores wallet balance, available margin, and the day's wallet balance change.
+- The snapshot stores wallet balance and the day's wallet balance change.
 - `dailyWalletChange` is the net settled change from that KST day's baseline wallet balance:
   `dailyWalletChange = snapshot.walletBalance - baselineWalletBalance`.
 - Because `walletBalance` excludes unrealized PnL, `dailyWalletChange` also excludes unrealized PnL from still-open positions. It includes settled realized outcomes and fees when they are reflected in `trading_accounts.wallet_balance`.
@@ -536,7 +536,9 @@ type PositionSnapshot = {
 - The recent 30-day Assets balance chart reads `wallet_history.walletBalance` ordered by `snapshotDate`.
 - The Assets calendar reads `wallet_history.dailyWalletChange` by KST `snapshotDate`.
 - The KST day starts with an idempotent baseline write for each active account. Implementations may use `INSERT ... ON DUPLICATE KEY UPDATE`-style semantics over `UNIQUE(member_id, snapshot_date)` so retries or duplicate scheduler runs do not create duplicate rows.
-- Whenever `trading_accounts.wallet_balance` or `trading_accounts.available_margin` changes during that KST day, the existing daily row is updated with the latest wallet balance, available margin, and `dailyWalletChange`.
-- The current KST day's row is provisional until the day is finalized. The UI may show provisional `dailyWalletChange` for today by subtracting today's baseline wallet balance from the current wallet balance.
+- Whenever `trading_accounts.wallet_balance` changes during that KST day, the existing daily row is updated with the latest wallet balance and `dailyWalletChange`.
+- Wallet change events carry the post-mutation account snapshot and observed time; snapshot date is derived from that observed time so KST-midnight listener delays do not move a pre-midnight mutation into the next day.
+- Snapshot updates must guard on `trading_accounts.version` so delayed or out-of-order post-commit wallet events cannot overwrite a newer daily row with an older account balance.
+- The current KST day's row is provisional by presentation rule, not by a stored `finalized` flag. The UI may show today's `dailyWalletChange` as provisional when `snapshotDate` equals today in KST.
 - The database enforces one row per day with `UNIQUE(member_id, snapshot_date)`.
-- The finalization scheduler runs shortly after the KST day boundary and only marks the KST date that just ended as finalized. It must not compute yesterday's snapshot from the post-midnight current account balance because that would mix after-midnight wallet changes into the previous day.
+- The rollover scheduler creates the new KST day's baseline. It must not compute yesterday's snapshot from the post-midnight current account balance because that would mix after-midnight wallet changes into the previous day.

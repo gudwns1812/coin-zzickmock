@@ -6,7 +6,6 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
@@ -459,8 +458,7 @@ class CreateOrderServiceTest {
         @Override
         public AccountMutationResult updateWithVersion(
                 TradingAccount expectedAccount,
-                TradingAccount nextAccount,
-                WalletHistorySource source
+                TradingAccount nextAccount
         ) {
             if (account.version() != expectedAccount.version()) {
                 return AccountMutationResult.staleVersion(account);

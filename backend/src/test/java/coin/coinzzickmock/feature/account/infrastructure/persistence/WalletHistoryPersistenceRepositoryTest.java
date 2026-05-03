@@ -1,22 +1,21 @@
 package coin.coinzzickmock.feature.account.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySnapshot;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
 import java.util.List;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class)
@@ -32,10 +31,10 @@ class WalletHistoryPersistenceRepositoryTest {
     private MemberCredentialRepository memberCredentialRepository;
 
     @Autowired
-    private DataSource dataSource;
+    private WalletHistoryEntityRepository walletHistoryEntityRepository;
 
     @Test
-    void recordsWalletHistoryOnceForDuplicateSources() {
+    void createsBaselineOnceAndUpdatesDailySnapshot() {
         MemberCredential member = memberCredentialRepository.save(member("wallet-history-" + System.nanoTime()));
         TradingAccount account = new TradingAccount(
                 member.memberId(),
@@ -44,39 +43,73 @@ class WalletHistoryPersistenceRepositoryTest {
                 100_000,
                 100_000
         );
-        String orderId = "duplicate-order-" + member.memberId();
-        WalletHistorySource source = WalletHistorySource.orderFill(orderId);
+        LocalDate snapshotDate = LocalDate.of(2026, 5, 3);
 
         TradingAccount created = accountRepository.create(account);
-        TradingAccount first = accountRepository.updateWithVersion(
-                created,
+        walletHistoryRepository.createBaselineIfAbsent(created, snapshotDate);
+        walletHistoryRepository.createBaselineIfAbsent(created, snapshotDate);
+        walletHistoryRepository.updateCurrentDay(
                 created.reserveForFilledOrder(10, 100),
-                source
-        ).updatedAccount();
-        accountRepository.updateWithVersion(
-                first,
-                first.reserveForFilledOrder(10, 100),
-                source
+                snapshotDate
         );
 
         List<WalletHistorySnapshot> snapshots = walletHistoryRepository.findByMemberIdBetween(
                 member.memberId(),
-                Instant.now().minus(1, ChronoUnit.DAYS),
-                Instant.now().plus(1, ChronoUnit.DAYS)
+                snapshotDate.minusDays(1),
+                snapshotDate.plusDays(1)
         );
 
         assertThat(snapshots).hasSize(1);
-        assertThat(snapshots.get(0).sourceType()).isEqualTo(WalletHistorySource.TYPE_ORDER_FILL);
-        assertThat(snapshots.get(0).sourceReference()).isEqualTo("order:" + orderId + ":fill");
+        assertThat(snapshots.get(0).snapshotDate()).isEqualTo(snapshotDate);
+        assertThat(snapshots.get(0).baselineWalletBalance()).isEqualByComparingTo("100000");
+        assertThat(snapshots.get(0).walletBalance()).isEqualByComparingTo("99990");
+        assertThat(snapshots.get(0).dailyWalletChange()).isEqualByComparingTo("-10");
     }
 
     @Test
-    void createsWalletHistorySourceReferenceAsVarchar255() throws Exception {
-        try (var connection = dataSource.getConnection();
-             var columns = connection.getMetaData().getColumns(null, null, "WALLET_HISTORY", "SOURCE_REFERENCE")) {
-            assertThat(columns.next()).isTrue();
-            assertThat(columns.getInt("COLUMN_SIZE")).isEqualTo(255);
-        }
+    void ignoresStaleAccountVersionSnapshotUpdates() {
+        MemberCredential member = memberCredentialRepository.save(member("wallet-history-stale-" + System.nanoTime()));
+        TradingAccount account = accountRepository.create(new TradingAccount(
+                member.memberId(),
+                member.memberEmail(),
+                member.memberName(),
+                100_000,
+                100_000
+        ));
+        LocalDate snapshotDate = LocalDate.of(2026, 5, 3);
+
+        walletHistoryRepository.createBaselineIfAbsent(account, snapshotDate);
+        walletHistoryRepository.updateCurrentDay(account.withVersion(2).settlePositionClose(2_000, 0, 0), snapshotDate);
+        walletHistoryRepository.updateCurrentDay(account.withVersion(1).settlePositionClose(500, 0, 0), snapshotDate);
+
+        List<WalletHistorySnapshot> snapshots = walletHistoryRepository.findByMemberIdBetween(
+                member.memberId(),
+                snapshotDate,
+                snapshotDate
+        );
+
+        assertThat(snapshots).hasSize(1);
+        assertThat(snapshots.get(0).walletBalance()).isEqualByComparingTo("102000");
+        assertThat(snapshots.get(0).dailyWalletChange()).isEqualByComparingTo("2000");
+    }
+
+    @Test
+    void rejectsDuplicateMemberSnapshotDate() {
+        MemberCredential member = memberCredentialRepository.save(member("wallet-history-unique-" + System.nanoTime()));
+        TradingAccount account = accountRepository.create(new TradingAccount(
+                member.memberId(),
+                member.memberEmail(),
+                member.memberName(),
+                100_000,
+                100_000
+        ));
+        LocalDate snapshotDate = LocalDate.of(2026, 5, 3);
+
+        walletHistoryEntityRepository.saveAndFlush(WalletHistoryEntity.baseline(account, snapshotDate, java.time.Instant.now()));
+
+        assertThatThrownBy(() -> walletHistoryEntityRepository.saveAndFlush(
+                WalletHistoryEntity.baseline(account, snapshotDate, java.time.Instant.now())
+        )).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private MemberCredential member(String account) {

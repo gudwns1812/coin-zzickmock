@@ -7,20 +7,18 @@ const chartModule: typeof import("./wallet-history-chart") = await import(
 
 const { buildWalletBalanceChartPoints } = chartModule;
 
-test("wallet history chart points are sorted by recorded time", () => {
+test("wallet history chart points are sorted by snapshot date", () => {
   const points = buildWalletBalanceChartPoints([
     {
+      snapshotDate: "2026-04-28",
       walletBalance: 101000,
-      availableMargin: 99000,
-      sourceType: "POSITION_CLOSE",
-      sourceReference: "order:2:close-fill",
+      dailyWalletChange: 1500,
       recordedAt: "2026-04-28T00:00:00Z",
     },
     {
+      snapshotDate: "2026-04-27",
       walletBalance: 99500,
-      availableMargin: 94500,
-      sourceType: "ORDER_FILL",
-      sourceReference: "order:1:fill",
+      dailyWalletChange: -500,
       recordedAt: "2026-04-27T00:00:00Z",
     },
   ]);
@@ -32,10 +30,9 @@ test("wallet history chart points are sorted by recorded time", () => {
 test("wallet history chart labels use KST date labels", () => {
   const points = buildWalletBalanceChartPoints([
     {
+      snapshotDate: "2026-04-28",
       walletBalance: 100000,
-      availableMargin: 100000,
-      sourceType: "CURRENT_SNAPSHOT",
-      sourceReference: "account:demo:current",
+      dailyWalletChange: 0,
       recordedAt: "2026-04-27T15:30:00Z",
     },
   ]);

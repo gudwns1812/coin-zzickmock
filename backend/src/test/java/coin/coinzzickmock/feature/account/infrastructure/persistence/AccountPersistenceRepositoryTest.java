@@ -7,7 +7,6 @@ import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import org.junit.jupiter.api.Test;
@@ -56,8 +55,7 @@ class AccountPersistenceRepositoryTest {
 
         AccountMutationResult first = accountRepository.updateWithVersion(
                 created,
-                created.reserveForFilledOrder(10, 100),
-                WalletHistorySource.orderFill("guarded-account-order")
+                created.reserveForFilledOrder(10, 100)
         );
 
         assertThat(first.status()).isEqualTo(AccountMutationResult.Status.UPDATED);
@@ -67,8 +65,7 @@ class AccountPersistenceRepositoryTest {
 
         AccountMutationResult stale = accountRepository.updateWithVersion(
                 created,
-                created.reserveForFilledOrder(20, 200),
-                WalletHistorySource.orderFill("stale-account-order")
+                created.reserveForFilledOrder(20, 200)
         );
 
         assertThat(stale.status()).isEqualTo(AccountMutationResult.Status.STALE_VERSION);
@@ -88,28 +85,11 @@ class AccountPersistenceRepositoryTest {
 
         AccountMutationResult result = accountRepository.updateWithVersion(
                 missing,
-                missing.reserveForFilledOrder(10, 100),
-                WalletHistorySource.orderFill("missing-account-order")
+                missing.reserveForFilledOrder(10, 100)
         );
 
         assertThat(result.status()).isEqualTo(AccountMutationResult.Status.NOT_FOUND);
         assertThat(accountRepository.findByMemberId(missing.memberId())).isEmpty();
-    }
-
-    @Test
-    void updateWithVersionRequiresWalletHistorySource() {
-        MemberCredential member = memberCredentialRepository.save(member("account-source-required-" + System.nanoTime()));
-        TradingAccount created = accountRepository.create(TradingAccount.openDefault(
-                member.memberId(),
-                member.memberEmail(),
-                member.memberName()
-        ));
-
-        assertThatThrownBy(() -> accountRepository.updateWithVersion(
-                created,
-                created.reserveForFilledOrder(10, 100),
-                null
-        )).hasMessageContaining("WalletHistorySource");
     }
 
     private MemberCredential member(String account) {

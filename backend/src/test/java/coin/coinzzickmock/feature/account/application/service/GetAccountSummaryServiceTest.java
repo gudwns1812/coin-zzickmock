@@ -11,7 +11,6 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
@@ -57,8 +56,7 @@ class GetAccountSummaryServiceTest {
                     @Override
                     public AccountMutationResult updateWithVersion(
                             TradingAccount expectedAccount,
-                            TradingAccount nextAccount,
-                            WalletHistorySource source
+                            TradingAccount nextAccount
                     ) {
                         fail("account summary read must not mutate account");
                         return AccountMutationResult.notFound();
@@ -145,8 +143,7 @@ class GetAccountSummaryServiceTest {
                     @Override
                     public AccountMutationResult updateWithVersion(
                             TradingAccount expectedAccount,
-                            TradingAccount nextAccount,
-                            WalletHistorySource source
+                            TradingAccount nextAccount
                     ) {
                         fail("missing account read must not mutate account");
                         return AccountMutationResult.notFound();

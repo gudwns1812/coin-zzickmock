@@ -9,7 +9,6 @@ const KST_DATE_LABEL_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
 export type WalletBalanceChartPoint = {
   label: string;
   walletBalance: number;
-  availableMargin: number;
   recordedAt: string;
 };
 
@@ -18,14 +17,14 @@ export function buildWalletBalanceChartPoints(
 ): WalletBalanceChartPoint[] {
   return [...history]
     .filter((point) => Number.isFinite(point.walletBalance))
-    .sort(
-      (left, right) =>
-        new Date(left.recordedAt).getTime() - new Date(right.recordedAt).getTime()
-    )
+    .sort((left, right) => left.snapshotDate.localeCompare(right.snapshotDate))
     .map((point) => ({
-      label: KST_DATE_LABEL_FORMATTER.format(new Date(point.recordedAt)),
+      label: formatSnapshotDate(point.snapshotDate),
       walletBalance: point.walletBalance,
-      availableMargin: point.availableMargin,
       recordedAt: point.recordedAt,
     }));
+}
+
+function formatSnapshotDate(snapshotDate: string): string {
+  return KST_DATE_LABEL_FORMATTER.format(new Date(`${snapshotDate}T00:00:00+09:00`));
 }

@@ -7,8 +7,12 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
 import coin.coinzzickmock.feature.account.application.result.WalletHistoryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.domain.WalletHistoryDate;
+import coin.coinzzickmock.feature.account.domain.WalletHistorySnapshot;
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetWalletHistoryService {
     private static final long DEFAULT_HISTORY_DAYS = 30;
-    private static final String CURRENT_SNAPSHOT = "CURRENT_SNAPSHOT";
 
     private final WalletHistoryRepository walletHistoryRepository;
     private final AccountRepository accountRepository;
@@ -26,34 +29,52 @@ public class GetWalletHistoryService {
     @Transactional(readOnly = true)
     public List<WalletHistoryResult> execute(GetWalletHistoryQuery query) {
         Instant now = Instant.now();
-        Instant to = query.to() == null ? now : query.to();
-        Instant from = query.from() == null ? to.minus(DEFAULT_HISTORY_DAYS, ChronoUnit.DAYS) : query.from();
+        LocalDate today = WalletHistoryDate.from(now);
+        LocalDate to = query.to() == null ? today : WalletHistoryDate.from(query.to());
+        LocalDate from = query.from() == null ? to.minusDays(DEFAULT_HISTORY_DAYS - 1) : WalletHistoryDate.from(query.from());
         if (from.isAfter(to)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "지갑 이력 조회 기간을 확인해주세요.");
         }
 
-        List<WalletHistoryResult> results = walletHistoryRepository
+        List<WalletHistoryResult> results = new ArrayList<>(walletHistoryRepository
                 .findByMemberIdBetween(query.memberId(), from, to).stream()
-                .map(snapshot -> new WalletHistoryResult(
-                        snapshot.walletBalance(),
-                        snapshot.availableMargin(),
-                        snapshot.sourceType(),
-                        snapshot.sourceReference(),
-                        snapshot.recordedAt()
-                ))
-                .toList();
+                .map(GetWalletHistoryService::toResult)
+                .toList());
+        if (!from.isAfter(today)
+                && !to.isBefore(today)
+                && results.stream().noneMatch(result -> result.snapshotDate().equals(today))) {
+            results.add(toResult(currentAccountSnapshot(query.memberId(), today, now)));
+        }
         if (!results.isEmpty()) {
             return results;
         }
 
-        TradingAccount account = accountRepository.findByMemberId(query.memberId())
+        return List.of();
+    }
+
+    private WalletHistorySnapshot currentAccountSnapshot(Long memberId, LocalDate snapshotDate, Instant now) {
+        TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        return List.of(new WalletHistoryResult(
-                account.walletBalance(),
-                account.availableMargin(),
-                CURRENT_SNAPSHOT,
-                "account:" + account.memberId() + ":current",
+        BigDecimal baselineWalletBalance = walletHistoryRepository.findLatestBefore(memberId, snapshotDate)
+                .map(WalletHistorySnapshot::walletBalance)
+                .orElse(BigDecimal.valueOf(account.walletBalance()));
+        BigDecimal walletBalance = BigDecimal.valueOf(account.walletBalance());
+        return new WalletHistorySnapshot(
+                memberId,
+                snapshotDate,
+                baselineWalletBalance,
+                walletBalance,
+                walletBalance.subtract(baselineWalletBalance),
                 now
-        ));
+        );
+    }
+
+    private static WalletHistoryResult toResult(WalletHistorySnapshot snapshot) {
+        return new WalletHistoryResult(
+                snapshot.snapshotDate(),
+                snapshot.walletBalance(),
+                snapshot.dailyWalletChange(),
+                snapshot.recordedAt()
+        );
     }
 }

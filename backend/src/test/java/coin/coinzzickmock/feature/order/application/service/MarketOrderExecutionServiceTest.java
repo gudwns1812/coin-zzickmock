@@ -8,7 +8,6 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
@@ -829,8 +828,7 @@ class MarketOrderExecutionServiceTest {
         @Override
         public AccountMutationResult updateWithVersion(
                 TradingAccount expectedAccount,
-                TradingAccount nextAccount,
-                WalletHistorySource source
+                TradingAccount nextAccount
         ) {
             TradingAccount current = accounts.get(expectedAccount.memberId());
             if (current == null) {

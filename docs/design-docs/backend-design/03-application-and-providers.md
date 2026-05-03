@@ -140,6 +140,13 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 - `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 하위 패키지로 분리한다.
 - `application/service`는 "무슨 일을 시작하는가"를, 목적형 협력 객체는 "그 일을 어떤 메커니즘으로 지원하는가"를 드러내야 한다.
 
+현재 코드에서 지켜야 하는 대표 패턴:
+
+- `GetMarketCandlesService`는 query orchestration에 집중한다. persisted range read는 `MarketPersistedCandleReader`, interval rollup은 `MarketCandleRollupProjector`, historical cache/provider 보충은 `MarketHistoricalCandleAppender`, lookup tagging은 `MarketHistoryLookupTelemetry`가 맡는다.
+- 즉시 체결 주문과 pending open-order fill은 계정 예약, 포지션 생성/증가, mutation result 해석을 각각 구현하지 않는다. 두 진입점은 filled order request를 만들고, 상태 적용은 `FilledOpenOrderApplier`가 맡는다.
+- application 협력 객체는 `*Service` 이름을 남발하지 않는다. 예를 들어 `Applier`, `Projector`, `Appender`, `Reader`, `Telemetry`처럼 책임의 결과나 메커니즘을 드러낸다.
+- 협력 객체가 telemetry를 기록하더라도 business flow의 원본 판단을 숨기면 안 된다. public service에서는 어떤 단계가 실행되는지 읽혀야 한다.
+
 ## Job Boundary
 
 `job`은 유스케이스를 직접 구현하는 레이어가 아니라 application을 깨우는 얇은 trigger다.
@@ -168,6 +175,7 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 - 여러 인스턴스가 값을 공유해야 하는 분산 캐시는 Redis를 표준 구현으로 사용한다.
 - 기능 코드와 `application` 협력 객체는 가능하면 Redis client 세부사항보다 Spring Cache 경계를 먼저 의존한다.
 - SSE subscriber 목록, 요청 중간 계산값처럼 "연결 수명 관리" 자체가 목적이고 캐시 정책이 아닌 구조는 별도 메모리 상태로 둘 수 있다.
+- 제한이 있는 SSE subscriber lifecycle은 broker별 ad-hoc map/semaphore 조합보다 `common/web/SseSubscriptionRegistry`를 우선 사용한다.
 - 캐시 이름, TTL, key prefix 같은 운영 정책은 `infrastructure/config` 또는 설정 프로퍼티로 모으고, 기능 클래스 안에 하드코딩하지 않는다.
 
 ## Use Case Shape

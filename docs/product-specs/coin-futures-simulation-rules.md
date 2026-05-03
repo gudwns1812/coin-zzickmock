@@ -526,8 +526,11 @@ type PositionSnapshot = {
 
 ## Wallet history and Assets chart source
 
-- `wallet_history` is the source for the Assets balance chart. The API defaults to the current timestamp minus 30 days through the current timestamp.
-- A wallet history row is written in the same transaction after a successful `trading_accounts` mutation when wallet balance or available margin changes.
-- Current implementation records open-order fills (`ORDER_FILL`) and position close fills (`POSITION_CLOSE`) because pending limit order placement and pending order cancellation do not reserve or release wallet funds yet.
-- Source references reserve room for future reservation, cancel-release, and partial-fill events: `order:<orderId>:reserve`, `order:<orderId>:cancel-release`, `order:<orderId>:fill`, and `order:<orderId>:partial-fill:<fillId>`.
-- Liquidation uses `LIQUIDATION` source type and a liquidation-specific reference. Duplicate `source_type + source_reference` writes are ignored so retries do not create duplicate chart points.
+- `wallet_history` is a KST daily wallet snapshot table, not a per-event ledger.
+- One persisted row represents one member's wallet state for one `snapshotDate` in `Asia/Seoul`.
+- The snapshot stores the end-of-day realized wallet balance, available margin, and the day's realized PnL.
+- The daily realized PnL is the net wallet result settled during that KST day. It includes realized position PnL and fees that are already reflected in `trading_accounts.wallet_balance`; it does not include unrealized PnL from still-open positions.
+- The recent 30-day Assets balance chart reads `wallet_history.walletBalance` ordered by `snapshotDate`.
+- The Assets calendar reads `wallet_history.dailyRealizedPnl` by KST `snapshotDate`.
+- The API defaults to the latest 30 KST snapshot dates through today. If no persisted snapshots exist yet, or today's final snapshot has not been captured, the API may append a non-persisted current account fallback point for display continuity. That fallback is explicitly marked by the response contract and must not be treated as the final daily snapshot.
+- Snapshot persistence must be idempotent with one row per `(memberId, snapshotDate)`. Retries update or no-op the same daily row; they must not create duplicate chart points.

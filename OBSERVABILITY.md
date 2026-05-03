@@ -376,6 +376,12 @@ Grafana에 추가할 지표:
 
 현재 구현은 executor rejection을 counter로 기록한다. executor queue depth는 queue 구현이 노출될 때 별도 gauge 이름을 정해 추가한다.
 
+구현 경계:
+
+- 제한이 있는 market/trading SSE subscriber lifecycle은 `common/web/SseSubscriptionRegistry`가 담당한다.
+- feature SSE broker는 `stream` 이름, 거절 사유 매핑, executor rejection, send duration, payload 변환만 stream별로 소유한다.
+- registry key가 symbol이나 member id일 수 있어도 Prometheus label에는 key 원문을 넣지 않는다. stream과 bounded reason만 label로 사용한다.
+
 중요 로그:
 
 - 연결 거절: `event=sse.connection.rejected`

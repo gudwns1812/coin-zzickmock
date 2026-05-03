@@ -97,6 +97,8 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 - controller는 request validation, 인증된 요청 컨텍스트 파싱, application 호출, response mapping만 맡는다.
 - controller private method가 비즈니스 규칙을 담기 시작하면 application 또는 domain으로 옮긴다.
 - 엔티티나 persistence DTO를 HTTP 응답으로 직접 노출하지 않는다.
+- 테스트 편의를 위한 생성자나 fixture 조립 로직을 운영 controller에 넣지 않는다.
+- SSE broker는 stream별 fan-out과 telemetry만 맡고, 제한이 있는 subscriber lifecycle은 `common/web/SseSubscriptionRegistry` 같은 공통 메커니즘으로 분리한다.
 
 ### `job`
 
@@ -111,6 +113,8 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 - 외부 SDK, SecurityContext, Redis client, JPA entity 세부사항을 직접 다루지 않는다.
 - 공유 로직은 `application/service`끼리 호출하지 말고 목적형 협력 객체로 분리한다.
 - command/query/result 타입으로 입출력 의미를 드러낸다.
+- 여러 진입점이 같은 계정/포지션 mutation 정책을 적용하면 각 service에 복제하지 않고 `FilledOpenOrderApplier`처럼 transaction 내부에서 호출되는 application 협력 객체로 모은다.
+- 조회 service가 DB range 계산, rollup, cache/provider 보충, telemetry tagging을 모두 품기 시작하면 `Reader`, `Projector`, `Appender`, `Telemetry` 같은 목적형 객체로 나눈다.
 
 ### `domain`
 
@@ -119,6 +123,7 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 - 불변식 검증은 생성과 상태 전이 가까이에 둔다.
 - 날짜, 금액, 수량, 레버리지처럼 의미 있는 값은 원시 타입으로 흩뿌리지 말고 값 객체 후보로 본다.
 - Spring, JPA, HTTP, SDK 타입은 도메인에 들어오지 않는다.
+- 큰 record가 호환 accessor를 유지하더라도 새 규칙은 `identity`, `exposure`, `accounting` 같은 값 객체 view를 통해 추가한다.
 
 ### `infrastructure`
 

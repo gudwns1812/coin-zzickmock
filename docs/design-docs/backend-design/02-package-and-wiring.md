@@ -106,6 +106,34 @@ backend/src/main/java/coin/coinzzickmock/
 - 금지: `@Service` 안에서 `private final RewardPointPolicy policy = new RewardPointPolicy();`
 - 금지: `@Component` 안에서 `private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();`
 
+### Test Wiring Boundary
+
+운영 클래스는 운영 dependency graph만 드러낸다.
+테스트 편의를 위해 운영 클래스 안에 별도 생성자를 두거나, 그 생성자에서 fake store, executor, projector, broker 같은 협력 객체를 직접 조립하지 않는다.
+
+강한 규칙:
+
+- 테스트 전용 생성자는 운영 코드의 DI 경계를 흐리므로 만들지 않는다.
+- 테스트에서 필요한 fixture graph는 test helper, nested test fixture, `@TestConfiguration` 중 하나로 조립한다.
+- 운영 생성자가 단순 final field 주입만 한다면 Lombok `@RequiredArgsConstructor` 또는 단일 명시 생성자 중 한 가지 패턴만 유지한다.
+- 운영 생성자에 `@Value`, qualifier, validation 같은 Spring wiring 세부사항이 필요하면 명시 생성자를 둘 수 있지만, 테스트 fallback dependency를 함께 만들지 않는다.
+
+예시:
+
+- 허용: `MarketControllerTest` 안에서 `MarketCandleRealtimeSseBroker`와 `RealtimeMarketCandleProjector` fixture를 만든다.
+- 금지: `MarketController` package-private 생성자에서 테스트용 `RealtimeMarketDataStore`와 broker를 직접 만든다.
+
+### Shared Web Runtime Mechanisms
+
+HTTP/SSE delivery에 공통으로 필요한 연결 수명 관리나 subscriber limit 같은 메커니즘은 feature broker마다 복제하지 않는다.
+
+강한 규칙:
+
+- per-key subscriber map, fair semaphore, reserve/register/unregister/release, stale limit cleanup은 `common/web/SseSubscriptionRegistry`를 우선 사용한다.
+- feature broker는 stream별 key 선택, 에러 메시지, telemetry stream name, event listener, payload 변환과 fan-out만 맡는다.
+- `SseSubscriptionRegistry`는 cache가 아니라 연결 lifecycle 메커니즘이다. 따라서 Spring Cache/Redis 경계와 혼동하지 않는다.
+- subscriber key가 개인정보 성격을 가질 수 있으면 telemetry label로 전파하지 않는다.
+
 ## Spring Rule
 
 Spring은 조립 도구이지 아키텍처 그 자체가 아니다.

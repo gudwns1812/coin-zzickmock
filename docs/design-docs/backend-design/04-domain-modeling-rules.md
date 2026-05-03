@@ -93,6 +93,21 @@
 - `process(...)`
 - `handle(...)`
 
+### Position Snapshot Modeling
+
+`PositionSnapshot`은 아직 persistence/API 호환을 위해 record accessor를 유지하지만, 새 구현은 원시 필드 묶음을 직접 해석하기보다 이름 있는 domain view를 우선 사용한다.
+
+강한 규칙:
+
+- 새 포지션 생성은 `PositionSnapshot.open(...)`을 사용한다.
+- persistence rehydration은 `PositionSnapshot.restore(...)`를 사용한다. infrastructure mapper/entity가 원시 생성자 인자 순서에 직접 의존하지 않도록 한다.
+- 신규 domain 동작에서 `symbol + positionSide + marginMode`를 직접 다시 묶지 말고 `identity()`/`PositionIdentity`를 사용한다.
+- 신규 exposure/margin/ROI 동작에서 `leverage`, `quantity`, `entryPrice`, `markPrice`, `liquidationPrice`, `unrealizedPnl` 원시 조합을 반복하지 말고 `exposure()`/`PositionExposure`를 사용한다.
+- 신규 누적 실현손익, open/close/funding fee 계산은 `accounting()`/`PositionAccounting`을 먼저 확장한다.
+- 호환 생성자는 legacy/test/persistence 전환 과정에서만 남긴다. 새 production 호출 경로를 추가할 때 raw constructor overload를 선택하지 않는다.
+
+이 규칙은 `PositionSnapshot`을 한 번에 큰 aggregate hierarchy로 바꾸기보다, 의미 있는 값 객체를 먼저 만들고 public accessor 호환을 천천히 줄이기 위한 중간 단계다.
+
 ## Placement Decision Rule
 
 같은 로직을 어디에 둘지 헷갈릴 때는 아래 순서로 판단한다.

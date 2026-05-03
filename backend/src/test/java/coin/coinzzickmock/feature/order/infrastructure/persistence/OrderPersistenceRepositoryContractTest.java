@@ -120,6 +120,7 @@ class OrderPersistenceRepositoryContractTest {
     void findsAndAdjustsPendingCloseOrderQuantity() {
         Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         String orderId = "close-order-" + UUID.randomUUID();
+        String secondOrderId = "close-order-" + UUID.randomUUID();
         saveAccount(memberId);
 
         orderRepository.save(memberId, FuturesOrder.place(
@@ -137,6 +138,21 @@ class OrderPersistenceRepositoryContractTest {
                 0,
                 71000.0
         ));
+        orderRepository.save(memberId, FuturesOrder.place(
+                secondOrderId,
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.08,
+                72000.0,
+                false,
+                "MAKER",
+                0,
+                72000.0
+        ));
 
         List<FuturesOrder> pendingCloseOrders = orderRepository.findPendingCloseOrders(
                 memberId,
@@ -145,11 +161,29 @@ class OrderPersistenceRepositoryContractTest {
                 "ISOLATED"
         );
 
-        assertEquals(1, pendingCloseOrders.size());
+        assertEquals(2, pendingCloseOrders.size());
         orderRepository.updateQuantityAndStatus(memberId, orderId, 0.05, FuturesOrder.STATUS_PENDING);
         FuturesOrder adjusted = orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
         assertEquals(FuturesOrder.STATUS_PENDING, adjusted.status());
         assertEquals(0.05, adjusted.quantity(), 0.0001);
+
+        int capped = orderRepository.capPendingOrderQuantity(memberId, List.of(orderId, secondOrderId), 0.03);
+
+        assertEquals(2, capped);
+        assertEquals(0.03, orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow().quantity(), 0.0001);
+        assertEquals(0.03, orderRepository.findByMemberIdAndOrderId(memberId, secondOrderId).orElseThrow().quantity(), 0.0001);
+
+        int cancelled = orderRepository.cancelPendingOrders(memberId, List.of(orderId, secondOrderId));
+
+        assertEquals(2, cancelled);
+        assertEquals(
+                FuturesOrder.STATUS_CANCELLED,
+                orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow().status()
+        );
+        assertEquals(
+                FuturesOrder.STATUS_CANCELLED,
+                orderRepository.findByMemberIdAndOrderId(memberId, secondOrderId).orElseThrow().status()
+        );
     }
 
     private void saveAccount(Long memberId) {

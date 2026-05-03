@@ -110,7 +110,7 @@ public class OrderPersistenceRepository implements OrderRepository {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();
         entity.updateStatus(status);
-        return futuresOrderEntityRepository.saveAndFlush(entity).toDomain();
+        return entity.toDomain();
     }
 
     @Override
@@ -130,6 +130,34 @@ public class OrderPersistenceRepository implements OrderRepository {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();
         entity.updateQuantityAndStatus(quantity, status);
-        return futuresOrderEntityRepository.saveAndFlush(entity).toDomain();
+        return entity.toDomain();
+    }
+
+    @Override
+    @Transactional
+    public int cancelPendingOrders(Long memberId, List<String> orderIds) {
+        if (orderIds.isEmpty()) {
+            return 0;
+        }
+        return futuresOrderEntityRepository.cancelAllPendingByOrderIdIn(
+                memberId,
+                orderIds,
+                FuturesOrder.STATUS_PENDING,
+                FuturesOrder.STATUS_CANCELLED
+        );
+    }
+
+    @Override
+    @Transactional
+    public int capPendingOrderQuantity(Long memberId, List<String> orderIds, double maxQuantity) {
+        if (orderIds.isEmpty()) {
+            return 0;
+        }
+        return futuresOrderEntityRepository.capAllPendingQuantityByOrderIdIn(
+                memberId,
+                orderIds,
+                BigDecimal.valueOf(maxQuantity),
+                FuturesOrder.STATUS_PENDING
+        );
     }
 }

@@ -1,7 +1,6 @@
 package coin.coinzzickmock.feature.member.infrastructure.config;
 
-import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.account.application.service.TradingAccountProvisioningService;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
@@ -25,7 +24,7 @@ public class MemberDemoSeedConfiguration {
     private static final String DEMO_ADDRESS_DETAIL = "101호";
     @Bean
     ApplicationRunner demoMemberInitializer(
-            AccountRepository accountRepository,
+            TradingAccountProvisioningService tradingAccountProvisioningService,
             MemberCredentialRepository memberCredentialRepository,
             MemberPasswordHasher memberPasswordHasher
     ) {
@@ -47,13 +46,11 @@ public class MemberDemoSeedConfiguration {
                                     0
                             ).asAdmin()));
 
-            if (accountRepository.findByMemberId(credential.memberId()).isEmpty()) {
-                accountRepository.save(TradingAccount.openDefault(
-                        credential.memberId(),
-                        credential.memberEmail(),
-                        credential.memberName()
-                ));
-            }
+            tradingAccountProvisioningService.openForSeedIfMissing(
+                    credential.memberId(),
+                    credential.memberEmail(),
+                    credential.memberName()
+            );
         };
     }
 }

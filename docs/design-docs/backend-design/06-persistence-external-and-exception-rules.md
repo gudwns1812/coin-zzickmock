@@ -43,6 +43,17 @@ DB를 참고하거나 수정하는 작업에서는 반드시 [docs/generated/db-
 - 스키마를 바꾸는 작업: 먼저 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을 추가하고, 코드 변경과 함께 `db-schema.md`도 최신 상태로 갱신한다.
 - 엔티티, repository, migration, SQL을 바꿨는데 `db-schema.md`가 그대로면 작업이 덜 끝난 것으로 본다.
 
+### Persistence Mutation Rule
+
+단건 수정, 생성, 벌크 변경은 repository 계약에서 서로 다른 의도로 드러나야 한다.
+
+- 생성은 `create`, `open`, `provision`처럼 insert 의도를 드러내고, 수동 id 엔티티에서는 generic Spring Data `save` wrapper로 insert-only를 흉내 내지 않는다. `EntityManager.persist`, 명시적 insert, 또는 검증된 `Persistable.isNew` 패턴처럼 중복 생성이 업데이트로 바뀌지 않는 구현을 사용한다.
+- 단건 수정은 현재 트랜잭션에서 managed entity를 조회한 뒤 의미 있는 엔티티 메서드로 상태를 바꾸고 dirty checking에 맡긴다. `find` 후 필드 변경을 하고 다시 `save`를 호출하지 않는다.
+- `saveAndFlush` 또는 수동 `flush`는 즉시 constraint 확인이나 같은 트랜잭션 내 후속 query ordering처럼 이유가 있는 경우에만 사용한다. 사용 지점에는 method name이나 짧은 주석으로 즉시 flush가 필요한 이유를 남긴다.
+- 여러 행을 같은 의도로 바꾸는 주문 상태/수량 정리 같은 작업은 단건 repository 호출 반복보다 bulk/batch repository method를 우선 검토한다.
+- Bulk update는 dirty checking, entity callback, 개별 엔티티 메서드를 우회한다. 따라서 이미 application/domain에서 결정된 persistence 변경을 적용할 때만 쓰고, entity 메서드가 하던 보조 컬럼 정리도 SQL 계약에 명시한다.
+- 조회 query는 누락된 필수 row를 자동 생성하지 않는다. 예를 들어 회원의 `TradingAccount`가 없으면 계좌 조회에서 생성하지 않고 데이터 오류로 처리한다.
+
 ## Exception Rule
 
 예외 모델은 `CoreException` 중심으로 통일한다.

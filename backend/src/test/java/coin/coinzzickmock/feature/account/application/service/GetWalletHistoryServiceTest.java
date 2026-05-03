@@ -1,7 +1,10 @@
 package coin.coinzzickmock.feature.account.application.service;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.query.GetWalletHistoryQuery;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
@@ -54,6 +57,29 @@ class GetWalletHistoryServiceTest {
         assertThat(results.get(0).walletBalance()).isEqualTo(100_000d);
         assertThat(results.get(0).availableMargin()).isEqualTo(95_000d);
         assertThat(results.get(0).sourceType()).isEqualTo("CURRENT_SNAPSHOT");
+    }
+
+    @Test
+    void throwsDataErrorWhenCurrentAccountSnapshotIsMissing() {
+        GetWalletHistoryService service = new GetWalletHistoryService(
+                new RecordingWalletHistoryRepository(List.of()),
+                new AccountRepository() {
+                    @Override
+                    public Optional<TradingAccount> findByMemberId(Long memberId) {
+                        return Optional.empty();
+                    }
+
+                    @Override
+                    public TradingAccount save(TradingAccount account) {
+                        throw new AssertionError("wallet history read must not create account");
+                    }
+                }
+        );
+
+        assertThatThrownBy(() -> service.execute(new GetWalletHistoryQuery(1L, null, null)))
+                .isInstanceOf(CoreException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ACCOUNT_NOT_FOUND);
     }
 
     private AccountRepository accountRepository() {

@@ -84,7 +84,7 @@ class MarketControllerTest {
         when(service.getMarket(org.mockito.ArgumentMatchers.any())).thenReturn(market);
         when(broker.reserve("BTCUSDT")).thenReturn(permit);
 
-        MarketController controller = new MarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
+        MarketController controller = controller(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
 
         SseEmitter emitter = controller.stream("BTCUSDT");
 
@@ -135,7 +135,7 @@ class MarketControllerTest {
     void failsBeforeEmitterCreationWhenCapacityIsExceeded() {
         GetMarketSummaryService service = mock(GetMarketSummaryService.class);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
-        MarketController controller = new MarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
+        MarketController controller = controller(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
         CoreException exception = new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         org.mockito.Mockito.doThrow(exception).when(broker).reserve("BTCUSDT");
 
@@ -152,7 +152,7 @@ class MarketControllerTest {
         GetMarketSummaryService service = mock(GetMarketSummaryService.class);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
-        MarketController controller = new MarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
+        MarketController controller = controller(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
         when(broker.reserve("UNSUPPORTED")).thenReturn(permit);
         when(service.getMarket(any())).thenThrow(new CoreException(ErrorCode.MARKET_NOT_FOUND));
 
@@ -166,7 +166,7 @@ class MarketControllerTest {
 
     @Test
     void createsEmitterWithFiniteTimeout() {
-        MarketController controller = new MarketController(
+        MarketController controller = controller(
                 mock(GetMarketSummaryService.class),
                 mock(GetMarketCandlesService.class),
                 mock(MarketRealtimeSseBroker.class),
@@ -213,7 +213,7 @@ class MarketControllerTest {
         GetMarketSummaryService summaryService = mock(GetMarketSummaryService.class);
         GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
-        MarketController controller = new MarketController(summaryService, candleService, broker, SSE_TIMEOUT_MS);
+        MarketController controller = controller(summaryService, candleService, broker, SSE_TIMEOUT_MS);
         Instant before = Instant.parse("2026-04-21T00:05:00Z");
 
         when(candleService.getCandles(any())).thenReturn(java.util.List.of());
@@ -235,7 +235,7 @@ class MarketControllerTest {
                 MarketRealtimeSseBroker broker,
                 long timeoutMs
         ) {
-            super(service, candleService, broker, timeoutMs);
+            super(service, candleService, broker, candleBroker(), candleProjector(), timeoutMs);
         }
 
         private TestableMarketController(
@@ -253,6 +253,23 @@ class MarketControllerTest {
         SseEmitter createEmitter() {
             return new FailingSseEmitter();
         }
+    }
+
+    private static MarketController controller(
+            GetMarketSummaryService service,
+            GetMarketCandlesService candleService,
+            MarketRealtimeSseBroker broker,
+            long timeoutMs
+    ) {
+        return new MarketController(service, candleService, broker, candleBroker(), candleProjector(), timeoutMs);
+    }
+
+    private static MarketCandleRealtimeSseBroker candleBroker() {
+        return new MarketCandleRealtimeSseBroker(Runnable::run, candleProjector());
+    }
+
+    private static RealtimeMarketCandleProjector candleProjector() {
+        return new RealtimeMarketCandleProjector(new RealtimeMarketDataStore());
     }
 
     private static class FailingSseEmitter extends SseEmitter {

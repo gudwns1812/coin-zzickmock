@@ -51,29 +51,6 @@ public class MarketController {
         this.streamTimeoutMs = streamTimeoutMs;
     }
 
-    MarketController(
-            GetMarketSummaryService getMarketSummaryService,
-            GetMarketCandlesService getMarketCandlesService,
-            MarketRealtimeSseBroker marketRealtimeSseBroker,
-            long streamTimeoutMs
-    ) {
-        this(
-                getMarketSummaryService,
-                getMarketCandlesService,
-                marketRealtimeSseBroker,
-                new MarketCandleRealtimeSseBroker(
-                        Runnable::run,
-                        new RealtimeMarketCandleProjector(
-                                new coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore()
-                        )
-                ),
-                new RealtimeMarketCandleProjector(
-                        new coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore()
-                ),
-                streamTimeoutMs
-        );
-    }
-
     @GetMapping
     public ApiResponse<List<MarketSummaryResponse>> list() {
         List<MarketSummaryResponse> responses = getMarketSummaryService.getSupportedMarkets().stream()

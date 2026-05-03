@@ -71,6 +71,11 @@ class GetWalletHistoryServiceTest {
                     }
 
                     @Override
+                    public TradingAccount create(TradingAccount account) {
+                        throw new AssertionError("wallet history read must not create account");
+                    }
+
+                    @Override
                     public AccountMutationResult updateWithVersion(
                             TradingAccount expectedAccount,
                             TradingAccount nextAccount,
@@ -92,6 +97,11 @@ class GetWalletHistoryServiceTest {
             @Override
             public Optional<TradingAccount> findByMemberId(Long memberId) {
                 return Optional.of(new TradingAccount(memberId, "demo@coinzzickmock.dev", "Demo", 100_000, 95_000));
+            }
+
+            @Override
+            public TradingAccount create(TradingAccount account) {
+                throw new AssertionError("wallet history read must not create account");
             }
 
             @Override

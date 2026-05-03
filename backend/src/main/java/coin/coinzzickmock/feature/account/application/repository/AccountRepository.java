@@ -9,9 +9,7 @@ import java.util.Optional;
 public interface AccountRepository {
     Optional<TradingAccount> findByMemberId(Long memberId);
 
-    default TradingAccount create(TradingAccount account) {
-        throw new UnsupportedOperationException("Account creation must use an insert-only repository implementation.");
-    }
+    TradingAccount create(TradingAccount account);
 
     AccountMutationResult updateWithVersion(
             TradingAccount expectedAccount,

@@ -818,6 +818,15 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
+        public TradingAccount create(TradingAccount account) {
+            if (accounts.containsKey(account.memberId())) {
+                throw new IllegalStateException("account already exists");
+            }
+            accounts.put(account.memberId(), account);
+            return account;
+        }
+
+        @Override
         public AccountMutationResult updateWithVersion(
                 TradingAccount expectedAccount,
                 TradingAccount nextAccount,

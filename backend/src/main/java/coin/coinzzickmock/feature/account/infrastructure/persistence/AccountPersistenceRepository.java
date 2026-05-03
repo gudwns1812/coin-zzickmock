@@ -4,8 +4,6 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -18,8 +16,6 @@ import java.util.Optional;
 public class AccountPersistenceRepository implements AccountRepository {
     private final TradingAccountEntityRepository tradingAccountEntityRepository;
     private final WalletHistoryPersistenceRepository walletHistoryPersistenceRepository;
-    @PersistenceContext
-    private EntityManager entityManager;
 
     @Override
     @Transactional(readOnly = true)
@@ -31,10 +27,7 @@ public class AccountPersistenceRepository implements AccountRepository {
     @Override
     @Transactional
     public TradingAccount create(TradingAccount account) {
-        TradingAccountEntity entity = TradingAccountEntity.from(account);
-        entityManager.persist(entity);
-        // Flush here to prove provisioning is insert-only for manually assigned account ids.
-        entityManager.flush();
+        TradingAccountEntity entity = tradingAccountEntityRepository.saveAndFlush(TradingAccountEntity.from(account));
         return entity.toDomain();
     }
 

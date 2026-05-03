@@ -49,6 +49,12 @@ class GetAccountSummaryServiceTest {
                     }
 
                     @Override
+                    public TradingAccount create(TradingAccount account) {
+                        fail("account summary read must not create account");
+                        return account;
+                    }
+
+                    @Override
                     public AccountMutationResult updateWithVersion(
                             TradingAccount expectedAccount,
                             TradingAccount nextAccount,
@@ -128,6 +134,12 @@ class GetAccountSummaryServiceTest {
                     @Override
                     public Optional<TradingAccount> findByMemberId(Long memberId) {
                         return Optional.empty();
+                    }
+
+                    @Override
+                    public TradingAccount create(TradingAccount account) {
+                        fail("missing account read must not create account");
+                        return account;
                     }
 
                     @Override

@@ -242,6 +242,15 @@ class UpdatePositionLeverageServiceTest {
         }
 
         @Override
+        public TradingAccount create(TradingAccount account) {
+            if (this.account.memberId().equals(account.memberId())) {
+                throw new IllegalStateException("account already exists");
+            }
+            this.account = account;
+            return account;
+        }
+
+        @Override
         public AccountMutationResult updateWithVersion(
                 TradingAccount expectedAccount,
                 TradingAccount nextAccount,

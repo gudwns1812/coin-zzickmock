@@ -35,6 +35,7 @@ public class CreateOrderService {
     private final OrderRepository orderRepository;
     private final PositionRepository positionRepository;
     private final FilledOpenOrderApplier filledOpenOrderApplier;
+    private final AccountOrderMutationLock accountOrderMutationLock;
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
@@ -45,6 +46,7 @@ public class CreateOrderService {
 
     @Transactional
     public CreateOrderResult execute(CreateOrderCommand command) {
+        accountOrderMutationLock.lock(command.memberId());
         validateOrderType(command.orderType());
         validateExistingPositionInvariants(command);
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());

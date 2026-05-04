@@ -10,6 +10,7 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier;
 import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -39,6 +40,7 @@ public class PendingOrderFillProcessor {
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final FilledOpenOrderApplier filledOpenOrderApplier;
+    private final AccountOrderMutationLock accountOrderMutationLock;
 
     @Transactional
     public void fillExecutablePendingOrders(MarketSummaryUpdatedEvent event) {
@@ -146,6 +148,7 @@ public class PendingOrderFillProcessor {
     }
 
     private void fillIfExecutable(PendingOrderCandidate candidate, MarketSummaryResult market) {
+        accountOrderMutationLock.lock(candidate.memberId());
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(candidate.memberId(), candidate.orderId())
                 .orElse(candidate.order());
         if (!order.isPending() || order.isConditionalOrder() || order.limitPrice() == null) {

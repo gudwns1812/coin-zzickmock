@@ -13,6 +13,9 @@ public record RewardShopItem(
         Integer perMemberPurchaseLimit,
         int sortOrder
 ) {
+    public static final String ITEM_TYPE_COFFEE_VOUCHER = "COFFEE_VOUCHER";
+    public static final String ITEM_TYPE_ACCOUNT_REFILL_COUNT = "ACCOUNT_REFILL_COUNT";
+
     public RewardShopItem {
         if (price <= 0) {
             throw new IllegalArgumentException("상품 가격은 0보다 커야 합니다.");
@@ -46,6 +49,14 @@ public record RewardShopItem(
 
     public boolean soldOut() {
         return finiteStock() && soldQuantity >= totalStock;
+    }
+
+    public boolean coffeeVoucher() {
+        return ITEM_TYPE_COFFEE_VOUCHER.equals(itemType);
+    }
+
+    public boolean accountRefillCount() {
+        return ITEM_TYPE_ACCOUNT_REFILL_COUNT.equals(itemType);
     }
 
     public Integer remainingStock() {

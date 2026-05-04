@@ -59,6 +59,21 @@ export type FuturesAccountSummary = {
   rewardPoint: number;
 };
 
+export type AccountRefillStatus = {
+  remainingCount: number;
+  refillable: boolean;
+  disabledReason: string | null;
+  targetWalletBalance: number;
+  targetAvailableMargin: number;
+  nextResetAt: string;
+};
+
+export type AccountRefillResult = {
+  walletBalance: number;
+  availableMargin: number;
+  remainingCount: number;
+};
+
 export type FuturesWalletHistoryPoint = {
   snapshotDate: string;
   walletBalance: number;
@@ -149,6 +164,7 @@ export type ShopItem = {
   code: string;
   name: string;
   description: string;
+  itemType: "COFFEE_VOUCHER" | "ACCOUNT_REFILL_COUNT" | string;
   price: number;
   active: boolean;
   totalStock: number | null;
@@ -231,6 +247,12 @@ export type RewardRedemptionsResult = {
   message: string | null;
 };
 
+export type ShopPurchaseResult = {
+  itemCode: string;
+  rewardPoint: number;
+  refillRemainingCount: number;
+};
+
 export type OrderPreviewRequest = {
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";
@@ -286,6 +308,7 @@ const SHOP_ITEM_FALLBACKS: ShopItem[] = [
     name: "커피 교환권",
     price: 50,
     description: "커피 교환권",
+    itemType: "COFFEE_VOUCHER",
     active: true,
     totalStock: null,
     soldQuantity: 0,
@@ -294,6 +317,15 @@ const SHOP_ITEM_FALLBACKS: ShopItem[] = [
     remainingPurchaseLimit: null,
   },
 ];
+
+const ACCOUNT_REFILL_FALLBACK: AccountRefillStatus = {
+  remainingCount: 0,
+  refillable: false,
+  disabledReason: "리필 상태를 불러오지 못했습니다.",
+  targetWalletBalance: 100_000,
+  targetAvailableMargin: 100_000,
+  nextResetAt: new Date().toISOString(),
+};
 
 const ACCOUNT_FALLBACK: FuturesAccountSummary = {
   memberId: 0,
@@ -376,6 +408,11 @@ export async function getFuturesMarket(
 export async function getFuturesAccountSummary(): Promise<FuturesAccountSummary> {
   const response = await readApi<FuturesAccountSummary>("/api/futures/account/me");
   return response ?? ACCOUNT_FALLBACK;
+}
+
+export async function getAccountRefillStatus(): Promise<AccountRefillStatus> {
+  const response = await readApi<AccountRefillStatus>("/api/futures/account/me/refill");
+  return response ?? ACCOUNT_REFILL_FALLBACK;
 }
 
 export async function getFuturesWalletHistory(): Promise<FuturesWalletHistoryPoint[]> {

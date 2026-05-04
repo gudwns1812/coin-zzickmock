@@ -12,7 +12,7 @@ public record TradingAccount(
         long version
 ) {
     public static final double INITIAL_WALLET_BALANCE = 100_000d;
-    private static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
+    public static final double INITIAL_AVAILABLE_MARGIN = 100_000d;
 
     public TradingAccount(
             Long memberId,
@@ -77,6 +77,24 @@ public record TradingAccount(
                 memberName,
                 walletBalance + grossRealizedPnl - closeFee,
                 availableMargin + releasedMargin + grossRealizedPnl - closeFee,
+                version
+        );
+    }
+
+    public boolean refillableToInitialBalance() {
+        return walletBalance < INITIAL_WALLET_BALANCE && availableMargin < INITIAL_AVAILABLE_MARGIN;
+    }
+
+    public TradingAccount refillToInitialBalance() {
+        if (!refillableToInitialBalance()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "이미 리필 기준 잔고에 도달했습니다.");
+        }
+        return new TradingAccount(
+                memberId,
+                memberEmail,
+                memberName,
+                INITIAL_WALLET_BALANCE,
+                INITIAL_AVAILABLE_MARGIN,
                 version
         );
     }

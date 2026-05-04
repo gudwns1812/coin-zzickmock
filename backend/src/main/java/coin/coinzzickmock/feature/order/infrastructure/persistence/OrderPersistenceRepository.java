@@ -50,6 +50,12 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean existsPendingByMemberId(Long memberId) {
+        return futuresOrderEntityRepository.existsByMemberIdAndStatus(memberId, FuturesOrder.STATUS_PENDING);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<PendingOrderCandidate> findExecutablePendingLimitOrders(
             String symbol,
             double lowerPrice,

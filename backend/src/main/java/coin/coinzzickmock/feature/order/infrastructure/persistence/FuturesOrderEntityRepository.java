@@ -14,6 +14,8 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
 
     List<FuturesOrderEntity> findAllBySymbolAndStatusOrderByCreatedAtAsc(String symbol, String status);
 
+    boolean existsByMemberIdAndStatus(Long memberId, String status);
+
     @Query("""
             select order
               from FuturesOrderEntity order

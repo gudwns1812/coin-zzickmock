@@ -15,6 +15,10 @@ public interface OrderRepository {
 
     List<PendingOrderCandidate> findPendingBySymbol(String symbol);
 
+    default boolean existsPendingByMemberId(Long memberId) {
+        return findByMemberId(memberId).stream().anyMatch(FuturesOrder::isPending);
+    }
+
     default List<PendingOrderCandidate> findExecutablePendingLimitOrders(
             String symbol,
             double lowerPrice,

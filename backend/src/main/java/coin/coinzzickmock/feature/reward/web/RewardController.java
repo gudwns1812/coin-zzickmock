@@ -6,6 +6,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.reward.application.result.RewardPointHistoryResult;
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
+import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
 import coin.coinzzickmock.feature.reward.application.result.ShopItemResult;
 import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
 import coin.coinzzickmock.feature.reward.application.service.AdminRewardShopItemService;
@@ -16,6 +17,7 @@ import coin.coinzzickmock.feature.reward.application.service.GetRewardPointHisto
 import coin.coinzzickmock.feature.reward.application.service.GetRewardPointService;
 import coin.coinzzickmock.feature.reward.application.service.GetRewardRedemptionHistoryService;
 import coin.coinzzickmock.feature.reward.application.service.GetShopItemsService;
+import coin.coinzzickmock.feature.reward.application.service.PurchaseShopItemService;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.Providers;
@@ -40,6 +42,7 @@ public class RewardController {
     private final CreateRewardRedemptionService createRewardRedemptionService;
     private final GetRewardRedemptionHistoryService getRewardRedemptionHistoryService;
     private final CancelRewardRedemptionService cancelRewardRedemptionService;
+    private final PurchaseShopItemService purchaseShopItemService;
     private final AdminRewardRedemptionService adminRewardRedemptionService;
     private final AdminRewardShopItemService adminRewardShopItemService;
     private final Providers providers;
@@ -75,6 +78,17 @@ public class RewardController {
                 request.phoneNumber()
         );
         return ApiResponse.success(RewardRedemptionResponse.from(result));
+    }
+
+    @PostMapping("/shop/items/{code}/purchase")
+    public ApiResponse<ShopPurchaseResponse> purchaseShopItem(@PathVariable String code) {
+        Actor actor = providers.auth().currentActor();
+        ShopPurchaseResult result = purchaseShopItemService.purchase(actor.memberId(), code);
+        return ApiResponse.success(new ShopPurchaseResponse(
+                result.itemCode(),
+                result.rewardPoint(),
+                result.refillRemainingCount()
+        ));
     }
 
     @GetMapping("/shop/redemptions")
@@ -227,6 +241,7 @@ public class RewardController {
                 result.code(),
                 result.name(),
                 result.description(),
+                result.itemType(),
                 result.price(),
                 result.active(),
                 result.totalStock(),

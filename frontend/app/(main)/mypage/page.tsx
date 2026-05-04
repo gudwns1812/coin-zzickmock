@@ -1,9 +1,11 @@
 import {
+  getAccountRefillStatus,
   getFuturesAccountSummary,
   getFuturesLeaderboard,
   getFuturesPositions,
   getFuturesReward,
 } from "@/lib/futures-api";
+import AccountRefillCard from "@/components/mypage/AccountRefillCard";
 import { formatMarketRank, formatUsd } from "@/lib/markets";
 import { getJwtToken } from "@/utils/auth";
 import {
@@ -20,11 +22,12 @@ import type { ReactNode } from "react";
 
 export default async function MyPage() {
   const token = await getJwtToken();
-  const [account, positions, reward, leaderboard] = await Promise.all([
+  const [account, positions, reward, leaderboard, refillStatus] = await Promise.all([
     getFuturesAccountSummary(),
     getFuturesPositions(),
     getFuturesReward(),
     getFuturesLeaderboard(),
+    getAccountRefillStatus(),
   ]);
   const openPositionCount = positions.length;
 
@@ -66,9 +69,10 @@ export default async function MyPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-4 gap-main">
+      <section className="grid grid-cols-5 gap-main">
         <Metric label="지갑 잔고" value={formatUsd(account.walletBalance)} />
         <Metric label="사용 가능" value={formatUsd(account.available)} />
+        <AccountRefillCard account={account} refillStatus={refillStatus} />
         <Metric label="열린 포지션" value={`${openPositionCount}개`} />
         <Metric label="포인트" value={`${reward.rewardPoint.toLocaleString("ko-KR")} P`} />
       </section>

@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -35,7 +37,9 @@ public class PositionLiquidationProcessor {
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
+    private final AccountOrderMutationLock accountOrderMutationLock;
 
+    @Transactional
     public void liquidateBreachedPositions(MarketSummaryResult market) {
         MarketSummaryResult realtimeMarket = freshMarket(market);
         if (realtimeMarket == null) {
@@ -83,7 +87,7 @@ public class PositionLiquidationProcessor {
     }
 
     private void liquidateCrossIfNeeded(Long memberId, MarketSummaryResult market) {
-        TradingAccount account = accountRepository.findByMemberId(memberId)
+        TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         List<PositionSnapshot> positions = positionRepository.findOpenPositions(memberId).stream()
                 .map(position -> position.symbol().equalsIgnoreCase(market.symbol())
@@ -102,6 +106,7 @@ public class PositionLiquidationProcessor {
     }
 
     private void liquidate(Long memberId, PositionSnapshot position, double executionPrice, double markPrice) {
+        accountOrderMutationLock.lock(memberId);
         var result = positionCloseFinalizer.close(
                 memberId,
                 position,

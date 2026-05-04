@@ -35,6 +35,12 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean existsOpenByMemberId(Long memberId) {
+        return openPositionEntityRepository.existsByMemberId(memberId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<PositionSnapshot> findOpenPosition(
             Long memberId,
             String symbol,

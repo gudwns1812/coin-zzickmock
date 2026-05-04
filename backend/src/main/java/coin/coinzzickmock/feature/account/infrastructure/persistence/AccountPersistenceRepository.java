@@ -23,6 +23,13 @@ public class AccountPersistenceRepository implements AccountRepository {
     }
 
     @Override
+    @Transactional
+    public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
+        return tradingAccountEntityRepository.findWithLockingByMemberId(memberId)
+                .map(TradingAccountEntity::toDomain);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<TradingAccount> findAll() {
         return tradingAccountEntityRepository.findAll().stream()

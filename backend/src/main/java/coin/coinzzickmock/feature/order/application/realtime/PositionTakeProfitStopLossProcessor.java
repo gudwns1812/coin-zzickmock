@@ -5,6 +5,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPric
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -16,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -28,7 +30,9 @@ public class PositionTakeProfitStopLossProcessor {
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
+    private final AccountOrderMutationLock accountOrderMutationLock;
 
+    @Transactional
     public void closeTriggeredPositions(MarketSummaryResult market) {
         MarketSummaryResult realtimeMarket = freshMarket(market);
         if (realtimeMarket == null) {
@@ -69,6 +73,7 @@ public class PositionTakeProfitStopLossProcessor {
     }
 
     private void closeIfTriggered(Long memberId, FuturesOrder candidate, MarketSummaryResult market) {
+        accountOrderMutationLock.lock(memberId);
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(memberId, candidate.orderId())
                 .orElse(candidate);
         if (!order.isPending() || !order.isConditionalCloseOrder() || !isTriggered(order, market.markPrice())) {

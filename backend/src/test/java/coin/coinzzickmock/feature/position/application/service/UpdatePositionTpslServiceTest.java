@@ -4,12 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -120,8 +124,31 @@ class UpdatePositionTpslServiceTest {
                 positionRepository,
                 orderRepository,
                 new PendingCloseOrderCapReconciler(orderRepository),
-                realtimePriceReader(markPrice)
+                realtimePriceReader(markPrice),
+                new AccountOrderMutationLock(accountRepository())
         );
+    }
+
+    private static AccountRepository accountRepository() {
+        return new AccountRepository() {
+            @Override
+            public Optional<TradingAccount> findByMemberId(Long memberId) {
+                return Optional.of(TradingAccount.openDefault(memberId, "demo@coinzzickmock.dev", "Demo"));
+            }
+
+            @Override
+            public TradingAccount create(TradingAccount account) {
+                return account;
+            }
+
+            @Override
+            public AccountMutationResult updateWithVersion(
+                    TradingAccount expectedAccount,
+                    TradingAccount nextAccount
+            ) {
+                return AccountMutationResult.updated(1, nextAccount.withVersion(expectedAccount.version() + 1));
+            }
+        };
     }
 
     private static class InMemoryPositionRepository implements PositionRepository {

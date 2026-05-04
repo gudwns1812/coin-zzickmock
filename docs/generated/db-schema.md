@@ -16,7 +16,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ## Status
 
 - 상태: 구현 반영됨
-- 마지막 스키마 동기화: 2026-05-03
+- 마지막 스키마 동기화: 2026-05-04
 - 기준 소스: Flyway migration + JPA entity + Spring Boot datasource 설정
 
 ## Source Of Truth
@@ -31,6 +31,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [backend/src/test/resources/application-test.yml](/Users/hj.park/projects/coin-zzickmock/backend/src/test/resources/application-test.yml)
 - JPA entity 기준:
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
+  [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
   [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
   [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
@@ -67,6 +68,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql)
   [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql)
   [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql)
+  [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V25__add_account_refill_state.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -118,6 +120,26 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
+
+### `account_refill_states`
+
+- 목적:
+  KST 기준 회원별 당일 지갑 리필 가능 횟수를 저장한다.
+- PK:
+  `id` (auto increment)
+- 유니크:
+  `member_id`, `refill_date`
+- 주요 컬럼:
+  `member_id`, `refill_date`, `remaining_count`, `version`, `created_at`, `updated_at`
+- 날짜 기준:
+  `refill_date`는 KST 날짜다. 새 날짜에는 기본 1회 상태를 새 row로 생성하며, 전날 구매한 추가권은 새 날짜 row로 이월하지 않는다.
+- 동시성:
+  리필 실행과 리필 추가권 구매는 현재 KST 날짜 row를 보장 생성한 뒤 pessimistic write lock으로 잡고 `remaining_count`를 소비/증가시킨다. 추가권 구매는 교착을 피하기 위해 리필 상태 row를 reward item/usage/wallet row보다 먼저 잠근다.
+- 관련 엔티티/모듈:
+  `feature.account`
+- 관련 migration 또는 schema 파일:
+  [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V25__add_account_refill_state.sql),
+  [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
 
 ### `reward_point_wallets`
 
@@ -439,6 +461,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 - `trading_accounts.member_id -> member_credentials.id`:
   선물 계정은 내부 회원 surrogate key를 참조한다.
+- `account_refill_states.member_id -> member_credentials.id`:
+  회원별 KST 일자 리필 가능 횟수를 저장한다. 리필 실행 시에는 이 row와 `trading_accounts` row를 함께 잠근다.
 - `reward_point_wallets.member_id -> member_credentials.id`:
   회원당 하나의 포인트 지갑을 가진다.
 - `wallet_history.member_id -> trading_accounts.member_id`:

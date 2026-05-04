@@ -1,6 +1,7 @@
 import type { ShopItem } from "@/lib/futures-api";
 
 const COFFEE_SHOP_ITEM_IMAGE_PATH = "/images/IceAmericano.png";
+export const ACCOUNT_REFILL_ITEM_TYPE = "ACCOUNT_REFILL_COUNT";
 
 export function normalizeVoucherPhoneNumber(value: string): string {
   return value.trim().replaceAll("-", "");
@@ -43,6 +44,12 @@ export function canRedeemShopItem(item: ShopItem, rewardPoint: number): boolean 
     !isShopItemLimitReached(item) &&
     rewardPoint >= item.price
   );
+}
+
+export function isAccountRefillShopItem(
+  item: Pick<ShopItem, "itemType">
+): boolean {
+  return item.itemType === ACCOUNT_REFILL_ITEM_TYPE;
 }
 
 export function getShopItemAvailabilityLabel(item: ShopItem): string {

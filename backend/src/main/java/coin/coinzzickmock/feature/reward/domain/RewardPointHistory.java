@@ -51,6 +51,25 @@ public record RewardPointHistory(
         );
     }
 
+    public static RewardPointHistory instantShopPurchaseDeduct(
+            Long memberId,
+            int amount,
+            int balanceAfter,
+            String purchaseId
+    ) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("차감 포인트는 0보다 커야 합니다.");
+        }
+        return new RewardPointHistory(
+                memberId,
+                RewardPointHistoryType.REDEMPTION_DEDUCT,
+                -amount,
+                balanceAfter,
+                "INSTANT_SHOP_PURCHASE",
+                purchaseId
+        );
+    }
+
     public static RewardPointHistory redemptionRefund(Long memberId, int amount, int balanceAfter, String requestId) {
         if (amount <= 0) {
             throw new IllegalArgumentException("환급 포인트는 0보다 커야 합니다.");

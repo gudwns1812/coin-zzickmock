@@ -66,7 +66,7 @@ public class FilledOpenOrderApplier {
     }
 
     private TradingAccount reserveAccountMargin(Long memberId, double estimatedFee, double initialMargin) {
-        TradingAccount account = accountRepository.findByMemberId(memberId)
+        TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         // Order traceability stays in order/position history; wallet_history is a KST daily account snapshot.
         return validateAccountMutation(accountRepository.updateWithVersion(

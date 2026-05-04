@@ -417,7 +417,8 @@ class CreateOrderServiceTest {
                 realtimeMarketPriceReader,
                 orderRepository,
                 positionRepository,
-                new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher)
+                new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
+                new AccountOrderMutationLock(accountRepository)
         );
     }
 

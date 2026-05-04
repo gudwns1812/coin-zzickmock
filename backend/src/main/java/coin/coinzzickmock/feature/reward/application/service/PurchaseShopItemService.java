@@ -53,8 +53,8 @@ public class PurchaseShopItemService {
 
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(memberId)
                 .orElse(RewardPointWallet.empty(memberId));
-        RewardPointWallet deductedWallet = deduct(wallet, item.price());
-        RewardShopItem reservedItem = reserve(item);
+        RewardPointWallet deductedWallet = wallet.deduct(item.price());
+        RewardShopItem reservedItem = item.reserveOne();
         RewardShopMemberItemUsage reservedUsage = usage.increment();
 
         rewardShopItemRepository.save(reservedItem);
@@ -81,22 +81,6 @@ public class PurchaseShopItemService {
         }
         if (item.memberReachedLimit(usage.purchaseCount())) {
             throw invalid("회원별 구매 제한에 도달했습니다.");
-        }
-    }
-
-    private RewardPointWallet deduct(RewardPointWallet wallet, int pointAmount) {
-        try {
-            return wallet.deduct(pointAmount);
-        } catch (IllegalArgumentException exception) {
-            throw invalid(exception.getMessage());
-        }
-    }
-
-    private RewardShopItem reserve(RewardShopItem item) {
-        try {
-            return item.reserveOne();
-        } catch (IllegalStateException exception) {
-            throw invalid(exception.getMessage());
         }
     }
 

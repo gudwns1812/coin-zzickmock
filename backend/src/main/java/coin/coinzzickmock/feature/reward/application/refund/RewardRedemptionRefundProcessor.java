@@ -33,9 +33,9 @@ public class RewardRedemptionRefundProcessor {
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(request.memberId())
                 .orElseThrow(() -> invalid("포인트 지갑을 찾을 수 없습니다."));
 
-        RewardShopItem releasedItem = transition(item::releaseOne);
-        RewardShopMemberItemUsage releasedUsage = transition(usage::decrement);
-        RewardPointWallet refundedWallet = transition(() -> wallet.refund(request.pointAmount()));
+        RewardShopItem releasedItem = item.releaseOne();
+        RewardShopMemberItemUsage releasedUsage = usage.decrement();
+        RewardPointWallet refundedWallet = wallet.refund(request.pointAmount());
 
         rewardShopItemRepository.save(releasedItem);
         rewardShopMemberItemUsageRepository.save(releasedUsage);
@@ -48,20 +48,7 @@ public class RewardRedemptionRefundProcessor {
         ));
     }
 
-    private <T> T transition(Transition<T> transition) {
-        try {
-            return transition.run();
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw invalid(exception.getMessage());
-        }
-    }
-
     private CoreException invalid(String message) {
         return new CoreException(ErrorCode.INVALID_REQUEST, message);
-    }
-
-    @FunctionalInterface
-    private interface Transition<T> {
-        T run();
     }
 }

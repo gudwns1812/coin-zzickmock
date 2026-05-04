@@ -10,9 +10,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.LocalDate;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "account_refill_states")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AccountRefillStateEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,9 +34,6 @@ public class AccountRefillStateEntity extends AuditableEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
-    protected AccountRefillStateEntity() {
-    }
-
     public static AccountRefillStateEntity from(AccountRefillState state) {
         AccountRefillStateEntity entity = new AccountRefillStateEntity();
         entity.apply(state);
@@ -44,6 +44,12 @@ public class AccountRefillStateEntity extends AuditableEntity {
         this.memberId = state.memberId();
         this.refillDate = state.refillDate();
         this.remainingCount = state.remainingCount();
+    }
+
+    public AccountRefillState consumeOne() {
+        AccountRefillState consumed = toDomain().consumeOne();
+        apply(consumed);
+        return consumed;
     }
 
     public AccountRefillState toDomain() {

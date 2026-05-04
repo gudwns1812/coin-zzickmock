@@ -26,12 +26,26 @@ public interface AccountRefillStateEntityRepository extends JpaRepository<Accoun
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            insert into account_refill_states (member_id, refill_date, remaining_count, version)
+            insert ignore into account_refill_states (member_id, refill_date, remaining_count, version)
             values (:memberId, :refillDate, 1, 0)
-            on duplicate key update remaining_count = remaining_count
             """, nativeQuery = true)
-    int insertDailyStateIfMissing(
+    int insertDailyStateIfAbsent(
             @Param("memberId") Long memberId,
             @Param("refillDate") LocalDate refillDate
+    );
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            insert into account_refill_states (member_id, refill_date, remaining_count, version)
+            values (:memberId, :refillDate, 1 + :count, 0)
+            on duplicate key update
+                remaining_count = remaining_count + :count,
+                version = version + 1,
+                updated_at = CURRENT_TIMESTAMP(6)
+            """, nativeQuery = true)
+    int insertOrAddRefillCount(
+            @Param("memberId") Long memberId,
+            @Param("refillDate") LocalDate refillDate,
+            @Param("count") int count
     );
 }

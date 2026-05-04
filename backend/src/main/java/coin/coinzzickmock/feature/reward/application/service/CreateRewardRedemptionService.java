@@ -44,7 +44,7 @@ public class CreateRewardRedemptionService {
             throw invalid("교환권 신청 상품이 아닙니다.");
         }
 
-        RewardPhoneNumber normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
+        RewardPhoneNumber normalizedPhoneNumber = RewardPhoneNumber.from(phoneNumber);
         RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
                 .findByMemberIdAndShopItemIdForUpdate(memberId, item.id())
                 .orElse(RewardShopMemberItemUsage.empty(memberId, item.id()));
@@ -52,7 +52,7 @@ public class CreateRewardRedemptionService {
 
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(memberId)
                 .orElse(RewardPointWallet.empty(memberId));
-        RewardPointWallet deductedWallet = deduct(wallet, item.price());
+        RewardPointWallet deductedWallet = wallet.deduct(item.price());
         String requestId = UUID.randomUUID().toString();
         RewardRedemptionRequest request = RewardRedemptionRequest.pending(
                 requestId,
@@ -62,7 +62,7 @@ public class CreateRewardRedemptionService {
                 Instant.now()
         );
 
-        RewardShopItem reservedItem = reserve(item);
+        RewardShopItem reservedItem = item.reserveOne();
         RewardShopMemberItemUsage reservedUsage = usage.increment();
 
         rewardShopItemRepository.save(reservedItem);
@@ -79,14 +79,6 @@ public class CreateRewardRedemptionService {
         return RewardRedemptionResult.from(savedRequest);
     }
 
-    private RewardPhoneNumber normalizePhoneNumber(String phoneNumber) {
-        try {
-            return RewardPhoneNumber.from(phoneNumber);
-        } catch (IllegalArgumentException exception) {
-            throw invalid(exception.getMessage());
-        }
-    }
-
     private void validatePurchase(RewardShopItem item, RewardShopMemberItemUsage usage) {
         if (!item.active()) {
             throw invalid("비활성 상품은 구매할 수 없습니다.");
@@ -96,22 +88,6 @@ public class CreateRewardRedemptionService {
         }
         if (item.memberReachedLimit(usage.purchaseCount())) {
             throw invalid("회원별 구매 제한에 도달했습니다.");
-        }
-    }
-
-    private RewardPointWallet deduct(RewardPointWallet wallet, int pointAmount) {
-        try {
-            return wallet.deduct(pointAmount);
-        } catch (IllegalArgumentException exception) {
-            throw invalid(exception.getMessage());
-        }
-    }
-
-    private RewardShopItem reserve(RewardShopItem item) {
-        try {
-            return item.reserveOne();
-        } catch (IllegalStateException exception) {
-            throw invalid(exception.getMessage());
         }
     }
 

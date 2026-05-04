@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.reward.domain;
 
+import coin.coinzzickmock.common.error.CoreException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,7 +45,7 @@ class RewardShopItemTest {
 
     @Test
     void rejectsInvalidInventoryAndPurchaseLimitCounters() {
-        assertThrows(IllegalArgumentException.class, () -> new RewardShopItem(
+        assertThrows(CoreException.class, () -> new RewardShopItem(
                 1L,
                 "voucher.coffee",
                 "커피 교환권",
@@ -57,7 +58,7 @@ class RewardShopItemTest {
                 1,
                 10
         ));
-        assertThrows(IllegalArgumentException.class, () -> new RewardShopItem(
+        assertThrows(CoreException.class, () -> new RewardShopItem(
                 1L,
                 "voucher.coffee",
                 "커피 교환권",

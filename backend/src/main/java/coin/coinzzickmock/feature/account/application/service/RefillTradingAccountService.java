@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
+import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository.LockedAccountRefillState;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.application.result.AccountRefillResult;
@@ -13,6 +14,7 @@ import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceCha
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,14 +31,18 @@ public class RefillTradingAccountService {
 
     @Transactional
     public AccountRefillResult refill(Long memberId) {
-        AccountRefillState state = accountRefillStateRepository
-                .ensureByMemberIdAndRefillDateForUpdate(memberId, datePolicy.today());
+        LocalDate refillDate = datePolicy.today();
         TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        accountRefillStateRepository.provisionDailyStateIfAbsent(memberId, refillDate);
+        LockedAccountRefillState lockedState = accountRefillStateRepository
+                .findByMemberIdAndRefillDateForUpdate(memberId, refillDate)
+                .orElseThrow(() -> invalid("사용 가능한 리필 횟수가 없습니다."));
+        AccountRefillState state = lockedState.state();
 
         validateRefillable(memberId, account, state);
 
-        AccountRefillState savedState = accountRefillStateRepository.save(state.consumeOne());
+        AccountRefillState consumedState = lockedState.consumeOne();
         TradingAccount updatedAccount = validateAccountMutation(accountRepository.updateWithVersion(
                 account,
                 account.refillToInitialBalance()
@@ -46,7 +52,7 @@ public class RefillTradingAccountService {
         return new AccountRefillResult(
                 BigDecimal.valueOf(updatedAccount.walletBalance()),
                 BigDecimal.valueOf(updatedAccount.availableMargin()),
-                savedState.remainingCount()
+                consumedState.remainingCount()
         );
     }
 

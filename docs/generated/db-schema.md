@@ -134,7 +134,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 날짜 기준:
   `refill_date`는 KST 날짜다. 새 날짜에는 기본 1회 상태를 새 row로 생성하며, 전날 구매한 추가권은 새 날짜 row로 이월하지 않는다.
 - 동시성:
-  리필 실행과 리필 추가권 구매는 현재 KST 날짜 row를 보장 생성한 뒤 pessimistic write lock으로 잡고 `remaining_count`를 소비/증가시킨다. 추가권 구매는 교착을 피하기 위해 리필 상태 row를 reward item/usage/wallet row보다 먼저 잠근다.
+  리필 실행은 현재 KST 날짜 row를 `insert ignore`로 보장 생성한 뒤 같은 날짜 row를 pessimistic write lock으로 잡고 `remaining_count`를 소비한다. 리필 추가권 구매는 reward item/usage/wallet row보다 먼저 `account_refill_states`를 갱신하며, row가 없으면 기본 1회에 추가권 수를 더한 값으로 생성하고 row가 있으면 `on duplicate key update`로 `remaining_count`, `version`, `updated_at`을 함께 증가/갱신한다.
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:

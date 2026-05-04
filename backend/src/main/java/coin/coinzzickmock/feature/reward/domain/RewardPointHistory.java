@@ -1,5 +1,8 @@
 package coin.coinzzickmock.feature.reward.domain;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
+
 public record RewardPointHistory(
         Long memberId,
         RewardPointHistoryType historyType,
@@ -10,22 +13,22 @@ public record RewardPointHistory(
 ) {
     public RewardPointHistory {
         if (memberId == null) {
-            throw new IllegalArgumentException("회원 ID는 필수입니다.");
+            throw invalid("회원 ID는 필수입니다.");
         }
         if (historyType == null) {
-            throw new IllegalArgumentException("포인트 이력 타입은 필수입니다.");
+            throw invalid("포인트 이력 타입은 필수입니다.");
         }
         if (amount == 0) {
-            throw new IllegalArgumentException("포인트 이력 금액은 0일 수 없습니다.");
+            throw invalid("포인트 이력 금액은 0일 수 없습니다.");
         }
         if (balanceAfter < 0) {
-            throw new IllegalArgumentException("포인트 잔액은 음수일 수 없습니다.");
+            throw invalid("포인트 잔액은 음수일 수 없습니다.");
         }
     }
 
     public static RewardPointHistory grant(Long memberId, int amount, int balanceAfter, String sourceReference) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("적립 포인트는 0보다 커야 합니다.");
+            throw invalid("적립 포인트는 0보다 커야 합니다.");
         }
         return new RewardPointHistory(
                 memberId,
@@ -39,7 +42,7 @@ public record RewardPointHistory(
 
     public static RewardPointHistory redemptionDeduct(Long memberId, int amount, int balanceAfter, String requestId) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("차감 포인트는 0보다 커야 합니다.");
+            throw invalid("차감 포인트는 0보다 커야 합니다.");
         }
         return new RewardPointHistory(
                 memberId,
@@ -58,7 +61,7 @@ public record RewardPointHistory(
             String purchaseId
     ) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("차감 포인트는 0보다 커야 합니다.");
+            throw invalid("차감 포인트는 0보다 커야 합니다.");
         }
         return new RewardPointHistory(
                 memberId,
@@ -72,7 +75,7 @@ public record RewardPointHistory(
 
     public static RewardPointHistory redemptionRefund(Long memberId, int amount, int balanceAfter, String requestId) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("환급 포인트는 0보다 커야 합니다.");
+            throw invalid("환급 포인트는 0보다 커야 합니다.");
         }
         return new RewardPointHistory(
                 memberId,
@@ -82,5 +85,9 @@ public record RewardPointHistory(
                 "REDEMPTION_REQUEST",
                 requestId
         );
+    }
+
+    private static CoreException invalid(String message) {
+        return new CoreException(ErrorCode.INVALID_REQUEST, message);
     }
 }

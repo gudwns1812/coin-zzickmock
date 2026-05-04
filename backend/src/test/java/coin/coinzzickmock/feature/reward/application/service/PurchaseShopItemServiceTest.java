@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.feature.account.application.refill.AccountRefillCreditProcessor;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
+import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository.LockedAccountRefillState;
 import coin.coinzzickmock.feature.account.application.service.AccountRefillDatePolicy;
 import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
@@ -62,23 +63,39 @@ class PurchaseShopItemServiceTest {
         }
 
         @Override
-        public AccountRefillState ensureByMemberIdAndRefillDateForUpdate(Long memberId, LocalDate refillDate) {
+        public void provisionDailyStateIfAbsent(Long memberId, LocalDate refillDate) {
             lockOrder.add("refill-state");
             if (state == null) {
                 state = AccountRefillState.daily(memberId, refillDate);
             }
+        }
+
+        @Override
+        public AccountRefillState grantExtraRefillCount(Long memberId, LocalDate refillDate, int count) {
+            lockOrder.add("refill-state");
+            if (state == null) {
+                state = AccountRefillState.daily(memberId, refillDate);
+            }
+            state = state.addCount(count).withVersion(state.version() + 1);
             return state;
         }
 
         @Override
-        public Optional<AccountRefillState> findByMemberIdAndRefillDateForUpdate(Long memberId, LocalDate refillDate) {
-            return Optional.ofNullable(state);
+        public Optional<LockedAccountRefillState> findByMemberIdAndRefillDateForUpdate(Long memberId, LocalDate refillDate) {
+            return Optional.ofNullable(state).map(ignored -> new InMemoryLockedAccountRefillState());
         }
 
-        @Override
-        public AccountRefillState save(AccountRefillState state) {
-            this.state = state.withVersion(state.version() + 1);
-            return this.state;
+        private class InMemoryLockedAccountRefillState implements LockedAccountRefillState {
+            @Override
+            public AccountRefillState state() {
+                return state;
+            }
+
+            @Override
+            public AccountRefillState consumeOne() {
+                state = state.consumeOne().withVersion(state.version() + 1);
+                return state;
+            }
         }
     }
 

@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.reward.domain;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import java.time.Instant;
 
 public record RewardRedemptionRequest(
@@ -47,19 +49,19 @@ public record RewardRedemptionRequest(
 
     public RewardRedemptionRequest {
         if (requestId == null || requestId.isBlank()) {
-            throw new IllegalArgumentException("요청 ID는 필수입니다.");
+            throw invalid("요청 ID는 필수입니다.");
         }
         if (memberId == null) {
-            throw new IllegalArgumentException("회원 ID는 필수입니다.");
+            throw invalid("회원 ID는 필수입니다.");
         }
         if (shopItemId == null) {
-            throw new IllegalArgumentException("상점 상품 ID는 필수입니다.");
+            throw invalid("상점 상품 ID는 필수입니다.");
         }
         if (pointAmount <= 0) {
-            throw new IllegalArgumentException("요청 포인트는 0보다 커야 합니다.");
+            throw invalid("요청 포인트는 0보다 커야 합니다.");
         }
         if (status == null) {
-            throw new IllegalArgumentException("교환권 요청 상태는 필수입니다.");
+            throw invalid("교환권 요청 상태는 필수입니다.");
         }
     }
 
@@ -128,7 +130,11 @@ public record RewardRedemptionRequest(
 
     private void requirePending() {
         if (status != RewardRedemptionStatus.PENDING) {
-            throw new IllegalStateException("대기 중인 교환권 요청만 처리할 수 있습니다.");
+            throw invalid("대기 중인 교환권 요청만 처리할 수 있습니다.");
         }
+    }
+
+    private static CoreException invalid(String message) {
+        return new CoreException(ErrorCode.INVALID_REQUEST, message);
     }
 }

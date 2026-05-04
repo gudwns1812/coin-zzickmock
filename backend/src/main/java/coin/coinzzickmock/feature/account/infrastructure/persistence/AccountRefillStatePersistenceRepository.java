@@ -1,6 +1,9 @@
 package coin.coinzzickmock.feature.account.infrastructure.persistence;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
+import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository.LockedAccountRefillState;
 import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -23,35 +26,47 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
 
     @Override
     @Transactional
-    public AccountRefillState ensureByMemberIdAndRefillDateForUpdate(Long memberId, LocalDate refillDate) {
-        accountRefillStateEntityRepository.insertDailyStateIfMissing(memberId, refillDate);
-        return accountRefillStateEntityRepository
-                .findWithLockingByMemberIdAndRefillDate(memberId, refillDate)
+    public void provisionDailyStateIfAbsent(Long memberId, LocalDate refillDate) {
+        accountRefillStateEntityRepository.insertDailyStateIfAbsent(memberId, refillDate);
+    }
+
+    @Override
+    @Transactional
+    public AccountRefillState grantExtraRefillCount(Long memberId, LocalDate refillDate, int count) {
+        if (count <= 0) {
+            throw invalid("추가 리필 횟수는 0보다 커야 합니다.");
+        }
+        accountRefillStateEntityRepository.insertOrAddRefillCount(memberId, refillDate, count);
+        return accountRefillStateEntityRepository.findByMemberIdAndRefillDate(memberId, refillDate)
                 .map(AccountRefillStateEntity::toDomain)
-                .orElseThrow(() -> new IllegalStateException(
-                        "리필 상태 행을 생성했지만 조회할 수 없습니다. memberId=%d, refillDate=%s"
+                .orElseThrow(() -> new CoreException(
+                        ErrorCode.INTERNAL_SERVER_ERROR,
+                        "리필 횟수를 지급했지만 상태 행을 조회할 수 없습니다. memberId=%d, refillDate=%s"
                                 .formatted(memberId, refillDate)
                 ));
     }
 
     @Override
     @Transactional
-    public Optional<AccountRefillState> findByMemberIdAndRefillDateForUpdate(Long memberId, LocalDate refillDate) {
+    public Optional<LockedAccountRefillState> findByMemberIdAndRefillDateForUpdate(Long memberId, LocalDate refillDate) {
         return accountRefillStateEntityRepository
                 .findWithLockingByMemberIdAndRefillDate(memberId, refillDate)
-                .map(AccountRefillStateEntity::toDomain);
+                .map(ManagedLockedAccountRefillState::new);
     }
 
-    @Override
-    @Transactional
-    public AccountRefillState save(AccountRefillState state) {
-        AccountRefillStateEntity entity = accountRefillStateEntityRepository
-                .findWithLockingByMemberIdAndRefillDate(state.memberId(), state.refillDate())
-                .map(existing -> {
-                    existing.apply(state);
-                    return existing;
-                })
-                .orElseGet(() -> AccountRefillStateEntity.from(state));
-        return accountRefillStateEntityRepository.save(entity).toDomain();
+    private CoreException invalid(String message) {
+        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    }
+
+    private record ManagedLockedAccountRefillState(AccountRefillStateEntity entity) implements LockedAccountRefillState {
+        @Override
+        public AccountRefillState state() {
+            return entity.toDomain();
+        }
+
+        @Override
+        public AccountRefillState consumeOne() {
+            return entity.consumeOne();
+        }
     }
 }

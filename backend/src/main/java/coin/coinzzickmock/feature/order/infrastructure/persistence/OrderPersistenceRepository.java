@@ -1,8 +1,12 @@
 package coin.coinzzickmock.feature.order.infrastructure.persistence;
 
+import static coin.coinzzickmock.feature.order.infrastructure.persistence.QFuturesOrderEntity.futuresOrderEntity;
+
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OrderPersistenceRepository implements OrderRepository {
     private final FuturesOrderEntityRepository futuresOrderEntityRepository;
+    private final JPAQueryFactory jpaQueryFactory;
 
     @Override
     @Transactional
@@ -62,19 +67,39 @@ public class OrderPersistenceRepository implements OrderRepository {
             double upperPrice,
             boolean sellSide
     ) {
-        return futuresOrderEntityRepository.findExecutablePendingLimitOrders(
-                        symbol,
-                        FuturesOrder.STATUS_PENDING,
-                        BigDecimal.valueOf(lowerPrice),
-                        BigDecimal.valueOf(upperPrice),
-                        sellSide,
-                        FuturesOrder.PURPOSE_OPEN_POSITION,
-                        FuturesOrder.PURPOSE_CLOSE_POSITION,
-                        "LONG",
-                        "SHORT"
-                ).stream()
+        return jpaQueryFactory.selectFrom(futuresOrderEntity)
+                .where(
+                        futuresOrderEntity.symbol.eq(symbol),
+                        futuresOrderEntity.status.eq(FuturesOrder.STATUS_PENDING),
+                        futuresOrderEntity.limitPrice.isNotNull(),
+                        futuresOrderEntity.limitPrice.between(
+                                BigDecimal.valueOf(lowerPrice),
+                                BigDecimal.valueOf(upperPrice)
+                        ),
+                        futuresOrderEntity.triggerPrice.isNull(),
+                        futuresOrderEntity.triggerType.isNull(),
+                        futuresOrderEntity.triggerSource.isNull(),
+                        futuresOrderEntity.ocoGroupId.isNull(),
+                        executableSidePredicate(sellSide)
+                )
+                .orderBy(futuresOrderEntity.createdAt.asc())
+                .fetch()
+                .stream()
                 .map(entity -> new PendingOrderCandidate(entity.memberId(), entity.toDomain()))
                 .toList();
+    }
+
+    private BooleanExpression executableSidePredicate(boolean sellSide) {
+        if (sellSide) {
+            return futuresOrderEntity.orderPurpose.eq(FuturesOrder.PURPOSE_OPEN_POSITION)
+                    .and(futuresOrderEntity.positionSide.eq("SHORT"))
+                    .or(futuresOrderEntity.orderPurpose.eq(FuturesOrder.PURPOSE_CLOSE_POSITION)
+                            .and(futuresOrderEntity.positionSide.eq("LONG")));
+        }
+        return futuresOrderEntity.orderPurpose.eq(FuturesOrder.PURPOSE_OPEN_POSITION)
+                .and(futuresOrderEntity.positionSide.eq("LONG"))
+                .or(futuresOrderEntity.orderPurpose.eq(FuturesOrder.PURPOSE_CLOSE_POSITION)
+                        .and(futuresOrderEntity.positionSide.eq("SHORT")));
     }
 
     @Override

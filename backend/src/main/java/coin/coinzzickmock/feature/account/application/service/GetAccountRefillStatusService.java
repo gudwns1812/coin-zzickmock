@@ -9,6 +9,7 @@ import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,8 +36,8 @@ public class GetAccountRefillStatusService {
                 state.remainingCount(),
                 disabledReason == null,
                 disabledReason,
-                TradingAccount.INITIAL_WALLET_BALANCE,
-                TradingAccount.INITIAL_AVAILABLE_MARGIN,
+                BigDecimal.valueOf(TradingAccount.INITIAL_WALLET_BALANCE),
+                BigDecimal.valueOf(TradingAccount.INITIAL_AVAILABLE_MARGIN),
                 datePolicy.nextResetAt()
         );
     }

@@ -1,8 +1,10 @@
 package coin.coinzzickmock.feature.account.application.result;
 
+import java.math.BigDecimal;
+
 public record AccountRefillResult(
-        double walletBalance,
-        double availableMargin,
+        BigDecimal walletBalance,
+        BigDecimal availableMargin,
         int remainingCount
 ) {
 }

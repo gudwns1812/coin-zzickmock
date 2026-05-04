@@ -32,7 +32,17 @@ public record AccountRefillState(
         if (count <= 0) {
             throw new IllegalArgumentException("추가 리필 횟수는 0보다 커야 합니다.");
         }
-        return new AccountRefillState(memberId, refillDate, remainingCount + count, version);
+        int updatedCount;
+        try {
+            updatedCount = Math.addExact(remainingCount, count);
+        } catch (ArithmeticException exception) {
+            throw new IllegalArgumentException(
+                    "리필 횟수 합계가 허용 범위를 초과합니다. memberId=%d, refillDate=%s"
+                            .formatted(memberId, refillDate),
+                    exception
+            );
+        }
+        return new AccountRefillState(memberId, refillDate, updatedCount, version);
     }
 
     public AccountRefillState consumeOne() {

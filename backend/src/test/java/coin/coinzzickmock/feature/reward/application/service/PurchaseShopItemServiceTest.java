@@ -39,6 +39,10 @@ class PurchaseShopItemServiceTest {
 
         assertEquals(80, result.rewardPoint());
         assertEquals(2, result.refillRemainingCount());
+        assertTrue(lockOrder.contains("refill-state"), "refill-state lock should be acquired");
+        assertTrue(lockOrder.contains("shop-item"), "shop-item lock should be acquired");
+        assertTrue(lockOrder.contains("usage"), "usage lock should be acquired");
+        assertTrue(lockOrder.contains("wallet"), "wallet lock should be acquired");
         assertTrue(lockOrder.indexOf("refill-state") < lockOrder.indexOf("shop-item"));
         assertTrue(lockOrder.indexOf("refill-state") < lockOrder.indexOf("usage"));
         assertTrue(lockOrder.indexOf("refill-state") < lockOrder.indexOf("wallet"));

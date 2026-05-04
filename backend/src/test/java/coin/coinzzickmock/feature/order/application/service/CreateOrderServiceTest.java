@@ -448,6 +448,11 @@ class CreateOrderServiceTest {
         }
 
         @Override
+        public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
+            return Optional.of(account);
+        }
+
+        @Override
         public TradingAccount create(TradingAccount account) {
             if (this.account.memberId().equals(account.memberId())) {
                 throw new IllegalStateException("account already exists");

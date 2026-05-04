@@ -10,7 +10,7 @@ public interface AccountRepository {
     Optional<TradingAccount> findByMemberId(Long memberId);
 
     default Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
-        return findByMemberId(memberId);
+        throw new UnsupportedOperationException("findByMemberIdForUpdate requires a pessimistic locking implementation");
     }
 
     default List<TradingAccount> findAll() {

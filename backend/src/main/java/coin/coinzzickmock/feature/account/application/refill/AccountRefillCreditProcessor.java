@@ -6,6 +6,7 @@ import coin.coinzzickmock.feature.account.application.service.AccountRefillDateP
 import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
@@ -14,7 +15,7 @@ public class AccountRefillCreditProcessor {
     private final AccountRefillStateRepository accountRefillStateRepository;
     private final AccountRefillDatePolicy datePolicy;
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public AccountRefillCreditResult addTodayCount(Long memberId, int count) {
         AccountRefillState current = accountRefillStateRepository
                 .ensureByMemberIdAndRefillDateForUpdate(memberId, datePolicy.today());

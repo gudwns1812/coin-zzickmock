@@ -137,6 +137,11 @@ class UpdatePositionTpslServiceTest {
             }
 
             @Override
+            public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
+                return Optional.of(TradingAccount.openDefault(memberId, "demo@coinzzickmock.dev", "Demo"));
+            }
+
+            @Override
             public TradingAccount create(TradingAccount account) {
                 return account;
             }

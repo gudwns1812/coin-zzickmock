@@ -28,7 +28,10 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
         return accountRefillStateEntityRepository
                 .findWithLockingByMemberIdAndRefillDate(memberId, refillDate)
                 .map(AccountRefillStateEntity::toDomain)
-                .orElseThrow();
+                .orElseThrow(() -> new IllegalStateException(
+                        "리필 상태 행을 생성했지만 조회할 수 없습니다. memberId=%d, refillDate=%s"
+                                .formatted(memberId, refillDate)
+                ));
     }
 
     @Override

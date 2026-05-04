@@ -822,6 +822,11 @@ class MarketOrderExecutionServiceTest {
         }
 
         @Override
+        public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
+            return Optional.ofNullable(accounts.get(memberId));
+        }
+
+        @Override
         public TradingAccount create(TradingAccount account) {
             if (accounts.containsKey(account.memberId())) {
                 throw new IllegalStateException("account already exists");

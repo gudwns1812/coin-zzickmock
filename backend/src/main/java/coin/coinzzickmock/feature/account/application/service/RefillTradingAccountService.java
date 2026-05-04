@@ -12,6 +12,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,8 +44,8 @@ public class RefillTradingAccountService {
         afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
 
         return new AccountRefillResult(
-                updatedAccount.walletBalance(),
-                updatedAccount.availableMargin(),
+                BigDecimal.valueOf(updatedAccount.walletBalance()),
+                BigDecimal.valueOf(updatedAccount.availableMargin()),
                 savedState.remainingCount()
         );
     }

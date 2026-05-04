@@ -18,6 +18,7 @@ import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -44,8 +45,8 @@ class RefillTradingAccountServiceTest {
 
         AccountRefillResult result = service.refill(1L);
 
-        assertEquals(100_000, result.walletBalance(), 0.0001);
-        assertEquals(100_000, result.availableMargin(), 0.0001);
+        assertEquals(BigDecimal.valueOf(100_000.0), result.walletBalance());
+        assertEquals(BigDecimal.valueOf(100_000.0), result.availableMargin());
         assertEquals(0, result.remainingCount());
         TradingAccount account = accountRepository.findByMemberId(1L).orElseThrow();
         assertEquals(100_000, account.walletBalance(), 0.0001);
@@ -152,6 +153,11 @@ class RefillTradingAccountServiceTest {
 
         @Override
         public Optional<TradingAccount> findByMemberId(Long memberId) {
+            return Optional.ofNullable(account);
+        }
+
+        @Override
+        public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
             return Optional.ofNullable(account);
         }
 

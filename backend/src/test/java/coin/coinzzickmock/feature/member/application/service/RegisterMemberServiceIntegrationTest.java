@@ -3,7 +3,9 @@ package coin.coinzzickmock.feature.member.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
+import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.service.AccountRefillDatePolicy;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
@@ -29,6 +31,12 @@ class RegisterMemberServiceIntegrationTest {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private AccountRefillStateRepository accountRefillStateRepository;
+
+    @Autowired
+    private AccountRefillDatePolicy accountRefillDatePolicy;
 
     @Autowired
     private CapturedWalletEvents capturedWalletEvents;
@@ -57,6 +65,13 @@ class RegisterMemberServiceIntegrationTest {
         TradingAccount account = accountRepository.findByMemberId(result.memberId()).orElseThrow();
         assertThat(account.walletBalance()).isEqualTo(TradingAccount.INITIAL_WALLET_BALANCE);
         assertThat(account.availableMargin()).isEqualTo(TradingAccount.INITIAL_WALLET_BALANCE);
+        assertThat(accountRefillStateRepository.findByMemberIdAndRefillDate(
+                result.memberId(),
+                accountRefillDatePolicy.today()
+        ))
+                .get()
+                .extracting(state -> state.remainingCount())
+                .isEqualTo(1);
         assertThat(capturedWalletEvents.memberIds()).contains(result.memberId());
     }
 

@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import java.time.LocalDate;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AccountRefillStatePersistenceRepository implements AccountRefillStateRepository {
     private final AccountRefillStateEntityRepository accountRefillStateEntityRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional(readOnly = true)
@@ -27,7 +29,16 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
     @Override
     @Transactional
     public void provisionDailyStateIfAbsent(Long memberId, LocalDate refillDate) {
-        accountRefillStateEntityRepository.insertDailyStateIfAbsent(memberId, refillDate);
+        jdbcTemplate.update(
+                """
+                        INSERT IGNORE INTO account_refill_states (
+                            member_id, refill_date, remaining_count, version
+                        )
+                        VALUES (?, ?, 1, 0)
+                        """,
+                memberId,
+                refillDate
+        );
     }
 
     @Override
@@ -36,7 +47,22 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
         if (count <= 0) {
             throw invalid("추가 리필 횟수는 0보다 커야 합니다.");
         }
-        accountRefillStateEntityRepository.insertOrAddRefillCount(memberId, refillDate, count);
+        jdbcTemplate.update(
+                """
+                        INSERT INTO account_refill_states (
+                            member_id, refill_date, remaining_count, version
+                        )
+                        VALUES (?, ?, 1 + ?, 0)
+                        ON DUPLICATE KEY UPDATE
+                            remaining_count = remaining_count + ?,
+                            version = version + 1,
+                            updated_at = CURRENT_TIMESTAMP(6)
+                        """,
+                memberId,
+                refillDate,
+                count,
+                count
+        );
         return accountRefillStateEntityRepository.findByMemberIdAndRefillDate(memberId, refillDate)
                 .map(AccountRefillStateEntity::toDomain)
                 .orElseThrow(() -> new CoreException(

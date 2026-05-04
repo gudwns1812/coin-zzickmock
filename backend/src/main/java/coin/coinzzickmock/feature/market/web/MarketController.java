@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.realtime.CurrentMarketCandleBootstrapper;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
@@ -32,6 +33,7 @@ public class MarketController {
     private final MarketRealtimeSseBroker marketRealtimeSseBroker;
     private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker;
     private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
+    private final CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper;
     private final long streamTimeoutMs;
 
     @Autowired
@@ -41,6 +43,7 @@ public class MarketController {
             MarketRealtimeSseBroker marketRealtimeSseBroker,
             MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
+            CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper,
             @Value("${coin.market.sse.timeout-ms:300000}") long streamTimeoutMs
     ) {
         this.getMarketSummaryService = getMarketSummaryService;
@@ -48,7 +51,27 @@ public class MarketController {
         this.marketRealtimeSseBroker = marketRealtimeSseBroker;
         this.marketCandleRealtimeSseBroker = marketCandleRealtimeSseBroker;
         this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
+        this.currentMarketCandleBootstrapper = currentMarketCandleBootstrapper;
         this.streamTimeoutMs = streamTimeoutMs;
+    }
+
+    MarketController(
+            GetMarketSummaryService getMarketSummaryService,
+            GetMarketCandlesService getMarketCandlesService,
+            MarketRealtimeSseBroker marketRealtimeSseBroker,
+            MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
+            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
+            long streamTimeoutMs
+    ) {
+        this(
+                getMarketSummaryService,
+                getMarketCandlesService,
+                marketRealtimeSseBroker,
+                marketCandleRealtimeSseBroker,
+                realtimeMarketCandleProjector,
+                null,
+                streamTimeoutMs
+        );
     }
 
     @GetMapping
@@ -102,6 +125,9 @@ public class MarketController {
     public SseEmitter candleStream(@PathVariable String symbol, @RequestParam String interval) {
         MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
         SseEmitter emitter = createEmitter();
+        if (currentMarketCandleBootstrapper != null) {
+            currentMarketCandleBootstrapper.bootstrapIfNeeded(symbol, candleInterval);
+        }
         boolean initialSendSucceeded = realtimeMarketCandleProjector.latest(symbol, candleInterval)
                 .map(candle -> sendCandleEvent(emitter, candle))
                 .orElse(true);

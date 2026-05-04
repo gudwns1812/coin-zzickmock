@@ -10,10 +10,13 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -120,6 +123,49 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Instant> findLatestCompletedHourlyCandleOpenTime(long symbolId) {
+        return findLatestCompletedHourlyCandleOpenTimeBefore(symbolId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findLatestCompletedHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
+        List<HourlyMarketCandle> candidates;
+        if (beforeExclusive == null) {
+            candidates = jdbcTemplate.query(
+                    """
+                            SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
+                                   close_price, volume, quote_volume, source_minute_open_time, source_minute_close_time
+                            FROM market_candles_1h
+                            WHERE symbol_id = ?
+                            ORDER BY open_time DESC
+                            """,
+                    (rs, rowNum) -> toHourlyCandle(rs),
+                    symbolId
+            );
+        } else {
+            candidates = jdbcTemplate.query(
+                    """
+                            SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
+                                   close_price, volume, quote_volume, source_minute_open_time, source_minute_close_time
+                            FROM market_candles_1h
+                            WHERE symbol_id = ? AND open_time < ?
+                            ORDER BY open_time DESC
+                            """,
+                    (rs, rowNum) -> toHourlyCandle(rs),
+                    symbolId,
+                    utcDateTimeText(beforeExclusive)
+            );
+        }
+
+        return candidates.stream()
+                .filter(this::hasContiguousMinuteCoverage)
+                .map(HourlyMarketCandle::openTime)
+                .findFirst();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime) {
         return jdbcTemplate.query(
                 """
@@ -184,6 +230,18 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                 utcDateTimeText(fromInclusive),
                 utcDateTimeText(toExclusive)
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HourlyMarketCandle> findCompletedHourlyCandles(
+            long symbolId,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        return findHourlyCandles(symbolId, fromInclusive, toExclusive).stream()
+                .filter(this::hasContiguousMinuteCoverage)
+                .toList();
     }
 
     @Override
@@ -307,6 +365,35 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     private static Instant utcInstant(LocalDateTime dateTime) {
         return dateTime.toInstant(ZoneOffset.UTC);
+    }
+
+    private boolean hasContiguousMinuteCoverage(HourlyMarketCandle candle) {
+        if (!candle.closeTime().equals(candle.openTime().plus(1, ChronoUnit.HOURS))) {
+            return false;
+        }
+
+        List<Instant> storedMinuteOpenTimes = jdbcTemplate.query(
+                """
+                        SELECT open_time
+                        FROM market_candles_1m
+                        WHERE symbol_id = ? AND open_time >= ? AND open_time < ?
+                        ORDER BY open_time ASC
+                        """,
+                OPEN_TIME_MAPPER,
+                candle.symbolId(),
+                utcDateTimeText(candle.openTime()),
+                utcDateTimeText(candle.closeTime())
+        );
+        Set<Instant> storedMinuteOpenTimeSet = new HashSet<>(storedMinuteOpenTimes);
+
+        Instant expectedMinuteOpenTime = candle.openTime();
+        while (expectedMinuteOpenTime.isBefore(candle.closeTime())) {
+            if (!storedMinuteOpenTimeSet.contains(expectedMinuteOpenTime)) {
+                return false;
+            }
+            expectedMinuteOpenTime = expectedMinuteOpenTime.plus(1, ChronoUnit.MINUTES);
+        }
+        return expectedMinuteOpenTime.equals(candle.closeTime());
     }
 
     private static double nullableDouble(BigDecimal value) {

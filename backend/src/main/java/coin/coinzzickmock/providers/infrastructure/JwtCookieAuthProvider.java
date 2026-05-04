@@ -10,6 +10,7 @@ import coin.coinzzickmock.providers.auth.AuthProvider;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,12 +33,17 @@ public class JwtCookieAuthProvider implements AuthProvider {
 
     @Override
     public boolean isAuthenticated() {
+        return currentActorOptional().isPresent();
+    }
+
+    @Override
+    public Optional<Actor> currentActorOptional() {
         try {
             AuthSessionClaims claims = parseOptionalClaims();
-            return claims != null && lookupActor(claims).isPresent();
+            return claims == null ? Optional.empty() : lookupActor(claims);
         } catch (CoreException exception) {
             log.debug("Optional authentication failed; treating request as anonymous.", exception);
-            return false;
+            return Optional.empty();
         }
     }
 
@@ -64,14 +70,14 @@ public class JwtCookieAuthProvider implements AuthProvider {
                 .orElse(null);
     }
 
-    private java.util.Optional<Actor> lookupActor(AuthSessionClaims claims) {
+    private Optional<Actor> lookupActor(AuthSessionClaims claims) {
         if (claims.memberId() != null) {
             return actorLookup.findByMemberId(claims.memberId());
         }
         if (claims.account() != null && !claims.account().isBlank()) {
             return actorLookup.findByAccount(claims.account());
         }
-        return java.util.Optional.empty();
+        return Optional.empty();
     }
 
     private HttpServletRequest currentRequest() {

@@ -18,4 +18,15 @@ class LeaderboardSnapshotStoreAdapterTest {
 
         assertTrue(source.contains("reverseRangeWithScores"));
     }
+
+    @Test
+    void findsMyRankWithRedisReverseRank() throws IOException {
+        String source = Files.readString(
+                Path.of("src/main/java/coin/coinzzickmock/feature/leaderboard/infrastructure/store/LeaderboardSnapshotStoreAdapter.java"),
+                StandardCharsets.UTF_8
+        );
+
+        assertTrue(source.contains("reverseRank"));
+        assertTrue(source.contains("zeroBasedRank + 1"));
+    }
 }

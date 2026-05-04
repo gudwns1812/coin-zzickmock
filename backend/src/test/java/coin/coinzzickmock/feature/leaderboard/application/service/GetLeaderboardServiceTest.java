@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
+import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
@@ -85,6 +87,41 @@ class GetLeaderboardServiceTest {
     }
 
     @Test
+    void calculatesMyRankFromDatabaseUsingSingleProfitRateOrder() {
+        GetLeaderboardService service = new GetLeaderboardService(
+                new InMemoryProjectionRepository(List.of(
+                        entry(1L, "First", 150_000),
+                        entry(2L, "TieLowerMemberId", 120_000),
+                        entry(3L, "TieHigherMemberId", 120_000),
+                        entry(4L, "Loss", 90_000)
+                )),
+                List.of()
+        );
+
+        LeaderboardResult result = service.get("profitRate", "2", Optional.of(3L));
+
+        assertEquals("database", result.source());
+        assertEquals(3, result.myRank().orElseThrow().rank());
+        assertEquals(2, result.entries().size());
+    }
+
+    @Test
+    void returnsMyRankFromRedisSnapshotWithoutDatabaseFallback() {
+        GetLeaderboardService service = new GetLeaderboardService(
+                new InMemoryProjectionRepository(List.of(entry(10L, "Database", 200_000))),
+                List.of(new InMemorySnapshotStore(
+                        List.of(entry(11L, "Redis", 130_000)),
+                        Optional.of(7)
+                ))
+        );
+
+        LeaderboardResult result = service.get("profitRate", "1", Optional.of(99L));
+
+        assertEquals("redis", result.source());
+        assertEquals(7, result.myRank().orElseThrow().rank());
+    }
+
+    @Test
     void rejectsInvalidModeAndLimit() {
         GetLeaderboardService service = new GetLeaderboardService(
                 new InMemoryProjectionRepository(List.of()),
@@ -126,14 +163,33 @@ class GetLeaderboardServiceTest {
 
     private static class InMemorySnapshotStore implements LeaderboardSnapshotStore {
         private final List<LeaderboardEntry> entries;
+        private final Optional<Integer> myRank;
 
         private InMemorySnapshotStore(List<LeaderboardEntry> entries) {
+            this(entries, Optional.empty());
+        }
+
+        private InMemorySnapshotStore(List<LeaderboardEntry> entries, Optional<Integer> myRank) {
             this.entries = new ArrayList<>(entries);
+            this.myRank = myRank;
         }
 
         @Override
         public Optional<LeaderboardSnapshot> findTop(LeaderboardMode mode, int limit, int tieSlack) {
             return Optional.of(new LeaderboardSnapshot(entries, Instant.parse("2026-04-26T00:00:01Z")));
+        }
+
+        @Override
+        public Optional<LeaderboardSnapshotResult> findSnapshot(
+                LeaderboardMode mode,
+                int limit,
+                Optional<Long> currentMemberId
+        ) {
+            return Optional.of(new LeaderboardSnapshotResult(
+                    entries,
+                    Instant.parse("2026-04-26T00:00:01Z"),
+                    myRank.map(LeaderboardMemberRankResult::new)
+            ));
         }
 
         @Override

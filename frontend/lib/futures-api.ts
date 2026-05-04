@@ -2,6 +2,7 @@ import {
   MARKET_SNAPSHOT_LIST,
   MARKET_SNAPSHOTS,
   SUPPORTED_MARKET_SYMBOLS,
+  type MarketRankingMemberRank,
   type MarketRankingEntry,
   type MarketSnapshot,
   type MarketSymbol,
@@ -141,6 +142,7 @@ export type FuturesLeaderboard = {
   source: "redis" | "database" | "empty";
   lastRefreshedAt: string | null;
   entries: MarketRankingEntry[];
+  myRank: MarketRankingMemberRank | null;
 };
 
 export type ShopItem = {
@@ -453,6 +455,7 @@ export async function getFuturesLeaderboard(): Promise<FuturesLeaderboard> {
     source: "empty",
     lastRefreshedAt: null,
     entries: [],
+    myRank: null,
   };
 }
 

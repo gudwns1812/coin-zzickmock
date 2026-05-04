@@ -2,7 +2,9 @@ package coin.coinzzickmock.feature.leaderboard.infrastructure.store;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
@@ -41,18 +43,78 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
 
     @Override
     public Optional<LeaderboardSnapshot> findTop(LeaderboardMode mode, int limit, int tieSlack) {
+        return readSnapshot(mode, limit + tieSlack)
+                .map(snapshot -> new LeaderboardSnapshot(snapshot.entries(), snapshot.refreshedAt()));
+    }
+
+    @Override
+    public Optional<LeaderboardSnapshotResult> findSnapshot(
+            LeaderboardMode mode,
+            int limit,
+            Optional<Long> currentMemberId
+    ) {
         String version = redisTemplate.opsForValue().get(activePointerKey());
         if (version == null || version.isBlank()) {
             return Optional.empty();
         }
 
-        int candidateCount = Math.max(limit, limit + tieSlack);
+        Optional<LeaderboardMemberRankResult> myRank = currentMemberId
+                .flatMap(memberId -> findMyRank(version, mode, memberId));
+
         Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
-                .reverseRangeWithScores(zsetKey(version, mode), 0, candidateCount - 1);
+                .reverseRangeWithScores(zsetKey(version, mode), 0, limit - 1);
         if (tuples == null || tuples.isEmpty()) {
             return Optional.empty();
         }
 
+        List<LeaderboardEntry> entries = hydrateEntries(version, tuples);
+        if (entries.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new LeaderboardSnapshotResult(
+                entries,
+                readRefreshedAt(version),
+                myRank
+        ));
+    }
+
+    private Optional<LeaderboardSnapshotResult> readSnapshot(LeaderboardMode mode, int limit) {
+        String version = redisTemplate.opsForValue().get(activePointerKey());
+        if (version == null || version.isBlank()) {
+            return Optional.empty();
+        }
+
+        Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
+                .reverseRangeWithScores(zsetKey(version, mode), 0, limit - 1);
+        if (tuples == null || tuples.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<LeaderboardEntry> entries = hydrateEntries(version, tuples);
+        if (entries.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new LeaderboardSnapshotResult(
+                entries,
+                readRefreshedAt(version),
+                Optional.empty()
+        ));
+    }
+
+    private Optional<LeaderboardMemberRankResult> findMyRank(String version, LeaderboardMode mode, Long memberId) {
+        Long zeroBasedRank = redisTemplate.opsForZSet().reverseRank(zsetKey(version, mode), memberKey(memberId));
+        if (zeroBasedRank == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new LeaderboardMemberRankResult(Math.toIntExact(zeroBasedRank + 1)));
+    }
+
+    private List<LeaderboardEntry> hydrateEntries(
+            String version,
+            Set<ZSetOperations.TypedTuple<String>> tuples
+    ) {
         List<String> memberIds = tuples.stream()
                 .map(ZSetOperations.TypedTuple::getValue)
                 .toList();
@@ -65,14 +127,7 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
             }
         }
 
-        if (entriesByMemberId.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(new LeaderboardSnapshot(
-                List.copyOf(entriesByMemberId.values()),
-                readRefreshedAt(version)
-        ));
+        return List.copyOf(entriesByMemberId.values());
     }
 
     @Override

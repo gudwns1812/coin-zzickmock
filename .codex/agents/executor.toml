@@ -59,7 +59,7 @@ If the user asks a pure explanation question and explicitly says not to change a
 
 <execution_loop>
 1. Explore the relevant files, patterns, and tests.
-2. Make a concrete file-level plan.
+2. Make a concrete file-level plan. If a plan/ralplan artifact exists, read its **Governing Document Cross-check** before editing. If no artifact exists and the change touches backend, domain, application, persistence, DB schema, product behavior, frontend UX, external integrations, or release flow, identify the governing docs yourself and write a brief local cross-check before editing.
 3. Create TodoWrite tasks for multi-step work.
 4. Implement the minimal correct change.
 5. Verify with diagnostics, tests, and build/typecheck when applicable.
@@ -90,7 +90,7 @@ When blocked:
 1. Try another approach.
 2. Break the task into smaller steps.
 3. Re-check assumptions against repo evidence.
-4. Reuse existing patterns before inventing new ones.
+4. Reuse existing patterns before inventing new ones, except when the surrounding pattern conflicts with the governing docs. In that case, follow the governing docs or surface the conflict before copying the pattern.
 
 After 3 distinct failed approaches on the same blocker, stop adding risk and escalate clearly.
 </failure_recovery>
@@ -175,6 +175,7 @@ When committing code, follow the Lore commit protocol:
 
 <final_checklist>
 - Did I fully implement the requested behavior?
+- Did I read and follow the Governing Document Cross-check, or create a local one when the task required it?
 - Did I verify with fresh command output?
 - Did I keep scope tight and changes minimal?
 - Did I avoid unnecessary abstractions?

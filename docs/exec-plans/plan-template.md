@@ -49,6 +49,23 @@
 - 관련 코드 경로:
 - 선행 조건:
 
+## 문서 원문 대조표
+
+계획이 backend, domain, application, persistence, DB, product spec, frontend UX 중 하나라도 건드리면 아래 표를 먼저 채운다.
+제품/DB 문서는 기능 의미와 데이터 계약을 설명하고, backend/frontend 설계 문서는 구현 방식의 원문 제약으로 본다.
+제품 문서나 생성 문서를 새로 고쳤다는 이유로 기존 설계 문서의 구현 규칙을 우회하지 않는다.
+
+| 작업 영역 | 반드시 읽은 원문 문서 | 적용해야 하는 규칙 | 구현 선택 | 금지한 shortcut | 검증 방법 |
+| --- | --- | --- | --- | --- | --- |
+| 예: backend persistence | `docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md`, `docs/generated/db-schema.md` | create/update/read 계약 분리, 조회 중 자동 생성 금지 |  | native upsert로 보장 생성 숨기기, generic save로 create/update 섞기 |  |
+
+대조표 점검:
+
+- [ ] 작업 영역별 원문 문서를 실제로 읽었다.
+- [ ] 제품/DB 문서와 설계 문서의 책임 차이를 구분했다.
+- [ ] 주변 코드 패턴이 원문 문서와 충돌할 때 어느 쪽을 우선할지 명시했다.
+- [ ] 금지한 shortcut을 구현 단계와 리뷰 단계에서 다시 확인할 수 있다.
+
 ## 작업 계획
 
 1. 무엇을 바꿀지

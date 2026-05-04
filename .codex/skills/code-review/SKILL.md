@@ -30,20 +30,34 @@ Delegates to the `code-reviewer` agent (THOROUGH tier) for deep analysis:
    - Run `git diff` to find changed files
    - Determine scope of review (specific files or entire PR)
 
-2. **Review Categories**
+2. **Stage 0 - Governing Document Cross-check**
+   - Before spec compliance or code quality review, read the PR description, linked issue/spec, latest user review comments, and governing project documents for each affected area
+   - For backend, domain, application, persistence, DB schema, product behavior, frontend UX, external integrations, or release flow, produce this table:
+     `Area | Governing documents read | Rules applied | Implementation under review | Shortcuts forbidden | Verification expected`
+   - Separate product/generated documents (feature meaning and data contract) from design documents (implementation rules)
+   - Do not let product/generated documents justify bypassing governing implementation rules
+   - If governing documents are missing, stale, or not read, stop before Stage 1 and report a review-blocking finding
+
+3. **Stage 1 - Spec Compliance**
+   - Does implementation cover all requirements?
+   - Does it solve the right problem?
+   - Would the requester recognize this as their request?
+   - Are there extra behaviors or omitted edge cases?
+
+4. **Stage 2 - Review Categories**
    - **Security** - Hardcoded secrets, injection risks, XSS, CSRF
    - **Code Quality** - Function size, complexity, nesting depth
    - **Performance** - Algorithm efficiency, N+1 queries, caching
    - **Best Practices** - Naming, documentation, error handling
    - **Maintainability** - Duplication, coupling, testability
 
-3. **Severity Rating**
+5. **Severity Rating**
    - **CRITICAL** - Security vulnerability (must fix before merge)
    - **HIGH** - Bug or major code smell (should fix before merge)
    - **MEDIUM** - Minor issue (fix when possible)
    - **LOW** - Style/suggestion (consider fixing)
 
-4. **Specific Recommendations**
+6. **Specific Recommendations**
    - File:line locations for each issue
    - Concrete fix suggestions
    - Code examples where applicable
@@ -60,7 +74,19 @@ Review code changes for quality, security, and maintainability.
 
 Scope: [git diff or specific files]
 
-Review Checklist:
+Stage 0 - Governing Document Cross-check:
+- Read PR description, linked issue/spec, latest user review comments, and governing project documents for every affected area before spec/code review
+- For backend/domain/application/persistence/DB schema/product behavior/frontend UX/external integration/release changes, output:
+  Area | Governing documents read | Rules applied | Implementation under review | Shortcuts forbidden | Verification expected
+- If governing documents were not read or the implementation cites product/generated docs while bypassing design rules, stop before Stage 1 and report a blocking finding
+
+Stage 1 - Spec Compliance:
+- Does implementation cover all requirements?
+- Does it solve the right problem?
+- Would the requester recognize this as their request?
+- Are there missing or extra behaviors?
+
+Stage 2 - Review Checklist:
 - Security vulnerabilities (OWASP Top 10)
 - Code quality (complexity, duplication)
 - Performance issues (N+1, inefficient algorithms)
@@ -68,6 +94,7 @@ Review Checklist:
 - Maintainability (coupling, testability)
 
 Output: Code review report with:
+- Governing Document Cross-check table or blocking Stage 0 finding
 - Files reviewed count
 - Issues by severity (CRITICAL, HIGH, MEDIUM, LOW)
 - Specific file:line locations

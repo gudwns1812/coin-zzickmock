@@ -32,6 +32,8 @@ $ralplan --interactive "task description"
 - Treat newer user task updates as local overrides for the active workflow branch while preserving earlier non-conflicting constraints.
 - If correctness depends on additional inspection, retrieval, execution, or verification, keep using the relevant tools until the consensus-planning flow is grounded.
 - Right-size implementation steps and PRD story counts to the actual scope; do not default to exactly five steps when the task is clearly smaller or larger.
+- When planning touches backend, domain, application, persistence, DB schema, product behavior, frontend UX, external integrations, or release flow, the consensus plan MUST include a **Governing Document Cross-check**. This is a hard planning artifact, not a courtesy note.
+- The cross-check MUST separate product/DB documents (feature meaning and data contract) from backend/frontend design documents (implementation rules). Do not let updated product/generated docs justify bypassing governing implementation rules; revise the governing design doc explicitly or plan an implementation that obeys it.
 - Continue through clear, low-risk, reversible next steps automatically; ask only when the next step is materially branching, destructive, or preference-dependent.
 
 This skill invokes the Plan skill in consensus mode:
@@ -47,10 +49,12 @@ The consensus workflow:
    - Decision Drivers (top 3)
    - Viable Options (>=2) with bounded pros/cons
    - If only one viable option remains, explicit invalidation rationale for alternatives
+   - Governing Document Cross-check for any affected code/schema/product/UI/release/integration area, using:
+     `Area | Governing documents read | Rules applied | Implementation choice | Shortcuts forbidden | Verification`
    - Deliberate mode only: pre-mortem (3 scenarios) + expanded test plan (unit/integration/e2e/observability)
 2. **User feedback** *(--interactive only)*: If `--interactive` is set, use `AskUserQuestion` to present the draft plan **plus the Principles / Drivers / Options summary** before review (Proceed to review / Request changes / Skip review). Otherwise, automatically proceed to review.
-3. **Architect** reviews for architectural soundness and must provide the strongest steelman antithesis, at least one real tradeoff tension, and (when possible) synthesis — **await completion before step 4**. In deliberate mode, Architect should explicitly flag principle violations.
-4. **Critic** evaluates against quality criteria — run only after step 3 completes. Critic must enforce principle-option consistency, fair alternatives, risk mitigation clarity, testable acceptance criteria, and concrete verification steps. In deliberate mode, Critic must reject missing/weak pre-mortem or expanded test plan.
+3. **Architect** reviews for architectural soundness and must provide the strongest steelman antithesis, at least one real tradeoff tension, and (when possible) synthesis — **await completion before step 4**. Architect must also verify any required Governing Document Cross-check against the actual governing docs and flag plans that use product/generated docs to override implementation design rules. In deliberate mode, Architect should explicitly flag principle violations.
+4. **Critic** evaluates against quality criteria — run only after step 3 completes. Critic must enforce principle-option consistency, fair alternatives, risk mitigation clarity, testable acceptance criteria, concrete verification steps, and Governing Document Cross-check completeness. Critic must reject a missing required cross-check, a shallow cross-check, or a cross-check that omits relevant implementation design docs. In deliberate mode, Critic must reject missing/weak pre-mortem or expanded test plan.
 5. **Re-review loop** (max 5 iterations): Any non-`APPROVE` Critic verdict (`ITERATE` or `REJECT`) MUST run the same full closed loop:
    a. Collect Architect + Critic feedback
    b. Revise the plan with Planner

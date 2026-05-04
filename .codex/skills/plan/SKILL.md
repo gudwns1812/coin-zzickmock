@@ -33,6 +33,8 @@ Jumping into code without understanding requirements leads to rework, scope cree
 - When session guidance enables `USE_OMX_EXPLORE_CMD`, prefer `omx explore` for simple read-only repository lookups during planning; keep prompts narrow and concrete, and keep prompt-heavy or ambiguous planning work on the richer normal path and fall back normally if `omx explore` is unavailable.
 - Plans must meet quality standards: 80%+ claims cite file/line, 90%+ criteria are testable
 - Implementation step count must be right-sized to task scope; avoid defaulting to exactly five steps when the work is clearly smaller or larger
+- Plans that touch backend, domain, application, persistence, DB schema, product behavior, frontend UX, external integrations, or release flow MUST include a **Governing Document Cross-check** before implementation steps. This cross-check is not optional process text; it is the implementation constraint surface for executors and reviewers.
+- The cross-check MUST distinguish product/DB documents (feature meaning and data contract) from backend/frontend design documents (implementation rules). A newly updated product or generated DB document MUST NOT be used to bypass an older governing design rule; either revise the governing design document explicitly or plan an implementation that obeys it.
 - Consensus mode outputs the final plan by default; add `--interactive` to enable execution handoff
 - Consensus mode uses RALPLAN-DR short mode by default; switch to deliberate mode with `--deliberate` or when the request explicitly signals high risk (auth/security, data migration, destructive/irreversible changes, production incident, compliance/PII, public API breakage)
 - Default to concise, evidence-dense progress and completion reporting unless the user or risk level requires more detail
@@ -65,7 +67,7 @@ Jumping into code without understanding requirements leads to rework, scope cree
 ### Direct Mode (detailed requests)
 
 1. **Quick Analysis**: Optional brief Analyst consultation
-2. **Create plan**: Generate comprehensive work plan immediately
+2. **Create plan**: Generate comprehensive work plan immediately. If the task touches code, schema, product behavior, UI, release, or external integration, include a **Governing Document Cross-check** table before implementation steps.
 3. **Review** (optional): Critic review if requested
 
 ### Consensus Mode (`--consensus` / "ralplan")
@@ -77,14 +79,15 @@ Jumping into code without understanding requirements leads to rework, scope cree
    - **Decision Drivers** (top 3)
    - **Viable Options** (>=2) with bounded pros/cons for each option
    - If only one viable option remains, an explicit **invalidation rationale** for the alternatives that were rejected
+   - A **Governing Document Cross-check** when the plan touches backend, domain, application, persistence, DB schema, product behavior, frontend UX, external integrations, or release flow
    - In **deliberate mode**: a **pre-mortem** (3 failure scenarios) and an **expanded test plan** covering **unit / integration / e2e / observability**
 2. **User feedback** *(--interactive only)*: If running with `--interactive`, **MUST** use `AskUserQuestion` to present the draft plan **plus the RALPLAN-DR Principles / Decision Drivers / Options summary for early direction alignment** with these options:
    - **Proceed to review** — send to Architect and Critic for evaluation
    - **Request changes** — return to step 1 with user feedback incorporated
    - **Skip review** — go directly to final approval (step 7)
    If NOT running with `--interactive`, automatically proceed to review (step 3).
-3. **Architect** reviews for architectural soundness using `ask_codex` with `agent_role: "architect"`. Architect review **MUST** include: strongest steelman counterargument (antithesis) against the favored option, at least one meaningful tradeoff tension, and (when possible) a synthesis path. In deliberate mode, Architect should explicitly flag principle violations. **Wait for this step to complete before proceeding to step 4.** Do NOT run steps 3 and 4 in parallel.
-4. **Critic** evaluates against quality criteria using `ask_codex` with `agent_role: "critic"`. Critic **MUST** verify principle-option consistency, fair alternative exploration, risk mitigation clarity, testable acceptance criteria, and concrete verification steps. Critic **MUST** explicitly reject shallow alternatives, driver contradictions, vague risks, or weak verification. In deliberate mode, Critic **MUST** reject missing/weak pre-mortem or missing/weak expanded test plan. Run only after step 3 is complete.
+3. **Architect** reviews for architectural soundness using `ask_codex` with `agent_role: "architect"`. Architect review **MUST** include: strongest steelman counterargument (antithesis) against the favored option, at least one meaningful tradeoff tension, and (when possible) a synthesis path. When a Governing Document Cross-check is present or required, Architect **MUST** verify that the plan applies the correct governing documents and does not let product/DB docs override implementation design rules. In deliberate mode, Architect should explicitly flag principle violations. **Wait for this step to complete before proceeding to step 4.** Do NOT run steps 3 and 4 in parallel.
+4. **Critic** evaluates against quality criteria using `ask_codex` with `agent_role: "critic"`. Critic **MUST** verify principle-option consistency, fair alternative exploration, risk mitigation clarity, testable acceptance criteria, concrete verification steps, and Governing Document Cross-check completeness. Critic **MUST** explicitly reject shallow alternatives, driver contradictions, vague risks, weak verification, a missing required cross-check, or a cross-check that cites product/generated docs while skipping the governing implementation design docs. In deliberate mode, Critic **MUST** reject missing/weak pre-mortem or missing/weak expanded test plan. Run only after step 3 is complete.
 5. **Re-review loop** (max 5 iterations): If Critic rejects or iterates, execute this closed loop:
    a. Collect all feedback from Architect + Critic
    b. Pass feedback to Planner to produce a revised plan
@@ -123,6 +126,8 @@ Jumping into code without understanding requirements leads to rework, scope cree
 
 Every plan includes:
 - Requirements Summary
+- Governing Document Cross-check when the task touches code, schema, product behavior, UI, release, or external integration. Use this table:
+  `Area | Governing documents read | Rules applied | Implementation choice | Shortcuts forbidden | Verification`
 - Acceptance Criteria (testable)
 - Implementation Steps (with file references)
 - Adaptive step count sized to the actual scope (not a fixed five-step template)

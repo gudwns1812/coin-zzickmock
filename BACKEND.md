@@ -72,6 +72,14 @@
 아래는 상세 설계 문서로 내려가지 않더라도 기억해야 하는 핵심 규칙이다.
 
 - 문서의 내용과 다르게 유저의 지시사항으로 변경되거나 추가되면 반드시 문서도 업데이트를 한다.
+- backend 계획과 구현은 제품/DB 문서만으로 시작하지 않는다. 작업이 `domain`, `application`, `infrastructure`,
+  persistence, DB/schema, provider, release 계약을 건드리면 먼저 "문서 원문 대조표"를 만들고, 읽은 원문 문서,
+  적용할 구현 규칙, 선택한 구현 방식, 금지할 shortcut, 검증 방법을 명시한다.
+- 제품 명세와 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)는
+  기능 의미와 데이터 계약을 설명한다. 구현 방식의 원문은 [docs/design-docs/backend-design/](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design)
+  상세 설계 문서다. 제품/DB 문서를 새로 갱신했다는 이유로 기존 backend 설계 규칙을 우회하지 않는다.
+- 제품/DB 계약과 backend 설계 규칙이 충돌하면, 구현을 시작하기 전에 어떤 문서가 원문인지 명시하고 필요한 경우
+  적절한 backend 상세 설계 문서를 함께 갱신한다.
 - 백엔드는 `feature-first`로 자른다.
 - 레이어는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정한다.
 - `web` package 이름 변경은 Java package 책임을 바꾸는 일이며, HTTP URL path의 `/api/futures/**` 명칭을 바꾸지 않는다.

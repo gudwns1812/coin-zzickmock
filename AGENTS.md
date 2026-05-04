@@ -82,6 +82,8 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Add or refresh `.omx/wiki` entries with `omx_wiki` MCP tools from root-level project documents, related repository documentation, and discovered implementation conventions when they are relevant to the current task.
 - Keep `.omx/wiki` pages MCP-compatible: store readable wiki pages as top-level `.md` files with frontmatter, and preserve source hierarchy through filenames, tags, sources, and the generated index instead of nested directories.
 - When implementation changes architecture, product behavior, schema, external integration, or release flow, update the matching `docs/` documents in the same task.
+- Plans for backend, domain, application, persistence, DB/schema, product behavior, frontend UX, external integration, or release work must include a governing document cross-check before implementation steps. Use the cross-check to list the source documents read, the implementation rules they impose, the chosen implementation path, shortcuts explicitly forbidden, and verification.
+- Product/spec and generated DB documents describe feature meaning and data contracts. Backend/frontend design documents describe implementation rules. Do not use a product/spec or generated DB update to bypass an existing design rule; either update the governing design document explicitly or implement within it.
 - Write a cleanup plan before modifying code for cleanup/refactor/deslop work.
 - Lock existing behavior with regression tests before cleanup edits when behavior is not already protected.
 - Prefer deletion over addition.
@@ -99,7 +101,8 @@ Use this workflow before planning or implementation:
 2. Query or browse `.omx/wiki` through `omx_wiki` MCP (`wiki_list`, `wiki_query`, `wiki_read`) for matching project knowledge, conventions, prior decisions, and references.
 3. If the wiki is missing or stale for the task area, ingest the relevant root-level project documents or related repository documentation into `.omx/wiki` through `omx_wiki` MCP.
 4. Read only the specific detailed docs needed to verify or update the wiki-backed understanding.
-5. Then produce the plan or implementation.
+5. For implementation-affecting work, produce or read the governing document cross-check before editing code.
+6. Then produce the plan or implementation.
 
 Preferred `.omx/wiki` coverage areas:
 

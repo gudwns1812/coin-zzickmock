@@ -417,7 +417,8 @@ class CreateOrderServiceTest {
                 realtimeMarketPriceReader,
                 orderRepository,
                 positionRepository,
-                new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher)
+                new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
+                new AccountOrderMutationLock(accountRepository)
         );
     }
 
@@ -443,6 +444,11 @@ class CreateOrderServiceTest {
 
         @Override
         public Optional<TradingAccount> findByMemberId(Long memberId) {
+            return Optional.of(account);
+        }
+
+        @Override
+        public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
             return Optional.of(account);
         }
 

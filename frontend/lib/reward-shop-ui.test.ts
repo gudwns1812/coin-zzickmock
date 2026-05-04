@@ -8,6 +8,7 @@ const rewardShopModule: typeof import("./reward-shop-ui") = await import(
 const {
   getShopItemImagePath,
   getShopItemAvailabilityLabel,
+  isAccountRefillShopItem,
   isShopItemLimitReached,
   isShopItemSoldOut,
   normalizeVoucherPhoneNumber,
@@ -27,6 +28,7 @@ test("derives sold-out and per-member limit item states", () => {
     code: "voucher.coffee",
     name: "커피 교환권",
     description: "커피",
+    itemType: "COFFEE_VOUCHER",
     price: 50,
     active: true,
     totalStock: 10,
@@ -48,6 +50,11 @@ test("derives sold-out and per-member limit item states", () => {
 
   assert.equal(isShopItemLimitReached(limitedItem), true);
   assert.equal(getShopItemAvailabilityLabel(limitedItem), "구매 제한 도달");
+});
+
+test("identifies account refill count shop items", () => {
+  assert.equal(isAccountRefillShopItem({ itemType: "ACCOUNT_REFILL_COUNT" }), true);
+  assert.equal(isAccountRefillShopItem({ itemType: "COFFEE_VOUCHER" }), false);
 });
 
 test("maps coffee shop items to the bundled coffee image", () => {

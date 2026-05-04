@@ -9,6 +9,7 @@ import coin.coinzzickmock.feature.reward.application.repository.RewardRedemption
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
+import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistoryType;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
@@ -40,6 +41,7 @@ class RewardRedemptionServiceTest {
     private static final Long MEMBER_ID = 1L;
     private static final Long ADMIN_ID = 1L;
     private static final String ITEM_CODE = "voucher.coffee";
+    private static final String REFILL_ITEM_CODE = "account.refill-count";
 
     @Autowired
     private CreateRewardRedemptionService createRewardRedemptionService;
@@ -55,6 +57,9 @@ class RewardRedemptionServiceTest {
 
     @Autowired
     private GetShopItemsService getShopItemsService;
+
+    @Autowired
+    private PurchaseShopItemService purchaseShopItemService;
 
     @Autowired
     private RewardPointRepository rewardPointRepository;
@@ -105,6 +110,38 @@ class RewardRedemptionServiceTest {
         assertEquals(200, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
         assertEquals(0, rewardShopItemRepository.findByCode(ITEM_CODE).orElseThrow().soldQuantity());
         assertEquals(0, rewardRedemptionRequestRepository.findByStatus(RewardRedemptionStatus.PENDING).size());
+    }
+
+    @Test
+    void purchasesRefillCountWithoutCreatingRedemptionRequest() {
+        rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 50));
+
+        ShopPurchaseResult result = purchaseShopItemService.purchase(MEMBER_ID, REFILL_ITEM_CODE);
+
+        assertEquals(REFILL_ITEM_CODE, result.itemCode());
+        assertEquals(30, result.rewardPoint());
+        assertEquals(2, result.refillRemainingCount());
+        assertEquals(30, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
+        RewardShopItem item = rewardShopItemRepository.findByCode(REFILL_ITEM_CODE).orElseThrow();
+        assertEquals(1, item.soldQuantity());
+        assertEquals(0, rewardRedemptionRequestRepository.findByStatus(RewardRedemptionStatus.PENDING).size());
+        RewardPointHistory history = rewardPointHistoryRepository.findByMemberId(MEMBER_ID).get(0);
+        assertEquals(RewardPointHistoryType.REDEMPTION_DEDUCT, history.historyType());
+        assertEquals(-20, history.amount());
+        assertEquals("INSTANT_SHOP_PURCHASE", history.sourceType());
+    }
+
+    @Test
+    void redemptionEndpointRejectsInstantPurchaseItemBeforePhoneValidation() {
+        rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 50));
+
+        CoreException thrown = assertThrows(CoreException.class,
+                () -> createRewardRedemptionService.create(MEMBER_ID, REFILL_ITEM_CODE, "bad phone"));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+        assertEquals("교환권 신청 상품이 아닙니다.", thrown.getMessage());
+        assertEquals(50, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
+        assertEquals(0, rewardShopItemRepository.findByCode(REFILL_ITEM_CODE).orElseThrow().soldQuantity());
     }
 
     @Test

@@ -4,6 +4,7 @@ public record ShopItemResponse(
         String code,
         String name,
         String description,
+        String itemType,
         int price,
         boolean active,
         Integer totalStock,

@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.reward.domain;
 
+import coin.coinzzickmock.common.error.CoreException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,8 +18,8 @@ class RewardPointHistoryTest {
 
     @Test
     void rejectsInvalidHistoryState() {
-        assertThrows(IllegalArgumentException.class, () -> RewardPointHistory.grant(1L, 0, 17, null));
-        assertThrows(IllegalArgumentException.class, () -> new RewardPointHistory(
+        assertThrows(CoreException.class, () -> RewardPointHistory.grant(1L, 0, 17, null));
+        assertThrows(CoreException.class, () -> new RewardPointHistory(
                 null,
                 RewardPointHistoryType.GRANT,
                 10,
@@ -26,7 +27,7 @@ class RewardPointHistoryTest {
                 "POSITION_CLOSE_PROFIT",
                 null
         ));
-        assertThrows(IllegalArgumentException.class, () -> new RewardPointHistory(
+        assertThrows(CoreException.class, () -> new RewardPointHistory(
                 1L,
                 RewardPointHistoryType.GRANT,
                 10,

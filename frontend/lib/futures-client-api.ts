@@ -1,7 +1,9 @@
 import type {
+  AccountRefillResult,
   AdminShopItem,
   AdminShopItemInput,
   RewardRedemption,
+  ShopPurchaseResult,
 } from "@/lib/futures-api";
 
 type ClientApiResponse<T> = {
@@ -18,6 +20,17 @@ export async function createRewardRedemption(
     itemCode,
     phoneNumber,
   });
+}
+
+export async function refillFuturesAccount(): Promise<AccountRefillResult> {
+  return writeFuturesApi<AccountRefillResult>("/account/me/refill", {});
+}
+
+export async function purchaseShopItem(code: string): Promise<ShopPurchaseResult> {
+  return writeFuturesApi<ShopPurchaseResult>(
+    `/shop/items/${encodeURIComponent(code)}/purchase`,
+    {}
+  );
 }
 
 export async function approveRewardRedemption(

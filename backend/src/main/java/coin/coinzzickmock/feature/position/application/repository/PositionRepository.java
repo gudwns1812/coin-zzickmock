@@ -10,6 +10,10 @@ import java.util.Optional;
 public interface PositionRepository {
     List<PositionSnapshot> findOpenPositions(Long memberId);
 
+    default boolean existsOpenByMemberId(Long memberId) {
+        return !findOpenPositions(memberId).isEmpty();
+    }
+
     Optional<PositionSnapshot> findOpenPosition(
             Long memberId,
             String symbol,

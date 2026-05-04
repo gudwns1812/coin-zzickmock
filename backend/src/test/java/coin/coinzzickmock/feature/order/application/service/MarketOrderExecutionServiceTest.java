@@ -21,6 +21,7 @@ import coin.coinzzickmock.feature.order.application.realtime.PositionTakeProfitS
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
@@ -668,6 +669,7 @@ class MarketOrderExecutionServiceTest {
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
         RealtimeMarketPriceReader realtimeMarketPriceReader = new RealtimeMarketPriceReader(realtimeMarketDataStore);
+        AccountOrderMutationLock accountOrderMutationLock = new AccountOrderMutationLock(accountRepository);
         return new MarketOrderExecutionService(
                 new PendingOrderFillProcessor(
                         orderRepository,
@@ -677,7 +679,8 @@ class MarketOrderExecutionServiceTest {
                         pendingCloseOrderCapReconciler,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
-                        new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher)
+                        new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
+                        accountOrderMutationLock
                 ),
                 new PositionLiquidationProcessor(
                         positionRepository,
@@ -686,7 +689,8 @@ class MarketOrderExecutionServiceTest {
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
                         afterCommitEventPublisher,
-                        realtimeMarketPriceReader
+                        realtimeMarketPriceReader,
+                        accountOrderMutationLock
                 ),
                 new PositionTakeProfitStopLossProcessor(
                         orderRepository,
@@ -694,7 +698,8 @@ class MarketOrderExecutionServiceTest {
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
                         afterCommitEventPublisher,
-                        realtimeMarketPriceReader
+                        realtimeMarketPriceReader,
+                        accountOrderMutationLock
                 )
         );
     }
@@ -813,6 +818,11 @@ class MarketOrderExecutionServiceTest {
 
         @Override
         public Optional<TradingAccount> findByMemberId(Long memberId) {
+            return Optional.ofNullable(accounts.get(memberId));
+        }
+
+        @Override
+        public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
             return Optional.ofNullable(accounts.get(memberId));
         }
 

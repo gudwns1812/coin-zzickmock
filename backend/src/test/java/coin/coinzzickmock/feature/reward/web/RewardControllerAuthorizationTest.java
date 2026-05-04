@@ -26,6 +26,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
+                null,
                 providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", ActorRole.USER))
         );
 
@@ -48,6 +49,7 @@ class RewardControllerAuthorizationTest {
                 null,
                 null,
                 null,
+                null,
                 providers(new Actor(1L, "demo", "demo@coinzzickmock.dev", "Demo", ActorRole.USER))
         );
 
@@ -62,6 +64,7 @@ class RewardControllerAuthorizationTest {
     @Test
     void adminShopItemWritesRejectMissingBodyBeforeCallingServices() {
         RewardController controller = new RewardController(
+                null,
                 null,
                 null,
                 null,

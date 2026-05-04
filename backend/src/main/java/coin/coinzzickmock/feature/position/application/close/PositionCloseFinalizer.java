@@ -44,6 +44,8 @@ public class PositionCloseFinalizer {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "종료 수량을 확인해주세요.");
         }
 
+        TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         PositionCloseOutcome closeOutcome = position.close(quantity, markPrice, executionPrice, feeRate);
         PositionMutationResult mutationResult;
         if (closeOutcome.remainingPosition() == null) {
@@ -55,8 +57,6 @@ public class PositionCloseFinalizer {
             validateGuardedMutation(mutationResult);
         }
 
-        TradingAccount account = accountRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
         TradingAccount updatedAccount = validateAccountMutation(accountRepository.updateWithVersion(
                 account,
                 account.settlePositionClose(

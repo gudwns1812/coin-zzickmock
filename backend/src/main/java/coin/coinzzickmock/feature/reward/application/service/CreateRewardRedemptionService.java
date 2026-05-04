@@ -35,12 +35,16 @@ public class CreateRewardRedemptionService {
 
     @Transactional
     public RewardRedemptionResult create(Long memberId, String itemCode, String phoneNumber) {
-        RewardPhoneNumber normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
         if (itemCode == null || itemCode.isBlank()) {
             throw invalid("상점 상품 코드는 필수입니다.");
         }
         RewardShopItem item = rewardShopItemRepository.findByCodeForUpdate(itemCode)
                 .orElseThrow(() -> invalid("존재하지 않는 상점 상품입니다."));
+        if (!item.coffeeVoucher()) {
+            throw invalid("교환권 신청 상품이 아닙니다.");
+        }
+
+        RewardPhoneNumber normalizedPhoneNumber = RewardPhoneNumber.from(phoneNumber);
         RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
                 .findByMemberIdAndShopItemIdForUpdate(memberId, item.id())
                 .orElse(RewardShopMemberItemUsage.empty(memberId, item.id()));
@@ -48,7 +52,7 @@ public class CreateRewardRedemptionService {
 
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(memberId)
                 .orElse(RewardPointWallet.empty(memberId));
-        RewardPointWallet deductedWallet = deduct(wallet, item.price());
+        RewardPointWallet deductedWallet = wallet.deduct(item.price());
         String requestId = UUID.randomUUID().toString();
         RewardRedemptionRequest request = RewardRedemptionRequest.pending(
                 requestId,
@@ -58,7 +62,7 @@ public class CreateRewardRedemptionService {
                 Instant.now()
         );
 
-        RewardShopItem reservedItem = reserve(item);
+        RewardShopItem reservedItem = item.reserveOne();
         RewardShopMemberItemUsage reservedUsage = usage.increment();
 
         rewardShopItemRepository.save(reservedItem);
@@ -75,14 +79,6 @@ public class CreateRewardRedemptionService {
         return RewardRedemptionResult.from(savedRequest);
     }
 
-    private RewardPhoneNumber normalizePhoneNumber(String phoneNumber) {
-        try {
-            return RewardPhoneNumber.from(phoneNumber);
-        } catch (IllegalArgumentException exception) {
-            throw invalid(exception.getMessage());
-        }
-    }
-
     private void validatePurchase(RewardShopItem item, RewardShopMemberItemUsage usage) {
         if (!item.active()) {
             throw invalid("비활성 상품은 구매할 수 없습니다.");
@@ -92,22 +88,6 @@ public class CreateRewardRedemptionService {
         }
         if (item.memberReachedLimit(usage.purchaseCount())) {
             throw invalid("회원별 구매 제한에 도달했습니다.");
-        }
-    }
-
-    private RewardPointWallet deduct(RewardPointWallet wallet, int pointAmount) {
-        try {
-            return wallet.deduct(pointAmount);
-        } catch (IllegalArgumentException exception) {
-            throw invalid(exception.getMessage());
-        }
-    }
-
-    private RewardShopItem reserve(RewardShopItem item) {
-        try {
-            return item.reserveOne();
-        } catch (IllegalStateException exception) {
-            throw invalid(exception.getMessage());
         }
     }
 

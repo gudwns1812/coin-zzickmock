@@ -5,6 +5,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
@@ -33,6 +34,7 @@ public class ClosePositionService {
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final OrderPlacementPolicy orderPlacementPolicy;
+    private final AccountOrderMutationLock accountOrderMutationLock;
 
     @Transactional
     public ClosePositionResult close(
@@ -44,6 +46,7 @@ public class ClosePositionService {
             String orderType,
             Double limitPrice
     ) {
+        accountOrderMutationLock.lock(memberId);
         PositionSnapshot position = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
                 .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
         validateCloseRequest(quantity, orderType, limitPrice, position);

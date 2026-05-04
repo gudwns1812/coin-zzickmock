@@ -4,13 +4,18 @@ import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQuery;
 import coin.coinzzickmock.feature.account.application.query.GetWalletHistoryQuery;
 import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
+import coin.coinzzickmock.feature.account.application.result.AccountRefillResult;
+import coin.coinzzickmock.feature.account.application.result.AccountRefillStatusResult;
 import coin.coinzzickmock.feature.account.application.service.GetAccountSummaryService;
+import coin.coinzzickmock.feature.account.application.service.GetAccountRefillStatusService;
 import coin.coinzzickmock.feature.account.application.service.GetWalletHistoryService;
+import coin.coinzzickmock.feature.account.application.service.RefillTradingAccountService;
 import coin.coinzzickmock.providers.Providers;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AccountController {
     private final GetAccountSummaryService getAccountSummaryService;
+    private final GetAccountRefillStatusService getAccountRefillStatusService;
+    private final RefillTradingAccountService refillTradingAccountService;
     private final GetWalletHistoryService getWalletHistoryService;
     private final Providers providers;
 
@@ -39,6 +46,29 @@ public class AccountController {
                 result.totalUnrealizedPnl(),
                 result.roi(),
                 result.rewardPoint()
+        ));
+    }
+
+    @GetMapping("/me/refill")
+    public ApiResponse<AccountRefillStatusResponse> refillStatus() {
+        AccountRefillStatusResult result = getAccountRefillStatusService.get(providers.auth().currentActor().memberId());
+        return ApiResponse.success(new AccountRefillStatusResponse(
+                result.remainingCount(),
+                result.refillable(),
+                result.disabledReason(),
+                result.targetWalletBalance(),
+                result.targetAvailableMargin(),
+                result.nextResetAt()
+        ));
+    }
+
+    @PostMapping("/me/refill")
+    public ApiResponse<AccountRefillResponse> refill() {
+        AccountRefillResult result = refillTradingAccountService.refill(providers.auth().currentActor().memberId());
+        return ApiResponse.success(new AccountRefillResponse(
+                result.walletBalance(),
+                result.availableMargin(),
+                result.remainingCount()
         ));
     }
 

@@ -1,7 +1,10 @@
 "use client";
 
 import Modal from "@/components/ui/Modal";
-import { createRewardRedemption } from "@/lib/futures-client-api";
+import {
+  createRewardRedemption,
+  purchaseShopItem,
+} from "@/lib/futures-client-api";
 import type {
   FuturesReward,
   ShopItem,
@@ -10,6 +13,7 @@ import {
   canRedeemShopItem,
   getShopItemImagePath,
   getShopItemAvailabilityLabel,
+  isAccountRefillShopItem,
   isShopItemLimitReached,
   isShopItemSoldOut,
   normalizeVoucherPhoneNumber,
@@ -22,6 +26,7 @@ import {
   Lock,
   Phone,
   Send,
+  WalletCards,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -67,6 +72,11 @@ export default function ShopRedemptionClient({
   const submitRedemption = async () => {
     if (!selectedItem) return;
 
+    if (isAccountRefillShopItem(selectedItem)) {
+      await submitInstantPurchase(selectedItem);
+      return;
+    }
+
     const validationError = validateVoucherPhoneNumber(phoneNumber);
     if (validationError) {
       toast.error(validationError);
@@ -87,6 +97,23 @@ export default function ShopRedemptionClient({
       toast.error(
         error instanceof Error ? error.message : "교환권 신청에 실패했습니다."
       );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const submitInstantPurchase = async (item: ShopItem) => {
+    setIsSubmitting(true);
+
+    try {
+      const result = await purchaseShopItem(item.code);
+      toast.success(
+        `리필 가능 횟수가 ${result.refillRemainingCount.toLocaleString("ko-KR")}회가 되었습니다.`
+      );
+      setSelectedItem(null);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "구매에 실패했습니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -127,13 +154,19 @@ export default function ShopRedemptionClient({
               className="rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray flex min-h-[370px] flex-col gap-4"
             >
               <div className="relative flex h-[170px] items-center justify-center overflow-hidden rounded-main bg-main-light-gray/45">
-                <Image
-                  alt={item.name}
-                  className="h-full w-full object-contain p-2"
-                  height={170}
-                  src={getShopItemImagePath(item)}
-                  width={260}
-                />
+                {isAccountRefillShopItem(item) ? (
+                  <div className="flex size-20 items-center justify-center rounded-main bg-main-blue text-white">
+                    <WalletCards size={38} />
+                  </div>
+                ) : (
+                  <Image
+                    alt={item.name}
+                    className="h-full w-full object-contain p-2"
+                    height={170}
+                    src={getShopItemImagePath(item)}
+                    width={260}
+                  />
+                )}
               </div>
               <div>
                 <div className="flex items-center justify-between gap-main">
@@ -185,32 +218,42 @@ export default function ShopRedemptionClient({
       >
         <div className="w-[min(460px,calc(100vw-48px))] pr-6">
           <p className="text-lg-custom font-bold text-main-dark-gray">
-            커피 교환권 신청
+            {selectedItem && isAccountRefillShopItem(selectedItem)
+              ? "리필 횟수 추가권 구매"
+              : "커피 교환권 신청"}
           </p>
           <p className="mt-2 text-sm-custom text-main-dark-gray/60 break-keep">
             {selectedItem?.name} · {selectedItem?.price.toLocaleString("ko-KR")} P
           </p>
 
-          <label className="mt-5 block">
-            <span className="text-xs-custom font-semibold text-main-dark-gray/60">
-              휴대폰 번호
-            </span>
-            <div className="mt-2 flex items-center gap-2 rounded-main border border-main-light-gray px-main py-3">
-              <Phone size={16} className="text-main-dark-gray/45" />
-              <input
-                className="min-w-0 flex-1 bg-transparent text-sm-custom font-bold text-main-dark-gray outline-none"
-                inputMode="tel"
-                onChange={(event) => setPhoneNumber(event.target.value)}
-                placeholder="010-1234-5678"
-                value={phoneNumber}
-              />
+          {selectedItem && isAccountRefillShopItem(selectedItem) ? (
+            <div className="mt-5 rounded-main bg-main-light-gray/45 p-main text-sm-custom leading-6 text-main-dark-gray/70 break-keep">
+              구매 즉시 오늘 사용 가능한 리필 횟수가 1회 추가됩니다. 사용하지 않은 추가 횟수는 다음 KST 자정 리셋 때 사라집니다.
             </div>
-          </label>
+          ) : (
+            <>
+              <label className="mt-5 block">
+                <span className="text-xs-custom font-semibold text-main-dark-gray/60">
+                  휴대폰 번호
+                </span>
+                <div className="mt-2 flex items-center gap-2 rounded-main border border-main-light-gray px-main py-3">
+                  <Phone size={16} className="text-main-dark-gray/45" />
+                  <input
+                    className="min-w-0 flex-1 bg-transparent text-sm-custom font-bold text-main-dark-gray outline-none"
+                    inputMode="tel"
+                    onChange={(event) => setPhoneNumber(event.target.value)}
+                    placeholder="010-1234-5678"
+                    value={phoneNumber}
+                  />
+                </div>
+              </label>
 
-          {phoneError && (
-            <p className="mt-2 text-xs-custom font-semibold text-red-500">
-              {phoneError}
-            </p>
+              {phoneError && (
+                <p className="mt-2 text-xs-custom font-semibold text-red-500">
+                  {phoneError}
+                </p>
+              )}
+            </>
           )}
 
           {lastRequestId && (
@@ -231,12 +274,19 @@ export default function ShopRedemptionClient({
             </button>
             <button
               className="flex items-center gap-2 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white disabled:bg-main-light-gray disabled:text-main-dark-gray/40"
-              disabled={isSubmitting || !!phoneError || !phoneNumber}
+              disabled={
+                isSubmitting ||
+                (!selectedItem || !isAccountRefillShopItem(selectedItem)
+                  ? !!phoneError || !phoneNumber
+                  : false)
+              }
               onClick={submitRedemption}
               type="button"
             >
               {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-              신청하기
+              {selectedItem && isAccountRefillShopItem(selectedItem)
+                ? "구매하기"
+                : "신청하기"}
             </button>
           </div>
         </div>

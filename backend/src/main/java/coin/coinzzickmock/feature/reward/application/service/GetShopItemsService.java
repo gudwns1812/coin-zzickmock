@@ -29,6 +29,7 @@ public class GetShopItemsService {
                 item.code(),
                 item.name(),
                 item.description(),
+                item.itemType(),
                 item.price(),
                 item.active(),
                 item.totalStock(),

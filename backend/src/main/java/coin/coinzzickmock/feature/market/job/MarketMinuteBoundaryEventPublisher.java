@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class MarketMinuteBoundaryEventPublisher {
     private final ApplicationEventPublisher applicationEventPublisher;
 
-    @Scheduled(cron = "${coin.market.minute-close-cron:0 * * * * *}")
+    @Scheduled(cron = "${coin.market.minute-close-cron:1 * * * * *}")
     public void publishMinuteClosedEvent() {
         publishMinuteClosedEvent(Instant.now());
     }

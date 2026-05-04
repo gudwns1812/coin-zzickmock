@@ -28,7 +28,14 @@ import {
   type UTCTimestamp,
   createChart,
 } from "lightweight-charts";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import {
   canEditIndicators,
   calculateIndicatorValueRows,
@@ -134,6 +141,7 @@ const CHART_COLORS = {
 } as const;
 
 const LOAD_MORE_THRESHOLD = 25;
+const CLOSED_CANDLE_REFETCH_DELAY_MS = 2_500;
 const CHART_HEIGHT = 620;
 const MAIN_PANE_INITIAL_HEIGHT = 455;
 const VOLUME_PANE_INITIAL_HEIGHT = CHART_HEIGHT - MAIN_PANE_INITIAL_HEIGHT;
@@ -165,6 +173,7 @@ export default function FuturesPriceChart({
   const orderPriceLinesRef = useRef<OwnedPriceLine[]>([]);
   const appliedInitialViewportKeyRef = useRef<string | null>(null);
   const realtimeCandleOpenTimeRef = useRef<string | null>(null);
+  const closedCandleRefetchTimeoutRef = useRef<number | null>(null);
   const [selectedInterval, setSelectedInterval] =
     useState<FuturesCandleInterval>(DEFAULT_FUTURES_CHART_INTERVAL);
   const [isIntervalPreferenceHydrated, setIsIntervalPreferenceHydrated] =
@@ -291,6 +300,7 @@ export default function FuturesPriceChart({
 
   useEffect(() => {
     realtimeCandleOpenTimeRef.current = null;
+    clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);
     setRealtimeCandle(null);
     setLivePoints([
       {
@@ -566,6 +576,14 @@ export default function FuturesPriceChart({
     });
   }, [queryClient, selectedInterval, symbol]);
 
+  const scheduleClosedCandleFinalizationRefetch = useCallback(() => {
+    clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);
+    closedCandleRefetchTimeoutRef.current = window.setTimeout(() => {
+      closedCandleRefetchTimeoutRef.current = null;
+      invalidateCurrentCandleQueries();
+    }, CLOSED_CANDLE_REFETCH_DELAY_MS);
+  }, [invalidateCurrentCandleQueries]);
+
   const handleCandleStreamMessage = useCallback(
     (event: MessageEvent) => {
       try {
@@ -583,11 +601,18 @@ export default function FuturesPriceChart({
         if (previousOpenTime && previousOpenTime !== data.openTime) {
           invalidateCurrentCandleQueries();
         }
+        if (!previousOpenTime || previousOpenTime !== data.openTime) {
+          scheduleClosedCandleFinalizationRefetch();
+        }
       } catch {
         // Keep the current chart data when the stream sends malformed data.
       }
     },
-    [invalidateCurrentCandleQueries, onLatestCandleClosePriceChange]
+    [
+      invalidateCurrentCandleQueries,
+      onLatestCandleClosePriceChange,
+      scheduleClosedCandleFinalizationRefetch,
+    ]
   );
 
   useResilientEventSource({
@@ -596,6 +621,12 @@ export default function FuturesPriceChart({
     onReconnect: invalidateCurrentCandleQueries,
     url: buildCandleStreamUrl(symbol, selectedInterval),
   });
+
+  useEffect(() => {
+    return () => {
+      clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);
+    };
+  }, [selectedInterval, symbol]);
 
   useEffect(() => {
     liveSeriesRef.current?.applyOptions({
@@ -1316,6 +1347,17 @@ function clearPriceLines(lines: OwnedPriceLine[]): void {
   for (const { line, owner } of lines) {
     owner.removePriceLine(line);
   }
+}
+
+function clearClosedCandleRefetchTimeout(
+  timeoutRef: MutableRefObject<number | null>
+): void {
+  if (timeoutRef.current === null) {
+    return;
+  }
+
+  window.clearTimeout(timeoutRef.current);
+  timeoutRef.current = null;
 }
 
 function formatOhlc(value: number | undefined): string {

@@ -61,3 +61,14 @@ test("chart reports realtime candle close price to the trading header", () => {
     true
   );
 });
+
+test("chart refetches closed candle history after the realtime bucket has settled", () => {
+  assert.equal(source.includes("CLOSED_CANDLE_REFETCH_DELAY_MS = 2_500"), true);
+  assert.equal(source.includes("scheduleClosedCandleFinalizationRefetch"), true);
+  assert.equal(source.includes("window.setTimeout"), true);
+  assert.equal(source.includes("window.clearTimeout"), true);
+  assert.equal(
+    source.includes("if (!previousOpenTime || previousOpenTime !== data.openTime)"),
+    true
+  );
+});

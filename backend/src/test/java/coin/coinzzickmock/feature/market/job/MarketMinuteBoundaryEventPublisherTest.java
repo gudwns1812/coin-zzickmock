@@ -4,13 +4,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketMinuteClosedEvent;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Scheduled;
 
 class MarketMinuteBoundaryEventPublisherTest {
+    @Test
+    void publishesMinuteClosedEventOneSecondAfterMinuteBoundaryByDefault() throws NoSuchMethodException {
+        Method method = MarketMinuteBoundaryEventPublisher.class.getDeclaredMethod("publishMinuteClosedEvent");
+        Scheduled scheduled = method.getAnnotation(Scheduled.class);
+
+        assertEquals("${coin.market.minute-close-cron:1 * * * * *}", scheduled.cron());
+    }
+
     @Test
     void publishesJustClosedMinuteAtObservedMinuteBoundary() {
         RecordingApplicationEventPublisher applicationEventPublisher = new RecordingApplicationEventPublisher();

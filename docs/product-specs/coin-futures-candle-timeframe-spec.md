@@ -70,7 +70,7 @@
 - DB에는 Java `Instant` 값을 UTC 기준의 `DATETIME(6)` 값으로 저장하고, 지역 시간 해석은 화면 표시 계층으로 제한한다.
 - `market_candles_1m`에 저장되는 원본 분봉은 프론트엔드의 live price 합성 결과가 아니라, 백엔드 수집 경로의 거래소 1분봉 데이터를 기준으로 한다.
 - 매초 market refresh 경로는 실시간 가격 캐시, SSE, 주문 체결, 청산 판단을 위한 ticker snapshot 갱신만 담당한다.
-- 직전 완료 1분봉 저장은 매 분 `0`초에 발행되는 `MarketMinuteClosedEvent` 경로에서 서버가 거래소 candle을 수집해 처리한다.
+- 직전 완료 1분봉 저장은 매 분 `1`초에 발행되는 `MarketMinuteClosedEvent` 경로에서 서버가 거래소 candle을 수집해 처리한다.
 - 거래소 candle이 아직 비어 있으면 해당 심볼/분봉을 pending retry로 등록하고, 별도 5초 재처리 경로가 다시 수집을 시도한다.
 - 저장 시 `volume`, `quote_volume`은 거래소 candle 응답 값을 함께 반영한다.
 - 프론트엔드는 아직 닫히지 않은 live candle을 market-summary 최신가로 직접 합성하지 않는다.

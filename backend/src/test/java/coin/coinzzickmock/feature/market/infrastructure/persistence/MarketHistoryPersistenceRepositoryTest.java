@@ -143,9 +143,71 @@ class MarketHistoryPersistenceRepositoryTest {
         assertEquals(Instant.parse("2026-04-17T06:02:00Z"), latestOpenTime);
     }
 
+    @Test
+    void completedHourlyCandlesRequireContiguousMinuteCoverage() {
+        Long symbolId = jdbcTemplate.queryForObject(
+                "SELECT id FROM market_symbols WHERE symbol = 'BTCUSDT'", Long.class);
+
+        Instant completeHour = Instant.parse("2026-04-17T06:00:00Z");
+        Instant missingFirstHour = Instant.parse("2026-04-17T07:00:00Z");
+        Instant missingMiddleHour = Instant.parse("2026-04-17T08:00:00Z");
+        Instant missingLastHour = Instant.parse("2026-04-17T09:00:00Z");
+        saveHourWithMinutesExcept(symbolId, completeHour, -1);
+        saveHourWithMinutesExcept(symbolId, missingFirstHour, 0);
+        saveHourWithMinutesExcept(symbolId, missingMiddleHour, 30);
+        saveHourWithMinutesExcept(symbolId, missingLastHour, 59);
+
+        List<HourlyMarketCandle> completedCandles = marketHistoryRepository.findCompletedHourlyCandles(
+                symbolId,
+                completeHour,
+                missingLastHour.plusSeconds(3600)
+        );
+
+        assertEquals(List.of(completeHour), completedCandles.stream().map(HourlyMarketCandle::openTime).toList());
+        assertEquals(completeHour, marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId).orElseThrow());
+        assertEquals(completeHour, marketHistoryRepository.findLatestCompletedHourlyCandleOpenTimeBefore(
+                symbolId,
+                missingLastHour.plusSeconds(1800)
+        ).orElseThrow());
+    }
+
     private int count(String tableName) {
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + tableName, Integer.class);
         return count == null ? 0 : count;
+    }
+
+    private void saveHourWithMinutesExcept(Long symbolId, Instant hourOpenTime, int missingMinuteIndex) {
+        for (int minute = 0; minute < 60; minute++) {
+            if (minute == missingMinuteIndex) {
+                continue;
+            }
+            Instant openTime = hourOpenTime.plusSeconds(minute * 60L);
+            marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
+                    symbolId,
+                    openTime,
+                    openTime.plusSeconds(60),
+                    101000 + minute,
+                    101500 + minute,
+                    100500 + minute,
+                    101250 + minute,
+                    10.0,
+                    1012500.0
+            ));
+        }
+
+        marketHistoryRepository.saveHourlyCandle(new HourlyMarketCandle(
+                symbolId,
+                hourOpenTime,
+                hourOpenTime.plusSeconds(3600),
+                101000,
+                101500,
+                100500,
+                101250,
+                10.0,
+                1012500.0,
+                hourOpenTime,
+                hourOpenTime.plusSeconds(3600)
+        ));
     }
 
     @TestConfiguration

@@ -27,6 +27,14 @@ public interface MarketHistoryRepository {
 
     Optional<Instant> findLatestHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive);
 
+    default Optional<Instant> findLatestCompletedHourlyCandleOpenTime(long symbolId) {
+        return findLatestHourlyCandleOpenTime(symbolId);
+    }
+
+    default Optional<Instant> findLatestCompletedHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
+        return findLatestHourlyCandleOpenTimeBefore(symbolId, beforeExclusive);
+    }
+
     Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime);
 
     List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive);
@@ -34,6 +42,14 @@ public interface MarketHistoryRepository {
     Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime);
 
     List<HourlyMarketCandle> findHourlyCandles(long symbolId, Instant fromInclusive, Instant toExclusive);
+
+    default List<HourlyMarketCandle> findCompletedHourlyCandles(
+            long symbolId,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        return findHourlyCandles(symbolId, fromInclusive, toExclusive);
+    }
 
     void saveMinuteCandle(MarketHistoryCandle candle);
 

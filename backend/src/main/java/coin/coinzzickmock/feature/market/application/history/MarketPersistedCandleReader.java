@@ -74,13 +74,13 @@ public class MarketPersistedCandleReader {
     }
 
     private List<MarketCandleResult> hourlyResults(long symbolId, int limit, Instant beforeOpenTime) {
-        Instant latestHourOpenTime = resolveLatestHourlyOpenTime(symbolId, beforeOpenTime);
+        Instant latestHourOpenTime = resolveLatestCompletedHourlyOpenTime(symbolId, beforeOpenTime);
         if (latestHourOpenTime == null) {
             return List.of();
         }
 
         return rollupProjector.hourlyResults(
-                marketHistoryRepository.findHourlyCandles(
+                marketHistoryRepository.findCompletedHourlyCandles(
                         symbolId,
                         latestHourOpenTime.minus(limit - 1L, ChronoUnit.HOURS),
                         latestHourOpenTime.plus(1, ChronoUnit.HOURS)
@@ -94,14 +94,14 @@ public class MarketPersistedCandleReader {
             MarketCandleInterval interval,
             Instant beforeOpenTime
     ) {
-        Instant latestHourOpenTime = resolveLatestHourlyOpenTime(symbolId, beforeOpenTime);
+        Instant latestHourOpenTime = resolveLatestCompletedHourlyOpenTime(symbolId, beforeOpenTime);
         if (latestHourOpenTime == null) {
             return List.of();
         }
 
         Instant latestCompleteBucketStart = latestCompleteHourlyBucketStart(latestHourOpenTime, interval);
         Instant earliestBucketStart = earliestHourlyBucketStart(latestCompleteBucketStart, interval, limit);
-        List<HourlyMarketCandle> rawCandles = marketHistoryRepository.findHourlyCandles(
+        List<HourlyMarketCandle> rawCandles = marketHistoryRepository.findCompletedHourlyCandles(
                 symbolId,
                 earliestBucketStart,
                 MarketTime.bucketClose(latestCompleteBucketStart, interval)
@@ -118,12 +118,12 @@ public class MarketPersistedCandleReader {
                 .orElse(null);
     }
 
-    private Instant resolveLatestHourlyOpenTime(long symbolId, Instant beforeOpenTime) {
+    private Instant resolveLatestCompletedHourlyOpenTime(long symbolId, Instant beforeOpenTime) {
         if (beforeOpenTime == null) {
-            return marketHistoryRepository.findLatestHourlyCandleOpenTime(symbolId).orElse(null);
+            return marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId).orElse(null);
         }
 
-        return marketHistoryRepository.findLatestHourlyCandleOpenTimeBefore(symbolId, beforeOpenTime)
+        return marketHistoryRepository.findLatestCompletedHourlyCandleOpenTimeBefore(symbolId, beforeOpenTime)
                 .orElse(null);
     }
 

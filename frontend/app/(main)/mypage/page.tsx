@@ -69,7 +69,7 @@ export default async function MyPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-5 gap-main">
+      <section className="grid grid-cols-1 gap-main md:grid-cols-2 xl:grid-cols-5">
         <Metric label="지갑 잔고" value={formatUsd(account.walletBalance)} />
         <Metric label="사용 가능" value={formatUsd(account.available)} />
         <AccountRefillCard account={account} refillStatus={refillStatus} />

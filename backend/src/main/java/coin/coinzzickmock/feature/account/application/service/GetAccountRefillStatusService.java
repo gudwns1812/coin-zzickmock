@@ -47,7 +47,7 @@ public class GetAccountRefillStatusService {
             return "사용 가능한 리필 횟수가 없습니다.";
         }
         if (!account.refillableToInitialBalance()) {
-            return "이미 100,000 USDT 기준 잔고에 도달했습니다.";
+            return "잔고가 100,000 USDT 보다 큽니다.";
         }
         if (positionRepository.existsOpenByMemberId(memberId)) {
             return "열린 포지션이 있을 때는 리필할 수 없습니다.";

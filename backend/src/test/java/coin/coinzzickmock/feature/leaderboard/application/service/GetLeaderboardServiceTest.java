@@ -87,7 +87,7 @@ class GetLeaderboardServiceTest {
     }
 
     @Test
-    void calculatesMyRankFromDatabaseUsingSingleProfitRateOrder() {
+    void calculatesMyRankFromDatabaseByCountingHigherScoresOnly() {
         GetLeaderboardService service = new GetLeaderboardService(
                 new InMemoryProjectionRepository(List.of(
                         entry(1L, "First", 150_000),
@@ -98,10 +98,10 @@ class GetLeaderboardServiceTest {
                 List.of()
         );
 
-        LeaderboardResult result = service.get("profitRate", "2", Optional.of(3L));
+        LeaderboardResult result = service.get("profitRate", "2", 3L);
 
         assertEquals("database", result.source());
-        assertEquals(3, result.myRank().orElseThrow().rank());
+        assertEquals(2, result.myRank().orElseThrow().rank());
         assertEquals(2, result.entries().size());
     }
 
@@ -115,7 +115,7 @@ class GetLeaderboardServiceTest {
                 ))
         );
 
-        LeaderboardResult result = service.get("profitRate", "1", Optional.of(99L));
+        LeaderboardResult result = service.get("profitRate", "1", 99L);
 
         assertEquals("redis", result.source());
         assertEquals(7, result.myRank().orElseThrow().rank());
@@ -175,15 +175,10 @@ class GetLeaderboardServiceTest {
         }
 
         @Override
-        public Optional<LeaderboardSnapshot> findTop(LeaderboardMode mode, int limit, int tieSlack) {
-            return Optional.of(new LeaderboardSnapshot(entries, Instant.parse("2026-04-26T00:00:01Z")));
-        }
-
-        @Override
         public Optional<LeaderboardSnapshotResult> findSnapshot(
                 LeaderboardMode mode,
                 int limit,
-                Optional<Long> currentMemberId
+                Long currentMemberId
         ) {
             return Optional.of(new LeaderboardSnapshotResult(
                     entries,

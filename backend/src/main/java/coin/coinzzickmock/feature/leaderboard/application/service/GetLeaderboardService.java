@@ -31,11 +31,11 @@ public class GetLeaderboardService {
 
     @Transactional(readOnly = true)
     public LeaderboardResult get(String modeValue, String limitValue) {
-        return get(modeValue, limitValue, Optional.empty());
+        return get(modeValue, limitValue, null);
     }
 
     @Transactional(readOnly = true)
-    public LeaderboardResult get(String modeValue, String limitValue, Optional<Long> currentMemberId) {
+    public LeaderboardResult get(String modeValue, String limitValue, Long currentMemberId) {
         LeaderboardMode mode = parseMode(modeValue);
         int limit = parseLimit(limitValue);
 
@@ -135,23 +135,22 @@ public class GetLeaderboardService {
     private Optional<LeaderboardMemberRankResult> findDatabaseMyRank(
             LeaderboardMode mode,
             List<LeaderboardEntry> entries,
-            Optional<Long> currentMemberId
+            Long currentMemberId
     ) {
-        if (currentMemberId.isEmpty()) {
+        if (currentMemberId == null) {
             return Optional.empty();
         }
 
-        Long memberId = currentMemberId.get();
-        List<LeaderboardEntry> rankedEntries = entries.stream()
-                .sorted(databaseMyRankComparator(mode))
-                .toList();
-
-        return IntStream.range(0, rankedEntries.size())
-                .filter(index -> rankedEntries.get(index).memberId().equals(memberId))
+        return entries.stream()
+                .filter(entry -> entry.memberId().equals(currentMemberId))
                 .findFirst()
-                .stream()
-                .mapToObj(index -> new LeaderboardMemberRankResult(index + 1))
-                .findFirst();
+                .map(currentEntry -> {
+                    double currentScore = mode.score(currentEntry);
+                    long higherRankedMemberCount = entries.stream()
+                            .filter(entry -> mode.score(entry) > currentScore)
+                            .count();
+                    return new LeaderboardMemberRankResult(Math.toIntExact(higherRankedMemberCount + 1));
+                });
     }
 
     private Comparator<LeaderboardEntry> comparator(LeaderboardMode mode) {
@@ -162,9 +161,4 @@ public class GetLeaderboardService {
                 .thenComparing(LeaderboardEntry::memberId);
     }
 
-    private Comparator<LeaderboardEntry> databaseMyRankComparator(LeaderboardMode mode) {
-        return Comparator.comparingDouble((LeaderboardEntry entry) -> mode.score(entry))
-                .reversed()
-                .thenComparing(LeaderboardEntry::memberId);
-    }
 }

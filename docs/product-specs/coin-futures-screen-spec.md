@@ -175,7 +175,9 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 실현 수익률 랭킹은 미실현 손익이 아니라 실제 지갑 USDT에 반영된 정산 손익과 수수료 기준으로 표시된다.
 - 신규 가입자는 기본 지갑 잔고 `100000 USDT`로 랭킹 인덱스에 추가되며, 이후 포지션 종료/체결 수수료처럼 지갑 잔고가 바뀌는 이벤트가 발생할 때 해당 멤버의 ZSET 점수만 갱신된다.
 - 랭킹 리스트의 1~4위는 `frontend/public/images/leaderboard`의 번들 이미지를 사용하고, 그 외 순위는 숫자 배지로 표시한다.
-- 로그인 사용자의 내 순위는 Redis 사용 시 `profitRate` ZSET의 `ZREVRANK + 1`을 단일 순위로 표시한다. DB fallback에서는 `profitRate DESC, memberId ASC` 기준으로 단일 순위를 계산하며, 정확히 같은 수익률의 동률 순서는 Redis ZSET 순서와 완전히 동일하지 않을 수 있다.
+- 로그인 사용자의 내 순위는 선택된 랭킹 mode의 score 기준으로 "나보다 높은 점수의 active member 수 + 1"을 표시한다. 같은 score의 동점자는 별도 tie-break로 순위를 세분화하지 않는다.
+- Redis 랭킹 인덱스는 빠른 조회용 파생 snapshot이다. Redis를 사용할 수 있으면 Redis snapshot 기준으로 계산하고, DB fallback은 현재 DB projection에서 더 높은 score를 가진 사람 수만 세는 단순 보정 경로로 둔다.
+- Redis snapshot이 불완전하면 부분 랭킹을 표시하지 않고 DB fallback 결과를 사용한다.
 
 ## 화면 4. 심볼 상세 `/markets/[symbol]`
 

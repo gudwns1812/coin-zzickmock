@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
-import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
 import java.time.Instant;
 import java.util.List;
@@ -78,11 +77,6 @@ class RefreshLeaderboardServiceTest {
     private static class RecordingSnapshotStore implements LeaderboardSnapshotStore {
         private final java.util.ArrayList<LeaderboardEntry> updatedEntries = new java.util.ArrayList<>();
         private final java.util.ArrayList<Long> removedMemberIds = new java.util.ArrayList<>();
-
-        @Override
-        public Optional<LeaderboardSnapshot> findTop(LeaderboardMode mode, int limit, int tieSlack) {
-            return Optional.empty();
-        }
 
         @Override
         public void replace(LeaderboardSnapshot snapshot) {

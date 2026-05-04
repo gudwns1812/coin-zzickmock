@@ -30,6 +30,17 @@ export type MarketRankingEntry = {
   profitRate: number;
 };
 
+export type MarketRankingMemberRank = {
+  rank: number;
+};
+
+const MARKET_RANK_ICON_PATHS: Record<number, string> = {
+  1: "/images/leaderboard/first.png",
+  2: "/images/leaderboard/second.png",
+  3: "/images/leaderboard/third.png",
+  4: "/images/leaderboard/4th.png",
+};
+
 export const MARKET_SNAPSHOTS: Record<MarketSymbol, MarketSnapshot> = {
   BTCUSDT: {
     symbol: "BTCUSDT",
@@ -110,6 +121,14 @@ export function getMarketLogoPath(symbol: MarketSymbol) {
   }
 
   return "/images/logo/bitcoin.png";
+}
+
+export function getMarketRankIconPath(rank: number) {
+  return MARKET_RANK_ICON_PATHS[rank] ?? null;
+}
+
+export function formatMarketRank(rank: number | null | undefined) {
+  return rank == null ? "집계 중" : `${rank.toLocaleString("ko-KR")}위`;
 }
 
 export function isSupportedMarketSymbol(

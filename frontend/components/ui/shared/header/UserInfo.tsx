@@ -4,15 +4,18 @@ import React, { useRef, useState } from "react";
 import EditInfo from "./EditInfo";
 import useOutsideClick from "@/hooks/useOutsideClick";
 import useSessionActivityRefresh from "@/hooks/useSessionActivityRefresh";
+import { formatMarketRank, type MarketRankingMemberRank } from "@/lib/markets";
 import { JwtToken } from "@/type/jwt";
 import clsx from "clsx";
 import { usePathname } from "next/navigation";
 
 const UserInfo = ({
   token,
+  myRank,
   children,
 }: {
   token: JwtToken;
+  myRank: MarketRankingMemberRank | null;
   children: React.ReactNode;
 }) => {
   const [isOpenForm, setIsOpenForm] = useState(false);
@@ -55,7 +58,12 @@ const UserInfo = ({
           </div>
           <div className="grid grid-cols-[auto_1fr] gap-y-main gap-x-main-2">
             <span>닉네임</span>
-            <span>{token.nickname}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate">{token.nickname}</span>
+              <span className="shrink-0 rounded-main bg-main-blue/10 px-2 py-0.5 text-xs-custom font-semibold text-main-blue">
+                {formatMarketRank(myRank?.rank)}
+              </span>
+            </span>
 
             <span>휴대폰</span>
             <span>{token.phoneNumber || "-"}</span>

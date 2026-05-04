@@ -5,6 +5,7 @@ import {
   formatCompactUsd,
   formatUsd,
   getMarketLogoPath,
+  getMarketRankIconPath,
   MARKET_RANKING_FALLBACKS,
   type MarketRankingEntry,
   type MarketSnapshot,
@@ -356,6 +357,21 @@ function RankingRow({ entry }: { entry: MarketRankingEntry }) {
 }
 
 function RankBadge({ rank }: { rank: number }) {
+  const iconPath = getMarketRankIconPath(rank);
+  if (iconPath) {
+    return (
+      <span className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-main-light-gray bg-white shadow-sm">
+        <Image
+          src={iconPath}
+          alt={`${rank}위`}
+          width={32}
+          height={32}
+          className="h-8 w-8 object-cover"
+        />
+      </span>
+    );
+  }
+
   const toneClassName =
     rank === 1
       ? "bg-gradient-to-br from-[#ffd700] to-[#f79d00] text-white shadow-md"

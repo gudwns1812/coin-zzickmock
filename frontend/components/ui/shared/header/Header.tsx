@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { getJwtToken } from "@/utils/auth";
+import { getFuturesLeaderboard } from "@/lib/futures-api";
 import LoginForm from "./LoginForm";
 import { cookies } from "next/headers";
 import UserInfo from "./UserInfo";
@@ -10,6 +11,7 @@ import WithdrawalForm from "./WithdrawalForm";
 
 const Header = async () => {
   const token = await getJwtToken();
+  const leaderboard = token ? await getFuturesLeaderboard() : null;
 
   const handleLogout = async () => {
     "use server";
@@ -46,7 +48,7 @@ const Header = async () => {
         {!token && <LoginForm />}
 
         {token && (
-          <UserInfo token={token}>
+          <UserInfo token={token} myRank={leaderboard?.myRank ?? null}>
             <LogoutForm action={handleLogout} />
             <WithdrawalForm action={handleLogout} token={token} />
           </UserInfo>

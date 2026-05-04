@@ -1,9 +1,10 @@
 import {
   getFuturesAccountSummary,
+  getFuturesLeaderboard,
   getFuturesPositions,
   getFuturesReward,
 } from "@/lib/futures-api";
-import { formatUsd } from "@/lib/markets";
+import { formatMarketRank, formatUsd } from "@/lib/markets";
 import { getJwtToken } from "@/utils/auth";
 import {
   CalendarDays,
@@ -11,6 +12,7 @@ import {
   Mail,
   Phone,
   ShieldCheck,
+  Trophy,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,10 +20,11 @@ import type { ReactNode } from "react";
 
 export default async function MyPage() {
   const token = await getJwtToken();
-  const [account, positions, reward] = await Promise.all([
+  const [account, positions, reward, leaderboard] = await Promise.all([
     getFuturesAccountSummary(),
     getFuturesPositions(),
     getFuturesReward(),
+    getFuturesLeaderboard(),
   ]);
   const openPositionCount = positions.length;
 
@@ -34,6 +37,10 @@ export default async function MyPage() {
             <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
               {token?.nickname ?? account.nickname}
             </h1>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-main bg-main-blue/10 px-3 py-1 text-sm-custom font-semibold text-main-blue">
+              <Trophy size={15} />
+              <span>{formatMarketRank(leaderboard.myRank?.rank)}</span>
+            </div>
           </div>
           <div className="flex size-[72px] items-center justify-center rounded-main bg-main-blue text-white">
             <UserRound size={32} />

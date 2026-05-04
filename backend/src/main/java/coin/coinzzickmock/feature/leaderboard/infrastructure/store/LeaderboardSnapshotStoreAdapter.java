@@ -2,7 +2,9 @@ package coin.coinzzickmock.feature.leaderboard.infrastructure.store;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
@@ -40,39 +42,78 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
     private final ObjectMapper objectMapper;
 
     @Override
-    public Optional<LeaderboardSnapshot> findTop(LeaderboardMode mode, int limit, int tieSlack) {
+    public Optional<LeaderboardSnapshotResult> findSnapshot(
+            LeaderboardMode mode,
+            int limit,
+            Long currentMemberId
+    ) {
+        if (limit <= 0) {
+            return Optional.empty();
+        }
+
         String version = redisTemplate.opsForValue().get(activePointerKey());
         if (version == null || version.isBlank()) {
             return Optional.empty();
         }
 
-        int candidateCount = Math.max(limit, limit + tieSlack);
+        Optional<LeaderboardMemberRankResult> myRank = currentMemberId == null
+                ? Optional.empty()
+                : findMyRank(version, mode, currentMemberId);
+
         Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
-                .reverseRangeWithScores(zsetKey(version, mode), 0, candidateCount - 1);
+                .reverseRangeWithScores(zsetKey(version, mode), 0, limit - 1);
         if (tuples == null || tuples.isEmpty()) {
             return Optional.empty();
         }
 
+        return hydrateEntries(version, mode, tuples)
+                .filter(entries -> !entries.isEmpty())
+                .map(entries -> new LeaderboardSnapshotResult(
+                        entries,
+                        readRefreshedAt(version),
+                        myRank
+                ));
+    }
+
+    private Optional<LeaderboardMemberRankResult> findMyRank(String version, LeaderboardMode mode, Long memberId) {
+        Long zeroBasedRank = redisTemplate.opsForZSet().reverseRank(zsetKey(version, mode), memberKey(memberId));
+        if (zeroBasedRank == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new LeaderboardMemberRankResult(Math.toIntExact(zeroBasedRank + 1)));
+    }
+
+    private Optional<List<LeaderboardEntry>> hydrateEntries(
+            String version,
+            LeaderboardMode mode,
+            Set<ZSetOperations.TypedTuple<String>> tuples
+    ) {
         List<String> memberIds = tuples.stream()
                 .map(ZSetOperations.TypedTuple::getValue)
                 .toList();
         List<Object> values = redisTemplate.opsForHash().multiGet(membersKey(version), new ArrayList<>(memberIds));
-        Map<String, LeaderboardEntry> entriesByMemberId = new LinkedHashMap<>();
-        for (int index = 0; index < memberIds.size(); index++) {
-            LeaderboardEntry entry = readEntry(values.get(index));
-            if (entry != null) {
-                entriesByMemberId.put(memberIds.get(index), entry);
-            }
-        }
-
-        if (entriesByMemberId.isEmpty()) {
+        if (values == null || values.size() != memberIds.size()) {
+            log.warn(
+                    "Leaderboard snapshot member hash read returned invalid size. version={}, mode={}, expected={}, actual={}",
+                    version,
+                    mode.value(),
+                    memberIds.size(),
+                    values == null ? null : values.size()
+            );
             return Optional.empty();
         }
 
-        return Optional.of(new LeaderboardSnapshot(
-                List.copyOf(entriesByMemberId.values()),
-                readRefreshedAt(version)
-        ));
+        Map<String, LeaderboardEntry> entriesByMemberId = new LinkedHashMap<>();
+        for (int index = 0; index < memberIds.size(); index++) {
+            String memberKey = memberIds.get(index);
+            LeaderboardEntry entry = readEntry(version, memberKey, values.get(index));
+            if (entry == null) {
+                return Optional.empty();
+            }
+            entriesByMemberId.put(memberKey, entry);
+        }
+
+        return Optional.of(List.copyOf(entriesByMemberId.values()));
     }
 
     @Override
@@ -149,8 +190,9 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
         });
     }
 
-    private LeaderboardEntry readEntry(Object value) {
+    private LeaderboardEntry readEntry(String version, String memberKey, Object value) {
         if (!(value instanceof String json)) {
+            log.warn("Leaderboard snapshot member hash is missing. version={}, memberKey={}", version, memberKey);
             return null;
         }
 
@@ -164,7 +206,12 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
                     snapshot.updatedAt()
             );
         } catch (JsonProcessingException exception) {
-            log.warn("Failed to parse leaderboard member snapshot.", exception);
+            log.warn(
+                    "Failed to parse leaderboard member snapshot. version={}, memberKey={}",
+                    version,
+                    memberKey,
+                    exception
+            );
             return null;
         }
     }

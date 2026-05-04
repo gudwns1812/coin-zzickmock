@@ -8,7 +8,8 @@ public record LeaderboardResponse(
         String mode,
         String source,
         Instant lastRefreshedAt,
-        List<LeaderboardEntryResponse> entries
+        List<LeaderboardEntryResponse> entries,
+        LeaderboardMemberRankResponse myRank
 ) {
     public static LeaderboardResponse from(LeaderboardResult result) {
         return new LeaderboardResponse(
@@ -17,7 +18,10 @@ public record LeaderboardResponse(
                 result.lastRefreshedAt(),
                 result.entries().stream()
                         .map(LeaderboardEntryResponse::from)
-                        .toList()
+                        .toList(),
+                result.myRank()
+                        .map(LeaderboardMemberRankResponse::from)
+                        .orElse(null)
         );
     }
 }

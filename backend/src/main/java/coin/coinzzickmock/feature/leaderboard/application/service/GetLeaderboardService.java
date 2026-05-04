@@ -3,15 +3,18 @@ package coin.coinzzickmock.feature.leaderboard.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardEntryResult;
+import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
+import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,18 +25,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class GetLeaderboardService {
     private static final int DEFAULT_LIMIT = 5;
     private static final int MAX_LIMIT = 50;
-    private static final int TIE_SLACK = 20;
 
     private final LeaderboardProjectionRepository projectionRepository;
     private final List<LeaderboardSnapshotStore> snapshotStores;
 
     @Transactional(readOnly = true)
     public LeaderboardResult get(String modeValue, String limitValue) {
+        return get(modeValue, limitValue, null);
+    }
+
+    @Transactional(readOnly = true)
+    public LeaderboardResult get(String modeValue, String limitValue, Long currentMemberId) {
         LeaderboardMode mode = parseMode(modeValue);
         int limit = parseLimit(limitValue);
 
         for (LeaderboardSnapshotStore snapshotStore : snapshotStores) {
-            LeaderboardResult result = snapshotStore.findTop(mode, limit, TIE_SLACK)
+            LeaderboardResult result = snapshotStore.findSnapshot(mode, limit, currentMemberId)
                     .filter(snapshot -> !snapshot.entries().isEmpty())
                     .map(snapshot -> toResult(mode, "redis", snapshot, limit))
                     .orElse(null);
@@ -42,11 +49,13 @@ public class GetLeaderboardService {
             }
         }
 
+        List<LeaderboardEntry> entries = projectionRepository.findAll();
         return toResult(
                 mode,
                 "database",
-                new LeaderboardSnapshot(projectionRepository.findAll(), Instant.now()),
-                limit
+                new LeaderboardSnapshot(entries, Instant.now()),
+                limit,
+                findDatabaseMyRank(mode, entries, currentMemberId)
         );
     }
 
@@ -74,8 +83,24 @@ public class GetLeaderboardService {
     private LeaderboardResult toResult(
             LeaderboardMode mode,
             String source,
-            LeaderboardSnapshot snapshot,
+            LeaderboardSnapshotResult snapshot,
             int limit
+    ) {
+        return toResult(
+                mode,
+                source,
+                new LeaderboardSnapshot(snapshot.entries(), snapshot.refreshedAt()),
+                limit,
+                snapshot.myRank()
+        );
+    }
+
+    private LeaderboardResult toResult(
+            LeaderboardMode mode,
+            String source,
+            LeaderboardSnapshot snapshot,
+            int limit,
+            Optional<LeaderboardMemberRankResult> myRank
     ) {
         List<LeaderboardEntryResult> entries = snapshot.entries().stream()
                 .sorted(comparator(mode))
@@ -102,8 +127,30 @@ public class GetLeaderboardService {
                                     entry.profitRate()
                             );
                         })
-                        .toList()
+                        .toList(),
+                myRank
         );
+    }
+
+    private Optional<LeaderboardMemberRankResult> findDatabaseMyRank(
+            LeaderboardMode mode,
+            List<LeaderboardEntry> entries,
+            Long currentMemberId
+    ) {
+        if (currentMemberId == null) {
+            return Optional.empty();
+        }
+
+        return entries.stream()
+                .filter(entry -> entry.memberId().equals(currentMemberId))
+                .findFirst()
+                .map(currentEntry -> {
+                    double currentScore = mode.score(currentEntry);
+                    long higherRankedMemberCount = entries.stream()
+                            .filter(entry -> mode.score(entry) > currentScore)
+                            .count();
+                    return new LeaderboardMemberRankResult(Math.toIntExact(higherRankedMemberCount + 1));
+                });
     }
 
     private Comparator<LeaderboardEntry> comparator(LeaderboardMode mode) {
@@ -113,4 +160,5 @@ public class GetLeaderboardService {
                 .thenComparing(LeaderboardEntry::nickname)
                 .thenComparing(LeaderboardEntry::memberId);
     }
+
 }

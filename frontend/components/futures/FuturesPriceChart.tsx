@@ -105,6 +105,14 @@ type CandleResponse = {
   volume: number;
 };
 
+type HistoryFinalizedResponse = {
+  type: "historyFinalized";
+  symbol: string;
+  openTime: string;
+  closeTime: string;
+  affectedIntervals: FuturesCandleInterval[];
+};
+
 type ClientApiResponse<T> = {
   success: boolean;
   data: T | null;
@@ -589,6 +597,17 @@ export default function FuturesPriceChart({
       try {
         const data = JSON.parse(event.data) as unknown;
 
+        if (isHistoryFinalizedResponse(data)) {
+          if (
+            data.symbol === symbol &&
+            data.affectedIntervals.includes(selectedInterval)
+          ) {
+            clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);
+            invalidateCurrentCandleQueries();
+          }
+          return;
+        }
+
         if (!isCandleResponse(data)) {
           return;
         }
@@ -612,6 +631,8 @@ export default function FuturesPriceChart({
       invalidateCurrentCandleQueries,
       onLatestCandleClosePriceChange,
       scheduleClosedCandleFinalizationRefetch,
+      selectedInterval,
+      symbol,
     ]
   );
 
@@ -1298,6 +1319,32 @@ function isCandleResponse(value: unknown): value is CandleResponse {
     Number.isFinite(candidate.lowPrice) &&
     Number.isFinite(candidate.closePrice) &&
     Number.isFinite(candidate.volume)
+  );
+}
+
+function isHistoryFinalizedResponse(
+  value: unknown
+): value is HistoryFinalizedResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<HistoryFinalizedResponse>;
+
+  return (
+    candidate.type === "historyFinalized" &&
+    typeof candidate.symbol === "string" &&
+    typeof candidate.openTime === "string" &&
+    typeof candidate.closeTime === "string" &&
+    Array.isArray(candidate.affectedIntervals) &&
+    candidate.affectedIntervals.every(isFuturesCandleInterval)
+  );
+}
+
+function isFuturesCandleInterval(value: unknown): value is FuturesCandleInterval {
+  return (
+    typeof value === "string" &&
+    INTERVAL_OPTIONS.some((option) => option.value === value)
   );
 }
 

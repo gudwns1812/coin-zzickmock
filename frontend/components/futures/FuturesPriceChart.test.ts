@@ -72,3 +72,11 @@ test("chart refetches closed candle history after the realtime bucket has settle
     true
   );
 });
+
+test("chart invalidates history from backend finalization notifications", () => {
+  assert.equal(source.includes("type: \"historyFinalized\""), true);
+  assert.equal(source.includes("isHistoryFinalizedResponse"), true);
+  assert.equal(source.includes("data.affectedIntervals.includes(selectedInterval)"), true);
+  assert.equal(source.includes("data.symbol === symbol"), true);
+  assert.equal(source.includes("clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);"), true);
+});

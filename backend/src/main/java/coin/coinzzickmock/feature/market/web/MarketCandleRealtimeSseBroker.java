@@ -1,12 +1,19 @@
 package coin.coinzzickmock.feature.market.web;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryFinalizedEvent;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.feature.market.domain.MarketTime;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -27,16 +34,19 @@ public class MarketCandleRealtimeSseBroker {
     private final ConcurrentMap<SubscriptionKey, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
     private final Executor sseEventExecutor;
     private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
+    private final MarketHistoryRepository marketHistoryRepository;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
     public MarketCandleRealtimeSseBroker(
             @Qualifier("marketRealtimeSseEventExecutor") Executor sseEventExecutor,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
+            MarketHistoryRepository marketHistoryRepository,
             SseTelemetry sseTelemetry
     ) {
         this.sseEventExecutor = sseEventExecutor;
         this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
+        this.marketHistoryRepository = marketHistoryRepository;
         this.sseTelemetry = sseTelemetry;
     }
 
@@ -44,7 +54,15 @@ public class MarketCandleRealtimeSseBroker {
             Executor sseEventExecutor,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector
     ) {
-        this(sseEventExecutor, realtimeMarketCandleProjector, NoopSseTelemetry.INSTANCE);
+        this(sseEventExecutor, realtimeMarketCandleProjector, null, NoopSseTelemetry.INSTANCE);
+    }
+
+    MarketCandleRealtimeSseBroker(
+            Executor sseEventExecutor,
+            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
+            SseTelemetry sseTelemetry
+    ) {
+        this(sseEventExecutor, realtimeMarketCandleProjector, null, sseTelemetry);
     }
 
     public void register(String symbol, MarketCandleInterval interval, SseEmitter emitter) {
@@ -79,6 +97,25 @@ public class MarketCandleRealtimeSseBroker {
                 .forEach(this::fanOutLatest);
     }
 
+    @EventListener
+    public void onHistoryFinalized(MarketHistoryFinalizedEvent event) {
+        List<String> affectedIntervals = affectedIntervals(event);
+        if (affectedIntervals.isEmpty()) {
+            return;
+        }
+
+        MarketCandleHistoryFinalizedResponse response = MarketCandleHistoryFinalizedResponse.of(
+                event.symbol(),
+                event.openTime(),
+                event.closeTime(),
+                affectedIntervals
+        );
+        emitters.keySet().stream()
+                .filter(key -> key.symbol().equals(event.symbol()))
+                .filter(key -> affectedIntervals.contains(key.interval().value()))
+                .forEach(key -> fanOut(key, response));
+    }
+
     private void fanOutLatest(SubscriptionKey key) {
         CopyOnWriteArrayList<SseEmitter> keyEmitters = emitters.get(key);
         if (keyEmitters == null || keyEmitters.isEmpty()) {
@@ -89,10 +126,18 @@ public class MarketCandleRealtimeSseBroker {
                 .ifPresent(response -> executeFanOut(key, keyEmitters, response));
     }
 
+    private void fanOut(SubscriptionKey key, Object response) {
+        CopyOnWriteArrayList<SseEmitter> keyEmitters = emitters.get(key);
+        if (keyEmitters == null || keyEmitters.isEmpty()) {
+            return;
+        }
+        executeFanOut(key, keyEmitters, response);
+    }
+
     private void executeFanOut(
             SubscriptionKey key,
             CopyOnWriteArrayList<SseEmitter> keyEmitters,
-            MarketCandleResponse response
+            Object response
     ) {
         try {
             sseEventExecutor.execute(() -> keyEmitters.forEach(emitter -> send(key, emitter, response)));
@@ -114,7 +159,7 @@ public class MarketCandleRealtimeSseBroker {
         });
     }
 
-    private void send(SubscriptionKey key, SseEmitter emitter, MarketCandleResponse response) {
+    private void send(SubscriptionKey key, SseEmitter emitter, Object response) {
         long startedAt = System.nanoTime();
         try {
             emitter.send(response);
@@ -124,6 +169,35 @@ public class MarketCandleRealtimeSseBroker {
             recordSend("failure", startedAt);
             unregister(key, emitter, "send_failure");
         }
+    }
+
+    private List<String> affectedIntervals(MarketHistoryFinalizedEvent event) {
+        List<String> affectedIntervals = new ArrayList<>();
+        affectedIntervals.add(MarketCandleInterval.ONE_MINUTE.value());
+        affectedIntervals.add(MarketCandleInterval.THREE_MINUTES.value());
+        affectedIntervals.add(MarketCandleInterval.FIVE_MINUTES.value());
+        affectedIntervals.add(MarketCandleInterval.FIFTEEN_MINUTES.value());
+        if (completedHourVisible(event)) {
+            affectedIntervals.add(MarketCandleInterval.ONE_HOUR.value());
+        }
+        return affectedIntervals;
+    }
+
+    private boolean completedHourVisible(MarketHistoryFinalizedEvent event) {
+        if (marketHistoryRepository == null) {
+            return false;
+        }
+        Long symbolId = marketHistoryRepository.findSymbolIdsBySymbols(List.of(event.symbol())).get(event.symbol());
+        if (symbolId == null) {
+            return false;
+        }
+
+        Instant hourOpenTime = MarketTime.truncate(event.openTime(), ChronoUnit.HOURS);
+        return !marketHistoryRepository.findCompletedHourlyCandles(
+                symbolId,
+                hourOpenTime,
+                hourOpenTime.plus(1, ChronoUnit.HOURS)
+        ).isEmpty();
     }
 
     private void recordConnectionOpened() {

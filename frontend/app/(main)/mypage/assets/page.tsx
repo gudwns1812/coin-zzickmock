@@ -138,11 +138,7 @@ export default async function MyPageAssetsPage() {
                 {day.dailyWalletChange === 0
                   ? "-"
                   : formatSignedUsd(day.dailyWalletChange)}
-                {day.dateKey === todayKey && day.dailyWalletChange !== 0 ? (
-                  <span className="ml-1 text-xs-custom font-semibold text-main-dark-gray/45">
-                    provisional
-                  </span>
-                ) : null}
+                
               </p>
             </div>
           ))}

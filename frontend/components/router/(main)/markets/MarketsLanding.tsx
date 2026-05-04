@@ -360,13 +360,13 @@ function RankBadge({ rank }: { rank: number }) {
   const iconPath = getMarketRankIconPath(rank);
   if (iconPath) {
     return (
-      <span className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-main-light-gray bg-white shadow-sm">
+      <span className="relative flex h-11 w-11 items-center justify-center">
         <Image
           src={iconPath}
           alt={`${rank}위`}
-          width={32}
-          height={32}
-          className="h-8 w-8 object-cover"
+          width={44}
+          height={44}
+          className="h-11 w-11 object-contain drop-shadow-sm"
         />
       </span>
     );

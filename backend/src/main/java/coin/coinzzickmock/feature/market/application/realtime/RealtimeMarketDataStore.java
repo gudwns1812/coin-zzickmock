@@ -95,6 +95,47 @@ public class RealtimeMarketDataStore {
             if (previous == null) {
                 return next;
             }
+            if (previous.source().isRestFallbackSource()) {
+                return next;
+            }
+            if (previous.source().sourceEventTime().isAfter(update.sourceEventTime())) {
+                return previous;
+            }
+            return next;
+        });
+        return candles.get(key) == next && sequence > 0;
+    }
+
+    public boolean acceptBootstrapCandle(RealtimeMarketCandleUpdate update) {
+        long sequence = receiveSequence.incrementAndGet();
+        CandleKey key = new CandleKey(update.symbol(), update.interval(), update.openTime());
+        RealtimeMarketCandleState next = new RealtimeMarketCandleState(
+                update.symbol(),
+                update.interval(),
+                update.openTime(),
+                update.openPrice(),
+                update.highPrice(),
+                update.lowPrice(),
+                update.closePrice(),
+                update.baseVolume(),
+                update.quoteVolume(),
+                update.usdtVolume(),
+                MarketRealtimeSourceSnapshot.restFallback(
+                        update.symbol(),
+                        MarketRealtimeSourceType.REST_BOOTSTRAP,
+                        MarketRealtimeHealth.BOOTSTRAPPING,
+                        update.sourceEventTime(),
+                        update.receivedAt(),
+                        "current_candle_bootstrap"
+                )
+        );
+        candles.compute(key, (ignored, previous) -> {
+            if (previous == null) {
+                return next;
+            }
+            if (previous.source().isWebSocketSource()) {
+                return previous;
+            }
             if (previous.source().sourceEventTime().isAfter(update.sourceEventTime())) {
                 return previous;
             }

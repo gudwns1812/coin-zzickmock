@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.application.realtime.CurrentMarketCandleBootstrapper;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
@@ -129,6 +130,49 @@ class MarketControllerTest {
 
         assertTrue(((FailingSseEmitter) emitter).completed);
         verify(candleBroker, never()).register(eq("BTCUSDT"), eq(MarketCandleInterval.ONE_MINUTE), any(SseEmitter.class));
+    }
+
+    @Test
+    void bootstrapsCurrentCandleBeforeCandleStreamInitialSend() {
+        GetMarketSummaryService summaryService = mock(GetMarketSummaryService.class);
+        GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);
+        MarketRealtimeSseBroker marketBroker = mock(MarketRealtimeSseBroker.class);
+        MarketCandleRealtimeSseBroker candleBroker = mock(MarketCandleRealtimeSseBroker.class);
+        CurrentMarketCandleBootstrapper bootstrapper = mock(CurrentMarketCandleBootstrapper.class);
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        RealtimeMarketCandleProjector projector = new RealtimeMarketCandleProjector(store);
+        Instant open = Instant.parse("2026-04-30T04:00:00Z");
+        org.mockito.Mockito.doAnswer(invocation -> {
+            store.acceptBootstrapCandle(new RealtimeMarketCandleUpdate(
+                    "BTCUSDT",
+                    MarketCandleInterval.ONE_MINUTE,
+                    open,
+                    BigDecimal.valueOf(100),
+                    BigDecimal.valueOf(105),
+                    BigDecimal.valueOf(99),
+                    BigDecimal.valueOf(102),
+                    BigDecimal.ONE,
+                    BigDecimal.valueOf(102),
+                    BigDecimal.valueOf(102),
+                    open.plusSeconds(1),
+                    open.plusSeconds(1)
+            ));
+            return true;
+        }).when(bootstrapper).bootstrapIfNeeded("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        MarketController controller = new MarketController(
+                summaryService,
+                candleService,
+                marketBroker,
+                candleBroker,
+                projector,
+                bootstrapper,
+                SSE_TIMEOUT_MS
+        );
+
+        controller.candleStream("BTCUSDT", "1m");
+
+        verify(bootstrapper).bootstrapIfNeeded("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        verify(candleBroker).register(eq("BTCUSDT"), eq(MarketCandleInterval.ONE_MINUTE), any(SseEmitter.class));
     }
 
     @Test

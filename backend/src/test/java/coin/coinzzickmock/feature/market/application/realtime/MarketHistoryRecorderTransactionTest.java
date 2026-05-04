@@ -1,7 +1,9 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
@@ -17,17 +19,21 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.stereotype.Component;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @SpringJUnitConfig(classes = {
         MarketHistoryRecorder.class,
+        MarketHistoryRecorderTransactionTest.RollbackHarness.class,
         MarketHistoryRecorderTransactionTest.TransactionTestConfiguration.class
 })
 class MarketHistoryRecorderTransactionTest {
@@ -39,9 +45,16 @@ class MarketHistoryRecorderTransactionTest {
     @Autowired
     private RecordingMarketHistoryRepository repository;
 
+    @Autowired
+    private CapturingEventPublisher eventPublisher;
+
+    @Autowired
+    private RollbackHarness rollbackHarness;
+
     @BeforeEach
     void setUp() {
         repository.reset();
+        eventPublisher.reset();
     }
 
     @Test
@@ -58,6 +71,35 @@ class MarketHistoryRecorderTransactionTest {
         recorder.recordHistoricalMinuteCandles(1L, List.of(minuteCandle()));
 
         assertThat(repository.observedTransactionStates()).isNotEmpty().containsOnly(true);
+    }
+
+    @Test
+    void publishesClosedMinuteFinalizedEventAfterCommit() {
+        repository.replaceSymbolIds(Map.of("BTCUSDT", 1L));
+
+        recorder.recordClosedMinuteCandlesBySymbol(
+                Map.of("BTCUSDT", List.of(minuteCandle())),
+                OPEN_TIME,
+                OPEN_TIME.plus(1, ChronoUnit.MINUTES)
+        );
+
+        assertThat(eventPublisher.events())
+                .containsExactly(new MarketHistoryFinalizedEvent(
+                        "BTCUSDT",
+                        OPEN_TIME,
+                        OPEN_TIME.plus(1, ChronoUnit.MINUTES)
+                ));
+    }
+
+    @Test
+    void doesNotPublishClosedMinuteFinalizedEventAfterRollback() {
+        repository.replaceSymbolIds(Map.of("BTCUSDT", 1L));
+
+        assertThatThrownBy(() -> rollbackHarness.recordAndRollback(Map.of("BTCUSDT", List.of(minuteCandle()))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("rollback");
+
+        assertThat(eventPublisher.events()).isEmpty();
     }
 
     private static MarketMinuteCandleSnapshot minuteCandle() {
@@ -92,6 +134,52 @@ class MarketHistoryRecorderTransactionTest {
         @Bean
         RecordingMarketHistoryRepository marketHistoryRepository() {
             return new RecordingMarketHistoryRepository();
+        }
+
+        @Bean
+        CapturingEventPublisher capturingEventPublisher() {
+            return new CapturingEventPublisher();
+        }
+
+        @Bean
+        AfterCommitEventPublisher afterCommitEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+            return new AfterCommitEventPublisher(applicationEventPublisher);
+        }
+    }
+
+    @Component
+    static class RollbackHarness {
+        private final MarketHistoryRecorder recorder;
+
+        RollbackHarness(MarketHistoryRecorder recorder) {
+            this.recorder = recorder;
+        }
+
+        @Transactional
+        void recordAndRollback(Map<String, List<MarketMinuteCandleSnapshot>> minuteCandlesBySymbol) {
+            recorder.recordClosedMinuteCandlesBySymbol(
+                    minuteCandlesBySymbol,
+                    OPEN_TIME,
+                    OPEN_TIME.plus(1, ChronoUnit.MINUTES)
+            );
+            throw new IllegalStateException("rollback");
+        }
+    }
+
+    static class CapturingEventPublisher {
+        private final List<MarketHistoryFinalizedEvent> events = new ArrayList<>();
+
+        @org.springframework.context.event.EventListener
+        void onEvent(MarketHistoryFinalizedEvent event) {
+            events.add(event);
+        }
+
+        void reset() {
+            events.clear();
+        }
+
+        List<MarketHistoryFinalizedEvent> events() {
+            return List.copyOf(events);
         }
     }
 

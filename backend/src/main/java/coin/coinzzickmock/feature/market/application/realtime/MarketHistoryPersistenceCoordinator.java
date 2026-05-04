@@ -39,7 +39,12 @@ public class MarketHistoryPersistenceCoordinator {
             Instant closeTime
     ) {
         if (openTime.equals(recordedClosedMinuteOpenTimes.get(symbol))) {
-            return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.SAVED);
+            return new MarketHistoryPersistenceResult(
+                    symbol,
+                    openTime,
+                    closeTime,
+                    MarketHistoryPersistenceStatus.ALREADY_RECORDED
+            );
         }
 
         List<MarketMinuteCandleSnapshot> minuteCandles;
@@ -59,7 +64,11 @@ public class MarketHistoryPersistenceCoordinator {
 
         Map<String, Boolean> saveResults;
         try {
-            saveResults = marketHistoryRecorder.recordHistoricalMinuteCandlesBySymbol(Map.of(symbol, minuteCandles));
+            saveResults = marketHistoryRecorder.recordClosedMinuteCandlesBySymbol(
+                    Map.of(symbol, minuteCandles),
+                    openTime,
+                    closeTime
+            );
         } catch (RuntimeException exception) {
             log.warn("Failed to persist closed market minute candle history. symbol={} openTime={} closeTime={}",
                     symbol, openTime, closeTime, exception);
@@ -72,7 +81,7 @@ public class MarketHistoryPersistenceCoordinator {
         }
 
         recordedClosedMinuteOpenTimes.put(symbol, openTime);
-        return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.SAVED);
+        return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.PERSISTED);
     }
 
     private List<String> distinctSymbols(List<String> symbols) {

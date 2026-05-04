@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
@@ -11,14 +12,27 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@RequiredArgsConstructor
 public class MarketHistoryRecorder {
     private final MarketHistoryRepository marketHistoryRepository;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
+
+    @Autowired
+    public MarketHistoryRecorder(
+            MarketHistoryRepository marketHistoryRepository,
+            AfterCommitEventPublisher afterCommitEventPublisher
+    ) {
+        this.marketHistoryRepository = marketHistoryRepository;
+        this.afterCommitEventPublisher = afterCommitEventPublisher;
+    }
+
+    public MarketHistoryRecorder(MarketHistoryRepository marketHistoryRepository) {
+        this(marketHistoryRepository, null);
+    }
 
     @Transactional
     public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(
@@ -51,6 +65,25 @@ public class MarketHistoryRecorder {
                 return;
             }
             saveResults.put(symbol, false);
+        });
+        return saveResults;
+    }
+
+    @Transactional
+    public Map<String, Boolean> recordClosedMinuteCandlesBySymbol(
+            Map<String, List<MarketMinuteCandleSnapshot>> minuteCandlesBySymbol,
+            Instant openTime,
+            Instant closeTime
+    ) {
+        Map<String, Boolean> saveResults = recordHistoricalMinuteCandlesBySymbol(minuteCandlesBySymbol);
+        if (afterCommitEventPublisher == null) {
+            return saveResults;
+        }
+
+        saveResults.forEach((symbol, saved) -> {
+            if (Boolean.TRUE.equals(saved)) {
+                afterCommitEventPublisher.publish(new MarketHistoryFinalizedEvent(symbol, openTime, closeTime));
+            }
         });
         return saveResults;
     }

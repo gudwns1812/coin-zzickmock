@@ -1,7 +1,8 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 public enum MarketHistoryPersistenceStatus {
-    SAVED,
+    PERSISTED,
+    ALREADY_RECORDED,
     EMPTY,
     FAILED
 }

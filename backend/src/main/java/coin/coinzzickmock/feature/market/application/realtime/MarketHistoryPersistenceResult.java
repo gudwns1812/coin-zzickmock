@@ -14,6 +14,11 @@ public record MarketHistoryPersistenceResult(
     }
 
     public boolean saved() {
-        return status == MarketHistoryPersistenceStatus.SAVED;
+        return status == MarketHistoryPersistenceStatus.PERSISTED
+                || status == MarketHistoryPersistenceStatus.ALREADY_RECORDED;
+    }
+
+    public boolean persisted() {
+        return status == MarketHistoryPersistenceStatus.PERSISTED;
     }
 }

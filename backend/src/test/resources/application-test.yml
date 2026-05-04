@@ -32,3 +32,7 @@ coin:
       enabled: false
     startup-backfill:
       enabled: false
+  account:
+    wallet-history:
+      startup-baseline:
+        enabled: false

@@ -1,13 +1,12 @@
 import {
   getFuturesAccountSummary,
-  getFuturesPositionHistory,
   getFuturesPositions,
   getFuturesWalletHistory,
 } from "@/lib/futures-api";
 import WalletBalanceChart from "@/components/mypage/WalletBalanceChart";
 import {
+  buildDailyWalletChanges,
   buildKstMonthCalendar,
-  groupDailyNetRealizedPnl,
   toKstDateKey,
 } from "@/lib/futures-pnl-calendar";
 import { formatUsd } from "@/lib/markets";
@@ -16,10 +15,9 @@ import { Eye, TrendingDown, TrendingUp } from "lucide-react";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default async function MyPageAssetsPage() {
-  const [account, positions, histories, walletHistory] = await Promise.all([
+  const [account, positions, walletHistory] = await Promise.all([
     getFuturesAccountSummary(),
     getFuturesPositions(),
-    getFuturesPositionHistory(),
     getFuturesWalletHistory(),
   ]);
   const unrealizedPnl = positions.reduce(
@@ -27,13 +25,13 @@ export default async function MyPageAssetsPage() {
     0
   );
   const totalBalance = account.walletBalance + unrealizedPnl;
-  const dailyPnl = groupDailyNetRealizedPnl(histories);
-  const calendarDays = buildKstMonthCalendar(new Date(), dailyPnl);
+  const dailyWalletChanges = buildDailyWalletChanges(walletHistory);
+  const calendarDays = buildKstMonthCalendar(new Date(), dailyWalletChanges);
   const todayKey = toKstDateKey(new Date());
   const monthLabel = todayKey.slice(0, 7);
-  const monthPnl = dailyPnl
+  const monthPnl = dailyWalletChanges
     .filter((item) => item.dateKey.startsWith(monthLabel))
-    .reduce((sum, item) => sum + item.netRealizedPnl, 0);
+    .reduce((sum, item) => sum + item.dailyWalletChange, 0);
 
   return (
     <div className="flex flex-col gap-main-2">
@@ -120,26 +118,31 @@ export default async function MyPageAssetsPage() {
                 <span className="text-xs-custom font-semibold">
                   {day.dayOfMonth}
                 </span>
-                {day.netRealizedPnl > 0 && (
+                {day.dailyWalletChange > 0 && (
                   <TrendingUp size={14} className="text-main-red" />
                 )}
-                {day.netRealizedPnl < 0 && (
+                {day.dailyWalletChange < 0 && (
                   <TrendingDown size={14} className="text-main-blue" />
                 )}
               </div>
               <p
                 className={[
                   "mt-3 text-sm-custom font-bold",
-                  day.netRealizedPnl > 0
+                  day.dailyWalletChange > 0
                     ? "text-main-red"
-                    : day.netRealizedPnl < 0
+                    : day.dailyWalletChange < 0
                       ? "text-main-blue"
                       : "text-main-dark-gray/35",
                 ].join(" ")}
               >
-                {day.netRealizedPnl === 0
+                {day.dailyWalletChange === 0
                   ? "-"
-                  : formatSignedUsd(day.netRealizedPnl)}
+                  : formatSignedUsd(day.dailyWalletChange)}
+                {day.dateKey === todayKey && day.dailyWalletChange !== 0 ? (
+                  <span className="ml-1 text-xs-custom font-semibold text-main-dark-gray/45">
+                    provisional
+                  </span>
+                ) : null}
               </p>
             </div>
           ))}

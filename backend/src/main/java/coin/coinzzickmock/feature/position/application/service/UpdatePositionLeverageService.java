@@ -6,7 +6,6 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -15,7 +14,6 @@ import coin.coinzzickmock.feature.position.application.repository.PositionReposi
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -59,10 +57,9 @@ public class UpdatePositionLeverageService {
                 next.initialMargin()
         );
 
-        validateAccountMutation(accountRepository.updateWithVersion(
+        TradingAccount updatedAccount = validateAccountMutation(accountRepository.updateWithVersion(
                 account,
-                adjusted,
-                WalletHistorySource.positionLeverageChange(symbol, positionSide, marginMode, Instant.now())
+                adjusted
         ));
 
         PositionMutationResult mutation = positionRepository.updateWithVersion(memberId, current, next);
@@ -70,13 +67,13 @@ public class UpdatePositionLeverageService {
             throw new CoreException(ErrorCode.POSITION_CHANGED);
         }
 
-        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
+        afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
         return toResult(memberId, mutation.updatedSnapshot());
     }
 
-    private void validateAccountMutation(AccountMutationResult mutationResult) {
+    private TradingAccount validateAccountMutation(AccountMutationResult mutationResult) {
         if (mutationResult.succeeded()) {
-            return;
+            return mutationResult.updatedAccount();
         }
         if (mutationResult.status() == AccountMutationResult.Status.NOT_FOUND) {
             throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);

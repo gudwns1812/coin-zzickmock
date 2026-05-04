@@ -6,7 +6,6 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -18,9 +17,10 @@ import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
-import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
@@ -40,34 +40,6 @@ public class PositionCloseFinalizer {
             double feeRate,
             String closeReason
     ) {
-        return close(
-                memberId,
-                position,
-                quantity,
-                markPrice,
-                executionPrice,
-                feeRate,
-                closeReason,
-                WalletHistorySource.positionClose(
-                        closeReason,
-                        position.symbol(),
-                        position.positionSide(),
-                        position.marginMode(),
-                        Instant.now()
-                )
-        );
-    }
-
-    public ClosePositionResult close(
-            Long memberId,
-            PositionSnapshot position,
-            double quantity,
-            double markPrice,
-            double executionPrice,
-            double feeRate,
-            String closeReason,
-            WalletHistorySource walletHistorySource
-    ) {
         if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "종료 수량을 확인해주세요.");
         }
@@ -85,16 +57,15 @@ public class PositionCloseFinalizer {
 
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        validateAccountMutation(accountRepository.updateWithVersion(
+        TradingAccount updatedAccount = validateAccountMutation(accountRepository.updateWithVersion(
                 account,
                 account.settlePositionClose(
                         closeOutcome.grossRealizedPnl(),
                         closeOutcome.closeFee(),
                         closeOutcome.releasedMargin()
-                ),
-                walletHistorySource
+                )
         ));
-        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
+        afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
 
         RewardPointResult rewardPointResult = rewardPointGrantProcessor.grant(
                 new GrantProfitPointCommand(memberId, closeOutcome.netRealizedPnl())
@@ -108,9 +79,9 @@ public class PositionCloseFinalizer {
         );
     }
 
-    private void validateAccountMutation(AccountMutationResult mutationResult) {
+    private TradingAccount validateAccountMutation(AccountMutationResult mutationResult) {
         if (mutationResult.succeeded()) {
-            return;
+            return mutationResult.updatedAccount();
         }
         if (mutationResult.status() == AccountMutationResult.Status.NOT_FOUND) {
             throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);

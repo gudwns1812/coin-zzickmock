@@ -86,6 +86,33 @@ class MarketCandleRealtimeSseBrokerTest {
     }
 
     @Test
+    void removesAlreadyCompletedEmitterWithoutPropagatingFailure() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
+                Runnable::run,
+                new RealtimeMarketCandleProjector(store),
+                telemetry
+        );
+        AlreadyCompletedSseEmitter completedEmitter = new AlreadyCompletedSseEmitter();
+        CapturingSseEmitter healthyEmitter = new CapturingSseEmitter();
+        Instant open = Instant.parse("2026-04-30T04:00:00Z");
+        broker.register("BTCUSDT", MarketCandleInterval.ONE_MINUTE, completedEmitter);
+        broker.register("BTCUSDT", MarketCandleInterval.ONE_MINUTE, healthyEmitter);
+        store.acceptCandle(candle(open));
+
+        broker.onCandleUpdated(new MarketCandleUpdatedEvent("BTCUSDT"));
+        broker.onCandleUpdated(new MarketCandleUpdatedEvent("BTCUSDT"));
+
+        assertThat(completedEmitter.sendAttempts()).isEqualTo(1);
+        assertThat(healthyEmitter.events()).hasSize(2);
+        assertThat(telemetry.events()).contains(
+                "send:market_candle:failure",
+                "closed:market_candle:send_failure"
+        );
+    }
+
+    @Test
     void recordsConnectionSendAndExecutorTelemetry() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
@@ -174,6 +201,20 @@ class MarketCandleRealtimeSseBrokerTest {
 
         private boolean completed() {
             return completed;
+        }
+    }
+
+    private static class AlreadyCompletedSseEmitter extends SseEmitter {
+        private int sendAttempts;
+
+        @Override
+        public void send(Object object) throws IOException {
+            sendAttempts++;
+            throw new IllegalStateException("ResponseBodyEmitter has already completed");
+        }
+
+        private int sendAttempts() {
+            return sendAttempts;
         }
     }
 

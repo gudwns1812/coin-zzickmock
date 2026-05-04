@@ -9,7 +9,6 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -45,7 +44,6 @@ class UpdatePositionLeverageServiceTest {
         assertEquals(20, result.leverage());
         assertEquals(95, result.liquidationPrice(), 0.0001);
         assertEquals(100005, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
-        assertEquals(WalletHistorySource.TYPE_POSITION_LEVERAGE_CHANGE, accountRepository.lastSource.sourceType());
     }
 
     @Test
@@ -224,7 +222,6 @@ class UpdatePositionLeverageServiceTest {
 
     private static class InMemoryAccountRepository implements AccountRepository {
         private TradingAccount account;
-        private WalletHistorySource lastSource;
 
         private InMemoryAccountRepository(double availableMargin) {
             this.account = new TradingAccount(
@@ -253,10 +250,8 @@ class UpdatePositionLeverageServiceTest {
         @Override
         public AccountMutationResult updateWithVersion(
                 TradingAccount expectedAccount,
-                TradingAccount nextAccount,
-                WalletHistorySource source
+                TradingAccount nextAccount
         ) {
-            this.lastSource = source;
             if (account.version() != expectedAccount.version()) {
                 return AccountMutationResult.staleVersion(account);
             }

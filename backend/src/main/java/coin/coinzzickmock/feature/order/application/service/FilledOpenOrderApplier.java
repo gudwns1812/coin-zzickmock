@@ -6,7 +6,6 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
@@ -36,8 +35,8 @@ public class FilledOpenOrderApplier {
 
         int effectiveLeverage = existing == null ? order.leverage() : existing.leverage();
         double initialMargin = order.reservedInitialMargin(effectiveLeverage);
-        reserveAccountMargin(order.memberId(), order.orderId(), order.estimatedFee(), initialMargin);
-        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(order.memberId()));
+        TradingAccount updatedAccount = reserveAccountMargin(order.memberId(), order.estimatedFee(), initialMargin);
+        afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
 
         if (existing == null) {
             positionRepository.save(order.memberId(), PositionSnapshot.open(
@@ -66,19 +65,19 @@ public class FilledOpenOrderApplier {
         ));
     }
 
-    private void reserveAccountMargin(Long memberId, String orderId, double estimatedFee, double initialMargin) {
+    private TradingAccount reserveAccountMargin(Long memberId, double estimatedFee, double initialMargin) {
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        validateAccountMutation(accountRepository.updateWithVersion(
+        // Order traceability stays in order/position history; wallet_history is a KST daily account snapshot.
+        return validateAccountMutation(accountRepository.updateWithVersion(
                 account,
-                account.reserveForFilledOrder(estimatedFee, initialMargin),
-                WalletHistorySource.orderFill(orderId)
+                account.reserveForFilledOrder(estimatedFee, initialMargin)
         ));
     }
 
-    private void validateAccountMutation(AccountMutationResult mutationResult) {
+    private TradingAccount validateAccountMutation(AccountMutationResult mutationResult) {
         if (mutationResult.succeeded()) {
-            return;
+            return mutationResult.updatedAccount();
         }
         if (mutationResult.status() == AccountMutationResult.Status.NOT_FOUND) {
             throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);

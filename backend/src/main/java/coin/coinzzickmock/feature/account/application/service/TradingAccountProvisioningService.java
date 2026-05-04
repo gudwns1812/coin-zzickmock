@@ -37,7 +37,7 @@ public class TradingAccountProvisioningService {
 
     private TradingAccount openDefaultAccount(Long memberId, String memberEmail, String memberName) {
         TradingAccount account = accountRepository.create(TradingAccount.openDefault(memberId, memberEmail, memberName));
-        afterCommitEventPublisher.publish(new WalletBalanceChangedEvent(memberId));
+        afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(account));
         return account;
     }
 }

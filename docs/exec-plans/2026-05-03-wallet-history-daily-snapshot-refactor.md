@@ -7,7 +7,7 @@
 - the recent 30-day wallet balance chart
 - the daily realized PnL calendar
 
-The product specs now define `wallet_history` as one row per member per KST `snapshotDate`, with `walletBalance`, `availableMargin`, `dailyWalletChange`, and a finalized/provisional state.
+The product specs now define `wallet_history` as one row per member per KST `snapshotDate`, with `walletBalance` and `dailyWalletChange`. Today's value is provisional by presentation rule, not by a stored flag.
 
 ## RALPLAN-DR Summary
 
@@ -17,7 +17,7 @@ The product specs now define `wallet_history` as one row per member per KST `sna
 - Keep wallet event/account mutation logic separate from reporting snapshots.
 - Make daily rows idempotent with `(memberId, snapshotDate)`.
 - Use KST as the reporting boundary everywhere the account page groups by day.
-- Allow today's row to be provisional so the account page can show today's wallet change before finalization.
+- Allow today's value to be shown as provisional by comparing `snapshotDate` with today in KST.
 
 ### Decision Drivers
 
@@ -49,7 +49,6 @@ The product specs now define `wallet_history` as one row per member per KST `sna
 - Add a migration that converts `wallet_history` toward daily snapshots:
   - add `snapshot_date DATE NOT NULL`
   - add `daily_wallet_change DECIMAL(19, 4) NOT NULL DEFAULT 0`
-  - add `finalized BOOLEAN NOT NULL DEFAULT FALSE`
   - replace event idempotency with `UNIQUE (member_id, snapshot_date)`
   - keep `recorded_at` as the actual snapshot capture timestamp
   - remove or stop using `source_type` and `source_reference`
@@ -65,20 +64,18 @@ The product specs now define `wallet_history` as one row per member per KST `sna
 - Keep read methods date-oriented, not instant/event-source-oriented.
 - After successful account wallet mutations, call a reporting application service that updates the current KST day's wallet snapshot. This is not an event-history write; it updates the one daily row for that member/date.
 
-### 3. Baseline, Current-Day Update, And Finalization
+### 3. Baseline And Current-Day Update
 
 - Add an application service such as `SnapshotWalletHistoryService`.
 - At KST day start, create each active account's baseline row idempotently. Use `UNIQUE(member_id, snapshot_date)` plus duplicate-key-safe write semantics so duplicate scheduler runs are harmless.
 - On account wallet changes, update the current KST day's existing row for that member. If the row is unexpectedly missing, create it through the same idempotent baseline path before applying the update.
 - Compute:
   - `walletBalance`: current settled wallet balance
-  - `availableMargin`: current settled available margin
   - `baselineWalletBalance`: the KST day-start wallet balance captured by the baseline row
   - `dailyWalletChange`: current row `walletBalance` minus `baselineWalletBalance`
 - Baseline rows start with `dailyWalletChange = 0`.
-- Add a finalization scheduler shortly after the KST day boundary.
-- The finalization scheduler marks the KST date that just ended as finalized.
-- The finalization scheduler must not compute yesterday's row from the post-midnight current account balance. Doing so would mix wallet changes between midnight and the scheduler run into the wrong KST date.
+- Add a rollover scheduler at the KST day boundary to create the new day's baseline.
+- The rollover scheduler must not compute yesterday's row from the post-midnight current account balance. Doing so would mix wallet changes between midnight and the scheduler run into the wrong KST date.
 - If exact historical end-of-day balances are required later, introduce a separate ledger or intraday audit trail; do not overload daily snapshots with event semantics.
 
 ### 4. Read API And Fallback
@@ -86,12 +83,10 @@ The product specs now define `wallet_history` as one row per member per KST `sna
 - Keep the existing wallet history endpoint if possible, but change response semantics:
   - `snapshotDate`
   - `walletBalance`
-  - `availableMargin`
   - `dailyWalletChange`
-  - `finalized`
   - `recordedAt`
 - Default query returns the latest 30 KST snapshot dates.
-- Today's unfinalized row can be returned and displayed as provisional.
+- Today's row can be returned and displayed as provisional by date comparison.
 - If no current-day row exists yet, the read API may synthesize a provisional current-day point from the current account balance and today's computed baseline, but the normal path should create the baseline row before reads need it.
 
 ### 5. Frontend Account Page
@@ -100,7 +95,7 @@ The product specs now define `wallet_history` as one row per member per KST `sna
 - Use wallet history for both:
   - balance chart: `walletBalance`
   - calendar: `dailyWalletChange`
-- Show today's unfinalized `dailyWalletChange` in the calendar as provisional rather than omitting it.
+- Show today's `dailyWalletChange` in the calendar as provisional rather than omitting it.
 - Stop deriving `/mypage/assets` calendar values from `position_history.closedAt`.
 - Keep `position_history` as trade review/history detail, not as the account-page calendar source.
 
@@ -111,7 +106,7 @@ The product specs now define `wallet_history` as one row per member per KST `sna
 - Migration-test or schema-test that `UNIQUE(member_id, snapshot_date)` exists.
 - Service-test that account wallet mutations update only the current KST daily row, not per-event rows.
 - Service-test snapshot generation from account balances and the current KST day's baseline wallet balance.
-- Service-test that finalization does not recalculate yesterday from a post-midnight current balance.
+- Service-test that rollover baseline creation does not recalculate yesterday from a post-midnight current balance.
 - API-test provisional current-day shape and default 30-day window.
 - Frontend-test chart sorting by `snapshotDate` and calendar grouping from `dailyWalletChange`.
 
@@ -138,7 +133,7 @@ The existing product language and API already call this `wallet_history`, and th
 
 ### Consequences
 
-- Existing event-source code and tests need deletion or rewrite into daily baseline creation, current-day update, and finalization behavior.
+- Existing event-source code and tests need deletion or rewrite into daily baseline creation and current-day update behavior.
 - Existing event-style `wallet_history` rows will be truncated because they are not valid daily snapshots.
 - If future audit/event requirements appear, they should use a separate ledger table.
 

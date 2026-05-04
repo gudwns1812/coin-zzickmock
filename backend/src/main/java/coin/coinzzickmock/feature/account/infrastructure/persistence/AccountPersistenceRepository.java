@@ -3,8 +3,7 @@ package coin.coinzzickmock.feature.account.infrastructure.persistence;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
-import java.time.Instant;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,13 +14,20 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AccountPersistenceRepository implements AccountRepository {
     private final TradingAccountEntityRepository tradingAccountEntityRepository;
-    private final WalletHistoryPersistenceRepository walletHistoryPersistenceRepository;
 
     @Override
     @Transactional(readOnly = true)
     public Optional<TradingAccount> findByMemberId(Long memberId) {
         return tradingAccountEntityRepository.findById(memberId)
                 .map(TradingAccountEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TradingAccount> findAll() {
+        return tradingAccountEntityRepository.findAll().stream()
+                .map(TradingAccountEntity::toDomain)
+                .toList();
     }
 
     @Override
@@ -35,13 +41,8 @@ public class AccountPersistenceRepository implements AccountRepository {
     @Transactional
     public AccountMutationResult updateWithVersion(
             TradingAccount expectedAccount,
-            TradingAccount nextAccount,
-            WalletHistorySource source
+            TradingAccount nextAccount
     ) {
-        if (source == null) {
-            throw new IllegalArgumentException("WalletHistorySource is required for account mutations.");
-        }
-
         Optional<TradingAccountEntity> current = tradingAccountEntityRepository.findById(expectedAccount.memberId());
         if (current.isEmpty()) {
             return AccountMutationResult.notFound();
@@ -54,7 +55,6 @@ public class AccountPersistenceRepository implements AccountRepository {
 
         TradingAccount versioned = nextAccount.withVersion(expectedAccount.version() + 1);
         entity.apply(versioned);
-        walletHistoryPersistenceRepository.saveIfAbsent(versioned, source, Instant.now());
         return AccountMutationResult.updated(1, versioned);
     }
 }

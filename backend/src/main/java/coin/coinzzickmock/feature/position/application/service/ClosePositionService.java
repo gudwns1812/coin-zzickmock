@@ -3,7 +3,6 @@ package coin.coinzzickmock.feature.position.application.service;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -108,8 +107,7 @@ public class ClosePositionService {
                 market.markPrice(),
                 decision.executionPrice(),
                 decision.feeRate(),
-                PositionHistory.CLOSE_REASON_MANUAL,
-                WalletHistorySource.positionCloseOrderFill(closeOrderId)
+                PositionHistory.CLOSE_REASON_MANUAL
         );
         pendingCloseOrderCapReconciler.reconcile(
                 memberId,

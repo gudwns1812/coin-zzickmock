@@ -1,15 +1,15 @@
-import type { FuturesPositionHistory } from "@/lib/futures-api";
+import type { FuturesWalletHistoryPoint } from "@/lib/futures-api";
 
-export type DailyPnl = {
+export type DailyWalletChange = {
   dateKey: string;
-  netRealizedPnl: number;
+  dailyWalletChange: number;
 };
 
 export type CalendarDay = {
   dateKey: string;
   dayOfMonth: number;
   inMonth: boolean;
-  netRealizedPnl: number;
+  dailyWalletChange: number;
 };
 
 const KST_TIME_ZONE = "Asia/Seoul";
@@ -30,64 +30,66 @@ export function toKstDateKey(value: string | Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function groupDailyNetRealizedPnl(
-  histories: Pick<FuturesPositionHistory, "closedAt" | "netRealizedPnl">[]
-): DailyPnl[] {
-  const grouped = new Map<string, number>();
-
-  for (const history of histories) {
-    const dateKey = toKstDateKey(history.closedAt);
-    grouped.set(dateKey, (grouped.get(dateKey) ?? 0) + history.netRealizedPnl);
-  }
-
-  return Array.from(grouped.entries())
-    .map(([dateKey, netRealizedPnl]) => ({ dateKey, netRealizedPnl }))
+export function buildDailyWalletChanges(
+  history: Pick<
+    FuturesWalletHistoryPoint,
+    "snapshotDate" | "dailyWalletChange"
+  >[]
+): DailyWalletChange[] {
+  return history
+    .map((point) => ({
+      dateKey: point.snapshotDate,
+      dailyWalletChange: point.dailyWalletChange,
+    }))
     .sort((left, right) => left.dateKey.localeCompare(right.dateKey));
 }
 
 export function buildKstMonthCalendar(
   monthDate: Date,
-  dailyPnl: DailyPnl[]
+  dailyChanges: DailyWalletChange[]
 ): CalendarDay[] {
   const monthKey = toKstDateKey(monthDate).slice(0, 7);
   const [year, month] = monthKey.split("-").map(Number);
   const firstDay = new Date(Date.UTC(year, month - 1, 1));
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const leadingDays = firstDay.getUTCDay();
-  const pnlByDate = new Map(
-    dailyPnl.map((item) => [item.dateKey, item.netRealizedPnl])
+  const changeByDate = new Map(
+    dailyChanges.map((item) => [item.dateKey, item])
   );
   const cells: CalendarDay[] = [];
 
   for (let index = 0; index < leadingDays; index += 1) {
     const day = new Date(Date.UTC(year, month - 1, index - leadingDays + 1));
     const dateKey = toUtcDateKey(day);
+    const change = changeByDate.get(dateKey);
     cells.push({
       dateKey,
       dayOfMonth: day.getUTCDate(),
       inMonth: false,
-      netRealizedPnl: pnlByDate.get(dateKey) ?? 0,
+      dailyWalletChange: change?.dailyWalletChange ?? 0,
     });
   }
 
   for (let day = 1; day <= daysInMonth; day += 1) {
     const dateKey = `${year}-${pad(month)}-${pad(day)}`;
+    const change = changeByDate.get(dateKey);
     cells.push({
       dateKey,
       dayOfMonth: day,
       inMonth: true,
-      netRealizedPnl: pnlByDate.get(dateKey) ?? 0,
+      dailyWalletChange: change?.dailyWalletChange ?? 0,
     });
   }
 
   while (cells.length % 7 !== 0) {
     const next = new Date(Date.UTC(year, month - 1, cells.length - leadingDays + 1));
     const dateKey = toUtcDateKey(next);
+    const change = changeByDate.get(dateKey);
     cells.push({
       dateKey,
       dayOfMonth: next.getUTCDate(),
       inMonth: false,
-      netRealizedPnl: pnlByDate.get(dateKey) ?? 0,
+      dailyWalletChange: change?.dailyWalletChange ?? 0,
     });
   }
 

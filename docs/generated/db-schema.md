@@ -66,6 +66,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql)
   [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql)
   [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql)
+  [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -141,21 +142,26 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ### `wallet_history`
 
 - 목적:
-  사용자 지갑 잔고와 사용 가능 증거금의 변화를 Assets 차트용 시계열로 저장한다.
+  사용자 지갑 잔고와 사용 가능 증거금을 KST 일별 계좌 스냅샷으로 저장한다.
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `member_id`, `wallet_balance`, `available_margin`, `source_type`, `source_reference`, `recorded_at`, `created_at`, `updated_at`
-- source reference:
-  `source_reference`는 `VARCHAR(255)`이며 `order:<orderId>:fill`, `order:<orderId>:cancel-release`, `order:<orderId>:partial-fill:<fillId>`, `liquidation:<symbol>:<side>:<mode>:<epochMillis>`처럼 이벤트 종류를 문자열에 포함해 같은 주문/포지션의 복수 이벤트를 구분한다.
+  `member_id`, `snapshot_date`, `baseline_wallet_balance`, `wallet_balance`, `daily_wallet_change`, `account_version`, `recorded_at`, `created_at`, `updated_at`
+- 일별 손익:
+  `daily_wallet_change`는 해당 KST 날짜의 `wallet_balance - baseline_wallet_balance`다. 오늘 row의 provisional 표시는 저장 컬럼이 아니라 조회/화면 표시 시점에 KST 오늘 날짜 여부로 판단한다.
 - 중복 방지:
-  `uk_wallet_history_source(source_type, source_reference)`가 같은 이벤트의 중복 차트 포인트를 막는다.
+  `uk_wallet_history_member_snapshot_date(member_id, snapshot_date)`가 회원별 KST 일자당 하나의 스냅샷만 허용한다.
+- 최신성:
+  `account_version`은 비동기 wallet balance 이벤트가 역순으로 완료되더라도 더 오래된 계좌 상태가 최신 일별 스냅샷을 덮지 못하게 하는 guard 값이다. 이벤트는 변경 직후 계좌 스냅샷과 관측 시각을 함께 전달하므로 KST 자정 경계에서 listener 실행 시각 때문에 날짜가 밀리지 않는다.
+- 초기화:
+  애플리케이션 시작 시 `WalletHistoryBaselineReadyEventListener`가 오늘 KST baseline row를 멱등 생성해, 마이그레이션 직후 첫 지갑 변경이 변경 후 잔액을 baseline으로 삼는 일을 막는다.
 - 조회 인덱스:
-  `idx_wallet_history_member_recorded_at(member_id, recorded_at)`는 사용자별 최근 1개월 Assets 차트 조회에 사용한다.
+  `idx_wallet_history_member_snapshot_date(member_id, snapshot_date)`는 사용자별 최근 30일 잔고 차트와 달력 조회에 사용한다.
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
   [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V15__add_wallet_history.sql),
+  [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql),
   [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
 
 ### `member_credentials`
@@ -489,7 +495,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 2026-05-03:
   `V23__surrogate_key_member_daily_activity.sql`로 기존 적용된 `V19` checksum을 유지하면서 `member_daily_activity.id` surrogate PK와 `activity_date + member_id` unique key를 추가했다.
 - 2026-04-28:
-  `V15__add_wallet_history.sql`로 `wallet_history`를 추가했다. Assets 차트는 기본적으로 현재 시각 기준 30일 범위를 조회하고, `source_type + source_reference` unique key로 체결/반환/청산 같은 지갑 변경 이벤트의 중복 기록을 방지한다.
+  `V15__add_wallet_history.sql`로 `wallet_history`를 추가했다. 이후 `V24__wallet_history_daily_snapshots.sql`에서 이벤트 로그 개념을 버리고 KST 일별 계좌 스냅샷으로 재정의한다.
+- 2026-05-03:
+  `V24__wallet_history_daily_snapshots.sql`로 기존 `wallet_history` 이벤트 데이터를 truncate하고 `snapshot_date`, `baseline_wallet_balance`, `daily_wallet_change`, `account_version`, `UNIQUE(member_id, snapshot_date)` 기반의 KST 일별 스냅샷 테이블을 재생성한다. 마이그레이션 직후 baseline seed는 앱 시작 listener가 KST 날짜를 기준으로 수행한다.
 - 2026-04-30:
   `V16__enforce_single_open_position_per_side.sql`로 열린 포지션 유일성을 `member_id + symbol + position_side` 단위로 강화했다.
 - 2026-04-30:

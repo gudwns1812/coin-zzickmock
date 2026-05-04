@@ -119,7 +119,7 @@ public class MarketCandleRealtimeSseBroker {
         try {
             emitter.send(response);
             recordSend("success", startedAt);
-        } catch (IOException exception) {
+        } catch (IOException | IllegalStateException exception) {
             log.debug("Market candle SSE send failed; closing subscription. key={}", key, exception);
             recordSend("failure", startedAt);
             unregister(key, emitter, "send_failure");

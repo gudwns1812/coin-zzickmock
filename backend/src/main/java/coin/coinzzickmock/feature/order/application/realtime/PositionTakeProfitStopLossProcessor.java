@@ -1,7 +1,6 @@
 package coin.coinzzickmock.feature.order.application.realtime;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
-import coin.coinzzickmock.feature.account.domain.WalletHistorySource;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -119,8 +118,7 @@ public class PositionTakeProfitStopLossProcessor {
                 market.markPrice(),
                 executionPrice,
                 TAKER_FEE_RATE,
-                closeReason,
-                WalletHistorySource.positionCloseOrderFill(filled.orderId())
+                closeReason
         );
         cancelOcoSiblings(memberId, filled);
         pendingCloseOrderCapReconciler.reconcile(

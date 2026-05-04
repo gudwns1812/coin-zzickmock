@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 @Entity
@@ -73,8 +74,8 @@ public class MarketCandle1mEntity extends AuditableEntity {
     public MarketHistoryCandle toDomain() {
         return new MarketHistoryCandle(
                 symbolId,
-                utcInstant(openTime),
-                utcInstant(closeTime),
+                jpaInstant(openTime),
+                jpaInstant(closeTime),
                 openPrice.doubleValue(),
                 highPrice.doubleValue(),
                 lowPrice.doubleValue(),
@@ -92,7 +93,7 @@ public class MarketCandle1mEntity extends AuditableEntity {
         return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 
-    private static Instant utcInstant(LocalDateTime dateTime) {
-        return dateTime.toInstant(ZoneOffset.UTC);
+    private static Instant jpaInstant(LocalDateTime dateTime) {
+        return dateTime.atZone(ZoneId.systemDefault()).toInstant();
     }
 }

@@ -1,33 +1,32 @@
 package coin.coinzzickmock.feature.position.infrastructure.persistence;
 
-import com.querydsl.core.types.dsl.PathBuilder;
-import com.querydsl.jpa.impl.JPAUpdateClause;
-import com.querydsl.jpa.impl.JPAQueryFactory;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import static coin.coinzzickmock.feature.position.infrastructure.persistence.QOpenPositionEntity.openPositionEntity;
+
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.querydsl.jpa.impl.JPAUpdateClause;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
 public class PositionPersistenceRepository implements PositionRepository {
     private final OpenPositionEntityRepository openPositionEntityRepository;
     private final JPAQueryFactory jpaQueryFactory;
-    private final PathBuilder<OpenPositionEntity> position = new PathBuilder<>(OpenPositionEntity.class, "position");
 
     @Override
     @Transactional(readOnly = true)
     public List<PositionSnapshot> findOpenPositions(Long memberId) {
-        return jpaQueryFactory.selectFrom(position)
-                .where(position.getNumber("memberId", Long.class).eq(memberId))
-                .orderBy(position.getString("symbol").asc())
+        return jpaQueryFactory.selectFrom(openPositionEntity)
+                .where(openPositionEntity.memberId.eq(memberId))
+                .orderBy(openPositionEntity.symbol.asc())
                 .fetch()
                 .stream()
                 .map(OpenPositionEntity::toDomain)
@@ -42,12 +41,12 @@ public class PositionPersistenceRepository implements PositionRepository {
             String positionSide,
             String marginMode
     ) {
-        OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
+        OpenPositionEntity entity = jpaQueryFactory.selectFrom(openPositionEntity)
                 .where(
-                        position.getNumber("memberId", Long.class).eq(memberId),
-                        position.getString("symbol").eq(symbol),
-                        position.getString("positionSide").eq(positionSide),
-                        position.getString("marginMode").eq(marginMode)
+                        openPositionEntity.memberId.eq(memberId),
+                        openPositionEntity.symbol.eq(symbol),
+                        openPositionEntity.positionSide.eq(positionSide),
+                        openPositionEntity.marginMode.eq(marginMode)
                 )
                 .fetchOne();
         return Optional.ofNullable(entity).map(OpenPositionEntity::toDomain);
@@ -56,13 +55,13 @@ public class PositionPersistenceRepository implements PositionRepository {
     @Override
     @Transactional(readOnly = true)
     public Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide) {
-        OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
+        OpenPositionEntity entity = jpaQueryFactory.selectFrom(openPositionEntity)
                 .where(
-                        position.getNumber("memberId", Long.class).eq(memberId),
-                        position.getString("symbol").eq(symbol),
-                        position.getString("positionSide").eq(positionSide)
+                        openPositionEntity.memberId.eq(memberId),
+                        openPositionEntity.symbol.eq(symbol),
+                        openPositionEntity.positionSide.eq(positionSide)
                 )
-                .orderBy(position.getString("marginMode").asc())
+                .orderBy(openPositionEntity.marginMode.asc())
                 .fetchFirst();
         return Optional.ofNullable(entity).map(OpenPositionEntity::toDomain);
     }
@@ -70,12 +69,12 @@ public class PositionPersistenceRepository implements PositionRepository {
     @Override
     @Transactional(readOnly = true)
     public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
-        return jpaQueryFactory.selectFrom(position)
-                .where(position.getString("symbol").eq(symbol))
+        return jpaQueryFactory.selectFrom(openPositionEntity)
+                .where(openPositionEntity.symbol.eq(symbol))
                 .orderBy(
-                        position.getNumber("memberId", Long.class).asc(),
-                        position.getString("positionSide").asc(),
-                        position.getString("marginMode").asc()
+                        openPositionEntity.memberId.asc(),
+                        openPositionEntity.positionSide.asc(),
+                        openPositionEntity.marginMode.asc()
                 )
                 .fetch()
                 .stream()
@@ -86,12 +85,12 @@ public class PositionPersistenceRepository implements PositionRepository {
     @Override
     @Transactional
     public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
-        OpenPositionEntity entity = jpaQueryFactory.selectFrom(position)
+        OpenPositionEntity entity = jpaQueryFactory.selectFrom(openPositionEntity)
                 .where(
-                        position.getNumber("memberId", Long.class).eq(memberId),
-                        position.getString("symbol").eq(positionSnapshot.symbol()),
-                        position.getString("positionSide").eq(positionSnapshot.positionSide()),
-                        position.getString("marginMode").eq(positionSnapshot.marginMode())
+                        openPositionEntity.memberId.eq(memberId),
+                        openPositionEntity.symbol.eq(positionSnapshot.symbol()),
+                        openPositionEntity.positionSide.eq(positionSnapshot.positionSide()),
+                        openPositionEntity.marginMode.eq(positionSnapshot.marginMode())
                 )
                 .fetchOne();
 
@@ -113,13 +112,13 @@ public class PositionPersistenceRepository implements PositionRepository {
     ) {
         PositionSnapshot versioned = nextPosition.withVersion(expectedPosition.version() + 1);
         long affectedRows = applyPositionUpdate(
-                jpaQueryFactory.update(position)
+                jpaQueryFactory.update(openPositionEntity)
                         .where(
-                                position.getNumber("memberId", Long.class).eq(memberId),
-                                position.getString("symbol").eq(expectedPosition.symbol()),
-                                position.getString("positionSide").eq(expectedPosition.positionSide()),
-                                position.getString("marginMode").eq(expectedPosition.marginMode()),
-                                position.getNumber("version", Long.class).eq(expectedPosition.version())
+                                openPositionEntity.memberId.eq(memberId),
+                                openPositionEntity.symbol.eq(expectedPosition.symbol()),
+                                openPositionEntity.positionSide.eq(expectedPosition.positionSide()),
+                                openPositionEntity.marginMode.eq(expectedPosition.marginMode()),
+                                openPositionEntity.version.eq(expectedPosition.version())
                         ),
                 versioned
         ).execute();
@@ -128,7 +127,8 @@ public class PositionPersistenceRepository implements PositionRepository {
             return PositionMutationResult.updated(affectedRows, versioned);
         }
 
-        return findOpenPosition(memberId, expectedPosition.symbol(), expectedPosition.positionSide(), expectedPosition.marginMode())
+        return findOpenPosition(memberId, expectedPosition.symbol(), expectedPosition.positionSide(),
+                expectedPosition.marginMode())
                 .map(PositionMutationResult::staleVersion)
                 .orElseGet(PositionMutationResult::notFound);
     }
@@ -136,13 +136,13 @@ public class PositionPersistenceRepository implements PositionRepository {
     @Override
     @Transactional
     public PositionMutationResult deleteWithVersion(Long memberId, PositionSnapshot expectedPosition) {
-        long affectedRows = jpaQueryFactory.delete(position)
+        long affectedRows = jpaQueryFactory.delete(openPositionEntity)
                 .where(
-                        position.getNumber("memberId", Long.class).eq(memberId),
-                        position.getString("symbol").eq(expectedPosition.symbol()),
-                        position.getString("positionSide").eq(expectedPosition.positionSide()),
-                        position.getString("marginMode").eq(expectedPosition.marginMode()),
-                        position.getNumber("version", Long.class).eq(expectedPosition.version())
+                        openPositionEntity.memberId.eq(memberId),
+                        openPositionEntity.symbol.eq(expectedPosition.symbol()),
+                        openPositionEntity.positionSide.eq(expectedPosition.positionSide()),
+                        openPositionEntity.marginMode.eq(expectedPosition.marginMode()),
+                        openPositionEntity.version.eq(expectedPosition.version())
                 )
                 .execute();
 
@@ -150,7 +150,8 @@ public class PositionPersistenceRepository implements PositionRepository {
             return PositionMutationResult.deleted(affectedRows);
         }
 
-        return findOpenPosition(memberId, expectedPosition.symbol(), expectedPosition.positionSide(), expectedPosition.marginMode())
+        return findOpenPosition(memberId, expectedPosition.symbol(), expectedPosition.positionSide(),
+                expectedPosition.marginMode())
                 .map(PositionMutationResult::staleVersion)
                 .orElseGet(PositionMutationResult::notFound);
     }
@@ -158,12 +159,12 @@ public class PositionPersistenceRepository implements PositionRepository {
     @Override
     @Transactional
     public boolean deleteIfOpen(Long memberId, String symbol, String positionSide, String marginMode) {
-        return jpaQueryFactory.delete(position)
+        return jpaQueryFactory.delete(openPositionEntity)
                 .where(
-                        position.getNumber("memberId", Long.class).eq(memberId),
-                        position.getString("symbol").eq(symbol),
-                        position.getString("positionSide").eq(positionSide),
-                        position.getString("marginMode").eq(marginMode)
+                        openPositionEntity.memberId.eq(memberId),
+                        openPositionEntity.symbol.eq(symbol),
+                        openPositionEntity.positionSide.eq(positionSide),
+                        openPositionEntity.marginMode.eq(marginMode)
                 )
                 .execute() > 0;
     }
@@ -176,29 +177,31 @@ public class PositionPersistenceRepository implements PositionRepository {
 
     private JPAUpdateClause applyPositionUpdate(JPAUpdateClause update, PositionSnapshot positionSnapshot) {
         return update
-                .set(position.getString("symbol"), positionSnapshot.symbol())
-                .set(position.getString("positionSide"), positionSnapshot.positionSide())
-                .set(position.getString("marginMode"), positionSnapshot.marginMode())
-                .set(position.getNumber("leverage", Integer.class), positionSnapshot.leverage())
-                .set(position.get("quantity", BigDecimal.class), decimal(positionSnapshot.quantity()))
-                .set(position.get("entryPrice", BigDecimal.class), decimal(positionSnapshot.entryPrice()))
-                .set(position.get("markPrice", BigDecimal.class), decimal(positionSnapshot.markPrice()))
-                .set(position.get("liquidationPrice", BigDecimal.class),
-                        positionSnapshot.liquidationPrice() == null ? null : decimal(positionSnapshot.liquidationPrice()))
-                .set(position.get("unrealizedPnl", BigDecimal.class), decimal(positionSnapshot.unrealizedPnl()))
-                .set(position.getDateTime("openedAt", java.time.Instant.class), positionSnapshot.openedAt())
-                .set(position.get("originalQuantity", BigDecimal.class), decimal(positionSnapshot.originalQuantity()))
-                .set(position.get("accumulatedClosedQuantity", BigDecimal.class), decimal(positionSnapshot.accumulatedClosedQuantity()))
-                .set(position.get("accumulatedExitNotional", BigDecimal.class), decimal(positionSnapshot.accumulatedExitNotional()))
-                .set(position.get("accumulatedRealizedPnl", BigDecimal.class), decimal(positionSnapshot.accumulatedRealizedPnl()))
-                .set(position.get("accumulatedOpenFee", BigDecimal.class), decimal(positionSnapshot.accumulatedOpenFee()))
-                .set(position.get("accumulatedCloseFee", BigDecimal.class), decimal(positionSnapshot.accumulatedCloseFee()))
-                .set(position.get("accumulatedFundingCost", BigDecimal.class), decimal(positionSnapshot.accumulatedFundingCost()))
-                .set(position.get("takeProfitPrice", BigDecimal.class),
+                .set(openPositionEntity.symbol, positionSnapshot.symbol())
+                .set(openPositionEntity.positionSide, positionSnapshot.positionSide())
+                .set(openPositionEntity.marginMode, positionSnapshot.marginMode())
+                .set(openPositionEntity.leverage, positionSnapshot.leverage())
+                .set(openPositionEntity.quantity, decimal(positionSnapshot.quantity()))
+                .set(openPositionEntity.entryPrice, decimal(positionSnapshot.entryPrice()))
+                .set(openPositionEntity.markPrice, decimal(positionSnapshot.markPrice()))
+                .set(openPositionEntity.liquidationPrice,
+                        positionSnapshot.liquidationPrice() == null ? null
+                                : decimal(positionSnapshot.liquidationPrice()))
+                .set(openPositionEntity.unrealizedPnl, decimal(positionSnapshot.unrealizedPnl()))
+                .set(openPositionEntity.openedAt, positionSnapshot.openedAt())
+                .set(openPositionEntity.originalQuantity, decimal(positionSnapshot.originalQuantity()))
+                .set(openPositionEntity.accumulatedClosedQuantity,
+                        decimal(positionSnapshot.accumulatedClosedQuantity()))
+                .set(openPositionEntity.accumulatedExitNotional, decimal(positionSnapshot.accumulatedExitNotional()))
+                .set(openPositionEntity.accumulatedRealizedPnl, decimal(positionSnapshot.accumulatedRealizedPnl()))
+                .set(openPositionEntity.accumulatedOpenFee, decimal(positionSnapshot.accumulatedOpenFee()))
+                .set(openPositionEntity.accumulatedCloseFee, decimal(positionSnapshot.accumulatedCloseFee()))
+                .set(openPositionEntity.accumulatedFundingCost, decimal(positionSnapshot.accumulatedFundingCost()))
+                .set(openPositionEntity.takeProfitPrice,
                         positionSnapshot.takeProfitPrice() == null ? null : decimal(positionSnapshot.takeProfitPrice()))
-                .set(position.get("stopLossPrice", BigDecimal.class),
+                .set(openPositionEntity.stopLossPrice,
                         positionSnapshot.stopLossPrice() == null ? null : decimal(positionSnapshot.stopLossPrice()))
-                .set(position.getNumber("version", Long.class), positionSnapshot.version());
+                .set(openPositionEntity.version, positionSnapshot.version());
     }
 
     private static BigDecimal decimal(double value) {

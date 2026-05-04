@@ -1,15 +1,17 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
+import static coin.coinzzickmock.feature.market.infrastructure.persistence.QMarketCandle1hEntity.marketCandle1hEntity;
+import static coin.coinzzickmock.feature.market.infrastructure.persistence.QMarketCandle1mEntity.marketCandle1mEntity;
+
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.math.BigDecimal;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -19,18 +21,16 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
 public class MarketHistoryPersistenceRepository implements MarketHistoryRepository {
-    private static final DateTimeFormatter UTC_DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
-    private static final RowMapper<Instant> OPEN_TIME_MAPPER =
-            (rs, rowNum) -> utcInstant(rs.getObject("open_time", LocalDateTime.class));
-
     private final MarketSymbolEntityRepository marketSymbolEntityRepository;
+    private final MarketCandle1mEntityRepository marketCandle1mEntityRepository;
+    private final MarketCandle1hEntityRepository marketCandle1hEntityRepository;
+    private final JPAQueryFactory jpaQueryFactory;
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -49,7 +49,9 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                 .map(entity -> new StartupBackfillCursor(
                         entity.id(),
                         entity.symbol(),
-                        findLatestMinuteCandleOpenTime(entity.id())
+                        marketCandle1mEntityRepository.findTopBySymbolIdOrderByOpenTimeDesc(entity.id())
+                                .map(MarketCandle1mEntity::toDomain)
+                                .map(MarketHistoryCandle::openTime)
                                 .orElse(null)
                 ))
                 .toList();
@@ -58,67 +60,35 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId) {
-        return jdbcTemplate.query(
-                """
-                        SELECT open_time
-                        FROM market_candles_1m
-                        WHERE symbol_id = ?
-                        ORDER BY open_time DESC
-                        LIMIT 1
-                        """,
-                OPEN_TIME_MAPPER,
-                symbolId
-        ).stream().findFirst();
+        return marketCandle1mEntityRepository.findTopBySymbolIdOrderByOpenTimeDesc(symbolId)
+                .map(MarketCandle1mEntity::toDomain)
+                .map(MarketHistoryCandle::openTime);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestMinuteCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
-        return jdbcTemplate.query(
-                """
-                        SELECT open_time
-                        FROM market_candles_1m
-                        WHERE symbol_id = ? AND open_time < ?
-                        ORDER BY open_time DESC
-                        LIMIT 1
-                        """,
-                OPEN_TIME_MAPPER,
-                symbolId,
-                utcDateTimeText(beforeExclusive)
-        ).stream().findFirst();
+        return marketCandle1mEntityRepository
+                .findTopBySymbolIdAndOpenTimeLessThanOrderByOpenTimeDesc(symbolId, jpaDateTime(beforeExclusive))
+                .map(MarketCandle1mEntity::toDomain)
+                .map(MarketHistoryCandle::openTime);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId) {
-        return jdbcTemplate.query(
-                """
-                        SELECT open_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ?
-                        ORDER BY open_time DESC
-                        LIMIT 1
-                        """,
-                OPEN_TIME_MAPPER,
-                symbolId
-        ).stream().findFirst();
+        return marketCandle1hEntityRepository.findTopBySymbolIdOrderByOpenTimeDesc(symbolId)
+                .map(MarketCandle1hEntity::toDomain)
+                .map(HourlyMarketCandle::openTime);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
-        return jdbcTemplate.query(
-                """
-                        SELECT open_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ? AND open_time < ?
-                        ORDER BY open_time DESC
-                        LIMIT 1
-                        """,
-                OPEN_TIME_MAPPER,
-                symbolId,
-                utcDateTimeText(beforeExclusive)
-        ).stream().findFirst();
+        return marketCandle1hEntityRepository
+                .findTopBySymbolIdAndOpenTimeLessThanOrderByOpenTimeDesc(symbolId, jpaDateTime(beforeExclusive))
+                .map(MarketCandle1hEntity::toDomain)
+                .map(HourlyMarketCandle::openTime);
     }
 
     @Override
@@ -130,35 +100,8 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestCompletedHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
-        List<HourlyMarketCandle> candidates;
-        if (beforeExclusive == null) {
-            candidates = jdbcTemplate.query(
-                    """
-                            SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                                   close_price, volume, quote_volume, source_minute_open_time, source_minute_close_time
-                            FROM market_candles_1h
-                            WHERE symbol_id = ?
-                            ORDER BY open_time DESC
-                            """,
-                    (rs, rowNum) -> toHourlyCandle(rs),
-                    symbolId
-            );
-        } else {
-            candidates = jdbcTemplate.query(
-                    """
-                            SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                                   close_price, volume, quote_volume, source_minute_open_time, source_minute_close_time
-                            FROM market_candles_1h
-                            WHERE symbol_id = ? AND open_time < ?
-                            ORDER BY open_time DESC
-                            """,
-                    (rs, rowNum) -> toHourlyCandle(rs),
-                    symbolId,
-                    utcDateTimeText(beforeExclusive)
-            );
-        }
-
-        return candidates.stream()
+        return findHourlyCandleCandidates(symbolId, beforeExclusive).stream()
+                .map(MarketCandle1hEntity::toDomain)
                 .filter(this::hasContiguousMinuteCoverage)
                 .map(HourlyMarketCandle::openTime)
                 .findFirst();
@@ -167,69 +110,43 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional(readOnly = true)
     public Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime) {
-        return jdbcTemplate.query(
-                """
-                        SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                               close_price, volume, quote_volume
-                        FROM market_candles_1m
-                        WHERE symbol_id = ? AND open_time = ?
-                        """,
-                (rs, rowNum) -> toMinuteCandle(rs),
-                symbolId,
-                utcDateTimeText(openTime)
-        ).stream().findFirst();
+        return marketCandle1mEntityRepository.findBySymbolIdAndOpenTime(symbolId, jpaDateTime(openTime))
+                .map(MarketCandle1mEntity::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
-        return jdbcTemplate.query(
-                """
-                        SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                               close_price, volume, quote_volume
-                        FROM market_candles_1m
-                        WHERE symbol_id = ? AND open_time >= ? AND open_time < ?
-                        ORDER BY open_time ASC
-                        """,
-                (rs, rowNum) -> toMinuteCandle(rs),
-                symbolId,
-                utcDateTimeText(fromInclusive),
-                utcDateTimeText(toExclusive)
-        );
+        return marketCandle1mEntityRepository
+                .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
+                        symbolId,
+                        jpaDateTime(fromInclusive),
+                        jpaDateTime(toExclusive)
+                )
+                .stream()
+                .map(MarketCandle1mEntity::toDomain)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime) {
-        return jdbcTemplate.query(
-                """
-                        SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                               close_price, volume, quote_volume, source_minute_open_time, source_minute_close_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ? AND open_time = ?
-                        """,
-                (rs, rowNum) -> toHourlyCandle(rs),
-                symbolId,
-                utcDateTimeText(openTime)
-        ).stream().findFirst();
+        return marketCandle1hEntityRepository.findBySymbolIdAndOpenTime(symbolId, jpaDateTime(openTime))
+                .map(MarketCandle1hEntity::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<HourlyMarketCandle> findHourlyCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
-        return jdbcTemplate.query(
-                """
-                        SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                               close_price, volume, quote_volume, source_minute_open_time, source_minute_close_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ? AND open_time >= ? AND open_time < ?
-                        ORDER BY open_time ASC
-                        """,
-                (rs, rowNum) -> toHourlyCandle(rs),
-                symbolId,
-                utcDateTimeText(fromInclusive),
-                utcDateTimeText(toExclusive)
-        );
+        return marketCandle1hEntityRepository
+                .findAllBySymbolIdAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
+                        symbolId,
+                        jpaDateTime(fromInclusive),
+                        jpaDateTime(toExclusive)
+                )
+                .stream()
+                .map(MarketCandle1hEntity::toDomain)
+                .toList();
     }
 
     @Override
@@ -247,7 +164,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional
     public void saveMinuteCandle(MarketHistoryCandle candle) {
-        String now = utcDateTimeText(Instant.now());
+        LocalDateTime now = utcDateTime(Instant.now());
         jdbcTemplate.update(
                 """
                         INSERT INTO market_candles_1m (
@@ -266,8 +183,8 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                             updated_at = ?
                         """,
                 candle.symbolId(),
-                utcDateTimeText(candle.openTime()),
-                utcDateTimeText(candle.closeTime()),
+                utcDateTime(candle.openTime()),
+                utcDateTime(candle.closeTime()),
                 decimal(candle.openPrice()),
                 decimal(candle.highPrice()),
                 decimal(candle.lowPrice()),
@@ -283,7 +200,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional
     public void saveHourlyCandle(HourlyMarketCandle candle) {
-        String now = utcDateTimeText(Instant.now());
+        LocalDateTime now = utcDateTime(Instant.now());
         jdbcTemplate.update(
                 """
                         INSERT INTO market_candles_1h (
@@ -305,16 +222,16 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                             updated_at = ?
                         """,
                 candle.symbolId(),
-                utcDateTimeText(candle.openTime()),
-                utcDateTimeText(candle.closeTime()),
+                utcDateTime(candle.openTime()),
+                utcDateTime(candle.closeTime()),
                 decimal(candle.openPrice()),
                 decimal(candle.highPrice()),
                 decimal(candle.lowPrice()),
                 decimal(candle.closePrice()),
                 decimal(candle.volume()),
                 decimal(candle.quoteVolume()),
-                utcDateTimeText(candle.sourceMinuteOpenTime()),
-                utcDateTimeText(candle.sourceMinuteCloseTime()),
+                utcDateTime(candle.sourceMinuteOpenTime()),
+                utcDateTime(candle.sourceMinuteCloseTime()),
                 now,
                 now,
                 now
@@ -325,46 +242,12 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
         return BigDecimal.valueOf(value);
     }
 
-    private static MarketHistoryCandle toMinuteCandle(ResultSet rs) throws SQLException {
-        return new MarketHistoryCandle(
-                rs.getLong("symbol_id"),
-                utcInstant(rs.getObject("open_time", LocalDateTime.class)),
-                utcInstant(rs.getObject("close_time", LocalDateTime.class)),
-                rs.getBigDecimal("open_price").doubleValue(),
-                rs.getBigDecimal("high_price").doubleValue(),
-                rs.getBigDecimal("low_price").doubleValue(),
-                rs.getBigDecimal("close_price").doubleValue(),
-                rs.getBigDecimal("volume").doubleValue(),
-                nullableDouble(rs.getBigDecimal("quote_volume"))
-        );
-    }
-
-    private static HourlyMarketCandle toHourlyCandle(ResultSet rs) throws SQLException {
-        return new HourlyMarketCandle(
-                rs.getLong("symbol_id"),
-                utcInstant(rs.getObject("open_time", LocalDateTime.class)),
-                utcInstant(rs.getObject("close_time", LocalDateTime.class)),
-                rs.getBigDecimal("open_price").doubleValue(),
-                rs.getBigDecimal("high_price").doubleValue(),
-                rs.getBigDecimal("low_price").doubleValue(),
-                rs.getBigDecimal("close_price").doubleValue(),
-                rs.getBigDecimal("volume").doubleValue(),
-                nullableDouble(rs.getBigDecimal("quote_volume")),
-                utcInstant(rs.getObject("source_minute_open_time", LocalDateTime.class)),
-                utcInstant(rs.getObject("source_minute_close_time", LocalDateTime.class))
-        );
-    }
-
     private static LocalDateTime utcDateTime(Instant instant) {
         return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 
-    private static String utcDateTimeText(Instant instant) {
-        return UTC_DATETIME_FORMATTER.format(utcDateTime(instant));
-    }
-
-    private static Instant utcInstant(LocalDateTime dateTime) {
-        return dateTime.toInstant(ZoneOffset.UTC);
+    private static LocalDateTime jpaDateTime(Instant instant) {
+        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
     }
 
     private boolean hasContiguousMinuteCoverage(HourlyMarketCandle candle) {
@@ -372,18 +255,19 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
             return false;
         }
 
-        List<Instant> storedMinuteOpenTimes = jdbcTemplate.query(
-                """
-                        SELECT open_time
-                        FROM market_candles_1m
-                        WHERE symbol_id = ? AND open_time >= ? AND open_time < ?
-                        ORDER BY open_time ASC
-                        """,
-                OPEN_TIME_MAPPER,
-                candle.symbolId(),
-                utcDateTimeText(candle.openTime()),
-                utcDateTimeText(candle.closeTime())
-        );
+        List<Instant> storedMinuteOpenTimes = jpaQueryFactory
+                .select(marketCandle1mEntity.openTime)
+                .from(marketCandle1mEntity)
+                .where(
+                        marketCandle1mEntity.symbolId.eq(candle.symbolId()),
+                        marketCandle1mEntity.openTime.goe(jpaDateTime(candle.openTime())),
+                        marketCandle1mEntity.openTime.lt(jpaDateTime(candle.closeTime()))
+                )
+                .orderBy(marketCandle1mEntity.openTime.asc())
+                .fetch()
+                .stream()
+                .map(MarketHistoryPersistenceRepository::jpaInstant)
+                .toList();
         Set<Instant> storedMinuteOpenTimeSet = new HashSet<>(storedMinuteOpenTimes);
 
         Instant expectedMinuteOpenTime = candle.openTime();
@@ -396,7 +280,24 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
         return expectedMinuteOpenTime.equals(candle.closeTime());
     }
 
-    private static double nullableDouble(BigDecimal value) {
-        return value == null ? 0.0 : value.doubleValue();
+    private List<MarketCandle1hEntity> findHourlyCandleCandidates(long symbolId, Instant beforeExclusive) {
+        if (beforeExclusive == null) {
+            return jpaQueryFactory.selectFrom(marketCandle1hEntity)
+                    .where(marketCandle1hEntity.symbolId.eq(symbolId))
+                    .orderBy(marketCandle1hEntity.openTime.desc())
+                    .fetch();
+        }
+
+        return jpaQueryFactory.selectFrom(marketCandle1hEntity)
+                .where(
+                        marketCandle1hEntity.symbolId.eq(symbolId),
+                        marketCandle1hEntity.openTime.lt(jpaDateTime(beforeExclusive))
+                )
+                .orderBy(marketCandle1hEntity.openTime.desc())
+                .fetch();
+    }
+
+    private static Instant jpaInstant(LocalDateTime dateTime) {
+        return dateTime.atZone(ZoneId.systemDefault()).toInstant();
     }
 }

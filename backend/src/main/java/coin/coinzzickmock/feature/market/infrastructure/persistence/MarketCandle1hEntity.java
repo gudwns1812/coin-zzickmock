@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 @Entity
@@ -81,16 +82,16 @@ public class MarketCandle1hEntity extends AuditableEntity {
     public HourlyMarketCandle toDomain() {
         return new HourlyMarketCandle(
                 symbolId,
-                utcInstant(openTime),
-                utcInstant(closeTime),
+                jpaInstant(openTime),
+                jpaInstant(closeTime),
                 openPrice.doubleValue(),
                 highPrice.doubleValue(),
                 lowPrice.doubleValue(),
                 closePrice.doubleValue(),
                 volume.doubleValue(),
                 quoteVolume == null ? 0.0 : quoteVolume.doubleValue(),
-                utcInstant(sourceMinuteOpenTime),
-                utcInstant(sourceMinuteCloseTime)
+                jpaInstant(sourceMinuteOpenTime),
+                jpaInstant(sourceMinuteCloseTime)
         );
     }
 
@@ -102,7 +103,7 @@ public class MarketCandle1hEntity extends AuditableEntity {
         return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 
-    private static Instant utcInstant(LocalDateTime dateTime) {
-        return dateTime.toInstant(ZoneOffset.UTC);
+    private static Instant jpaInstant(LocalDateTime dateTime) {
+        return dateTime.atZone(ZoneId.systemDefault()).toInstant();
     }
 }

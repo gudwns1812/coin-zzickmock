@@ -193,6 +193,50 @@ class CreateOrderServiceTest {
     }
 
     @Test
+    void postSaveRecheckFillsPendingLongLimitAsTakerWhenFreshPriceCrossesLimit() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        RealtimeMarketDataStore store = realtimeMarketStore(101, 101);
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository(
+                () -> seedRealtimeMarket(store, 98, 98)
+        );
+        CreateOrderService service = service(
+                new RealtimeMarketPriceReader(store),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                event -> {
+                }
+        );
+
+        CreateOrderResult result = service.execute(new CreateOrderCommand(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                1,
+                99.0
+        ));
+
+        assertEquals(FuturesOrder.STATUS_FILLED, result.status());
+        assertEquals("TAKER", result.feeType());
+        assertEquals(98.0, result.executionPrice(), 0.0001);
+        assertEquals(0.049, result.estimatedFee(), 0.0001);
+        assertEquals(9.8, result.estimatedInitialMargin(), 0.0001);
+        FuturesOrder saved = orderRepository.findByMemberId(1L).get(0);
+        assertEquals(FuturesOrder.STATUS_FILLED, saved.status());
+        assertEquals("TAKER", saved.feeType());
+        assertEquals(98.0, saved.executionPrice(), 0.0001);
+        PositionSnapshot opened = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow();
+        assertEquals(98.0, opened.entryPrice(), 0.0001);
+        assertEquals(0.049, opened.accumulatedOpenFee(), 0.0001);
+        assertEquals(99990.151, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+    }
+
+    @Test
     void marketableShortLimitEqualityUsesLatestTradePriceForPreviewOrderAccountAndPosition() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -610,10 +654,21 @@ class CreateOrderServiceTest {
 
     private static class InMemoryOrderRepository implements OrderRepository {
         private final List<FuturesOrder> orders = new ArrayList<>();
+        private final Runnable afterSave;
+
+        private InMemoryOrderRepository() {
+            this(() -> {
+            });
+        }
+
+        private InMemoryOrderRepository(Runnable afterSave) {
+            this.afterSave = afterSave;
+        }
 
         @Override
         public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             orders.add(futuresOrder);
+            afterSave.run();
             return futuresOrder;
         }
 
@@ -624,7 +679,9 @@ class CreateOrderServiceTest {
 
         @Override
         public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
-            return Optional.empty();
+            return orders.stream()
+                    .filter(order -> order.orderId().equals(orderId))
+                    .findFirst();
         }
 
         @Override
@@ -640,6 +697,15 @@ class CreateOrderServiceTest {
                 String feeType,
                 double estimatedFee
         ) {
+            for (int index = 0; index < orders.size(); index++) {
+                FuturesOrder order = orders.get(index);
+                if (!order.orderId().equals(orderId) || !order.isPending()) {
+                    continue;
+                }
+                FuturesOrder filled = order.fill(executionPrice, feeType, estimatedFee);
+                orders.set(index, filled);
+                return Optional.of(filled);
+            }
             return Optional.empty();
         }
 
@@ -654,11 +720,20 @@ class CreateOrderServiceTest {
     }
 
     private static RealtimeMarketPriceReader realtimePriceReader(double lastPrice, double markPrice) {
+        return new RealtimeMarketPriceReader(realtimeMarketStore(lastPrice, markPrice));
+    }
+
+    private static RealtimeMarketDataStore realtimeMarketStore(double lastPrice, double markPrice) {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        seedRealtimeMarket(store, lastPrice, markPrice);
+        return store;
+    }
+
+    private static void seedRealtimeMarket(RealtimeMarketDataStore store, double lastPrice, double markPrice) {
         Instant now = Instant.now();
         store.acceptTrade(new RealtimeMarketTradeTick(
                 "BTCUSDT",
-                "trade-" + lastPrice,
+                "trade-" + lastPrice + "-" + System.nanoTime(),
                 BigDecimal.valueOf(lastPrice),
                 BigDecimal.ONE,
                 "buy",
@@ -675,6 +750,5 @@ class CreateOrderServiceTest {
                 now,
                 now
         ));
-        return new RealtimeMarketPriceReader(store);
     }
 }

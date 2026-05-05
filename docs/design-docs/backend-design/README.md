@@ -49,7 +49,7 @@
   DB, repository, QueryDSL, migration 같은 영속성 규칙.
 
 - [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
-  클래스와 메서드 단위의 책임 분리, 클린 코드 기준, 계획/구현/검증 체크리스트.
+  클래스와 메서드 단위의 책임 분리, 메서드의 개념적 책임과 top-down 읽기 순서, 클린 코드 기준, 계획/구현/검증 체크리스트.
 
 - [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
   외부 API, SDK, connector 같은 outbound integration 규칙.

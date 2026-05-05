@@ -85,21 +85,65 @@ public class CreateOrderService {
                 )
         );
 
+        OrderPreview resultPreview = preview;
+        FuturesOrder resultOrder = futuresOrder;
         if (decision.executable()) {
             applyFilledOrder(command, orderId, marketSnapshot, preview, decision.executionPrice());
+        } else {
+            Optional<PostSaveLimitFill> postSaveFill = fillIfMarketableAfterSave(command, orderId);
+            if (postSaveFill.isPresent()) {
+                PostSaveLimitFill fill = postSaveFill.orElseThrow();
+                resultOrder = fill.order();
+                resultPreview = fill.preview();
+            }
         }
 
         return new CreateOrderResult(
-                futuresOrder.orderId(),
-                futuresOrder.status(),
-                futuresOrder.symbol(),
-                futuresOrder.feeType(),
-                preview.estimatedFee(),
-                preview.estimatedInitialMargin(),
-                preview.estimatedLiquidationPrice(),
-                preview.estimatedLiquidationPriceType(),
-                futuresOrder.executionPrice()
+                resultOrder.orderId(),
+                resultOrder.status(),
+                resultOrder.symbol(),
+                resultOrder.feeType(),
+                resultPreview.estimatedFee(),
+                resultPreview.estimatedInitialMargin(),
+                resultPreview.estimatedLiquidationPrice(),
+                resultPreview.estimatedLiquidationPriceType(),
+                resultOrder.executionPrice()
         );
+    }
+
+    private Optional<PostSaveLimitFill> fillIfMarketableAfterSave(CreateOrderCommand command, String orderId) {
+        if (!ORDER_TYPE_LIMIT.equalsIgnoreCase(command.orderType()) || command.limitPrice() == null) {
+            return Optional.empty();
+        }
+
+        Optional<MarketSnapshot> refreshedMarketSnapshot = realtimeMarketPriceReader.freshMarket(command.symbol());
+        if (refreshedMarketSnapshot.isEmpty()) {
+            return Optional.empty();
+        }
+
+        MarketSnapshot refreshedMarket = refreshedMarketSnapshot.orElseThrow();
+        OrderPlacementDecision refreshedDecision = orderPlacementPolicy.decide(
+                placementRequest(command),
+                refreshedMarket.lastPrice()
+        );
+        if (!refreshedDecision.executable()) {
+            return Optional.empty();
+        }
+
+        OrderPreview refreshedPreview = preview(command, refreshedMarket);
+        Optional<FuturesOrder> claimed = orderRepository.claimPendingFill(
+                command.memberId(),
+                orderId,
+                refreshedDecision.executionPrice(),
+                refreshedDecision.feeType(),
+                refreshedPreview.estimatedFee()
+        );
+        if (claimed.isEmpty()) {
+            return Optional.empty();
+        }
+
+        applyFilledOrder(command, orderId, refreshedMarket, refreshedPreview, refreshedDecision.executionPrice());
+        return Optional.of(new PostSaveLimitFill(claimed.orElseThrow(), refreshedPreview));
     }
 
     private void applyFilledOrder(
@@ -275,5 +319,8 @@ public class CreateOrderService {
         if (!ORDER_TYPE_MARKET.equalsIgnoreCase(orderType) && !ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 유형을 확인해주세요.");
         }
+    }
+
+    private record PostSaveLimitFill(FuturesOrder order, OrderPreview preview) {
     }
 }

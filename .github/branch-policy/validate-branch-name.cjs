@@ -55,7 +55,7 @@ if (protectedBranches.has(branchName)) {
   process.exit(0);
 }
 
-if (/^codex([/-]|$)/.test(branchName) || /\/codex([/-]|$)/.test(branchName)) {
+if (/^codex([/-]|$)/.test(branchName) || /\/codex([/-]|$)/.test(branchName) || /^\[codex\]/.test(branchName)) {
   fail(`'${branchName}' uses the forbidden codex automation prefix.`);
 }
 

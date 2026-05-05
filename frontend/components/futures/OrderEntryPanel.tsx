@@ -8,6 +8,10 @@ import type {
   OrderPreviewResponse,
 } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
+import {
+  calculateMaxOpenMarketQuantity,
+  formatFlooredQuantity,
+} from "@/lib/order-entry-quantity";
 import Modal from "@/components/ui/Modal";
 import { CircleHelp } from "lucide-react";
 import Link from "next/link";
@@ -125,7 +129,13 @@ export default function OrderEntryPanel({
   const isMarginModeLocked = selectedSidePosition !== null;
   const maxOpenQuantity =
     Number.isFinite(effectivePrice) && effectivePrice > 0
-      ? (availableBalance * leverage) / effectivePrice
+      ? orderType === "MARKET"
+        ? calculateMaxOpenMarketQuantity(
+            availableBalance,
+            leverage,
+            effectivePrice
+          )
+        : (availableBalance * leverage) / effectivePrice
       : 0;
   const maxCloseQuantity = matchingPosition?.quantity ?? 0;
   const quantityControlMax =
@@ -515,9 +525,10 @@ export default function OrderEntryPanel({
               ? closePositionLabel
               : isPreviewPending
               ? "계산 중"
-              : preview?.estimatedLiquidationPrice
-                ? formatUsd(preview.estimatedLiquidationPrice)
-                : "-"
+              : formatLiquidationPrice(
+                  preview?.estimatedLiquidationPrice,
+                  preview?.estimatedLiquidationPriceType
+                )
           }
         />
       </div>
@@ -997,11 +1008,22 @@ function OrderHelpTooltip() {
         </p>
         <p className="mt-2">
           Cost는 예상 증거금, Liq. price는 예상 청산가, Fee는 주문 체결
-          수수료입니다.
+          수수료입니다. Cross 청산가는 계정 단위 평가값이며 여러 심볼 포지션이
+          있으면 현재 다른 심볼 가격을 고정한 추정값으로 표시됩니다.
         </p>
       </div>
     </div>
   );
+}
+
+function formatLiquidationPrice(
+  price: number | null | undefined,
+  type: "EXACT" | "ESTIMATED" | "UNAVAILABLE" | undefined
+) {
+  if (!price || type === "UNAVAILABLE") {
+    return "-";
+  }
+  return type === "ESTIMATED" ? `${formatUsd(price)} (Est.)` : formatUsd(price);
 }
 
 function SegmentedControl({
@@ -1092,9 +1114,5 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function formatQuantityInput(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) {
-    return "0";
-  }
-
-  return value.toFixed(3);
+  return formatFlooredQuantity(value);
 }

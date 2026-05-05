@@ -38,6 +38,13 @@ test("close quantity controls use held position quantity", () => {
   assert.equal(source.includes("closeableQuantity"), false);
 });
 
+test("open market max quantity uses fee-aware floored helper while close mode remains position based", () => {
+  assert.equal(source.includes("calculateMaxOpenMarketQuantity"), true);
+  assert.equal(source.includes('orderType === "MARKET"'), true);
+  assert.equal(source.includes("formatFlooredQuantity(value)"), true);
+  assert.equal(source.includes("toFixed(3)"), false);
+});
+
 test("side control lets close helpers target long or short positions", () => {
   assert.equal(source.includes("function SideToggle"), true);
   assert.equal(source.includes('aria-label="Position side"'), true);
@@ -70,4 +77,12 @@ test("order help tooltip explains margin leverage and order concepts", () => {
   assert.equal(source.includes("Cross"), true);
   assert.equal(source.includes("Limit"), true);
   assert.equal(source.includes("Long"), true);
+});
+
+test("order preview labels estimated and unavailable liquidation prices", () => {
+  assert.equal(source.includes("function formatLiquidationPrice"), true);
+  assert.equal(source.includes('type === "UNAVAILABLE"'), true);
+  assert.equal(source.includes('type === "ESTIMATED"'), true);
+  assert.equal(source.includes("(Est.)"), true);
+  assert.equal(source.includes("현재 다른 심볼 가격을 고정한 추정값"), true);
 });

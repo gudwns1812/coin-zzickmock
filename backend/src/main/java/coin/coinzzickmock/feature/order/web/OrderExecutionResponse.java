@@ -8,6 +8,7 @@ public record OrderExecutionResponse(
         double estimatedFee,
         double estimatedInitialMargin,
         Double estimatedLiquidationPrice,
+        String estimatedLiquidationPriceType,
         double executionPrice
 ) {
 }

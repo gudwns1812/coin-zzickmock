@@ -90,6 +90,17 @@ public interface OrderRepository {
 
     FuturesOrder updateStatus(Long memberId, String orderId, String status);
 
+    default FuturesOrder updatePendingConditionalCloseOrder(
+            Long memberId,
+            String orderId,
+            int leverage,
+            double quantity,
+            double triggerPrice,
+            String ocoGroupId
+    ) {
+        throw new UnsupportedOperationException("Pending conditional close order updates are not implemented");
+    }
+
     default int cancelPendingOrders(Long memberId, List<String> orderIds) {
         return (int) orderIds.stream()
                 .filter(orderId -> cancelPending(memberId, orderId))

@@ -5,7 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 public record CrossLiquidationAssessment(
-        double availableMargin,
+        double walletBalance,
+        double isolatedInitialMargin,
         double totalUnrealizedPnl,
         double crossEquity,
         double maintenanceRequirement,

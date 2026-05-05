@@ -39,7 +39,7 @@ public class PendingCloseOrderCapReconciler {
     }
 
     public double pendingCloseQuantity(Long memberId, PositionSnapshot position) {
-        return exposureBuckets(pendingCloseOrders(
+        return exposureBuckets(pendingManualCloseOrders(
                 memberId,
                 position.symbol(),
                 position.positionSide(),
@@ -61,7 +61,7 @@ public class PendingCloseOrderCapReconciler {
             double heldQuantity,
             double currentPrice
     ) {
-        List<FuturesOrder> pendingCloseOrders = pendingCloseOrders(memberId, symbol, positionSide, marginMode);
+        List<FuturesOrder> pendingCloseOrders = pendingManualCloseOrders(memberId, symbol, positionSide, marginMode);
         List<CloseExposureBucket> buckets = exposureBuckets(pendingCloseOrders);
         double pendingQuantity = buckets.stream()
                 .mapToDouble(CloseExposureBucket::exposureQuantity)
@@ -107,7 +107,7 @@ public class PendingCloseOrderCapReconciler {
         return buckets;
     }
 
-    private List<FuturesOrder> pendingCloseOrders(
+    private List<FuturesOrder> pendingManualCloseOrders(
             Long memberId,
             String symbol,
             String positionSide,
@@ -118,7 +118,9 @@ public class PendingCloseOrderCapReconciler {
                 symbol,
                 positionSide,
                 marginMode
-        );
+        ).stream()
+                .filter(order -> !order.isConditionalCloseOrder())
+                .toList();
     }
 
     private Comparator<FuturesOrder> leastLikelyToExecuteFirst(String positionSide, double currentPrice) {
@@ -139,13 +141,7 @@ public class PendingCloseOrderCapReconciler {
 
     private Comparator<CloseExposureBucket> bucketComparator(String positionSide, double currentPrice) {
         Comparator<FuturesOrder> orderComparator = leastLikelyToExecuteFirst(positionSide, currentPrice);
-        return (left, right) -> {
-            int byConditional = Boolean.compare(right.isConditional(), left.isConditional());
-            if (byConditional != 0) {
-                return byConditional;
-            }
-            return orderComparator.compare(left.sortOrder(orderComparator), right.sortOrder(orderComparator));
-        };
+        return Comparator.comparing(bucket -> bucket.sortOrder(orderComparator), orderComparator);
     }
 
     private double executionReferencePrice(FuturesOrder order, double currentPrice) {
@@ -164,10 +160,6 @@ public class PendingCloseOrderCapReconciler {
                     .mapToDouble(FuturesOrder::quantity)
                     .max()
                     .orElse(0);
-        }
-
-        boolean isConditional() {
-            return orders.stream().anyMatch(FuturesOrder::isConditionalCloseOrder);
         }
 
         FuturesOrder sortOrder(Comparator<FuturesOrder> comparator) {

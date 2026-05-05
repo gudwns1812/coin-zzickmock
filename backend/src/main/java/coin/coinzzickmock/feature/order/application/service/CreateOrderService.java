@@ -1,29 +1,38 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
-import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
-import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.domain.CrossLiquidationEstimate;
+import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
+import coin.coinzzickmock.feature.position.domain.PositionIdentity;
+import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-import java.util.UUID;
-
 @RequiredArgsConstructor
+@Slf4j
 @Service
 public class CreateOrderService {
     private static final String ORDER_TYPE_LIMIT = "LIMIT";
@@ -34,6 +43,8 @@ public class CreateOrderService {
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final OrderRepository orderRepository;
     private final PositionRepository positionRepository;
+    private final AccountRepository accountRepository;
+    private final LiquidationPolicy liquidationPolicy;
     private final FilledOpenOrderApplier filledOpenOrderApplier;
     private final AccountOrderMutationLock accountOrderMutationLock;
 
@@ -52,7 +63,7 @@ public class CreateOrderService {
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());
         OrderPlacementRequest placementRequest = placementRequest(command);
         OrderPlacementDecision decision = orderPlacementPolicy.decide(placementRequest, marketSnapshot.lastPrice());
-        OrderPreview preview = orderPreviewPolicy.preview(placementRequest, marketSnapshot.lastPrice());
+        OrderPreview preview = preview(command, marketSnapshot);
         String orderId = UUID.randomUUID().toString();
 
         FuturesOrder futuresOrder = orderRepository.save(
@@ -86,6 +97,7 @@ public class CreateOrderService {
                 preview.estimatedFee(),
                 preview.estimatedInitialMargin(),
                 preview.estimatedLiquidationPrice(),
+                preview.estimatedLiquidationPriceType(),
                 futuresOrder.executionPrice()
         );
     }
@@ -114,7 +126,114 @@ public class CreateOrderService {
     }
 
     private OrderPreview preview(CreateOrderCommand command, MarketSnapshot marketSnapshot) {
-        return orderPreviewPolicy.preview(placementRequest(command), marketSnapshot.lastPrice());
+        OrderPreview basePreview = orderPreviewPolicy.preview(placementRequest(command), marketSnapshot.lastPrice());
+        if (!isCrossMargin(command)) {
+            return basePreview;
+        }
+
+        TradingAccount account = accountRepository.findByMemberId(command.memberId())
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        CrossLiquidationEstimate estimate = liquidationPolicy.estimateCrossLiquidationPrice(
+                account.walletBalance() - basePreview.estimatedFee(),
+                positionsAfterPreview(command, marketSnapshot, basePreview),
+                command.symbol()
+        );
+        return new OrderPreview(
+                basePreview.feeType(),
+                basePreview.estimatedFee(),
+                basePreview.estimatedInitialMargin(),
+                estimate.liquidationPrice(),
+                estimate.liquidationPriceType(),
+                basePreview.estimatedEntryPrice(),
+                basePreview.executable()
+        );
+    }
+
+    private boolean isCrossMargin(CreateOrderCommand command) {
+        return new PositionIdentity(command.symbol(), command.positionSide(), command.marginMode()).isCrossMargin();
+    }
+
+    private List<PositionSnapshot> positionsAfterPreview(
+            CreateOrderCommand command,
+            MarketSnapshot marketSnapshot,
+            OrderPreview preview
+    ) {
+        PositionSnapshot existing = positionRepository.findOpenPosition(
+                command.memberId(),
+                command.symbol(),
+                command.positionSide()
+        ).orElse(null);
+
+        PositionSnapshot previewPosition = previewPosition(command, marketSnapshot, preview, existing);
+
+        List<PositionSnapshot> positions = new ArrayList<>(positionRepository.findOpenPositions(command.memberId()).stream()
+                .map(position -> markForPreview(command.symbol(), marketSnapshot.markPrice(), position))
+                .filter(position -> !Objects.equals(position.stableKey(), previewPosition.stableKey()))
+                .toList());
+        positions.add(previewPosition);
+        return List.copyOf(positions);
+    }
+
+    private PositionSnapshot previewPosition(
+            CreateOrderCommand command,
+            MarketSnapshot marketSnapshot,
+            OrderPreview preview,
+            PositionSnapshot existing
+    ) {
+        if (existing == null) {
+            return openPreviewPosition(command, marketSnapshot, preview);
+        }
+        return increasePreviewPosition(command, marketSnapshot, preview, existing);
+    }
+
+    private PositionSnapshot openPreviewPosition(
+            CreateOrderCommand command,
+            MarketSnapshot marketSnapshot,
+            OrderPreview preview
+    ) {
+        return PositionSnapshot.open(
+                command.symbol(),
+                command.positionSide(),
+                command.marginMode(),
+                command.leverage(),
+                command.quantity(),
+                preview.estimatedEntryPrice(),
+                marketSnapshot.markPrice(),
+                preview.estimatedFee()
+        );
+    }
+
+    private PositionSnapshot increasePreviewPosition(
+            CreateOrderCommand command,
+            MarketSnapshot marketSnapshot,
+            OrderPreview preview,
+            PositionSnapshot existing
+    ) {
+        return existing.markToMarket(marketSnapshot.markPrice())
+                .increase(
+                        existing.leverage(),
+                        command.quantity(),
+                        preview.estimatedEntryPrice(),
+                        marketSnapshot.markPrice(),
+                        preview.estimatedFee()
+                );
+    }
+
+    private PositionSnapshot markForPreview(String commandSymbol, double commandMarkPrice, PositionSnapshot position) {
+        if (position.symbol().equalsIgnoreCase(commandSymbol)) {
+            return position.markToMarket(commandMarkPrice);
+        }
+        Optional<Double> markPrice = realtimeMarketPriceReader.freshMarkPrice(position.symbol());
+        if (markPrice.isEmpty()) {
+            log.warn(
+                    "Using stale mark price for cross preview estimate. positionSymbol={}, commandSymbol={}, commandMarkPrice={}",
+                    position.symbol(),
+                    commandSymbol,
+                    commandMarkPrice
+            );
+            return position;
+        }
+        return position.markToMarket(markPrice.orElseThrow());
     }
 
     private void validateExistingPositionInvariants(CreateOrderCommand command) {
@@ -141,6 +260,7 @@ public class CreateOrderService {
                 FuturesOrder.PURPOSE_OPEN_POSITION,
                 command.positionSide(),
                 command.orderType(),
+                command.marginMode(),
                 command.limitPrice(),
                 command.quantity(),
                 command.leverage()

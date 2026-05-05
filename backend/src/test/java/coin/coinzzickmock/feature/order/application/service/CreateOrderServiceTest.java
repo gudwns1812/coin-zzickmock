@@ -21,6 +21,7 @@ import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -35,6 +36,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -111,7 +113,7 @@ class CreateOrderServiceTest {
         PositionSnapshot updated = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(105000.0, updated.entryPrice(), 0.0001);
-        assertEquals(94500.0, updated.liquidationPrice(), 0.0001);
+        assertEquals(94974.8743718593, updated.liquidationPrice(), 0.0001);
         assertEquals(5.5, updated.accumulatedOpenFee(), 0.0001);
     }
 
@@ -174,7 +176,7 @@ class CreateOrderServiceTest {
         assertEquals(74700.0, preview.estimatedEntryPrice(), 0.0001);
         assertEquals(3.735, preview.estimatedFee(), 0.0001);
         assertEquals(747.0, preview.estimatedInitialMargin(), 0.0001);
-        assertEquals(67230.0, preview.estimatedLiquidationPrice(), 0.0001);
+        assertEquals(67567.8391959799, preview.estimatedLiquidationPrice(), 0.0001);
         assertEquals("FILLED", result.status());
         assertEquals(74700.0, result.executionPrice(), 0.0001);
         assertEquals(99249.265, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
@@ -186,7 +188,7 @@ class CreateOrderServiceTest {
         PositionSnapshot opened = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
                 .orElseThrow();
         assertEquals(74700.0, opened.entryPrice(), 0.0001);
-        assertEquals(67230.0, opened.liquidationPrice(), 0.0001);
+        assertEquals(67567.8391959799, opened.liquidationPrice(), 0.0001);
         assertEquals(3.735, opened.accumulatedOpenFee(), 0.0001);
     }
 
@@ -222,7 +224,7 @@ class CreateOrderServiceTest {
         assertEquals(75000.0, preview.estimatedEntryPrice(), 0.0001);
         assertEquals(3.75, preview.estimatedFee(), 0.0001);
         assertEquals(750.0, preview.estimatedInitialMargin(), 0.0001);
-        assertEquals(82500.0, preview.estimatedLiquidationPrice(), 0.0001);
+        assertEquals(82089.552238806, preview.estimatedLiquidationPrice(), 0.0001);
         assertEquals("FILLED", result.status());
         assertEquals(75000.0, result.executionPrice(), 0.0001);
         assertEquals(99246.25, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
@@ -234,7 +236,7 @@ class CreateOrderServiceTest {
         PositionSnapshot opened = positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "ISOLATED")
                 .orElseThrow();
         assertEquals(75000.0, opened.entryPrice(), 0.0001);
-        assertEquals(82500.0, opened.liquidationPrice(), 0.0001);
+        assertEquals(82089.552238806, opened.liquidationPrice(), 0.0001);
         assertEquals(3.75, opened.accumulatedOpenFee(), 0.0001);
     }
 
@@ -306,6 +308,81 @@ class CreateOrderServiceTest {
                 accountRepository.findByMemberId(1L).orElseThrow().availableMargin(),
                 0.000000001
         );
+    }
+
+    @Test
+    void crossPreviewReturnsDynamicExactLiquidationPriceWithoutStoringItOnPosition() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(50, 100);
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        CreateOrderService service = service(
+                realtimePriceReader(100, 100),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                event -> {
+                }
+        );
+        CreateOrderCommand command = new CreateOrderCommand(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "MARKET",
+                "CROSS",
+                10,
+                1,
+                null
+        );
+
+        OrderPreview preview = service.preview(command);
+        CreateOrderResult result = service.execute(command);
+
+        assertEquals("EXACT", preview.estimatedLiquidationPriceType());
+        assertEquals(50.3015075377, preview.estimatedLiquidationPrice(), 0.0001);
+        assertEquals("EXACT", result.estimatedLiquidationPriceType());
+        assertEquals(50.3015075377, result.estimatedLiquidationPrice(), 0.0001);
+        assertEquals(49.95, accountRepository.findByMemberId(1L).orElseThrow().walletBalance(), 0.0001);
+        assertEquals(89.95, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+        assertNull(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "CROSS")
+                .orElseThrow()
+                .liquidationPrice());
+    }
+
+    @Test
+    void crossPreviewUsesIncreasedExistingPositionForDynamicLiquidationEstimate() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100, 100);
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+        CreateOrderService service = service(
+                realtimePriceReader(110, 110),
+                new InMemoryOrderRepository(),
+                accountRepository,
+                positionRepository,
+                event -> {
+                }
+        );
+
+        OrderPreview preview = service.preview(new CreateOrderCommand(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "MARKET",
+                "CROSS",
+                10,
+                1,
+                null
+        ));
+
+        assertEquals("EXACT", preview.estimatedLiquidationPriceType());
+        assertEquals(55.3040201005, preview.estimatedLiquidationPrice(), 0.0001);
     }
 
     @Test
@@ -417,6 +494,8 @@ class CreateOrderServiceTest {
                 realtimeMarketPriceReader,
                 orderRepository,
                 positionRepository,
+                accountRepository,
+                new LiquidationPolicy(),
                 new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
                 new AccountOrderMutationLock(accountRepository)
         );
@@ -434,13 +513,21 @@ class CreateOrderServiceTest {
     }
 
     private static class InMemoryAccountRepository implements AccountRepository {
-        private TradingAccount account = new TradingAccount(
-                1L,
-                "demo@coinzzickmock.dev",
-                "Demo",
-                100000,
-                100000
-        );
+        private TradingAccount account;
+
+        private InMemoryAccountRepository() {
+            this(100000, 100000);
+        }
+
+        private InMemoryAccountRepository(double walletBalance, double availableMargin) {
+            this.account = new TradingAccount(
+                    1L,
+                    "demo@coinzzickmock.dev",
+                    "Demo",
+                    walletBalance,
+                    availableMargin
+            );
+        }
 
         @Override
         public Optional<TradingAccount> findByMemberId(Long memberId) {

@@ -16,6 +16,7 @@ import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCa
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,7 @@ class UpdatePositionLeverageServiceTest {
                 .update(1L, "BTCUSDT", "LONG", "ISOLATED", 20);
 
         assertEquals(20, result.leverage());
-        assertEquals(95, result.liquidationPrice(), 0.0001);
+        assertEquals(95.47738693467336, result.liquidationPrice(), 0.0001);
         assertEquals(100005, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
     }
 
@@ -104,6 +105,77 @@ class UpdatePositionLeverageServiceTest {
         assertEquals(ErrorCode.INSUFFICIENT_AVAILABLE_MARGIN, thrown.errorCode());
     }
 
+    @Test
+    void crossLeverageResponseIncludesDynamicLiquidationEstimate() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(50, 100);
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+
+        PositionSnapshotResult result = service(positionRepository, orderRepository, accountRepository)
+                .update(1L, "BTCUSDT", "LONG", "CROSS", 10);
+
+        assertEquals(50.2512562814, result.liquidationPrice(), 0.0001);
+        assertEquals("EXACT", result.liquidationPriceType());
+    }
+
+    @Test
+    void leverageResponseCountsManualCloseOrdersButIgnoresTpslConditionalOrders() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.place(
+                "manual-close",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.25,
+                120.0,
+                false,
+                "MAKER",
+                0,
+                120
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                130,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
+
+        PositionSnapshotResult result = service(positionRepository, orderRepository, accountRepository)
+                .update(1L, "BTCUSDT", "LONG", "ISOLATED", 10);
+
+        assertEquals(0.25, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(0.75, result.closeableQuantity(), 0.0001);
+        assertEquals(130, result.takeProfitPrice(), 0.0001);
+    }
+
     private UpdatePositionLeverageService service(
             InMemoryPositionRepository positionRepository,
             InMemoryOrderRepository orderRepository,
@@ -115,7 +187,8 @@ class UpdatePositionLeverageServiceTest {
                 accountRepository,
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new AfterCommitEventPublisher(event -> {
-                })
+                }),
+                new LiquidationPolicy()
         );
     }
 
@@ -224,11 +297,15 @@ class UpdatePositionLeverageServiceTest {
         private TradingAccount account;
 
         private InMemoryAccountRepository(double availableMargin) {
+            this(100000, availableMargin);
+        }
+
+        private InMemoryAccountRepository(double walletBalance, double availableMargin) {
             this.account = new TradingAccount(
                     1L,
                     "demo@coinzzickmock.dev",
                     "Demo",
-                    100000,
+                    walletBalance,
                     availableMargin
             );
         }

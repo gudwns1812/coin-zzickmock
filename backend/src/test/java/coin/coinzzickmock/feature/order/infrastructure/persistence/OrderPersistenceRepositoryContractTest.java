@@ -237,6 +237,44 @@ class OrderPersistenceRepositoryContractTest {
         );
     }
 
+    @Test
+    void updatesPendingConditionalCloseOrderInPlace() {
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+        String orderId = "tp-order-" + UUID.randomUUID();
+        saveAccount(memberId);
+
+        orderRepository.save(memberId, FuturesOrder.conditionalClose(
+                orderId,
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.2,
+                110.0,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
+
+        FuturesOrder updated = orderRepository.updatePendingConditionalCloseOrder(
+                memberId,
+                orderId,
+                20,
+                0.15,
+                115.0,
+                "oco-updated"
+        );
+
+        assertEquals(orderId, updated.orderId());
+        assertEquals(FuturesOrder.STATUS_PENDING, updated.status());
+        assertEquals(20, updated.leverage());
+        assertEquals(0.15, updated.quantity(), 0.0001);
+        assertEquals(115.0, updated.triggerPrice(), 0.0001);
+        assertEquals("oco-updated", updated.ocoGroupId());
+        assertEquals(1, orderRepository.findByMemberId(memberId).size());
+        FuturesOrder persisted = orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+        assertEquals(115.0, persisted.triggerPrice(), 0.0001);
+    }
+
     private void saveAccount(Long memberId) {
         jdbcTemplate.update("""
                 INSERT INTO member_credentials (

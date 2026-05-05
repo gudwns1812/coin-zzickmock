@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -28,6 +29,7 @@ public class PositionTakeProfitStopLossProcessor {
     private final PositionRepository positionRepository;
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
+    private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final AccountOrderMutationLock accountOrderMutationLock;
@@ -87,12 +89,21 @@ public class PositionTakeProfitStopLossProcessor {
                 order.marginMode()
         ).orElse(null);
         if (position == null) {
-            orderRepository.updateStatus(memberId, order.orderId(), FuturesOrder.STATUS_CANCELLED);
+            staleProtectiveCloseOrderCanceller.cancel(
+                    memberId,
+                    order.symbol(),
+                    order.positionSide(),
+                    order.marginMode()
+            );
             return;
         }
 
         PositionSnapshot marked = position.markToMarket(market.markPrice());
-        if (marked.quantity() < order.quantity()) {
+        if (marked.quantity() <= 0) {
+            staleProtectiveCloseOrderCanceller.cancel(memberId, marked);
+            return;
+        }
+        if (Double.compare(marked.quantity(), order.quantity()) != 0) {
             order = orderRepository.updateQuantityAndStatus(
                     memberId,
                     order.orderId(),
@@ -126,12 +137,7 @@ public class PositionTakeProfitStopLossProcessor {
                 closeReason
         );
         cancelOcoSiblings(memberId, filled);
-        pendingCloseOrderCapReconciler.reconcile(
-                memberId,
-                marked,
-                Math.max(0, marked.quantity() - filled.quantity()),
-                executionPrice
-        );
+        cleanupPendingCloseOrders(memberId, marked, Math.max(0, marked.quantity() - filled.quantity()), executionPrice);
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionClosedByTrigger(
                 memberId,
                 marked.symbol(),
@@ -142,6 +148,18 @@ public class PositionTakeProfitStopLossProcessor {
                 result.realizedPnl(),
                 closeReason
         ));
+    }
+
+    private void cleanupPendingCloseOrders(
+            Long memberId,
+            PositionSnapshot position,
+            double remainingQuantity,
+            double currentPrice
+    ) {
+        pendingCloseOrderCapReconciler.reconcile(memberId, position, remainingQuantity, currentPrice);
+        if (remainingQuantity <= 0) {
+            staleProtectiveCloseOrderCanceller.cancel(memberId, position);
+        }
     }
 
     private boolean isTriggered(FuturesOrder order, double markPrice) {

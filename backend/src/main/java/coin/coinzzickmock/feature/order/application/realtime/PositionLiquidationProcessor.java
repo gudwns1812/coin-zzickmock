@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.CrossLiquidationAssessment;
@@ -22,9 +23,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class PositionLiquidationProcessor {
@@ -35,6 +38,7 @@ public class PositionLiquidationProcessor {
     private final LiquidationPolicy liquidationPolicy;
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
+    private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final AccountOrderMutationLock accountOrderMutationLock;
@@ -95,7 +99,7 @@ public class PositionLiquidationProcessor {
                         : position)
                 .toList();
 
-        CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(account.availableMargin(), positions);
+        CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(account.walletBalance(), positions);
         if (!assessment.breached()) {
             return;
         }
@@ -117,6 +121,7 @@ public class PositionLiquidationProcessor {
                 PositionHistory.CLOSE_REASON_LIQUIDATION
         );
         pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
+        cancelStaleProtectiveOrders(memberId, position);
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),
@@ -126,5 +131,20 @@ public class PositionLiquidationProcessor {
                 executionPrice,
                 result.realizedPnl()
         ));
+    }
+
+    private void cancelStaleProtectiveOrders(Long memberId, PositionSnapshot position) {
+        try {
+            staleProtectiveCloseOrderCanceller.cancel(memberId, position);
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Failed to cancel stale protective close orders after liquidation. memberId={}, symbol={}, positionSide={}, marginMode={}",
+                    memberId,
+                    position.symbol(),
+                    position.positionSide(),
+                    position.marginMode(),
+                    exception
+            );
+        }
     }
 }

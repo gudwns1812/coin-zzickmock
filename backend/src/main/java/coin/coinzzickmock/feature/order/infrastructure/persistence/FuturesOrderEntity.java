@@ -139,6 +139,20 @@ public class FuturesOrderEntity {
         this.activeConditionalTriggerType = activeConditionalTriggerType();
     }
 
+    public void updatePendingConditionalCloseOrder(
+            int leverage,
+            double quantity,
+            double triggerPrice,
+            String ocoGroupId
+    ) {
+        this.leverage = leverage;
+        this.quantity = decimal(quantity);
+        this.triggerPrice = decimal(triggerPrice);
+        this.triggerSource = FuturesOrder.TRIGGER_SOURCE_MARK_PRICE;
+        this.ocoGroupId = ocoGroupId;
+        this.activeConditionalTriggerType = activeConditionalTriggerType();
+    }
+
     public void updateQuantityAndStatus(double quantity, String status) {
         this.quantity = decimal(quantity);
         this.status = status;

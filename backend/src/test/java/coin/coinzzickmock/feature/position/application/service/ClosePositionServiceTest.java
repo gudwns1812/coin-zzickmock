@@ -17,6 +17,7 @@ import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
@@ -76,6 +77,7 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository),
+                new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
                 new AccountOrderMutationLock(accountRepository)
         );
@@ -134,6 +136,7 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository),
+                new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
                 new AccountOrderMutationLock(accountRepository)
         );
@@ -191,6 +194,7 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository),
+                new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
                 new AccountOrderMutationLock(accountRepository)
         );
@@ -248,12 +252,25 @@ class ClosePositionServiceTest {
                 0,
                 110000
         ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                120000,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(105000, 105000));
 
         service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 1, "MARKET", null);
 
         FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId(1L, "existing-close").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
+        FuturesOrder cancelledTpsl = orderRepository.findByMemberIdAndOrderId(1L, "tp").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, cancelledTpsl.status());
         assertFalse(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isPresent());
     }
 
@@ -300,6 +317,17 @@ class ClosePositionServiceTest {
                 0,
                 112000
         ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                120000,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
         ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(105000, 105000));
 
         service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.6, "MARKET", null);
@@ -310,6 +338,9 @@ class ClosePositionServiceTest {
         assertEquals(0.3, closer.quantity(), 0.0001);
         assertEquals(FuturesOrder.STATUS_PENDING, reducedFarther.status());
         assertEquals(0.1, reducedFarther.quantity(), 0.0001);
+        FuturesOrder protective = orderRepository.findByMemberIdAndOrderId(1L, "tp").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, protective.status());
+        assertEquals(1, protective.quantity(), 0.0001);
     }
 
     @Test
@@ -346,6 +377,7 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository),
+                new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
                 new AccountOrderMutationLock(accountRepository)
         );
@@ -399,6 +431,7 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository),
+                new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
                 new AccountOrderMutationLock(accountRepository)
         );
@@ -455,6 +488,7 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository),
+                new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
                 new AccountOrderMutationLock(accountRepository)
         );
@@ -793,6 +827,7 @@ class ClosePositionServiceTest {
                         })
                 ),
                 new PendingCloseOrderCapReconciler(orderRepository),
+                new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
                 new AccountOrderMutationLock(accountRepository)
         );

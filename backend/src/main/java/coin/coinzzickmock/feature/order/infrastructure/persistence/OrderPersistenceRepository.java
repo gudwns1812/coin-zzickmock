@@ -160,6 +160,22 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional
+    public FuturesOrder updatePendingConditionalCloseOrder(
+            Long memberId,
+            String orderId,
+            int leverage,
+            double quantity,
+            double triggerPrice,
+            String ocoGroupId
+    ) {
+        FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
+                .orElseThrow();
+        entity.updatePendingConditionalCloseOrder(leverage, quantity, triggerPrice, ocoGroupId);
+        return entity.toDomain();
+    }
+
+    @Override
+    @Transactional
     public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
         FuturesOrderEntity entity = futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
                 .orElseThrow();

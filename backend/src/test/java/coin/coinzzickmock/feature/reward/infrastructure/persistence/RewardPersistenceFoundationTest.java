@@ -6,9 +6,15 @@ import coin.coinzzickmock.feature.member.domain.MemberRole;
 import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import coin.coinzzickmock.feature.reward.domain.RewardPhoneNumber;
+import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
+import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,6 +40,9 @@ class RewardPersistenceFoundationTest {
 
     @Autowired
     private RewardPointRepository rewardPointRepository;
+
+    @Autowired
+    private RewardRedemptionRequestRepository rewardRedemptionRequestRepository;
 
     @Autowired
     private RewardPointGrantProcessor rewardPointGrantProcessor;
@@ -89,7 +98,109 @@ class RewardPersistenceFoundationTest {
         assertTrue(item.memberReachedLimit(1));
     }
 
+    @Test
+    void redemptionApprovalClaimUsesManagedEntityUpdateOnce() {
+        RewardRedemptionRequest request = savePendingRedemption();
+        Instant approvedAt = Instant.parse("2026-05-05T00:00:00Z");
+
+        Long adminMemberId = demoMemberId();
+        int claimed = rewardRedemptionRequestRepository.claimPendingAsApproved(
+                request.requestId(),
+                adminMemberId,
+                "sent",
+                approvedAt
+        );
+        int duplicateClaim = rewardRedemptionRequestRepository.claimPendingAsApproved(
+                request.requestId(),
+                adminMemberId,
+                "sent again",
+                approvedAt.plusSeconds(1)
+        );
+
+        RewardRedemptionRequest persisted = rewardRedemptionRequestRepository
+                .findByRequestId(request.requestId())
+                .orElseThrow();
+        assertEquals(1, claimed);
+        assertEquals(0, duplicateClaim);
+        assertEquals(RewardRedemptionStatus.APPROVED, persisted.status());
+        assertEquals(adminMemberId, persisted.adminMemberId());
+        assertEquals("sent", persisted.adminMemo());
+        assertEquals(approvedAt, persisted.sentAt());
+    }
+
+    @Test
+    void redemptionRejectionClaimUsesManagedEntityUpdateOnce() {
+        RewardRedemptionRequest request = savePendingRedemption();
+        Instant rejectedAt = Instant.parse("2026-05-05T00:00:00Z");
+
+        Long adminMemberId = demoMemberId();
+        int claimed = rewardRedemptionRequestRepository.claimPendingAsRejected(
+                request.requestId(),
+                adminMemberId,
+                "refunded",
+                rejectedAt
+        );
+        int duplicateClaim = rewardRedemptionRequestRepository.claimPendingAsRejected(
+                request.requestId(),
+                adminMemberId,
+                "refunded again",
+                rejectedAt.plusSeconds(1)
+        );
+
+        RewardRedemptionRequest persisted = rewardRedemptionRequestRepository
+                .findByRequestId(request.requestId())
+                .orElseThrow();
+        assertEquals(1, claimed);
+        assertEquals(0, duplicateClaim);
+        assertEquals(RewardRedemptionStatus.REJECTED, persisted.status());
+        assertEquals(adminMemberId, persisted.adminMemberId());
+        assertEquals("refunded", persisted.adminMemo());
+        assertEquals(rejectedAt, persisted.cancelledAt());
+    }
+
+    @Test
+    void redemptionCancelClaimChecksOwnerAndUsesManagedEntityUpdateOnce() {
+        RewardRedemptionRequest request = savePendingRedemption();
+        Instant cancelledAt = Instant.parse("2026-05-05T00:00:00Z");
+
+        int wrongOwnerClaim = rewardRedemptionRequestRepository.claimPendingAsCancelled(
+                request.requestId(),
+                request.memberId() + 1,
+                cancelledAt
+        );
+        int claimed = rewardRedemptionRequestRepository.claimPendingAsCancelled(
+                request.requestId(),
+                request.memberId(),
+                cancelledAt
+        );
+        int duplicateClaim = rewardRedemptionRequestRepository.claimPendingAsCancelled(
+                request.requestId(),
+                request.memberId(),
+                cancelledAt.plusSeconds(1)
+        );
+
+        RewardRedemptionRequest persisted = rewardRedemptionRequestRepository
+                .findByRequestId(request.requestId())
+                .orElseThrow();
+        assertEquals(0, wrongOwnerClaim);
+        assertEquals(1, claimed);
+        assertEquals(0, duplicateClaim);
+        assertEquals(RewardRedemptionStatus.CANCELLED, persisted.status());
+        assertEquals(cancelledAt, persisted.cancelledAt());
+    }
+
     private Long demoMemberId() {
         return memberCredentialRepository.findActiveByAccount(DEMO_ACCOUNT).orElseThrow().memberId();
+    }
+
+    private RewardRedemptionRequest savePendingRedemption() {
+        RewardShopItem item = rewardShopItemRepository.findByCode("voucher.coffee").orElseThrow();
+        return rewardRedemptionRequestRepository.save(RewardRedemptionRequest.pending(
+                "request-" + UUID.randomUUID(),
+                demoMemberId(),
+                item,
+                RewardPhoneNumber.from("010-1234-5678"),
+                Instant.parse("2026-05-05T00:00:00Z")
+        ));
     }
 }

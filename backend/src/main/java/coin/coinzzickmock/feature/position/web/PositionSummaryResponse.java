@@ -9,6 +9,7 @@ public record PositionSummaryResponse(
         double entryPrice,
         double markPrice,
         Double liquidationPrice,
+        String liquidationPriceType,
         double unrealizedPnl,
         double realizedPnl,
         double margin,

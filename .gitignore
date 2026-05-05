@@ -62,6 +62,9 @@ backend/spy.log
 scripts/
 .omx/
 .codex/*
+!.codex/hooks.json
+!.codex/hooks/
+!.codex/hooks/**
 !.codex/agents/
 !.codex/agents/**
 !.codex/skills/

@@ -90,3 +90,10 @@ test("TP/SL editor does not default empty fields to mark price", () => {
   assert.equal(source.includes("setStopLossPrice(formatEditablePrice(position.stopLossPrice))"), true);
   assert.equal(source.includes("snapshotPrice"), false);
 });
+
+test("position card labels estimated and unavailable liquidation prices", () => {
+  assert.equal(source.includes("function formatPositionLiquidationPrice"), true);
+  assert.equal(source.includes('position.liquidationPriceType === "UNAVAILABLE"'), true);
+  assert.equal(source.includes('position.liquidationPriceType === "ESTIMATED"'), true);
+  assert.equal(source.includes("(Est.)"), true);
+});

@@ -8,6 +8,7 @@ public record CreateOrderResult(
         double estimatedFee,
         double estimatedInitialMargin,
         Double estimatedLiquidationPrice,
+        String estimatedLiquidationPriceType,
         double executionPrice
 ) {
 }

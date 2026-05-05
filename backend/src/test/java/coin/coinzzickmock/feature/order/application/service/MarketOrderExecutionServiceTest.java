@@ -24,6 +24,7 @@ import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate
 import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -394,6 +395,17 @@ class MarketOrderExecutionServiceTest {
         ));
         orderRepository.save(1L, pendingCloseOrderAt("first-close", "LONG", 0.6, 105, Instant.parse("2026-04-27T00:00:00Z")));
         orderRepository.save(1L, pendingCloseOrderAt("second-close", "LONG", 0.6, 106, Instant.parse("2026-04-27T00:00:01Z")));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp-after-limit-close",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                120,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
 
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(marketEvent(100, 106, 106));
@@ -404,6 +416,8 @@ class MarketOrderExecutionServiceTest {
         assertEquals(0.6, first.quantity(), 0.0001);
         assertEquals(FuturesOrder.STATUS_FILLED, second.status());
         assertEquals(0.4, second.quantity(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_CANCELLED,
+                orderRepository.findByMemberIdAndOrderId(1L, "tp-after-limit-close").orElseThrow().status());
         assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isEmpty());
     }
 
@@ -423,12 +437,54 @@ class MarketOrderExecutionServiceTest {
                 100
         ));
         orderRepository.save(1L, pendingCloseOrderAt("close-before-liquidation", "LONG", 0.5, 105, Instant.parse("2026-04-27T00:00:00Z")));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp-before-liquidation",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                110,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
 
         service(orderRepository, positionRepository, accountRepository, eventPublisher)
                 .onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
 
         FuturesOrder cancelled = orderRepository.findByMemberIdAndOrderId(1L, "close-before-liquidation").orElseThrow();
         assertEquals(FuturesOrder.STATUS_CANCELLED, cancelled.status());
+        FuturesOrder cancelledTpsl = orderRepository.findByMemberIdAndOrderId(1L, "tp-before-liquidation").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, cancelledTpsl.status());
+    }
+
+    @Test
+    void liquidationCompletesWhenStaleProtectiveCleanupFails() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ));
+        StaleProtectiveCloseOrderCanceller failingCanceller = new StaleProtectiveCloseOrderCanceller(orderRepository) {
+            @Override
+            public void cancel(Long memberId, PositionSnapshot position) {
+                throw new IllegalStateException("cleanup unavailable");
+            }
+        };
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher, failingCanceller)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
+
+        assertTrue(positionRepository.findOpenPositions(1L).isEmpty());
+        assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
     }
 
     @Test
@@ -465,8 +521,8 @@ class MarketOrderExecutionServiceTest {
                 Instant.parse("2026-04-27T00:00:00Z")
         ));
 
-        service(orderRepository, positionRepository, accountRepository, eventPublisher)
-                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+        tpslProcessor(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .closeTriggeredPositions(market(106, 106));
 
         assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isEmpty());
         assertEquals("POSITION_TAKE_PROFIT", eventPublisher.events.get(0).type());
@@ -512,14 +568,151 @@ class MarketOrderExecutionServiceTest {
                 "oco-1"
         ));
 
-        service(orderRepository, positionRepository, accountRepository, eventPublisher)
-                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+        tpslProcessor(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .closeTriggeredPositions(market(106, 106));
 
         FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp-order").orElseThrow();
         FuturesOrder stopLoss = orderRepository.findByMemberIdAndOrderId(1L, "sl-order").orElseThrow();
         assertEquals(FuturesOrder.STATUS_FILLED, takeProfit.status());
         assertEquals(FuturesOrder.STATUS_CANCELLED, stopLoss.status());
         assertEquals("POSITION_TAKE_PROFIT", eventPublisher.events.get(0).type());
+    }
+
+    @Test
+    void triggeredTakeProfitSynchronizesToCurrentPositionQuantityBeforeFill() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp-order",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.4,
+                105,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, takeProfit.status());
+        assertEquals(1, takeProfit.quantity(), 0.0001);
+        assertEquals(0.053, takeProfit.estimatedFee(), 0.0001);
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isEmpty());
+    }
+
+    @Test
+    void triggeredTakeProfitShrinksOversizedOrderToCurrentPositionQuantityBeforeFill() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp-order",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1.6,
+                105,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, takeProfit.status());
+        assertEquals(1, takeProfit.quantity(), 0.0001);
+        assertEquals(0.053, takeProfit.estimatedFee(), 0.0001);
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isEmpty());
+    }
+
+    @Test
+    void triggeredTpslWithoutPositionCancelsStaleProtectiveOrdersWithoutFillEvent() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp-order",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                105,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(106, 106)));
+
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, takeProfit.status());
+        assertTrue(eventPublisher.events.isEmpty());
+    }
+
+    @Test
+    void triggeredTpslWithZeroQuantityPositionCancelsStaleProtectiveOrdersWithoutFillEvent() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, new PositionSnapshot(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0,
+                100,
+                100,
+                90.0,
+                0
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp-order",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                105,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
+
+        tpslProcessor(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .closeTriggeredPositions(market(106, 106));
+
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_CANCELLED, takeProfit.status());
+        assertTrue(eventPublisher.events.isEmpty());
     }
 
     @Test
@@ -602,6 +795,62 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void crossFiftyTimesPendingOpenDoesNotImmediatelyLiquidateWhenWalletEquityIsSufficient() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save(1L, new FuturesOrder(
+                "cross-50x-open",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_OPEN_POSITION,
+                "CROSS",
+                50,
+                40_000,
+                100.0,
+                FuturesOrder.STATUS_PENDING,
+                "TAKER",
+                0,
+                100,
+                Instant.parse("2026-05-05T00:00:00Z")
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(101, 100, 100));
+
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "CROSS").isPresent());
+        assertEquals(99_400, accountRepository.findByMemberId(1L).orElseThrow().walletBalance(), 0.0001);
+        assertEquals(19_400, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+        assertEquals(1, eventPublisher.events.size());
+        assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
+    }
+
+    @Test
+    void crossPositionLiquidatesWhenWalletBackedEquityFallsBelowMaintenanceRequirement() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                50,
+                40_000,
+                100,
+                100
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(97, 97)));
+
+        assertTrue(positionRepository.findOpenPositions(1L).isEmpty());
+        assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
+    }
+
+    @Test
     void risingPriceFillsSellSideLimitsByPathPriceBeforeCreationTime() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -659,6 +908,22 @@ class MarketOrderExecutionServiceTest {
             AccountRepository accountRepository,
             ApplicationEventPublisher eventPublisher
     ) {
+        return service(
+                orderRepository,
+                positionRepository,
+                accountRepository,
+                eventPublisher,
+                new StaleProtectiveCloseOrderCanceller(orderRepository)
+        );
+    }
+
+    private MarketOrderExecutionService service(
+            OrderRepository orderRepository,
+            PositionRepository positionRepository,
+            AccountRepository accountRepository,
+            ApplicationEventPublisher eventPublisher,
+            StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller
+    ) {
         AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
         PositionCloseFinalizer positionCloseFinalizer = new PositionCloseFinalizer(
                 positionRepository,
@@ -677,6 +942,7 @@ class MarketOrderExecutionServiceTest {
                         new PendingOrderExecutionCache(),
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
+                        staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
                         new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
@@ -688,6 +954,7 @@ class MarketOrderExecutionServiceTest {
                         new LiquidationPolicy(),
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
+                        staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
                         accountOrderMutationLock
@@ -697,10 +964,40 @@ class MarketOrderExecutionServiceTest {
                         positionRepository,
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
+                        staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
                         accountOrderMutationLock
                 )
+        );
+    }
+
+    private PositionTakeProfitStopLossProcessor tpslProcessor(
+            OrderRepository orderRepository,
+            PositionRepository positionRepository,
+            AccountRepository accountRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
+        AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
+        PositionCloseFinalizer positionCloseFinalizer = new PositionCloseFinalizer(
+                positionRepository,
+                accountRepository,
+                new InMemoryPositionHistoryRepository(),
+                new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
+                afterCommitEventPublisher
+        );
+        PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
+        StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller = new StaleProtectiveCloseOrderCanceller(orderRepository);
+        RealtimeMarketPriceReader realtimeMarketPriceReader = new RealtimeMarketPriceReader(realtimeMarketDataStore);
+        return new PositionTakeProfitStopLossProcessor(
+                orderRepository,
+                positionRepository,
+                positionCloseFinalizer,
+                pendingCloseOrderCapReconciler,
+                staleProtectiveCloseOrderCanceller,
+                afterCommitEventPublisher,
+                realtimeMarketPriceReader,
+                new AccountOrderMutationLock(accountRepository)
         );
     }
 

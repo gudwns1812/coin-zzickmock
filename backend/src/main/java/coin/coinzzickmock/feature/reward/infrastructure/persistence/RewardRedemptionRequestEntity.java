@@ -100,6 +100,38 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
         this.adminMemo = request.adminMemo();
     }
 
+    public void approvePending(Long adminMemberId, String adminMemo, Instant approvedAt) {
+        requirePendingTransition();
+        this.status = RewardRedemptionStatus.APPROVED.name();
+        this.adminMemberId = adminMemberId;
+        this.adminMemo = adminMemo;
+        this.sentAt = approvedAt;
+    }
+
+    public void rejectPending(Long adminMemberId, String adminMemo, Instant rejectedAt) {
+        requirePendingTransition();
+        this.status = RewardRedemptionStatus.REJECTED.name();
+        this.adminMemberId = adminMemberId;
+        this.adminMemo = adminMemo;
+        this.cancelledAt = rejectedAt;
+    }
+
+    public void cancelPending(Instant cancelledAt) {
+        requirePendingTransition();
+        this.status = RewardRedemptionStatus.CANCELLED.name();
+        this.cancelledAt = cancelledAt;
+    }
+
+    public boolean isPending() {
+        return RewardRedemptionStatus.PENDING.name().equals(status);
+    }
+
+    private void requirePendingTransition() {
+        if (!isPending()) {
+            throw new IllegalStateException("대기 중인 교환권 요청만 처리할 수 있습니다. status=" + status);
+        }
+    }
+
     public RewardRedemptionRequest toDomain() {
         return new RewardRedemptionRequest(
                 requestId,

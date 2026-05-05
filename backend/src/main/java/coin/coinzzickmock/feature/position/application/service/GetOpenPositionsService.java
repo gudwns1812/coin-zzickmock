@@ -1,32 +1,43 @@
 package coin.coinzzickmock.feature.position.application.service;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.domain.CrossLiquidationEstimate;
+import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class GetOpenPositionsService {
     private final PositionRepository positionRepository;
     private final OrderRepository orderRepository;
+    private final AccountRepository accountRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
+    private final LiquidationPolicy liquidationPolicy;
 
     @Transactional(readOnly = true)
     public List<PositionSnapshotResult> getPositions(Long memberId) {
-        return positionRepository.findOpenPositions(memberId).stream()
+        List<PositionSnapshot> markedPositions = positionRepository.findOpenPositions(memberId).stream()
                 .map(this::markToMarketForRead)
-                .map(snapshot -> toResult(memberId, snapshot))
+                .toList();
+        TradingAccount account = accountRepository.findByMemberId(memberId)
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        return markedPositions.stream()
+                .map(snapshot -> toResult(memberId, account.walletBalance(), markedPositions, snapshot))
                 .toList();
     }
 
@@ -36,7 +47,12 @@ public class GetOpenPositionsService {
                 .orElse(snapshot);
     }
 
-    private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot) {
+    private PositionSnapshotResult toResult(
+            Long memberId,
+            double walletBalance,
+            List<PositionSnapshot> positions,
+            PositionSnapshot snapshot
+    ) {
         List<FuturesOrder> tpslOrders = orderRepository.findPendingConditionalCloseOrders(
                 memberId,
                 snapshot.symbol(),
@@ -47,6 +63,8 @@ public class GetOpenPositionsService {
                 memberId,
                 snapshot
         );
+        ResolvedLiquidationPrice liquidation = resolveLiquidationPrice(walletBalance, positions, snapshot);
+
         return new PositionSnapshotResult(
                 snapshot.symbol(),
                 snapshot.positionSide(),
@@ -55,7 +73,8 @@ public class GetOpenPositionsService {
                 snapshot.quantity(),
                 snapshot.entryPrice(),
                 snapshot.markPrice(),
-                snapshot.liquidationPrice(),
+                liquidation.price(),
+                liquidation.type(),
                 snapshot.unrealizedPnl(),
                 snapshot.realizedPnl(),
                 snapshot.initialMargin(),
@@ -68,11 +87,36 @@ public class GetOpenPositionsService {
         );
     }
 
+    private ResolvedLiquidationPrice resolveLiquidationPrice(
+            double walletBalance,
+            List<PositionSnapshot> positions,
+            PositionSnapshot snapshot
+    ) {
+        if (snapshot.isCrossMargin()) {
+            CrossLiquidationEstimate estimate = liquidationPolicy.estimateCrossLiquidationPrice(
+                    walletBalance,
+                    positions,
+                    snapshot.symbol()
+            );
+            return new ResolvedLiquidationPrice(estimate.liquidationPrice(), estimate.liquidationPriceType());
+        }
+        return new ResolvedLiquidationPrice(snapshot.liquidationPrice(), isolatedLiquidationPriceType(snapshot));
+    }
+
+    private String isolatedLiquidationPriceType(PositionSnapshot snapshot) {
+        return snapshot.liquidationPrice() == null
+                ? CrossLiquidationEstimate.TYPE_UNAVAILABLE
+                : CrossLiquidationEstimate.TYPE_EXACT;
+    }
+
     private Double triggerPrice(List<FuturesOrder> orders, String triggerType) {
         return orders.stream()
                 .filter(order -> triggerType.equalsIgnoreCase(order.triggerType()))
                 .max(Comparator.comparing(FuturesOrder::orderTime))
                 .map(FuturesOrder::triggerPrice)
                 .orElse(null);
+    }
+
+    private record ResolvedLiquidationPrice(Double price, String type) {
     }
 }

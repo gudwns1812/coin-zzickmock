@@ -178,10 +178,16 @@ Redis 후보의 member hash가 누락되거나 파싱되지 않으면 해당 sna
 
 1. [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 
-### DB, 예외, 기술 중심 네이밍 규칙이 필요할 때
+### DB와 영속성 규칙이 필요할 때
 
-1. [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+1. [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
 2. DB 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
+
+### 외부 연동, 예외, 기술 중심 네이밍 규칙이 필요할 때
+
+1. 외부 API, SDK, connector는 [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
+2. 예외 모델과 HTTP error response는 [09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
+3. 기술 세부사항을 클래스명에 드러내지 않는 규칙은 [10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)
 
 ### 테스트 구조와 `architectureLint` 규칙이 필요할 때
 
@@ -189,12 +195,13 @@ Redis 후보의 member hash가 누락되거나 파싱되지 않으면 해당 sna
 
 ## Document Boundary Rule
 
-이 디렉터리의 상세 설계는 번호 문서별 1차 책임을 유지해야 한다.
+이 디렉터리의 상세 설계는 번호 문서별 개념적 책임을 유지해야 한다.
+새 설계 개념이 들어오면 기존 문서에 섞지 않고 새 번호 문서로 분리한다.
 
 강한 규칙:
 
-- 구조 규칙을 추가한다고 해서 DB/테스트/네이밍 규칙 문서까지 함께 키우지 않는다.
-- 새로운 설계 규칙이 기존 문서 책임에 맞지 않으면 새 번호 문서를 추가한다.
+- 구조 규칙을 추가한다고 해서 DB/외부 연동/예외/테스트/네이밍 규칙 문서까지 함께 키우지 않는다.
+- 새로운 설계 규칙이 기존 문서의 개념적 책임에 맞지 않으면 새 번호 문서를 추가한다.
 - 상세 설계 문서를 수정하면 [README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)도 함께 갱신해 다음 독자가 바로 찾을 수 있게 한다.
 
 ## Related Documents
@@ -204,5 +211,8 @@ Redis 후보의 member hash가 누락되거나 파싱되지 않으면 해당 sna
 - [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 - [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
-- [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+- [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
 - [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
+- [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
+- [09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
+- [10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)

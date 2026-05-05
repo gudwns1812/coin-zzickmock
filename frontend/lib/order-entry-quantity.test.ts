@@ -6,16 +6,22 @@ const quantityModule: typeof import("./order-entry-quantity") = await import(
 );
 
 const {
-  calculateMaxOpenMarketQuantity,
+  calculateMaxOpenOrderQuantity,
   floorQuantityToPrecision,
   formatFlooredQuantity,
-  OPEN_MARKET_TAKER_FEE_RATE,
+  OPEN_ORDER_TAKER_FEE_RATE,
 } = quantityModule;
 
-test("open market max quantity includes taker fee in affordability denominator", () => {
-  const quantity = calculateMaxOpenMarketQuantity(1000, 10, 100);
+test("open order max quantity includes taker fee in affordability denominator", () => {
+  const quantity = calculateMaxOpenOrderQuantity(1000, 10, 100);
 
-  assert.equal(quantity, 1000 / (100 * (1 / 10 + OPEN_MARKET_TAKER_FEE_RATE)));
+  assert.equal(quantity, 1000 / (100 * (1 / 10 + OPEN_ORDER_TAKER_FEE_RATE)));
+});
+
+test("open limit max quantity uses the entered limit price with the same affordability formula", () => {
+  const quantity = calculateMaxOpenOrderQuantity(1000, 10, 95);
+
+  assert.equal(quantity, 1000 / (95 * (1 / 10 + OPEN_ORDER_TAKER_FEE_RATE)));
 });
 
 test("quantity precision floors without rounding up at the affordability boundary", () => {
@@ -24,8 +30,8 @@ test("quantity precision floors without rounding up at the affordability boundar
 });
 
 test("invalid inputs resolve to zero quantity", () => {
-  assert.equal(calculateMaxOpenMarketQuantity(1000, 0, 100), 0);
-  assert.equal(calculateMaxOpenMarketQuantity(1000, 10, 0), 0);
-  assert.equal(calculateMaxOpenMarketQuantity(1000, 10, 100, -0.01), 0);
+  assert.equal(calculateMaxOpenOrderQuantity(1000, 0, 100), 0);
+  assert.equal(calculateMaxOpenOrderQuantity(1000, 10, 0), 0);
+  assert.equal(calculateMaxOpenOrderQuantity(1000, 10, 100, -0.01), 0);
   assert.equal(floorQuantityToPrecision(Number.NaN), 0);
 });

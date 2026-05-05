@@ -38,17 +38,23 @@ test("close quantity controls use held position quantity", () => {
   assert.equal(source.includes("closeableQuantity"), false);
 });
 
-test("open market max quantity uses fee-aware floored helper while close mode remains position based", () => {
-  assert.equal(source.includes("calculateMaxOpenMarketQuantity"), true);
-  assert.equal(source.includes('orderType === "MARKET"'), true);
+test("open order max quantity uses fee-aware floored helper while close mode remains position based", () => {
+  assert.equal(source.includes("calculateMaxOpenOrderQuantity"), true);
+  assert.equal(source.includes("calculateMaxOpenMarketQuantity"), false);
+  assert.equal(source.includes("(availableBalance * leverage) / effectivePrice"), false);
   assert.equal(source.includes("formatFlooredQuantity(value)"), true);
   assert.equal(source.includes("toFixed(3)"), false);
 });
 
-test("side control lets close helpers target long or short positions", () => {
-  assert.equal(source.includes("function SideToggle"), true);
-  assert.equal(source.includes('aria-label="Position side"'), true);
-  assert.equal(source.includes("setPositionSide(side)"), true);
+test("order ticket removes redundant compact side control and keeps action buttons as side selectors", () => {
+  assert.equal(source.includes("function SideToggle"), false);
+  assert.equal(source.includes('aria-label="Position side"'), false);
+  assert.equal(source.includes('onClick={() => handleSubmit("LONG")}'), true);
+  assert.equal(source.includes('onClick={() => handleSubmit("SHORT")}'), true);
+  assert.equal(source.includes("function selectOrderSide"), false);
+  assert.equal(source.includes("onMouseEnter={() => setPositionSide"), false);
+  assert.equal(source.includes("onFocus={() => setPositionSide"), false);
+  assert.equal(source.includes("setPositionSide(nextSide)"), true);
 });
 
 test("order ticket defaults to cross margin and 10x leverage without a selected-side position", () => {

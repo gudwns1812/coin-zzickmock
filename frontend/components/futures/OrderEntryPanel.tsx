@@ -9,7 +9,7 @@ import type {
 } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
 import {
-  calculateMaxOpenMarketQuantity,
+  calculateMaxOpenOrderQuantity,
   formatFlooredQuantity,
 } from "@/lib/order-entry-quantity";
 import Modal from "@/components/ui/Modal";
@@ -129,13 +129,7 @@ export default function OrderEntryPanel({
   const isMarginModeLocked = selectedSidePosition !== null;
   const maxOpenQuantity =
     Number.isFinite(effectivePrice) && effectivePrice > 0
-      ? orderType === "MARKET"
-        ? calculateMaxOpenMarketQuantity(
-            availableBalance,
-            leverage,
-            effectivePrice
-          )
-        : (availableBalance * leverage) / effectivePrice
+      ? calculateMaxOpenOrderQuantity(availableBalance, leverage, effectivePrice)
       : 0;
   const maxCloseQuantity = matchingPosition?.quantity ?? 0;
   const quantityControlMax =
@@ -370,7 +364,7 @@ export default function OrderEntryPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <SelectControl
           disabled={isMarginModeLocked}
           label="마진"
@@ -388,13 +382,6 @@ export default function OrderEntryPanel({
           label="레버리지"
           leverage={leverage}
           onClick={() => setIsLeverageModalOpen(true)}
-        />
-        <SideToggle
-          onChange={(side) => {
-            setPositionSide(side);
-            setInlineErrorMessage(null);
-          }}
-          value={positionSide}
         />
       </div>
 
@@ -801,40 +788,6 @@ function LeverageButton({
         {leverage}x
       </span>
     </button>
-  );
-}
-
-function SideToggle({
-  value,
-  onChange,
-}: {
-  value: Side;
-  onChange: (value: Side) => void;
-}) {
-  return (
-    <div
-      aria-label="Position side"
-      className="grid grid-cols-2 rounded-main border border-main-light-gray bg-main-light-gray/20 p-1"
-    >
-      {(["LONG", "SHORT"] as Side[]).map((side) => {
-        const active = value === side;
-        return (
-          <button
-            className={[
-              "rounded-main px-2 py-2 text-xs-custom font-bold transition-colors",
-              active
-                ? "bg-white text-main-dark-gray shadow-sm"
-                : "text-main-dark-gray/45 hover:text-main-dark-gray",
-            ].join(" ")}
-            key={side}
-            onClick={() => onChange(side)}
-            type="button"
-          >
-            {side === "LONG" ? "L" : "S"}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 

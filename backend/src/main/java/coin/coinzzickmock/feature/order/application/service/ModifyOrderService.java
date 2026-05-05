@@ -13,6 +13,7 @@ import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +32,7 @@ public class ModifyOrderService {
 
     @Transactional
     public ModifyOrderResult modify(ModifyOrderCommand command) {
-        validateLimitPrice(command.limitPrice());
+        double nextLimitPrice = validatedLimitPrice(command.limitPrice());
         accountOrderMutationLock.lock(command.memberId());
 
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(command.memberId(), command.orderId())
@@ -39,7 +40,7 @@ public class ModifyOrderService {
         validateEditable(order);
 
         MarketSnapshot market = realtimeMarketPriceReader.requireFreshMarket(order.symbol());
-        OrderPlacementRequest request = placementRequest(order, command.limitPrice());
+        OrderPlacementRequest request = placementRequest(order, nextLimitPrice);
         OrderPlacementDecision decision = orderPlacementPolicy.decide(request, market.lastPrice());
         if (decision.executable()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "즉시 체결 가능한 가격으로는 대기 주문을 수정할 수 없습니다.");
@@ -49,28 +50,33 @@ public class ModifyOrderService {
         FuturesOrder updated = orderRepository.updatePendingLimitPrice(
                 command.memberId(),
                 order.orderId(),
-                command.limitPrice(),
+                nextLimitPrice,
                 FEE_TYPE_MAKER,
                 estimatedFee,
-                command.limitPrice()
+                nextLimitPrice
         ).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST, "수정 가능한 대기 지정가 주문이 아닙니다."));
-        revertIfBecameMarketable(command.memberId(), order, updated);
+        rejectIfBecameMarketableAfterUpdate(updated);
 
         return new ModifyOrderResult(
                 updated.orderId(),
                 updated.symbol(),
                 updated.status(),
-                updated.limitPrice(),
+                BigDecimal.valueOf(updated.limitPrice()),
                 updated.feeType(),
-                updated.estimatedFee(),
-                updated.executionPrice()
+                BigDecimal.valueOf(updated.estimatedFee()),
+                BigDecimal.valueOf(updated.executionPrice())
         );
     }
 
-    private void validateLimitPrice(double limitPrice) {
-        if (!Double.isFinite(limitPrice) || limitPrice <= 0) {
+    private double validatedLimitPrice(BigDecimal limitPrice) {
+        if (limitPrice == null || limitPrice.signum() <= 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 가격을 확인해주세요.");
         }
+        double limitPriceValue = limitPrice.doubleValue();
+        if (!Double.isFinite(limitPriceValue)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 가격을 확인해주세요.");
+        }
+        return limitPriceValue;
     }
 
     private void validateEditable(FuturesOrder order) {
@@ -105,7 +111,7 @@ public class ModifyOrderService {
         return preview.estimatedFee();
     }
 
-    private void revertIfBecameMarketable(Long memberId, FuturesOrder original, FuturesOrder updated) {
+    private void rejectIfBecameMarketableAfterUpdate(FuturesOrder updated) {
         MarketSnapshot latestMarket = realtimeMarketPriceReader.requireFreshMarket(updated.symbol());
         OrderPlacementDecision latestDecision = orderPlacementPolicy.decide(
                 placementRequest(updated, updated.limitPrice()),
@@ -115,14 +121,6 @@ public class ModifyOrderService {
             return;
         }
 
-        orderRepository.updatePendingLimitPrice(
-                memberId,
-                updated.orderId(),
-                original.limitPrice(),
-                original.feeType(),
-                original.estimatedFee(),
-                original.executionPrice()
-        );
         throw new CoreException(ErrorCode.INVALID_REQUEST, "즉시 체결 가능한 가격으로는 대기 주문을 수정할 수 없습니다.");
     }
 }

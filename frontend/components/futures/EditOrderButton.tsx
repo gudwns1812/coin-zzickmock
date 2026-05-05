@@ -4,6 +4,7 @@ import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/shared/Button";
 import Input from "@/components/ui/shared/Input";
 import { modifyFuturesOrderPrice } from "@/lib/futures-client-api";
+import { submitOrderPriceEdit } from "@/lib/futures-order-edit";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "react-toastify";
@@ -32,22 +33,17 @@ export default function EditOrderButton({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const nextLimitPrice = Number(limitPrice);
-    if (!Number.isFinite(nextLimitPrice) || nextLimitPrice <= 0) {
-      toast.error("수정할 주문 가격을 확인해주세요.");
-      return;
-    }
-
     setIsPending(true);
     try {
-      const result = await modifyFuturesOrderPrice(orderId, nextLimitPrice);
-      toast.success(`${result.symbol} 대기 주문 가격을 수정했습니다.`);
-      setIsOpen(false);
-      router.refresh();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "주문 수정에 실패했습니다."
-      );
+      await submitOrderPriceEdit({
+        orderId,
+        limitPrice,
+        modifyOrderPrice: modifyFuturesOrderPrice,
+        refresh: () => router.refresh(),
+        closeModal: () => setIsOpen(false),
+        showSuccess: toast.success,
+        showError: toast.error,
+      });
     } finally {
       setIsPending(false);
     }

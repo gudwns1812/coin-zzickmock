@@ -129,7 +129,7 @@ public class OrderController {
         ModifyOrderResult result = modifyOrderService.modify(new ModifyOrderCommand(
                 providers.auth().currentActor().memberId(),
                 orderId,
-                request.limitPrice()
+                request.requireLimitPrice()
         ));
         return ApiResponse.success(ModifyOrderResponse.from(result));
     }

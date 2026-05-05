@@ -21,10 +21,8 @@ import coin.coinzzickmock.feature.position.application.repository.PositionReposi
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,8 +65,7 @@ public class PendingOrderFillProcessor {
         double lowerPrice = Math.min(realtimeEvent.previousLastPrice(), market.lastPrice());
         double upperPrice = Math.max(realtimeEvent.previousLastPrice(), market.lastPrice());
         boolean sellSide = realtimeEvent.direction() == MarketPriceMovementDirection.UP;
-        Set<String> guardedClaimMisses = new HashSet<>();
-        while (fillNextExecutable(realtimeEvent, lowerPrice, upperPrice, sellSide, guardedClaimMisses)) {
+        while (fillNextExecutable(realtimeEvent, lowerPrice, upperPrice, sellSide)) {
             // Keep refreshing one fill at a time so price edits between selection and fill
             // are re-sorted before another pending order is claimed.
         }
@@ -78,8 +75,7 @@ public class PendingOrderFillProcessor {
             MarketSummaryUpdatedEvent event,
             double lowerPrice,
             double upperPrice,
-            boolean sellSide,
-            Set<String> guardedClaimMisses
+            boolean sellSide
     ) {
         MarketSummaryResult market = event.result();
         List<PendingOrderCandidate> candidates = executableCandidates(
@@ -94,17 +90,11 @@ public class PendingOrderFillProcessor {
                         )
                 )
         ).stream()
-                .filter(candidate -> !guardedClaimMisses.contains(candidateKey(candidate.memberId(), candidate.orderId())))
                 .toList();
         if (candidates.isEmpty()) {
             return false;
         }
-        FillAttemptResult result = fillIfExecutable(candidates.get(0), event);
-        if (result.guardedClaimMiss()) {
-            PendingOrderCandidate candidate = candidates.get(0);
-            guardedClaimMisses.add(candidateKey(candidate.memberId(), candidate.orderId()));
-        }
-        return result.shouldContinue();
+        return fillIfExecutable(candidates.get(0), event).shouldContinue();
     }
 
     private List<PendingOrderCandidate> executableCandidates(
@@ -213,7 +203,7 @@ public class PendingOrderFillProcessor {
 
         if (claimed.isEmpty()) {
             pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
-            return FillAttemptResult.claimMiss();
+            return FillAttemptResult.stopLoop();
         }
 
         FuturesOrder filledOrder = claimed.orElseThrow();
@@ -239,21 +229,13 @@ public class PendingOrderFillProcessor {
         return Double.compare(candidateOrder.limitPrice(), currentOrder.limitPrice()) != 0;
     }
 
-    private String candidateKey(Long memberId, String orderId) {
-        return memberId + ":" + orderId;
-    }
-
-    private record FillAttemptResult(boolean shouldContinue, boolean guardedClaimMiss) {
+    private record FillAttemptResult(boolean shouldContinue) {
         private static FillAttemptResult continueLoop() {
-            return new FillAttemptResult(true, false);
-        }
-
-        private static FillAttemptResult claimMiss() {
-            return new FillAttemptResult(false, true);
+            return new FillAttemptResult(true);
         }
 
         private static FillAttemptResult stopLoop() {
-            return new FillAttemptResult(false, false);
+            return new FillAttemptResult(false);
         }
     }
 

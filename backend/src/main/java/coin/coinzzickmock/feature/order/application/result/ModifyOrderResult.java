@@ -1,12 +1,14 @@
 package coin.coinzzickmock.feature.order.application.result;
 
+import java.math.BigDecimal;
+
 public record ModifyOrderResult(
         String orderId,
         String symbol,
         String status,
-        Double limitPrice,
+        BigDecimal limitPrice,
         String feeType,
-        double estimatedFee,
-        double executionPrice
+        BigDecimal estimatedFee,
+        BigDecimal executionPrice
 ) {
 }

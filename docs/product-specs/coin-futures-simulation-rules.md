@@ -110,7 +110,8 @@ non-conditional 주문으로 제한한다. TP/SL 조건부 주문은 포지션 T
 - 새 가격은 양수 finite 값이어야 한다.
 - 새 가격이 최신 체결가 기준 즉시 체결 가능한 가격이면 수정 요청은 거절하고 기존 pending 주문을 유지한다.
   즉시 체결을 원하면 기존 주문 생성/종료 또는 후속 cancel-replace 플로우를 사용한다.
-- 수정 저장 직후 최신 체결가가 다시 움직여 새 가격이 즉시 체결 가능해졌다면 수정은 되돌리고 거절한다.
+- 수정은 계정 주문 변경 lock을 잡은 단일 트랜잭션 안에서 `modify -> 저장 -> 최신가 재조회` 순서로 처리한다.
+  수정 저장 직후 최신 체결가가 다시 움직여 새 가격이 즉시 체결 가능해졌다면 예외를 던져 해당 트랜잭션을 rollback하고 거절하므로 기존 pending 주문이 유지된다.
 - pending open limit 주문의 `feeType`, `estimatedFee`, `executionPrice`는 새 지정가 기준 maker preview 값으로 갱신한다.
 - pending manual close limit 주문의 `feeType`은 `MAKER`, `estimatedFee`는 체결 전 예상 수수료 규칙에 따라 `0`,
   `executionPrice`는 새 지정가로 갱신한다.
@@ -128,8 +129,8 @@ non-conditional 주문으로 제한한다. TP/SL 조건부 주문은 포지션 T
 - 같은 지정가에서는 먼저 생성된 주문을 먼저 체결한다
 - pending maker 주문의 체결 가격과 수수료 기준 가격은 현재가가 아니라 주문의 지정가다
 - 각 주문은 하나씩 claim/fill하며, 종료 주문은 체결 직전 열린 포지션 수량을 다시 확인한다
-- 체결 claim 직전/직후 주문 수정으로 후보 스냅샷과 DB의 현재 지정가가 어긋나면 현재 가격 이벤트의 남은 pending fill은
-  중단하고 다음 fresh price event에서 다시 정렬한다. 이는 stale 스냅샷으로 후순위 주문을 먼저 체결하지 않기 위한 동시성 안전 장치다.
+- 주문 수정과 pending fill은 같은 계정 주문 변경 lock을 사용한다. fill 처리부는 claim 직전 현재 주문을 다시 읽고 후보 스냅샷의 지정가와 DB 지정가가 다르면 cache를 비우고 현재 가격 이벤트의 남은 pending fill을 중단한 뒤 다음 fresh price event에서 다시 정렬한다.
+- claim의 expected limit price guard가 실패해도 cache를 비우고 현재 가격 이벤트의 남은 pending fill을 중단한다. 이는 stale 스냅샷으로 후순위 주문을 먼저 체결하지 않기 위한 동시성 안전 장치다.
 
 ### 포지션 종료 주문
 

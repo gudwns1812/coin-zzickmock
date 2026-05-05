@@ -29,12 +29,12 @@ class ModifyOrderServiceTest {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         orderRepository.save(1L, pendingOpenOrder("open-order", 90));
 
-        ModifyOrderResult result = service(orderRepository, 100).modify(new ModifyOrderCommand(1L, "open-order", 95));
+        ModifyOrderResult result = service(orderRepository, 100).modify(modifyCommand(1L, "open-order", 95));
 
         FuturesOrder updated = orderRepository.findByMemberIdAndOrderId(1L, "open-order").orElseThrow();
         assertEquals("open-order", result.orderId());
         assertEquals(FuturesOrder.STATUS_PENDING, result.status());
-        assertEquals(95, result.limitPrice(), 0.0001);
+        assertBigDecimalEquals(95, result.limitPrice());
         assertEquals(95, updated.limitPrice(), 0.0001);
         assertEquals("MAKER", updated.feeType());
         assertEquals(0.001425, updated.estimatedFee(), 0.000001);
@@ -60,7 +60,7 @@ class ModifyOrderServiceTest {
                 110
         ));
 
-        service(orderRepository, 100).modify(new ModifyOrderCommand(1L, "close-order", 108));
+        service(orderRepository, 100).modify(modifyCommand(1L, "close-order", 108));
 
         FuturesOrder updated = orderRepository.findByMemberIdAndOrderId(1L, "close-order").orElseThrow();
         assertEquals(108, updated.limitPrice(), 0.0001);
@@ -74,7 +74,7 @@ class ModifyOrderServiceTest {
         orderRepository.save(1L, pendingOpenOrder("filled-order", 90).fill(90, "MAKER", 0.0135));
 
         assertThrows(CoreException.class, () -> service(orderRepository, 100)
-                .modify(new ModifyOrderCommand(1L, "filled-order", 95)));
+                .modify(modifyCommand(1L, "filled-order", 95)));
     }
 
     @Test
@@ -93,7 +93,7 @@ class ModifyOrderServiceTest {
         ));
 
         assertThrows(CoreException.class, () -> service(orderRepository, 100)
-                .modify(new ModifyOrderCommand(1L, "take-profit", 118)));
+                .modify(modifyCommand(1L, "take-profit", 118)));
     }
 
     @Test
@@ -102,14 +102,14 @@ class ModifyOrderServiceTest {
         orderRepository.save(1L, pendingOpenOrder("open-order", 90));
 
         assertThrows(CoreException.class, () -> service(orderRepository, 100)
-                .modify(new ModifyOrderCommand(1L, "open-order", 101)));
+                .modify(modifyCommand(1L, "open-order", 101)));
 
         FuturesOrder unchanged = orderRepository.findByMemberIdAndOrderId(1L, "open-order").orElseThrow();
         assertEquals(90, unchanged.limitPrice(), 0.0001);
     }
 
     @Test
-    void revertsModificationWhenLatestPriceMovesIntoEditedLimitAfterUpdate() {
+    void rejectsModificationWhenLatestPriceMovesIntoEditedLimitAfterUpdate() {
         RealtimeMarketDataStore marketDataStore = realtimeMarketStore(100);
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository() {
             @Override
@@ -138,12 +138,20 @@ class ModifyOrderServiceTest {
         orderRepository.save(1L, pendingOpenOrder("open-order", 90));
 
         assertThrows(CoreException.class, () -> service(orderRepository, marketDataStore)
-                .modify(new ModifyOrderCommand(1L, "open-order", 95)));
+                .modify(modifyCommand(1L, "open-order", 95)));
+    }
 
-        FuturesOrder reverted = orderRepository.findByMemberIdAndOrderId(1L, "open-order").orElseThrow();
-        assertEquals(90, reverted.limitPrice(), 0.0001);
-        assertEquals(0.00135, reverted.estimatedFee(), 0.000001);
-        assertEquals(90, reverted.executionPrice(), 0.0001);
+    @Test
+    void rejectsNullOrNonPositiveLimitPriceModification() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        orderRepository.save(1L, pendingOpenOrder("open-order", 90));
+
+        assertThrows(CoreException.class, () -> service(orderRepository, 100)
+                .modify(new ModifyOrderCommand(1L, "open-order", null)));
+        assertThrows(CoreException.class, () -> service(orderRepository, 100)
+                .modify(modifyCommand(1L, "open-order", 0)));
+        assertThrows(CoreException.class, () -> service(orderRepository, 100)
+                .modify(modifyCommand(1L, "open-order", -1)));
     }
 
     @Test
@@ -152,10 +160,18 @@ class ModifyOrderServiceTest {
         orderRepository.save(1L, pendingOpenOrder("member-order", 90));
 
         assertThrows(CoreException.class, () -> service(orderRepository, 100)
-                .modify(new ModifyOrderCommand(2L, "member-order", 95)));
+                .modify(modifyCommand(2L, "member-order", 95)));
 
         FuturesOrder unchanged = orderRepository.findByMemberIdAndOrderId(1L, "member-order").orElseThrow();
         assertEquals(90, unchanged.limitPrice(), 0.0001);
+    }
+
+    private static ModifyOrderCommand modifyCommand(Long memberId, String orderId, double limitPrice) {
+        return new ModifyOrderCommand(memberId, orderId, BigDecimal.valueOf(limitPrice));
+    }
+
+    private static void assertBigDecimalEquals(double expected, BigDecimal actual) {
+        assertEquals(0, BigDecimal.valueOf(expected).compareTo(actual));
     }
 
     private static FuturesOrder pendingOpenOrder(String orderId, double limitPrice) {

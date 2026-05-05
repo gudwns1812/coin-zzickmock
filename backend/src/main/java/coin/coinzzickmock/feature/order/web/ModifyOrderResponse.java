@@ -1,15 +1,16 @@
 package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
+import java.math.BigDecimal;
 
 public record ModifyOrderResponse(
         String orderId,
         String symbol,
         String status,
-        Double limitPrice,
+        BigDecimal limitPrice,
         String feeType,
-        double estimatedFee,
-        double executionPrice
+        BigDecimal estimatedFee,
+        BigDecimal executionPrice
 ) {
     public static ModifyOrderResponse from(ModifyOrderResult result) {
         return new ModifyOrderResponse(

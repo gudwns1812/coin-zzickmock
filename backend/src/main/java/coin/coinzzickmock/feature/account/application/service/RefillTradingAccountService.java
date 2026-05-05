@@ -16,9 +16,11 @@ import coin.coinzzickmock.feature.position.application.repository.PositionReposi
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefillTradingAccountService {
@@ -37,7 +39,10 @@ public class RefillTradingAccountService {
         accountRefillStateRepository.provisionDailyStateIfAbsent(memberId, refillDate);
         LockedAccountRefillState lockedState = accountRefillStateRepository
                 .findByMemberIdAndRefillDateForUpdate(memberId, refillDate)
-                .orElseThrow(() -> invalid());
+                .orElseThrow(() -> {
+                    log.error("Account refill state was not found after provisioning. operation=refill_trading_account");
+                    return new CoreException(ErrorCode.INTERNAL_SERVER_ERROR);
+                });
         AccountRefillState state = lockedState.state();
 
         validateRefillable(memberId, account, state);

@@ -61,11 +61,15 @@ public class ModifyOrderService {
                 updated.orderId(),
                 updated.symbol(),
                 updated.status(),
-                BigDecimal.valueOf(updated.limitPrice()),
+                toBigDecimal(updated.limitPrice()),
                 updated.feeType(),
-                BigDecimal.valueOf(updated.estimatedFee()),
-                BigDecimal.valueOf(updated.executionPrice())
+                toBigDecimal(updated.estimatedFee()),
+                toBigDecimal(updated.executionPrice())
         );
+    }
+
+    private BigDecimal toBigDecimal(double value) {
+        return BigDecimal.valueOf(value);
     }
 
     private double validatedLimitPrice(BigDecimal limitPrice) {

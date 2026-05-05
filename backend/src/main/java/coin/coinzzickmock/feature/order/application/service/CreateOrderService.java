@@ -164,8 +164,7 @@ public class CreateOrderService {
                 executionPrice,
                 marketSnapshot.markPrice(),
                 preview.estimatedFee(),
-                preview.estimatedInitialMargin(),
-                null
+                preview.estimatedInitialMargin()
         ));
     }
 

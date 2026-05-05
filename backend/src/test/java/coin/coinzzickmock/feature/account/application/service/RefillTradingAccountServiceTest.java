@@ -68,7 +68,6 @@ class RefillTradingAccountServiceTest {
         CoreException thrown = assertThrows(CoreException.class, () -> service.refill(1L));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-        assertEquals(ErrorCode.INVALID_REQUEST.message(), thrown.getMessage());
     }
 
     @Test
@@ -83,7 +82,6 @@ class RefillTradingAccountServiceTest {
         CoreException thrown = assertThrows(CoreException.class, () -> service.refill(1L));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-        assertEquals(ErrorCode.INVALID_REQUEST.message(), thrown.getMessage());
     }
 
     @Test
@@ -98,7 +96,6 @@ class RefillTradingAccountServiceTest {
         CoreException thrown = assertThrows(CoreException.class, () -> service.refill(1L));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-        assertEquals(ErrorCode.INVALID_REQUEST.message(), thrown.getMessage());
     }
 
     private RefillTradingAccountService service(

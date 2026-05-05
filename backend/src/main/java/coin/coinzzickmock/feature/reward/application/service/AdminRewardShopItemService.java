@@ -28,7 +28,7 @@ public class AdminRewardShopItemService {
     @Transactional
     public AdminShopItemResult create(AdminShopItemCommand command) {
         AdminShopItemCommand normalized = normalize(command);
-        String code = requireText(normalized.code(), "상점 상품 코드는 필수입니다.", String::trim);
+        String code = requireText(normalized.code(), String::trim);
         rewardShopItemRepository.findByCode(code)
                 .ifPresent(existing -> {
                     throw invalid();
@@ -96,7 +96,7 @@ public class AdminRewardShopItemService {
     }
 
     private RewardShopItem findForUpdate(String code) {
-        String normalizedCode = requireText(code, "상점 상품 코드는 필수입니다.", String::trim);
+        String normalizedCode = requireText(code, String::trim);
         return rewardShopItemRepository.findByCodeForUpdate(normalizedCode)
                 .orElseThrow(() -> invalid());
     }
@@ -106,9 +106,9 @@ public class AdminRewardShopItemService {
             throw invalid();
         }
         String code = command.code() == null ? null : command.code().trim();
-        String name = requireText(command.name(), "상점 상품명은 필수입니다.", String::trim);
-        String description = requireText(command.description(), "상점 상품 설명은 필수입니다.", String::trim);
-        String itemType = requireText(command.itemType(), "상점 상품 타입은 필수입니다.", String::trim);
+        String name = requireText(command.name(), String::trim);
+        String description = requireText(command.description(), String::trim);
+        String itemType = requireText(command.itemType(), String::trim);
         if (command.price() <= 0) {
             throw invalid();
         }
@@ -131,7 +131,7 @@ public class AdminRewardShopItemService {
         );
     }
 
-    private String requireText(String value, String message, Function<String, String> normalizer) {
+    private String requireText(String value, Function<String, String> normalizer) {
         if (value == null || value.isBlank()) {
             throw invalid();
         }

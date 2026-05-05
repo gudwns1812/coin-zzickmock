@@ -64,8 +64,8 @@ public class UpdatePositionTpslService {
             Double stopLossPrice,
             double markPrice
     ) {
-        validatePositivePrice(takeProfitPrice, "TP 가격을 확인해주세요.");
-        validatePositivePrice(stopLossPrice, "SL 가격을 확인해주세요.");
+        validatePositivePrice(takeProfitPrice);
+        validatePositivePrice(stopLossPrice);
 
         if (takeProfitPrice != null && triggersTakeProfit(position, takeProfitPrice, markPrice)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
@@ -75,7 +75,7 @@ public class UpdatePositionTpslService {
         }
     }
 
-    private void validatePositivePrice(Double price, String message) {
+    private void validatePositivePrice(Double price) {
         if (price != null && (!Double.isFinite(price) || price <= 0)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }

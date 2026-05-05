@@ -17,7 +17,7 @@ public final class MemberIdentityRules {
     }
 
     public static String normalizeAccount(String account) {
-        return normalizeRequired(account, "아이디");
+        return normalizeRequired(account);
     }
 
     public static String normalizeNickname(String nickname) {
@@ -50,14 +50,14 @@ public final class MemberIdentityRules {
         return requiredPassword;
     }
 
-    static String normalizeRequired(String value, String fieldName) {
+    static String normalizeRequired(String value) {
         if (value == null || value.trim().isEmpty()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return value.trim();
     }
 
-    static String validateRequired(String value, String fieldName) {
+    static String validateRequired(String value) {
         if (value == null || value.isBlank()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
@@ -69,7 +69,7 @@ public final class MemberIdentityRules {
     }
 
     private static String normalizeWhitespace(String value) {
-        validateRequired(value, "닉네임");
+        validateRequired(value);
         return WHITESPACE.matcher(value.trim()).replaceAll(" ");
     }
 }

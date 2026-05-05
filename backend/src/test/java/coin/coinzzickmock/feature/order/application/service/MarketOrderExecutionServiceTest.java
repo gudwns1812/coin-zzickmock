@@ -459,6 +459,35 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void liquidationCompletesWhenStaleProtectiveCleanupFails() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ));
+        StaleProtectiveCloseOrderCanceller failingCanceller = new StaleProtectiveCloseOrderCanceller(orderRepository) {
+            @Override
+            public void cancel(Long memberId, PositionSnapshot position) {
+                throw new IllegalStateException("cleanup unavailable");
+            }
+        };
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher, failingCanceller)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(90, 90)));
+
+        assertTrue(positionRepository.findOpenPositions(1L).isEmpty());
+        assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
+    }
+
+    @Test
     void takeProfitTriggerClosesPositionAndCancelsPendingCloseOrders() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -879,6 +908,22 @@ class MarketOrderExecutionServiceTest {
             AccountRepository accountRepository,
             ApplicationEventPublisher eventPublisher
     ) {
+        return service(
+                orderRepository,
+                positionRepository,
+                accountRepository,
+                eventPublisher,
+                new StaleProtectiveCloseOrderCanceller(orderRepository)
+        );
+    }
+
+    private MarketOrderExecutionService service(
+            OrderRepository orderRepository,
+            PositionRepository positionRepository,
+            AccountRepository accountRepository,
+            ApplicationEventPublisher eventPublisher,
+            StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller
+    ) {
         AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
         PositionCloseFinalizer positionCloseFinalizer = new PositionCloseFinalizer(
                 positionRepository,
@@ -888,7 +933,6 @@ class MarketOrderExecutionServiceTest {
                 afterCommitEventPublisher
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
-        StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller = new StaleProtectiveCloseOrderCanceller(orderRepository);
         RealtimeMarketPriceReader realtimeMarketPriceReader = new RealtimeMarketPriceReader(realtimeMarketDataStore);
         AccountOrderMutationLock accountOrderMutationLock = new AccountOrderMutationLock(accountRepository);
         return new MarketOrderExecutionService(

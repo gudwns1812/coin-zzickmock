@@ -109,6 +109,7 @@ class StaleProtectiveCloseOrderCancellerTest {
         public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
             return orders.values().stream()
                     .filter(candidate -> candidate.symbol().equals(symbol))
+                    .filter(candidate -> candidate.order().isPending())
                     .toList();
         }
 

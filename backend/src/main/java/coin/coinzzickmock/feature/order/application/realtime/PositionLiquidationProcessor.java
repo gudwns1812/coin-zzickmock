@@ -23,9 +23,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class PositionLiquidationProcessor {
@@ -119,7 +121,7 @@ public class PositionLiquidationProcessor {
                 PositionHistory.CLOSE_REASON_LIQUIDATION
         );
         pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
-        staleProtectiveCloseOrderCanceller.cancel(memberId, position);
+        cancelStaleProtectiveOrders(memberId, position);
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),
@@ -129,5 +131,20 @@ public class PositionLiquidationProcessor {
                 executionPrice,
                 result.realizedPnl()
         ));
+    }
+
+    private void cancelStaleProtectiveOrders(Long memberId, PositionSnapshot position) {
+        try {
+            staleProtectiveCloseOrderCanceller.cancel(memberId, position);
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Failed to cancel stale protective close orders after liquidation. memberId={}, symbol={}, positionSide={}, marginMode={}",
+                    memberId,
+                    position.symbol(),
+                    position.positionSide(),
+                    position.marginMode(),
+                    exception
+            );
+        }
     }
 }

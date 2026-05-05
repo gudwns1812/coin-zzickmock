@@ -12,9 +12,11 @@ import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import coin.coinzzickmock.feature.reward.domain.RewardShopMemberItemUsage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RewardRedemptionRefundProcessor {
@@ -26,12 +28,12 @@ public class RewardRedemptionRefundProcessor {
     @Transactional
     public void refundReservation(RewardRedemptionRequest request) {
         RewardShopItem item = rewardShopItemRepository.findByIdForUpdate(request.shopItemId())
-                .orElseThrow(() -> invalid());
+                .orElseThrow(() -> internal("shop_item_missing"));
         RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
                 .findByMemberIdAndShopItemIdForUpdate(request.memberId(), request.shopItemId())
-                .orElseThrow(() -> invalid());
+                .orElseThrow(() -> internal("member_item_usage_missing"));
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(request.memberId())
-                .orElseThrow(() -> invalid());
+                .orElseThrow(() -> internal("reward_wallet_missing"));
 
         RewardShopItem releasedItem = item.releaseOne();
         RewardShopMemberItemUsage releasedUsage = usage.decrement();
@@ -48,7 +50,8 @@ public class RewardRedemptionRefundProcessor {
         ));
     }
 
-    private CoreException invalid() {
-        return new CoreException(ErrorCode.INVALID_REQUEST);
+    private CoreException internal(String reason) {
+        log.error("Reward redemption refund state was inconsistent. operation=refund_reservation reason={}", reason);
+        return new CoreException(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 }

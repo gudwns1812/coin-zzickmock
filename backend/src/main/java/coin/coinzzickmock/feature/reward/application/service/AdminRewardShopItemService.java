@@ -5,14 +5,15 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
+import java.util.List;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.function.Function;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminRewardShopItemService {
@@ -49,6 +50,8 @@ public class AdminRewardShopItemService {
         try {
             return AdminShopItemResult.from(rewardShopItemRepository.save(item));
         } catch (DataIntegrityViolationException exception) {
+            log.warn("Reward shop item create failed because of a data integrity violation. operation=admin_reward_shop_item_create",
+                    exception);
             throw invalid();
         }
     }

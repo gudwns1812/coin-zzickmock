@@ -7,8 +7,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RealtimeMarketPriceReader {
@@ -18,10 +20,10 @@ public class RealtimeMarketPriceReader {
 
     public MarketSnapshot requireFreshMarket(String symbol) {
         return freshMarket(symbol)
-                .orElseThrow(() -> new CoreException(
-                        ErrorCode.MARKET_NOT_FOUND,
-                        "fresh realtime market price is unavailable: " + symbol
-                ));
+                .orElseThrow(() -> {
+                    log.debug("Fresh realtime market price is unavailable. symbol={} reason=stale_or_missing", symbol);
+                    return new CoreException(ErrorCode.MARKET_NOT_FOUND);
+                });
     }
 
     public Optional<MarketSnapshot> freshMarket(String symbol) {

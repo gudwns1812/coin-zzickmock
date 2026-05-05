@@ -20,7 +20,7 @@ public class GetMarketSummaryService {
 
     public MarketSummaryResult getMarket(GetMarketQuery query) {
         if (query.symbol() == null || query.symbol().isBlank()) {
-            throw new CoreException(ErrorCode.MARKET_NOT_FOUND, "지원하지 않는 심볼입니다: " + query.symbol());
+            throw new CoreException(ErrorCode.MARKET_NOT_FOUND);
         }
 
         return marketRealtimeFeed.getMarket(query.symbol());

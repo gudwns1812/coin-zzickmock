@@ -21,7 +21,7 @@ public class WithdrawMemberService {
     @Transactional
     public void withdraw(Long actorMemberId, Long requestedMemberId) {
         if (!actorMemberId.equals(requestedMemberId)) {
-            throw new CoreException(ErrorCode.FORBIDDEN, "본인 계정만 탈퇴할 수 있습니다.");
+            throw new CoreException(ErrorCode.FORBIDDEN);
         }
 
         memberCredentialRepository.findActiveByMemberId(actorMemberId)

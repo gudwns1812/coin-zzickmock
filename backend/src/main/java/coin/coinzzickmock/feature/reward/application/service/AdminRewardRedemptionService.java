@@ -74,10 +74,7 @@ public class AdminRewardRedemptionService {
 
     private CoreException mapAdminClaimFailure(String requestId) {
         return rewardRedemptionRequestRepository.findByRequestId(requestId)
-                .map(request -> new CoreException(
-                        ErrorCode.REWARD_REDEMPTION_CONFLICT,
-                        "대기 중인 교환권 요청만 처리할 수 있습니다."
-                ))
+                .map(request -> new CoreException(ErrorCode.REWARD_REDEMPTION_CONFLICT))
                 .orElseGet(() -> new CoreException(ErrorCode.REWARD_REDEMPTION_NOT_FOUND));
     }
 

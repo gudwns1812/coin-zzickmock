@@ -68,7 +68,7 @@ class RefillTradingAccountServiceTest {
         CoreException thrown = assertThrows(CoreException.class, () -> service.refill(1L));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-        assertEquals("열린 포지션이 있을 때는 리필할 수 없습니다.", thrown.getMessage());
+        assertEquals(ErrorCode.INVALID_REQUEST.message(), thrown.getMessage());
     }
 
     @Test
@@ -83,7 +83,7 @@ class RefillTradingAccountServiceTest {
         CoreException thrown = assertThrows(CoreException.class, () -> service.refill(1L));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-        assertEquals("대기 중인 주문이 있을 때는 리필할 수 없습니다.", thrown.getMessage());
+        assertEquals(ErrorCode.INVALID_REQUEST.message(), thrown.getMessage());
     }
 
     @Test
@@ -98,7 +98,7 @@ class RefillTradingAccountServiceTest {
         CoreException thrown = assertThrows(CoreException.class, () -> service.refill(1L));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-        assertEquals("이미 100,000 USDT 기준 잔고에 도달했습니다.", thrown.getMessage());
+        assertEquals(ErrorCode.INVALID_REQUEST.message(), thrown.getMessage());
     }
 
     private RefillTradingAccountService service(

@@ -49,7 +49,8 @@ public class MarketHistoricalCandleSegmentStore {
             return null;
         } catch (RuntimeException exception) {
             telemetry.record("market.history.redis.miss", segment, "redis", "unavailable");
-            log.warn("Failed to read historical candle segment cache. key={}", segment.cacheKey(), exception);
+            log.warn("Failed to read historical candle segment cache. cache=market_history symbol={} interval={} rangeBucket={}",
+                    segment.symbol(), segment.interval().value(), rangeBucket(segment), exception);
             return null;
         }
     }
@@ -63,7 +64,12 @@ public class MarketHistoricalCandleSegmentStore {
             cache.put(segment.cacheKey(), new MarketHistoricalCandlePage(candles));
         } catch (RuntimeException exception) {
             telemetry.record("market.history.redis.miss", segment, "redis", "write_unavailable");
-            log.warn("Failed to write historical candle segment cache. key={}", segment.cacheKey(), exception);
+            log.warn("Failed to write historical candle segment cache. cache=market_history symbol={} interval={} rangeBucket={}",
+                    segment.symbol(), segment.interval().value(), rangeBucket(segment), exception);
         }
+    }
+
+    private String rangeBucket(MarketHistoricalCandleSegment segment) {
+        return segment.granularity() + ":size" + segment.size();
     }
 }

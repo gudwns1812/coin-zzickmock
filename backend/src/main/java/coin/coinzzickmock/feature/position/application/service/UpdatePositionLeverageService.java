@@ -87,13 +87,13 @@ public class UpdatePositionLeverageService {
 
     private void validateLeverage(int leverage) {
         if (leverage < MIN_LEVERAGE || leverage > MAX_LEVERAGE) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "레버리지는 1x부터 50x까지 설정할 수 있습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 
     private void rejectPendingOpenOrders(Long memberId, String symbol, String positionSide) {
         if (!orderRepository.findPendingOpenOrders(memberId, symbol, positionSide).isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "미체결 오픈 주문을 취소하거나 체결한 뒤 레버리지를 변경해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 

@@ -87,7 +87,7 @@ public record TradingAccount(
 
     public TradingAccount refillToInitialBalance() {
         if (!refillableToInitialBalance()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "이미 리필 기준 잔고에 도달했습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return new TradingAccount(
                 memberId,

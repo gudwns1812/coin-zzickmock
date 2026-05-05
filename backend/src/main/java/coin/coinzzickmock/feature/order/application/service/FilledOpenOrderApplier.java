@@ -30,7 +30,7 @@ public class FilledOpenOrderApplier {
         ).orElse(null);
 
         if (existing != null && !existing.marginMode().equalsIgnoreCase(order.marginMode())) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, order.marginModeMismatchMessage());
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         int effectiveLeverage = existing == null ? order.leverage() : existing.leverage();

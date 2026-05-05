@@ -60,7 +60,7 @@ public class MarketRealtimeSseBroker {
         }
 
         recordConnectionRejected("symbol_limit");
-        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS, "실시간 스트림 연결이 너무 많습니다: " + symbol);
+        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {

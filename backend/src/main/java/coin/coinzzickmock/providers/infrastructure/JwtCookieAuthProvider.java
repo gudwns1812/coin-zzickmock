@@ -28,7 +28,7 @@ public class JwtCookieAuthProvider implements AuthProvider {
     public Actor currentActor() {
         AuthSessionClaims claims = parseRequiredClaims();
         return lookupActor(claims)
-                .orElseThrow(() -> new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다."));
+                .orElseThrow(() -> new CoreException(ErrorCode.UNAUTHORIZED));
     }
 
     @Override
@@ -50,7 +50,7 @@ public class JwtCookieAuthProvider implements AuthProvider {
     private AuthSessionClaims parseRequiredClaims() {
         AuthSessionClaims claims = parseOptionalClaims();
         if (claims == null) {
-            throw new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
+            throw new CoreException(ErrorCode.UNAUTHORIZED);
         }
         return claims;
     }

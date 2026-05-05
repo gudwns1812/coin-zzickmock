@@ -138,8 +138,7 @@ public class PositionLiquidationProcessor {
             staleProtectiveCloseOrderCanceller.cancel(memberId, position);
         } catch (RuntimeException exception) {
             log.warn(
-                    "Failed to cancel stale protective close orders after liquidation. memberId={}, symbol={}, positionSide={}, marginMode={}",
-                    memberId,
+                    "Failed to cancel stale protective close orders after liquidation. symbol={}, positionSide={}, marginMode={}",
                     position.symbol(),
                     position.positionSide(),
                     position.marginMode(),

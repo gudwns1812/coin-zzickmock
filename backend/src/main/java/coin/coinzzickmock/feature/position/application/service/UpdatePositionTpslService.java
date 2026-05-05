@@ -68,16 +68,16 @@ public class UpdatePositionTpslService {
         validatePositivePrice(stopLossPrice, "SL 가격을 확인해주세요.");
 
         if (takeProfitPrice != null && triggersTakeProfit(position, takeProfitPrice, markPrice)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "이미 발동된 TP 가격은 설정할 수 없습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (stopLossPrice != null && triggersStopLoss(position, stopLossPrice, markPrice)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "이미 발동된 SL 가격은 설정할 수 없습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 
     private void validatePositivePrice(Double price, String message) {
         if (price != null && (!Double.isFinite(price) || price <= 0)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, message);
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 

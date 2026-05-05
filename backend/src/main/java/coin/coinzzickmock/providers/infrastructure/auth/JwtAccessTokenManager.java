@@ -68,7 +68,7 @@ public class JwtAccessTokenManager implements AccessTokenManager {
                     .getPayload();
 
             if (!ACCESS_TOKEN_SUBJECT.equals(claims.getSubject())) {
-                throw new CoreException(ErrorCode.UNAUTHORIZED, "유효하지 않은 액세스 토큰입니다.");
+                throw new CoreException(ErrorCode.UNAUTHORIZED);
             }
 
             return new AuthSessionClaims(
@@ -79,7 +79,7 @@ public class JwtAccessTokenManager implements AccessTokenManager {
                     parseRole(claims.get("role", String.class))
             );
         } catch (JwtException | IllegalArgumentException exception) {
-            throw new CoreException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
+            throw new CoreException(ErrorCode.UNAUTHORIZED);
         }
     }
 

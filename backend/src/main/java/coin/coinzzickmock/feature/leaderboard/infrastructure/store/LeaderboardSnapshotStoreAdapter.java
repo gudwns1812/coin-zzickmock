@@ -192,7 +192,7 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
 
     private LeaderboardEntry readEntry(String version, String memberKey, Object value) {
         if (!(value instanceof String json)) {
-            log.warn("Leaderboard snapshot member hash is missing. version={}, memberKey={}", version, memberKey);
+            log.warn("Leaderboard snapshot member hash is missing. version={}", version);
             return null;
         }
 
@@ -207,9 +207,8 @@ public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore
             );
         } catch (JsonProcessingException exception) {
             log.warn(
-                    "Failed to parse leaderboard member snapshot. version={}, memberKey={}",
+                    "Failed to parse leaderboard member snapshot. version={}",
                     version,
-                    memberKey,
                     exception
             );
             return null;

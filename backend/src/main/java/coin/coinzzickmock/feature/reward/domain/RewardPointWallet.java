@@ -9,10 +9,10 @@ public record RewardPointWallet(
 ) {
     public RewardPointWallet {
         if (memberId == null) {
-            throw invalid("회원 ID는 필수입니다.");
+            throw invalid();
         }
         if (rewardPoint < 0) {
-            throw invalid("포인트 잔액은 음수일 수 없습니다.");
+            throw invalid();
         }
     }
 
@@ -26,32 +26,32 @@ public record RewardPointWallet(
 
     public RewardPointWallet deduct(int pointAmount) {
         if (pointAmount <= 0) {
-            throw invalid("차감 포인트는 0보다 커야 합니다.");
+            throw invalid();
         }
         if (rewardPoint < pointAmount) {
-            throw invalid("포인트 잔액이 부족합니다.");
+            throw invalid();
         }
         return new RewardPointWallet(memberId, rewardPoint - pointAmount);
     }
 
     public RewardPointWallet refund(int pointAmount) {
         if (pointAmount <= 0) {
-            throw invalid("환급 포인트는 0보다 커야 합니다.");
+            throw invalid();
         }
         return new RewardPointWallet(memberId, addPositivePoints(pointAmount, "환급 포인트"));
     }
 
     private int addPositivePoints(int pointAmount, String label) {
         if (pointAmount <= 0) {
-            throw invalid(label + "는 0보다 커야 합니다.");
+            throw invalid();
         }
         if (rewardPoint > Integer.MAX_VALUE - pointAmount) {
-            throw invalid("포인트 잔액이 허용 범위를 초과합니다.");
+            throw invalid();
         }
         return rewardPoint + pointAmount;
     }
 
-    private static CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private static CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

@@ -24,20 +24,20 @@ public final class MemberIdentityRules {
         String normalized = normalizeWhitespace(nickname);
         int codePointCount = normalized.codePointCount(0, normalized.length());
         if (codePointCount < 2 || codePointCount > 30) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "닉네임은 2자 이상 30자 이하여야 합니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (!NICKNAME_ALLOWED.matcher(normalized).matches()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "닉네임에는 한글, 영문, 숫자, 공백, _, -만 사용할 수 있습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (normalized.codePoints().noneMatch(Character::isLetterOrDigit)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "닉네임에는 문자 또는 숫자가 포함되어야 합니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return normalized;
     }
 
     public static String requirePasswordInput(String rawPassword) {
         if (rawPassword == null || rawPassword.isBlank()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "비밀번호는 필수입니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return rawPassword;
     }
@@ -45,21 +45,21 @@ public final class MemberIdentityRules {
     public static String validateRawPassword(String rawPassword) {
         String requiredPassword = requirePasswordInput(rawPassword);
         if (requiredPassword.length() < 8 || requiredPassword.length() > 20) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "비밀번호는 8자 이상 20자 이하여야 합니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return requiredPassword;
     }
 
     static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.trim().isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, fieldName + "은(는) 필수입니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return value.trim();
     }
 
     static String validateRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, fieldName + "은(는) 필수입니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return value;
     }

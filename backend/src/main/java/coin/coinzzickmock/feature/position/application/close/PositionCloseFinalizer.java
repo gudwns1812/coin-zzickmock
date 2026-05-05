@@ -41,7 +41,7 @@ public class PositionCloseFinalizer {
             String closeReason
     ) {
         if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "종료 수량을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)

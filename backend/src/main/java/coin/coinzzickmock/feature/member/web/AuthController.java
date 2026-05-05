@@ -39,7 +39,7 @@ public class AuthController {
     @PostMapping("/register")
     public ApiResponse<AuthUserResponse> register(@RequestBody RegisterMemberRequest request) {
         if (request.address() == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "주소 정보는 필수입니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         MemberProfileResult memberProfile = registerMemberService.register(

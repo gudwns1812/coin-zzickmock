@@ -19,10 +19,8 @@ public class RewardRedemptionNotificationListener {
             rewardRedemptionNotifier.notifyCreated(event);
         } catch (RuntimeException exception) {
             log.warn(
-                    "Failed to send reward redemption notification. requestId={} memberId={} itemCode={}",
+                    "Failed to send reward redemption notification. provider=smtp requestId={}",
                     event.requestId(),
-                    event.memberId(),
-                    event.itemCode(),
                     exception
             );
         }

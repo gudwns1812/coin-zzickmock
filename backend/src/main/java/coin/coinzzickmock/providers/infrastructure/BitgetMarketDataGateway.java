@@ -93,8 +93,8 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                     .body(BitgetTickerResponse.class);
 
             if (response == null || response.data() == null || response.data().isEmpty()) {
-                log.warn("Bitget ticker response is empty; using fallback market snapshot. symbol={} code={} message={}",
-                        symbol, responseCode(response), responseMessage(response));
+                log.warn("Bitget ticker response is empty; using fallback market snapshot. symbol={} code={}",
+                        symbol, responseCode(response));
             }
             MarketSnapshot market = bitgetTickerSnapshotMapper.fromResponse(symbol, response);
             if (response == null || response.data() == null || response.data().isEmpty()) {
@@ -135,8 +135,8 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
 
             if (response == null || response.data() == null || !"00000".equals(response.code())) {
                 log.warn(
-                        "Bitget candle response is not usable; returning empty history. symbol={} from={} to={} code={} message={}",
-                        symbol, fromInclusive, toExclusive, responseCode(response), responseMessage(response)
+                        "Bitget candle response is not usable; returning empty history. symbol={} from={} to={} code={}",
+                        symbol, fromInclusive, toExclusive, responseCode(response)
                 );
                 recordBitgetRequest(OPERATION_MINUTE_CANDLES, "invalid_response", startedAt);
                 recordBitgetFallback(OPERATION_MINUTE_CANDLES, symbol, "invalid_response");
@@ -239,9 +239,8 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
 
             if (response == null || response.data() == null || !"00000".equals(response.code())) {
                 log.warn(
-                        "Bitget historical candle response is not usable. symbol={} interval={} from={} to={} code={} message={}",
-                        symbol, interval.value(), fromInclusive, toExclusive, responseCode(response),
-                        responseMessage(response)
+                        "Bitget historical candle response is not usable. symbol={} interval={} from={} to={} code={}",
+                        symbol, interval.value(), fromInclusive, toExclusive, responseCode(response)
                 );
                 recordBitgetRequest(OPERATION_HISTORY_CANDLES, "invalid_response", startedAt);
                 recordBitgetFallback(OPERATION_HISTORY_CANDLES, symbol, "invalid_response");
@@ -425,15 +424,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         return response == null ? null : response.code();
     }
 
-    private String responseMessage(BitgetTickerResponse response) {
-        return response == null ? null : response.msg();
-    }
-
     private String responseCode(BitgetCandleResponse response) {
         return response == null ? null : response.code();
-    }
-
-    private String responseMessage(BitgetCandleResponse response) {
-        return response == null ? null : response.msg();
     }
 }

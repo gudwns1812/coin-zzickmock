@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 public record ModifyOrderRequest(BigDecimal limitPrice) {
     public BigDecimal requireLimitPrice() {
         if (limitPrice == null || limitPrice.signum() <= 0) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 가격을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return limitPrice;
     }

@@ -40,10 +40,7 @@ public class CancelRewardRedemptionService {
                     if (!request.memberId().equals(memberId)) {
                         return new CoreException(ErrorCode.FORBIDDEN);
                     }
-                    return new CoreException(
-                            ErrorCode.REWARD_REDEMPTION_CONFLICT,
-                            "대기 중인 교환권 요청만 취소할 수 있습니다."
-                    );
+                    return new CoreException(ErrorCode.REWARD_REDEMPTION_CONFLICT);
                 })
                 .orElseGet(() -> new CoreException(ErrorCode.REWARD_REDEMPTION_NOT_FOUND));
     }

@@ -29,14 +29,14 @@ public class SmtpRewardRedemptionNotifier implements RewardRedemptionNotifier {
     @Override
     public void notifyCreated(RewardRedemptionCreatedEvent event) {
         if (mailHost == null || mailHost.isBlank()) {
-            log.warn("Reward redemption email skipped because spring.mail.host is not configured. requestId={} recipient={}",
-                    event.requestId(), adminEmail);
+            log.warn("Reward redemption email skipped. provider=smtp reason=mail_host_missing requestId={}",
+                    event.requestId());
             return;
         }
         JavaMailSender javaMailSender = javaMailSenderProvider.getIfAvailable();
         if (javaMailSender == null) {
-            log.warn("Reward redemption email skipped because JavaMailSender is unavailable. requestId={} recipient={}",
-                    event.requestId(), adminEmail);
+            log.warn("Reward redemption email skipped. provider=smtp reason=sender_unavailable requestId={}",
+                    event.requestId());
             return;
         }
 

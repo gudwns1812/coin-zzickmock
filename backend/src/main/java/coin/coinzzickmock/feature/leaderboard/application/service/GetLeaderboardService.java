@@ -61,7 +61,7 @@ public class GetLeaderboardService {
 
     private LeaderboardMode parseMode(String value) {
         return LeaderboardMode.parse(value)
-                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST, "지원하지 않는 랭킹 모드입니다."));
+                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
     }
 
     private int parseLimit(String value) {
@@ -72,11 +72,11 @@ public class GetLeaderboardService {
         try {
             int limit = Integer.parseInt(value);
             if (limit < 1 || limit > MAX_LIMIT) {
-                throw new CoreException(ErrorCode.INVALID_REQUEST, "랭킹 조회 개수는 1~50 사이여야 합니다.");
+                throw new CoreException(ErrorCode.INVALID_REQUEST);
             }
             return limit;
         } catch (NumberFormatException exception) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "랭킹 조회 개수는 숫자여야 합니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 

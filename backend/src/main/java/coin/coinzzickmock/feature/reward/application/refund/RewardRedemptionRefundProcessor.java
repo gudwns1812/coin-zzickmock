@@ -26,12 +26,12 @@ public class RewardRedemptionRefundProcessor {
     @Transactional
     public void refundReservation(RewardRedemptionRequest request) {
         RewardShopItem item = rewardShopItemRepository.findByIdForUpdate(request.shopItemId())
-                .orElseThrow(() -> invalid("상점 상품을 찾을 수 없습니다."));
+                .orElseThrow(() -> invalid());
         RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
                 .findByMemberIdAndShopItemIdForUpdate(request.memberId(), request.shopItemId())
-                .orElseThrow(() -> invalid("구매 제한 사용량을 찾을 수 없습니다."));
+                .orElseThrow(() -> invalid());
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(request.memberId())
-                .orElseThrow(() -> invalid("포인트 지갑을 찾을 수 없습니다."));
+                .orElseThrow(() -> invalid());
 
         RewardShopItem releasedItem = item.releaseOne();
         RewardShopMemberItemUsage releasedUsage = usage.decrement();
@@ -48,7 +48,7 @@ public class RewardRedemptionRefundProcessor {
         ));
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

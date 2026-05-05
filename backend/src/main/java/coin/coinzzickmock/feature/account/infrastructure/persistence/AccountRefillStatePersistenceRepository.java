@@ -8,10 +8,12 @@ import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import java.time.LocalDate;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class AccountRefillStatePersistenceRepository implements AccountRefillStateRepository {
@@ -45,7 +47,7 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
     @Transactional
     public AccountRefillState grantExtraRefillCount(Long memberId, LocalDate refillDate, int count) {
         if (count <= 0) {
-            throw invalid("추가 리필 횟수는 0보다 커야 합니다.");
+            throw invalid();
         }
         jdbcTemplate.update(
                 """
@@ -65,11 +67,10 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
         );
         return accountRefillStateEntityRepository.findByMemberIdAndRefillDate(memberId, refillDate)
                 .map(AccountRefillStateEntity::toDomain)
-                .orElseThrow(() -> new CoreException(
-                        ErrorCode.INTERNAL_SERVER_ERROR,
-                        "리필 횟수를 지급했지만 상태 행을 조회할 수 없습니다. memberId=%d, refillDate=%s"
-                                .formatted(memberId, refillDate)
-                ));
+                .orElseThrow(() -> {
+                    log.error("Account refill state was not found after provisioning. operation=provision_daily_refill_state");
+                    return new CoreException(ErrorCode.INTERNAL_SERVER_ERROR);
+                });
     }
 
     @Override
@@ -80,8 +81,8 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
                 .map(ManagedLockedAccountRefillState::new);
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 
     private record ManagedLockedAccountRefillState(AccountRefillStateEntity entity) implements LockedAccountRefillState {

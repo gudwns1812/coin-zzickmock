@@ -49,19 +49,19 @@ public record RewardRedemptionRequest(
 
     public RewardRedemptionRequest {
         if (requestId == null || requestId.isBlank()) {
-            throw invalid("요청 ID는 필수입니다.");
+            throw invalid();
         }
         if (memberId == null) {
-            throw invalid("회원 ID는 필수입니다.");
+            throw invalid();
         }
         if (shopItemId == null) {
-            throw invalid("상점 상품 ID는 필수입니다.");
+            throw invalid();
         }
         if (pointAmount <= 0) {
-            throw invalid("요청 포인트는 0보다 커야 합니다.");
+            throw invalid();
         }
         if (status == null) {
-            throw invalid("교환권 요청 상태는 필수입니다.");
+            throw invalid();
         }
     }
 
@@ -130,11 +130,11 @@ public record RewardRedemptionRequest(
 
     private void requirePending() {
         if (status != RewardRedemptionStatus.PENDING) {
-            throw invalid("대기 중인 교환권 요청만 처리할 수 있습니다.");
+            throw invalid();
         }
     }
 
-    private static CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private static CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

@@ -30,20 +30,20 @@ public class PurchaseShopItemService {
     @Transactional
     public ShopPurchaseResult purchase(Long memberId, String itemCode) {
         if (itemCode == null || itemCode.isBlank()) {
-            throw invalid("상점 상품 코드는 필수입니다.");
+            throw invalid();
         }
 
         RewardShopItem requestedItem = rewardShopItemRepository.findByCode(itemCode)
-                .orElseThrow(() -> invalid("존재하지 않는 상점 상품입니다."));
+                .orElseThrow(() -> invalid());
         if (!requestedItem.accountRefillCount()) {
-            throw invalid("즉시 구매할 수 없는 상점 상품입니다.");
+            throw invalid();
         }
 
         AccountRefillCreditResult refillCredit = accountRefillCreditProcessor.addTodayCount(memberId, 1);
         RewardShopItem item = rewardShopItemRepository.findByCodeForUpdate(itemCode)
-                .orElseThrow(() -> invalid("존재하지 않는 상점 상품입니다."));
+                .orElseThrow(() -> invalid());
         if (!item.accountRefillCount()) {
-            throw invalid("즉시 구매할 수 없는 상점 상품입니다.");
+            throw invalid();
         }
 
         RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
@@ -74,17 +74,17 @@ public class PurchaseShopItemService {
 
     private void validatePurchase(RewardShopItem item, RewardShopMemberItemUsage usage) {
         if (!item.active()) {
-            throw invalid("비활성 상품은 구매할 수 없습니다.");
+            throw invalid();
         }
         if (item.soldOut()) {
-            throw invalid("품절된 상품입니다.");
+            throw invalid();
         }
         if (item.memberReachedLimit(usage.purchaseCount())) {
-            throw invalid("회원별 구매 제한에 도달했습니다.");
+            throw invalid();
         }
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

@@ -28,6 +28,7 @@ public record FuturesOrder(
     public static final String PURPOSE_OPEN_POSITION = "OPEN_POSITION";
     public static final String PURPOSE_CLOSE_POSITION = "CLOSE_POSITION";
     public static final String TYPE_MARKET = "MARKET";
+    public static final String TYPE_LIMIT = "LIMIT";
     public static final String TRIGGER_TYPE_TAKE_PROFIT = "TAKE_PROFIT";
     public static final String TRIGGER_TYPE_STOP_LOSS = "STOP_LOSS";
     public static final String TRIGGER_SOURCE_MARK_PRICE = "MARK_PRICE";
@@ -340,6 +341,34 @@ public record FuturesOrder(
                 feeType,
                 estimatedFee,
                 executionPrice,
+                orderTime,
+                triggerPrice,
+                triggerType,
+                triggerSource,
+                ocoGroupId
+        );
+    }
+
+    public FuturesOrder withLimitPrice(
+            double nextLimitPrice,
+            String nextFeeType,
+            double nextEstimatedFee,
+            double nextExecutionPrice
+    ) {
+        return new FuturesOrder(
+                orderId,
+                symbol,
+                positionSide,
+                orderType,
+                orderPurpose,
+                marginMode,
+                leverage,
+                quantity,
+                nextLimitPrice,
+                status,
+                nextFeeType,
+                nextEstimatedFee,
+                nextExecutionPrice,
                 orderTime,
                 triggerPrice,
                 triggerType,

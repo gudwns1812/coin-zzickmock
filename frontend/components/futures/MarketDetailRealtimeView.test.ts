@@ -97,3 +97,11 @@ test("position card labels estimated and unavailable liquidation prices", () => 
   assert.equal(source.includes('position.liquidationPriceType === "ESTIMATED"'), true);
   assert.equal(source.includes("(Est.)"), true);
 });
+
+test("Open Orders table renders edit and cancel actions for editable limit orders", () => {
+  assert.equal(source.includes("import EditOrderButton"), true);
+  assert.equal(source.includes("<EditOrderButton"), true);
+  assert.equal(source.includes("currentLimitPrice={order.limitPrice}"), true);
+  assert.equal(source.includes("isEditableOpenLimitOrder(order)"), true);
+  assert.equal(source.includes("<CancelOrderButton orderId={order.orderId} />"), true);
+});

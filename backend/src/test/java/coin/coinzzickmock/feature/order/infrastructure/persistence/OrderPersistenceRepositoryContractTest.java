@@ -168,6 +168,65 @@ class OrderPersistenceRepositoryContractTest {
     }
 
     @Test
+    void claimsPendingLimitFillOnlyAtExpectedCurrentPrice() {
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+        String orderId = "limit-order-" + UUID.randomUUID();
+        saveAccount(memberId);
+
+        orderRepository.save(memberId, FuturesOrder.place(
+                orderId,
+                "BTCUSDT",
+                "LONG",
+                FuturesOrder.TYPE_LIMIT,
+                "ISOLATED",
+                10,
+                0.1,
+                99.0,
+                false,
+                "MAKER",
+                0.001485,
+                99.0
+        ));
+
+        List<PendingOrderCandidate> candidates = orderRepository.findExecutablePendingLimitOrders(
+                "BTCUSDT",
+                95.0,
+                100.0,
+                false
+        );
+        assertEquals(List.of(orderId), candidates.stream().map(PendingOrderCandidate::orderId).toList());
+
+        assertTrue(orderRepository.updatePendingLimitPrice(
+                memberId,
+                orderId,
+                96.0,
+                "MAKER",
+                0.00144,
+                96.0
+        ).isPresent());
+        assertFalse(orderRepository.claimPendingLimitFill(
+                memberId,
+                orderId,
+                candidates.get(0).order().limitPrice(),
+                candidates.get(0).order().limitPrice(),
+                "MAKER",
+                0.001485
+        ).isPresent());
+        assertTrue(orderRepository.claimPendingLimitFill(
+                memberId,
+                orderId,
+                96.0,
+                96.0,
+                "MAKER",
+                0.00144
+        ).isPresent());
+
+        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
+        assertEquals(96.0, filled.executionPrice(), 0.0001);
+    }
+
+    @Test
     void findsAndAdjustsPendingCloseOrderQuantity() {
         Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
         String orderId = "close-order-" + UUID.randomUUID();
@@ -235,6 +294,42 @@ class OrderPersistenceRepositoryContractTest {
                 FuturesOrder.STATUS_CANCELLED,
                 orderRepository.findByMemberIdAndOrderId(memberId, secondOrderId).orElseThrow().status()
         );
+    }
+
+    @Test
+    void updatesPendingNonConditionalLimitPriceOnlyWhenEditable() {
+        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+        saveAccount(memberId);
+        String editableId = "editable-" + UUID.randomUUID();
+        String filledId = "filled-" + UUID.randomUUID();
+        String conditionalId = "conditional-" + UUID.randomUUID();
+
+        orderRepository.save(memberId, FuturesOrder.place(
+                editableId, "BTCUSDT", "LONG", FuturesOrder.TYPE_LIMIT, "ISOLATED", 10,
+                0.1, 90.0, false, "MAKER", 0.00135, 90.0
+        ));
+        orderRepository.save(memberId, FuturesOrder.place(
+                filledId, "BTCUSDT", "LONG", FuturesOrder.TYPE_LIMIT, "ISOLATED", 10,
+                0.1, 91.0, true, "TAKER", 0.00455, 91.0
+        ));
+        orderRepository.save(memberId, FuturesOrder.conditionalClose(
+                conditionalId, "BTCUSDT", "LONG", "ISOLATED", 10, 0.1,
+                120.0, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT, "oco-" + UUID.randomUUID()
+        ));
+
+        assertTrue(orderRepository.updatePendingLimitPrice(
+                memberId, editableId, 95.0, "MAKER", 0.001425, 95.0
+        ).isPresent());
+        assertFalse(orderRepository.updatePendingLimitPrice(
+                memberId, filledId, 96.0, "MAKER", 0.00144, 96.0
+        ).isPresent());
+        assertFalse(orderRepository.updatePendingLimitPrice(
+                memberId, conditionalId, 121.0, "MAKER", 0, 121.0
+        ).isPresent());
+
+        assertEquals(95.0, orderRepository.findByMemberIdAndOrderId(memberId, editableId).orElseThrow().limitPrice(), 0.0001);
+        assertEquals(91.0, orderRepository.findByMemberIdAndOrderId(memberId, filledId).orElseThrow().limitPrice(), 0.0001);
+        assertEquals(120.0, orderRepository.findByMemberIdAndOrderId(memberId, conditionalId).orElseThrow().triggerPrice(), 0.0001);
     }
 
     @Test

@@ -24,14 +24,15 @@ import org.junit.jupiter.api.Test;
 class GetWalletHistoryServiceTest {
     @Test
     void defaultsToOneMonthWindowFromCurrentDate() {
+        Instant now = Instant.now();
         RecordingWalletHistoryRepository walletHistoryRepository = new RecordingWalletHistoryRepository(List.of(
                 new WalletHistorySnapshot(
                         1L,
-                        LocalDate.now(),
+                        WalletHistoryDate.from(now),
                         money("100000"),
                         money("99900"),
                         money("-100"),
-                        Instant.now()
+                        now
                 )
         ));
         GetWalletHistoryService service = new GetWalletHistoryService(

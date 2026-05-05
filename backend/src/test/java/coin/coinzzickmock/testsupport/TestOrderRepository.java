@@ -110,6 +110,27 @@ public abstract class TestOrderRepository implements OrderRepository {
     }
 
     @Override
+    public Optional<FuturesOrder> claimPendingLimitFill(
+            Long memberId,
+            String orderId,
+            double expectedLimitPrice,
+            double executionPrice,
+            String feeType,
+            double estimatedFee
+    ) {
+        Optional<FuturesOrder> current = findByMemberIdAndOrderId(memberId, orderId)
+                .filter(FuturesOrder::isPending)
+                .filter(order -> FuturesOrder.TYPE_LIMIT.equalsIgnoreCase(order.orderType()))
+                .filter(order -> !order.isConditionalOrder())
+                .filter(order -> order.limitPrice() != null)
+                .filter(order -> Double.compare(order.limitPrice(), expectedLimitPrice) == 0);
+        if (current.isEmpty()) {
+            return Optional.empty();
+        }
+        return claimPendingFill(memberId, orderId, executionPrice, feeType, estimatedFee);
+    }
+
+    @Override
     public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
         throw new UnsupportedOperationException("updateStatus is not implemented for this test fake");
     }
@@ -124,6 +145,18 @@ public abstract class TestOrderRepository implements OrderRepository {
             String ocoGroupId
     ) {
         throw new UnsupportedOperationException("updatePendingConditionalCloseOrder is not implemented for this test fake");
+    }
+
+    @Override
+    public Optional<FuturesOrder> updatePendingLimitPrice(
+            Long memberId,
+            String orderId,
+            double limitPrice,
+            String feeType,
+            double estimatedFee,
+            double executionPrice
+    ) {
+        throw new UnsupportedOperationException("updatePendingLimitPrice is not implemented for this test fake");
     }
 
     @Override

@@ -327,6 +327,18 @@ class RefillTradingAccountServiceTest {
         }
 
         @Override
+        public Optional<FuturesOrder> claimPendingLimitFill(
+                Long memberId,
+                String orderId,
+                double expectedLimitPrice,
+                double executionPrice,
+                String feeType,
+                double estimatedFee
+        ) {
+            return Optional.empty();
+        }
+
+        @Override
         public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             throw new UnsupportedOperationException();
         }
@@ -339,6 +351,18 @@ class RefillTradingAccountServiceTest {
                 double quantity,
                 double triggerPrice,
                 String ocoGroupId
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Optional<FuturesOrder> updatePendingLimitPrice(
+                Long memberId,
+                String orderId,
+                double limitPrice,
+                String feeType,
+                double estimatedFee,
+                double executionPrice
         ) {
             throw new UnsupportedOperationException();
         }

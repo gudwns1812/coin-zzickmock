@@ -129,6 +129,17 @@ export type FuturesOrderHistory = Omit<FuturesOpenOrder, "status"> & {
   status: "PENDING" | "OPEN" | "FILLED" | "CANCELLED" | "REJECTED";
 };
 
+export type ModifyFuturesOrderResult = Pick<
+  FuturesOpenOrder,
+  | "orderId"
+  | "symbol"
+  | "status"
+  | "limitPrice"
+  | "feeType"
+  | "estimatedFee"
+  | "executionPrice"
+>;
+
 export type FuturesPositionHistory = {
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";

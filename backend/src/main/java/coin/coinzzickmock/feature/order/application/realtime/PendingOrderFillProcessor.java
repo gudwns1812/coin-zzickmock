@@ -65,8 +65,21 @@ public class PendingOrderFillProcessor {
         double lowerPrice = Math.min(realtimeEvent.previousLastPrice(), market.lastPrice());
         double upperPrice = Math.max(realtimeEvent.previousLastPrice(), market.lastPrice());
         boolean sellSide = realtimeEvent.direction() == MarketPriceMovementDirection.UP;
+        while (fillNextExecutable(realtimeEvent, lowerPrice, upperPrice, sellSide)) {
+            // Keep refreshing one fill at a time so price edits between selection and fill
+            // are re-sorted before another pending order is claimed.
+        }
+    }
+
+    private boolean fillNextExecutable(
+            MarketSummaryUpdatedEvent event,
+            double lowerPrice,
+            double upperPrice,
+            boolean sellSide
+    ) {
+        MarketSummaryResult market = event.result();
         List<PendingOrderCandidate> candidates = executableCandidates(
-                realtimeEvent,
+                event,
                 pendingOrderExecutionCache.refresh(
                         market.symbol(),
                         orderRepository.findExecutablePendingLimitOrders(
@@ -76,11 +89,12 @@ public class PendingOrderFillProcessor {
                                 sellSide
                         )
                 )
-        );
-
-        for (PendingOrderCandidate candidate : candidates) {
-            fillIfExecutable(candidate, market);
+        ).stream()
+                .toList();
+        if (candidates.isEmpty()) {
+            return false;
         }
+        return fillIfExecutable(candidates.get(0), event).shouldContinue();
     }
 
     private List<PendingOrderCandidate> executableCandidates(
@@ -149,28 +163,39 @@ public class PendingOrderFillProcessor {
         return limitPrice >= lower && limitPrice <= upper;
     }
 
-    private void fillIfExecutable(PendingOrderCandidate candidate, MarketSummaryResult market) {
+    private FillAttemptResult fillIfExecutable(PendingOrderCandidate candidate, MarketSummaryUpdatedEvent event) {
+        MarketSummaryResult market = event.result();
         accountOrderMutationLock.lock(candidate.memberId());
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(candidate.memberId(), candidate.orderId())
                 .orElse(candidate.order());
         if (!order.isPending() || order.isConditionalOrder() || order.limitPrice() == null) {
             pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), candidate.orderId());
-            return;
+            return FillAttemptResult.continueLoop();
+        }
+        if (hasCandidatePriceChanged(candidate.order(), order)) {
+            pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), candidate.orderId());
+            return FillAttemptResult.stopLoop();
+        }
+        if (!isExecutableInDirection(order, event.direction())
+                || !isInsideMove(order, event.previousLastPrice(), market.lastPrice())) {
+            pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), candidate.orderId());
+            return FillAttemptResult.continueLoop();
         }
         if (order.isClosePositionOrder() && !hasEnoughOpenPosition(candidate.memberId(), order)) {
             cancelPendingCandidate(candidate.memberId(), order, market.symbol());
-            return;
+            return FillAttemptResult.continueLoop();
         }
         if (order.isOpenPositionOrder() && hasDifferentMarginPosition(candidate.memberId(), order)) {
             cancelPendingCandidate(candidate.memberId(), order, market.symbol());
-            return;
+            return FillAttemptResult.continueLoop();
         }
 
         double executionPrice = order.limitPrice();
         double estimatedFee = executionPrice * order.quantity() * MAKER_FEE_RATE;
-        Optional<FuturesOrder> claimed = orderRepository.claimPendingFill(
+        Optional<FuturesOrder> claimed = orderRepository.claimPendingLimitFill(
                 candidate.memberId(),
                 order.orderId(),
+                candidate.order().limitPrice(),
                 executionPrice,
                 FEE_TYPE_MAKER,
                 estimatedFee
@@ -178,7 +203,7 @@ public class PendingOrderFillProcessor {
 
         if (claimed.isEmpty()) {
             pendingOrderExecutionCache.evict(market.symbol(), candidate.memberId(), order.orderId());
-            return;
+            return FillAttemptResult.stopLoop();
         }
 
         FuturesOrder filledOrder = claimed.orElseThrow();
@@ -197,6 +222,21 @@ public class PendingOrderFillProcessor {
                 filledOrder.quantity(),
                 executionPrice
         ));
+        return FillAttemptResult.continueLoop();
+    }
+
+    private boolean hasCandidatePriceChanged(FuturesOrder candidateOrder, FuturesOrder currentOrder) {
+        return Double.compare(candidateOrder.limitPrice(), currentOrder.limitPrice()) != 0;
+    }
+
+    private record FillAttemptResult(boolean shouldContinue) {
+        private static FillAttemptResult continueLoop() {
+            return new FillAttemptResult(true);
+        }
+
+        private static FillAttemptResult stopLoop() {
+            return new FillAttemptResult(false);
+        }
     }
 
     private void cancelPendingCandidate(Long memberId, FuturesOrder order, String symbol) {

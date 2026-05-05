@@ -254,8 +254,13 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 핵심 상호작용
 
-- 주문 입력 변경 시 예상 증거금과 청산가 즉시 재계산. 격리 마진은 항상 `liquidationPriceType = EXACT`이며 숫자를 그대로 표시한다.
-  교차 마진은 계정 단위 계산이 대상 심볼 하나의 mark price 변수로 풀리면 `EXACT`, 여러 심볼 교차 포지션 때문에 다른 심볼 mark price를 현재 값으로 고정하면 `ESTIMATED`, 계산할 수 없으면 `UNAVAILABLE`이다. 화면은 `EXACT` 숫자를 그대로 표시하고, `ESTIMATED`는 `Est.` 같은 추정 표시를 붙이며, `UNAVAILABLE`은 `-`로 표시한다.
+- 주문 입력 변경 시 예상 증거금과 청산가 즉시 재계산. 공식과 판정 기준은
+  [simulation rules의 청산 규칙](./coin-futures-simulation-rules.md#청산-규칙)을 따른다. 격리 마진은
+  항상 `liquidationPriceType = EXACT`이며 숫자를 그대로 표시한다. 교차 마진은 계정 단위 계산이
+  대상 심볼 하나의 mark price 변수로 풀리면 `EXACT`, 여러 심볼 교차 포지션 때문에 다른 심볼
+  mark price를 현재 값으로 고정하면 `ESTIMATED`, 대상 교차 포지션이 없거나 mark price/계정 평가
+  입력이 부족하거나 선형 경계식 결과가 유효하지 않으면 `UNAVAILABLE`이다. 화면은 `EXACT` 숫자를
+  그대로 표시하고, `ESTIMATED`는 `Est.` 같은 추정 표시를 붙이며, `UNAVAILABLE`은 `-`로 표시한다.
 - 사용자가 차트를 과거 구간으로 이동해도 자동 최신 포커스 복귀 없이 현재 보던 위치가 유지된다
 - 사용자는 필요할 때만 "최신 보기" 버튼으로 가장 최근 캔들 영역으로 이동한다
 - indicator는 fresh candle history가 있을 때만 렌더링되고, stale/missing history에서는 config만 유지한 채 표시를 숨긴다

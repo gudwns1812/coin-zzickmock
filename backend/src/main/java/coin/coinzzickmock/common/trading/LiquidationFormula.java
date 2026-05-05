@@ -3,6 +3,9 @@ package coin.coinzzickmock.common.trading;
 public final class LiquidationFormula {
     public static final double MAINTENANCE_MARGIN_RATE = 0.005d;
 
+    private static final double LEVERAGE_UNIT = 1d;
+    private static final double INVALID_LINEAR_DENOMINATOR = 0d;
+    private static final double MINIMUM_POSITIVE_FORMULA_VALUE = 0d;
     private static final String POSITION_SIDE_LONG = "LONG";
     private static final String POSITION_SIDE_SHORT = "SHORT";
     private static final String MARGIN_MODE_CROSS = "CROSS";
@@ -24,10 +27,12 @@ public final class LiquidationFormula {
         }
 
         if (POSITION_SIDE_LONG.equalsIgnoreCase(positionSide)) {
-            return entryPrice * (1d - (1d / leverage)) / (1d - MAINTENANCE_MARGIN_RATE);
+            double leverageDiscount = LEVERAGE_UNIT / leverage;
+            return entryPrice * (LEVERAGE_UNIT - leverageDiscount) / (LEVERAGE_UNIT - MAINTENANCE_MARGIN_RATE);
         }
         if (POSITION_SIDE_SHORT.equalsIgnoreCase(positionSide)) {
-            return entryPrice * (1d + (1d / leverage)) / (1d + MAINTENANCE_MARGIN_RATE);
+            double leveragePremium = LEVERAGE_UNIT / leverage;
+            return entryPrice * (LEVERAGE_UNIT + leveragePremium) / (LEVERAGE_UNIT + MAINTENANCE_MARGIN_RATE);
         }
         throw new IllegalArgumentException("unsupported position side: " + positionSide);
     }
@@ -49,19 +54,19 @@ public final class LiquidationFormula {
                 || !Double.isFinite(pnlSlope)
                 || !Double.isFinite(maintenanceConstant)
                 || !Double.isFinite(maintenanceSlope)
-                || denominator == 0) {
+                || denominator == INVALID_LINEAR_DENOMINATOR) {
             return null;
         }
 
         double boundary = (maintenanceConstant - equityConstant) / denominator;
-        if (!Double.isFinite(boundary) || boundary <= 0) {
+        if (!Double.isFinite(boundary) || boundary <= MINIMUM_POSITIVE_FORMULA_VALUE) {
             return null;
         }
         return boundary;
     }
 
     private static void validatePositiveFinite(String name, double value) {
-        if (!Double.isFinite(value) || value <= 0) {
+        if (!Double.isFinite(value) || value <= MINIMUM_POSITIVE_FORMULA_VALUE) {
             throw new IllegalArgumentException(name + " must be positive and finite");
         }
     }

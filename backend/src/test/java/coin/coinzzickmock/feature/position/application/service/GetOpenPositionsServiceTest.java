@@ -51,6 +51,7 @@ class GetOpenPositionsServiceTest {
 
         assertEquals(110, result.markPrice(), 0.0001);
         assertEquals(20, result.unrealizedPnl(), 0.0001);
+        assertEquals("EXACT", result.liquidationPriceType());
         assertEquals(0, result.accumulatedClosedQuantity(), 0.0001);
         assertEquals(0, result.pendingCloseQuantity(), 0.0001);
         assertEquals(2, result.closeableQuantity(), 0.0001);

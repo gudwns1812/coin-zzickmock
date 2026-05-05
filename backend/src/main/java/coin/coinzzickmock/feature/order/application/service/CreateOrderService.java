@@ -1,43 +1,42 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
-import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
-import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.CrossLiquidationEstimate;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
-import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import coin.coinzzickmock.feature.position.domain.PositionIdentity;
+import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
+@Slf4j
 @Service
 public class CreateOrderService {
     private static final String ORDER_TYPE_LIMIT = "LIMIT";
     private static final String ORDER_TYPE_MARKET = "MARKET";
-    private static final Logger log = LoggerFactory.getLogger(CreateOrderService.class);
 
     private final OrderPreviewPolicy orderPreviewPolicy;
     private final OrderPlacementPolicy orderPlacementPolicy;
@@ -128,7 +127,7 @@ public class CreateOrderService {
 
     private OrderPreview preview(CreateOrderCommand command, MarketSnapshot marketSnapshot) {
         OrderPreview basePreview = orderPreviewPolicy.preview(placementRequest(command), marketSnapshot.lastPrice());
-        if (!"CROSS".equalsIgnoreCase(command.marginMode())) {
+        if (!isCrossMargin(command)) {
             return basePreview;
         }
 
@@ -150,6 +149,10 @@ public class CreateOrderService {
         );
     }
 
+    private boolean isCrossMargin(CreateOrderCommand command) {
+        return new PositionIdentity(command.symbol(), command.positionSide(), command.marginMode()).isCrossMargin();
+    }
+
     private List<PositionSnapshot> positionsAfterPreview(
             CreateOrderCommand command,
             MarketSnapshot marketSnapshot,
@@ -161,8 +164,34 @@ public class CreateOrderService {
                 command.positionSide()
         ).orElse(null);
 
-        PositionSnapshot previewPosition = existing == null
-                ? PositionSnapshot.open(
+        PositionSnapshot previewPosition = previewPosition(command, marketSnapshot, preview, existing);
+
+        List<PositionSnapshot> positions = new ArrayList<>(positionRepository.findOpenPositions(command.memberId()).stream()
+                .map(position -> markForPreview(command.symbol(), marketSnapshot.markPrice(), position))
+                .filter(position -> !Objects.equals(position.stableKey(), previewPosition.stableKey()))
+                .toList());
+        positions.add(previewPosition);
+        return List.copyOf(positions);
+    }
+
+    private PositionSnapshot previewPosition(
+            CreateOrderCommand command,
+            MarketSnapshot marketSnapshot,
+            OrderPreview preview,
+            PositionSnapshot existing
+    ) {
+        if (existing == null) {
+            return openPreviewPosition(command, marketSnapshot, preview);
+        }
+        return increasePreviewPosition(command, marketSnapshot, preview, existing);
+    }
+
+    private PositionSnapshot openPreviewPosition(
+            CreateOrderCommand command,
+            MarketSnapshot marketSnapshot,
+            OrderPreview preview
+    ) {
+        return PositionSnapshot.open(
                 command.symbol(),
                 command.positionSide(),
                 command.marginMode(),
@@ -171,8 +200,16 @@ public class CreateOrderService {
                 preview.estimatedEntryPrice(),
                 marketSnapshot.markPrice(),
                 preview.estimatedFee()
-        )
-                : existing.markToMarket(marketSnapshot.markPrice())
+        );
+    }
+
+    private PositionSnapshot increasePreviewPosition(
+            CreateOrderCommand command,
+            MarketSnapshot marketSnapshot,
+            OrderPreview preview,
+            PositionSnapshot existing
+    ) {
+        return existing.markToMarket(marketSnapshot.markPrice())
                 .increase(
                         existing.leverage(),
                         command.quantity(),
@@ -180,13 +217,6 @@ public class CreateOrderService {
                         marketSnapshot.markPrice(),
                         preview.estimatedFee()
                 );
-
-        List<PositionSnapshot> positions = new ArrayList<>(positionRepository.findOpenPositions(command.memberId()).stream()
-                .map(position -> markForPreview(command.symbol(), marketSnapshot.markPrice(), position))
-                .filter(position -> !Objects.equals(position.stableKey(), previewPosition.stableKey()))
-                .toList());
-        positions.add(previewPosition);
-        return List.copyOf(positions);
     }
 
     private PositionSnapshot markForPreview(String commandSymbol, double commandMarkPrice, PositionSnapshot position) {

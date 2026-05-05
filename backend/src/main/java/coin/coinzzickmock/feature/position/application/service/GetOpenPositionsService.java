@@ -14,11 +14,10 @@ import coin.coinzzickmock.feature.position.domain.CrossLiquidationEstimate;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -64,15 +63,7 @@ public class GetOpenPositionsService {
                 memberId,
                 snapshot
         );
-        CrossLiquidationEstimate crossEstimate = snapshot.isCrossMargin()
-                ? liquidationPolicy.estimateCrossLiquidationPrice(walletBalance, positions, snapshot.symbol())
-                : null;
-        Double liquidationPrice = crossEstimate == null
-                ? snapshot.liquidationPrice()
-                : crossEstimate.liquidationPrice();
-        String liquidationPriceType = crossEstimate == null
-                ? isolatedLiquidationPriceType(snapshot)
-                : crossEstimate.liquidationPriceType();
+        ResolvedLiquidationPrice liquidation = resolveLiquidationPrice(walletBalance, positions, snapshot);
 
         return new PositionSnapshotResult(
                 snapshot.symbol(),
@@ -82,8 +73,8 @@ public class GetOpenPositionsService {
                 snapshot.quantity(),
                 snapshot.entryPrice(),
                 snapshot.markPrice(),
-                liquidationPrice,
-                liquidationPriceType,
+                liquidation.price(),
+                liquidation.type(),
                 snapshot.unrealizedPnl(),
                 snapshot.realizedPnl(),
                 snapshot.initialMargin(),
@@ -94,6 +85,22 @@ public class GetOpenPositionsService {
                 triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT),
                 triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_STOP_LOSS)
         );
+    }
+
+    private ResolvedLiquidationPrice resolveLiquidationPrice(
+            double walletBalance,
+            List<PositionSnapshot> positions,
+            PositionSnapshot snapshot
+    ) {
+        if (snapshot.isCrossMargin()) {
+            CrossLiquidationEstimate estimate = liquidationPolicy.estimateCrossLiquidationPrice(
+                    walletBalance,
+                    positions,
+                    snapshot.symbol()
+            );
+            return new ResolvedLiquidationPrice(estimate.liquidationPrice(), estimate.liquidationPriceType());
+        }
+        return new ResolvedLiquidationPrice(snapshot.liquidationPrice(), isolatedLiquidationPriceType(snapshot));
     }
 
     private String isolatedLiquidationPriceType(PositionSnapshot snapshot) {
@@ -108,5 +115,8 @@ public class GetOpenPositionsService {
                 .max(Comparator.comparing(FuturesOrder::orderTime))
                 .map(FuturesOrder::triggerPrice)
                 .orElse(null);
+    }
+
+    private record ResolvedLiquidationPrice(Double price, String type) {
     }
 }

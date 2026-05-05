@@ -349,6 +349,43 @@ class CreateOrderServiceTest {
     }
 
     @Test
+    void crossPreviewUsesIncreasedExistingPositionForDynamicLiquidationEstimate() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100, 100);
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+        CreateOrderService service = service(
+                realtimePriceReader(110, 110),
+                new InMemoryOrderRepository(),
+                accountRepository,
+                positionRepository,
+                event -> {
+                }
+        );
+
+        OrderPreview preview = service.preview(new CreateOrderCommand(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "MARKET",
+                "CROSS",
+                10,
+                1,
+                null
+        ));
+
+        assertEquals("EXACT", preview.estimatedLiquidationPriceType());
+        assertEquals(55.3040201005, preview.estimatedLiquidationPrice(), 0.0001);
+    }
+
+    @Test
     void previewRejectsUnsupportedOrderType() {
         CreateOrderService service = service(
                 realtimePriceReader(),

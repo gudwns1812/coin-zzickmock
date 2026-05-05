@@ -82,6 +82,8 @@ public class GlobalExceptionHandler {
                     errorCode.name(), status, requestMethod(request), pathPattern(request));
             case TRACE -> log.trace("Handled core exception. errorCode={} status={} method={} pathPattern={}",
                     errorCode.name(), status, requestMethod(request), pathPattern(request));
+            default -> log.error("Handled core exception with unsupported log level. errorCode={} status={} method={} pathPattern={}",
+                    errorCode.name(), status, requestMethod(request), pathPattern(request), exception);
         }
     }
 

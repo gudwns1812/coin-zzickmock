@@ -104,6 +104,7 @@ Grafana에 두지 않는 것:
 - 외부 HTTP 연동 계측은 connector/infrastructure 경계에서 처리하고 기능 코드에 흩뿌리지 않는다.
 - 로그 메시지는 사람이 검색할 수 있는 안정적인 event name과 key-value context를 가져야 한다.
 - 로그에 `CoreException.getMessage()`, provider message, raw URI, raw cache key, email, phone number, raw member id를 그대로 넣지 않는다.
+  raw member id는 마스킹되지 않은 숫자/UUID 식별자를 뜻한다. 일반 애플리케이션 로그에서는 금지하고, 감사/지원 로그 예외는 아래 "거래와 지갑 운영"의 `orderId`/`memberId` 기준을 따른다.
 - 알림은 "운영자가 바로 판단할 수 있는 증상"에 걸고, 원인 후보는 dashboard와 runbook으로 연결한다.
 
 ## 메트릭 이름과 label 기준
@@ -414,8 +415,8 @@ Grafana에 추가할 지표:
 - 강제청산: `event=trading.position.liquidated`
 - 지갑 변경 실패: `event=trading.wallet.mutation.failure`
 
-로그에는 감사/지원에 필요한 경우에만 `orderId` 또는 `memberId`를 포함할 수 있다.
-이 값들은 Loki 로그 context에는 들어갈 수 있지만 Prometheus label에는 넣지 않는다.
+통제된 감사/지원 로그에는 필요한 경우에만 `orderId` 또는 `memberId`를 포함할 수 있다.
+이 예외는 일반 애플리케이션 로그에는 적용하지 않는다. 접근 제어, 보존 기간, 감사 추적 기준을 갖춘 로그 sink에서만 허용하며 Prometheus label에는 넣지 않는다.
 
 ## 리워드와 관리자 운영 메트릭
 

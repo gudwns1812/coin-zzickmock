@@ -19,20 +19,20 @@
 
 ### 새 배포 환경이나 자동화 파이프라인을 설계할 때
 
-1. [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
-2. [docs/release-docs/01-environments-and-artifacts.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/01-environments-and-artifacts.md)
-3. [.github/workflows/ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml)
+1. [ARCHITECTURE.md](ARCHITECTURE.md)
+2. [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
+3. [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 ### 정기 릴리즈나 수동 배포를 실행할 때
 
-1. [docs/release-docs/02-release-checklist.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/02-release-checklist.md)
-2. [docs/release-docs/03-rollout-and-rollback.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/03-rollout-and-rollback.md)
-3. [.github/workflows/ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml)
+1. [docs/release-docs/02-release-checklist.md](docs/release-docs/02-release-checklist.md)
+2. [docs/release-docs/03-rollout-and-rollback.md](docs/release-docs/03-rollout-and-rollback.md)
+3. [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 ### 장애 대응이나 롤백 판단이 필요할 때
 
-1. [docs/release-docs/03-rollout-and-rollback.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/03-rollout-and-rollback.md)
-2. [docs/release-docs/01-environments-and-artifacts.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/01-environments-and-artifacts.md)
+1. [docs/release-docs/03-rollout-and-rollback.md](docs/release-docs/03-rollout-and-rollback.md)
+2. [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
 3. 관련 워크스페이스 기준 문서
 
 ## Current Reality
@@ -52,13 +52,13 @@
 ## Non-negotiables
 
 - 운영 환경 배포는 리뷰되지 않은 로컬 변경이나 미병합 브랜치 기준으로 하지 않는다.
-- PR 브랜치명은 [docs/process/branch-and-pr-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/process/branch-and-pr-rules.md)의 `<type>/<kebab-case-summary>` 규칙을 반드시 통과해야 하며, `codex/*` 같은 자동화 접두사는 금지한다.
+- PR 브랜치명은 [docs/process/branch-and-pr-rules.md](docs/process/branch-and-pr-rules.md)의 `<type>/<kebab-case-summary>` 규칙을 반드시 통과해야 하며, `codex/*` 같은 자동화 접두사는 금지한다.
 - 릴리즈 대상 커밋은 적어도 현재 기준 CI를 통과해야 한다.
 - 프론트 변경이 있으면 `npm run build`를 기준 검증으로 삼는다.
 - 백엔드 변경이 있으면 `./gradlew check`를 기준 검증으로 삼고, 구조 변경이 있으면 `./gradlew architectureLint`도 확인한다.
 - 각 릴리즈는 하나의 고정된 commit SHA를 기준으로 식별한다.
 - 릴리즈마다 변경 범위, 실행자, 대상 환경, 스모크 테스트 결과, 롤백 기준점을 기록한다.
-- 환경 변수나 비밀값 계약이 바뀌면 [docs/release-docs/01-environments-and-artifacts.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/01-environments-and-artifacts.md)도 함께 갱신한다.
+- 환경 변수나 비밀값 계약이 바뀌면 [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)도 함께 갱신한다.
 - DB 스키마나 API 계약을 깨는 변경은 무계획 단일 배포로 밀어 넣지 않는다.
 - 장애 징후가 보이면 다음 롤아웃을 멈추고, 먼저 원인과 롤백 여부를 판단한다.
 
@@ -76,10 +76,10 @@
 
 배포/릴리즈의 상세 원문은 `RELEASE.md`가 아니라 `docs/release-docs/`다.
 
-- 환경과 산출물: [01-environments-and-artifacts.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/01-environments-and-artifacts.md)
-- 실행 체크리스트: [02-release-checklist.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/02-release-checklist.md)
-- 롤아웃/롤백: [03-rollout-and-rollback.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/03-rollout-and-rollback.md)
-- 기록 템플릿: [release-note-template.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/release-note-template.md)
+- 환경과 산출물: [01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
+- 실행 체크리스트: [02-release-checklist.md](docs/release-docs/02-release-checklist.md)
+- 롤아웃/롤백: [03-rollout-and-rollback.md](docs/release-docs/03-rollout-and-rollback.md)
+- 기록 템플릿: [release-note-template.md](docs/release-docs/release-note-template.md)
 
 운영 기준이 길어질수록 이 파일을 키우는 대신 `docs/release-docs/`를 갱신한다.
 

@@ -66,6 +66,16 @@ npm run lint
 - 관측성 기준 문서: [OBSERVABILITY.md](OBSERVABILITY.md)
 - 백엔드 상세 설계: [docs/design-docs/backend-design/README.md](docs/design-docs/backend-design/README.md)
 - UI 상세 설계: [docs/design-docs/ui-design/README.md](docs/design-docs/ui-design/README.md)
+- 브랜치/PR 규칙: [docs/process/branch-and-pr-rules.md](docs/process/branch-and-pr-rules.md)
+
+## 브랜치 네이밍
+
+브랜치명은 반드시 `feat/<summary>`, `fix/<summary>`, `refactor/<summary>`처럼 작업 성격을 드러내는 type prefix로 시작해야 합니다.
+`codex/*`, `codex-*` 같은 자동화 접두사는 금지하며, 외부 도구 기본값보다 이 저장소 규칙이 우선합니다.
+
+```bash
+npm run check:branch -- feat/example-branch
+```
 
 ## 백엔드 아키텍처 기준
 

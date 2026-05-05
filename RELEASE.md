@@ -52,6 +52,7 @@
 ## Non-negotiables
 
 - 운영 환경 배포는 리뷰되지 않은 로컬 변경이나 미병합 브랜치 기준으로 하지 않는다.
+- PR 브랜치명은 [docs/process/branch-and-pr-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/process/branch-and-pr-rules.md)의 `<type>/<kebab-case-summary>` 규칙을 반드시 통과해야 하며, `codex/*` 같은 자동화 접두사는 금지한다.
 - 릴리즈 대상 커밋은 적어도 현재 기준 CI를 통과해야 한다.
 - 프론트 변경이 있으면 `npm run build`를 기준 검증으로 삼는다.
 - 백엔드 변경이 있으면 `./gradlew check`를 기준 검증으로 삼고, 구조 변경이 있으면 `./gradlew architectureLint`도 확인한다.

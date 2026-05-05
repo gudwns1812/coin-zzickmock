@@ -21,6 +21,11 @@
 - [02-release-checklist.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/02-release-checklist.md)
   릴리즈 전/중/후 실행 체크리스트와 중단 조건.
 
+### Branch And PR Rules
+
+- [../process/branch-and-pr-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/process/branch-and-pr-rules.md)
+  PR과 릴리즈 후보 브랜치가 지켜야 하는 type-prefixed branch naming 규칙.
+
 ### Rollout And Rollback
 
 - [03-rollout-and-rollback.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/03-rollout-and-rollback.md)

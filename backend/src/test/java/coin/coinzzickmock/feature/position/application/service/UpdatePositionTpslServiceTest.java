@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
@@ -68,6 +69,154 @@ class UpdatePositionTpslServiceTest {
         );
         assertEquals(2, orders.size());
         assertEquals(1, orders.stream().map(FuturesOrder::ocoGroupId).distinct().count());
+    }
+
+    @Test
+    void updatesExistingTpslOrdersInPlaceWithoutCreatingHistoryRows() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                110,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "sl",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                95,
+                FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                "oco-1"
+        ));
+        UpdatePositionTpslService service = service(positionRepository, orderRepository, 101);
+
+        PositionSnapshotResult result = service.update(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                115.0,
+                96.0
+        );
+
+        assertEquals(115, result.takeProfitPrice(), 0.0001);
+        assertEquals(96, result.stopLossPrice(), 0.0001);
+        assertEquals(2, orderRepository.findByMemberId(1L).size());
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp").orElseThrow();
+        FuturesOrder stopLoss = orderRepository.findByMemberIdAndOrderId(1L, "sl").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, takeProfit.status());
+        assertEquals(FuturesOrder.STATUS_PENDING, stopLoss.status());
+        assertEquals(115, takeProfit.triggerPrice(), 0.0001);
+        assertEquals(96, stopLoss.triggerPrice(), 0.0001);
+        assertEquals("oco-1", takeProfit.ocoGroupId());
+        assertEquals("oco-1", stopLoss.ocoGroupId());
+    }
+
+    @Test
+    void savingSameTpslValueIsNoopForExistingOrder() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                110,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                null
+        ));
+        UpdatePositionTpslService service = service(positionRepository, orderRepository, 101);
+
+        PositionSnapshotResult result = service.update(1L, "BTCUSDT", "LONG", "ISOLATED", 110.0, null);
+
+        assertEquals(110, result.takeProfitPrice(), 0.0001);
+        assertEquals(null, result.stopLossPrice());
+        assertEquals(1, orderRepository.findByMemberId(1L).size());
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, takeProfit.status());
+        assertEquals(110, takeProfit.triggerPrice(), 0.0001);
+        assertEquals(null, takeProfit.ocoGroupId());
+    }
+
+    @Test
+    void removingOneTpslSideCancelsOnlyThatSideAndKeepsOtherOrderId() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                110,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "sl",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                95,
+                FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                "oco-1"
+        ));
+        UpdatePositionTpslService service = service(positionRepository, orderRepository, 101);
+
+        PositionSnapshotResult result = service.update(1L, "BTCUSDT", "LONG", "ISOLATED", 112.0, null);
+
+        assertEquals(112, result.takeProfitPrice(), 0.0001);
+        assertEquals(null, result.stopLossPrice());
+        FuturesOrder takeProfit = orderRepository.findByMemberIdAndOrderId(1L, "tp").orElseThrow();
+        FuturesOrder stopLoss = orderRepository.findByMemberIdAndOrderId(1L, "sl").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, takeProfit.status());
+        assertEquals(112, takeProfit.triggerPrice(), 0.0001);
+        assertEquals(null, takeProfit.ocoGroupId());
+        assertEquals(FuturesOrder.STATUS_CANCELLED, stopLoss.status());
+        assertTrue(orderRepository.findPendingConditionalCloseOrders(1L, "BTCUSDT", "LONG", "ISOLATED")
+                .stream()
+                .allMatch(FuturesOrder::isTakeProfitOrder));
     }
 
     @Test
@@ -419,6 +568,22 @@ class UpdatePositionTpslServiceTest {
             FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
             orders.remove(order);
             FuturesOrder updated = FuturesOrder.STATUS_CANCELLED.equals(status) ? order.cancel() : order;
+            orders.add(updated);
+            return updated;
+        }
+
+        @Override
+        public FuturesOrder updatePendingConditionalCloseOrder(
+                Long memberId,
+                String orderId,
+                int leverage,
+                double quantity,
+                double triggerPrice,
+                String ocoGroupId
+        ) {
+            FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+            orders.remove(order);
+            FuturesOrder updated = order.withConditionalCloseTarget(leverage, quantity, triggerPrice, ocoGroupId);
             orders.add(updated);
             return updated;
         }

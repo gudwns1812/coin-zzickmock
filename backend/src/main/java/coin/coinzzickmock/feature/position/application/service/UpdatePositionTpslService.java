@@ -17,6 +17,7 @@ import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -51,8 +52,7 @@ public class UpdatePositionTpslService {
         validateTargetPrices(current, takeProfitPrice, stopLossPrice, markPrice);
 
         PositionSnapshot marked = current.markToMarket(markPrice);
-        cancelExistingTpslOrders(memberId, marked);
-        createReplacementOrders(memberId, marked, takeProfitPrice, stopLossPrice);
+        upsertTpslOrders(memberId, marked, takeProfitPrice, stopLossPrice);
         pendingCloseOrderCapReconciler.reconcile(memberId, marked, marked.quantity(), market.lastPrice());
 
         return toResult(memberId, marked);
@@ -97,25 +97,89 @@ public class UpdatePositionTpslService {
         return "LONG".equalsIgnoreCase(position.positionSide());
     }
 
-    private void cancelExistingTpslOrders(Long memberId, PositionSnapshot position) {
-        orderRepository.findPendingConditionalCloseOrders(
+    private void upsertTpslOrders(
+            Long memberId,
+            PositionSnapshot position,
+            Double takeProfitPrice,
+            Double stopLossPrice
+    ) {
+        List<FuturesOrder> currentOrders = orderRepository.findPendingConditionalCloseOrders(
                         memberId,
                         position.symbol(),
                         position.positionSide(),
                         position.marginMode()
                 ).stream()
                 .filter(order -> order.isTakeProfitOrder() || order.isStopLossOrder())
-                .forEach(order -> orderRepository.updateStatus(memberId, order.orderId(), FuturesOrder.STATUS_CANCELLED));
+                .toList();
+
+        FuturesOrder currentTakeProfit = currentOrder(currentOrders, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT);
+        FuturesOrder currentStopLoss = currentOrder(currentOrders, FuturesOrder.TRIGGER_TYPE_STOP_LOSS);
+        String ocoGroupId = nextOcoGroupId(takeProfitPrice, stopLossPrice, currentTakeProfit, currentStopLoss);
+
+        upsertTpslOrder(
+                memberId,
+                position,
+                currentTakeProfit,
+                takeProfitPrice,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                ocoGroupId
+        );
+        upsertTpslOrder(
+                memberId,
+                position,
+                currentStopLoss,
+                stopLossPrice,
+                FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                ocoGroupId
+        );
     }
 
-    private void createReplacementOrders(
+    private FuturesOrder currentOrder(List<FuturesOrder> orders, String triggerType) {
+        return orders.stream()
+                .filter(order -> triggerType.equalsIgnoreCase(order.triggerType()))
+                .max(Comparator.comparing(FuturesOrder::orderTime))
+                .orElse(null);
+    }
+
+    private String nextOcoGroupId(
+            Double takeProfitPrice,
+            Double stopLossPrice,
+            FuturesOrder currentTakeProfit,
+            FuturesOrder currentStopLoss
+    ) {
+        if (takeProfitPrice == null || stopLossPrice == null) {
+            return null;
+        }
+        if (currentTakeProfit != null
+                && currentStopLoss != null
+                && currentTakeProfit.ocoGroupId() != null
+                && Objects.equals(currentTakeProfit.ocoGroupId(), currentStopLoss.ocoGroupId())) {
+            return currentTakeProfit.ocoGroupId();
+        }
+        if (currentTakeProfit != null && currentTakeProfit.ocoGroupId() != null) {
+            return currentTakeProfit.ocoGroupId();
+        }
+        if (currentStopLoss != null && currentStopLoss.ocoGroupId() != null) {
+            return currentStopLoss.ocoGroupId();
+        }
+        return UUID.randomUUID().toString();
+    }
+
+    private void upsertTpslOrder(
             Long memberId,
             PositionSnapshot position,
-            Double takeProfitPrice,
-            Double stopLossPrice
+            FuturesOrder currentOrder,
+            Double triggerPrice,
+            String triggerType,
+            String ocoGroupId
     ) {
-        String ocoGroupId = takeProfitPrice != null && stopLossPrice != null ? UUID.randomUUID().toString() : null;
-        if (takeProfitPrice != null) {
+        if (triggerPrice == null) {
+            if (currentOrder != null) {
+                orderRepository.cancelPending(memberId, currentOrder.orderId());
+            }
+            return;
+        }
+        if (currentOrder == null) {
             orderRepository.save(memberId, FuturesOrder.conditionalClose(
                     UUID.randomUUID().toString(),
                     position.symbol(),
@@ -123,24 +187,35 @@ public class UpdatePositionTpslService {
                     position.marginMode(),
                     position.leverage(),
                     position.quantity(),
-                    takeProfitPrice,
-                    FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                    triggerPrice,
+                    triggerType,
                     ocoGroupId
             ));
+            return;
         }
-        if (stopLossPrice != null) {
-            orderRepository.save(memberId, FuturesOrder.conditionalClose(
-                    UUID.randomUUID().toString(),
-                    position.symbol(),
-                    position.positionSide(),
-                    position.marginMode(),
-                    position.leverage(),
-                    position.quantity(),
-                    stopLossPrice,
-                    FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
-                    ocoGroupId
-            ));
+        if (matchesTpslTarget(currentOrder, position, triggerPrice, ocoGroupId)) {
+            return;
         }
+        orderRepository.updatePendingConditionalCloseOrder(
+                memberId,
+                currentOrder.orderId(),
+                position.leverage(),
+                position.quantity(),
+                triggerPrice,
+                ocoGroupId
+        );
+    }
+
+    private boolean matchesTpslTarget(
+            FuturesOrder order,
+            PositionSnapshot position,
+            double triggerPrice,
+            String ocoGroupId
+    ) {
+        return order.leverage() == position.leverage()
+                && Double.compare(order.quantity(), position.quantity()) == 0
+                && Double.compare(order.triggerPrice(), triggerPrice) == 0
+                && Objects.equals(order.ocoGroupId(), ocoGroupId);
     }
 
     private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot) {

@@ -142,10 +142,11 @@ mark-to-market을 프론트엔드에서 중복 계산할 수 있다. 이 중복 
 
 TP/SL은 열린 포지션 컬럼이 아니라 pending conditional `CLOSE_POSITION` 주문으로 관리한다.
 `open_positions.take_profit_price`, `open_positions.stop_loss_price`는 legacy 호환 컬럼이며 application/domain read/write/trigger path의 source of truth가 아니다.
-TP/SL 편집 API는 최신 mark price를 읽고, 저장 직후 이미 발동되는 값을 거절한 뒤 같은 포지션 scope의 기존 pending TP/SL 조건부 주문을 취소하고 새 주문을 만든다.
+TP/SL 편집 API는 최신 mark price를 읽고, 저장 직후 이미 발동되는 값을 거절한 뒤 같은 포지션 scope의 기존 pending TP/SL 조건부 주문을 upsert한다. 기존 active TP/SL이 있으면 같은 주문 row의 trigger price, 수량, 레버리지, OCO 관계를 수정하고, 같은 값 저장은 no-op로 처리한다. 기존에 없던 TP 또는 SL만 새 주문으로 만들고, 입력에서 제거된 TP 또는 SL만 취소한다. TP/SL 수정 행위 자체는 새 Order history 항목을 만들지 않는다.
 
 - TP/SL 주문 계약: `orderPurpose = CLOSE_POSITION`, `status = PENDING`, `triggerPrice != null`, `triggerType in (TAKE_PROFIT, STOP_LOSS)`, `triggerSource = MARK_PRICE`, `limitPrice = null`, `orderType = MARKET`
 - 같은 `memberId + symbol + positionSide + marginMode + triggerType`에는 active pending TP/SL 주문이 하나만 존재한다. DB는 active pending conditional close order에만 채워지는 `active_conditional_trigger_type` unique key로 이 중복을 방지한다.
+- TP/SL edit upsert는 active pending 주문의 identity를 가능한 한 유지한다. 수정 이력은 주문 history noise로 남기지 않고, Order history는 생성/체결/취소 같은 주문 lifecycle 상태를 보여준다.
 - TP와 SL이 함께 저장되면 같은 `ocoGroupId`를 공유하고, 둘 중 하나가 체결되면 sibling은 `CANCELLED`가 된다
 - V9의 legacy `open_positions.take_profit_price`, `open_positions.stop_loss_price` 값은 V11 migration에서 pending conditional close order로 backfill한다. 이후 legacy 컬럼은 읽기/트리거 source가 아니다.
 - 수동 취소는 선택한 TP 또는 SL 주문 하나만 취소하고 sibling을 자동 취소하지 않는다
@@ -547,7 +548,7 @@ type PositionSnapshot = {
 - **Close amount**: the `Close amount` label means accumulated closed quantity (`accumulatedClosedQuantity`) for the still-open position. It starts at `0` for a new position and increases only after partial close execution.
 - **Pending and closeable quantity**: `pendingCloseQuantity` is the sum of pending manual close orders only, excluding TP/SL conditional close orders. `closeableQuantity = max(0, quantity - pendingCloseQuantity)` is retained as compatibility data. Neither field is displayed as `Close amount`.
 - **Close order acceptance and reconciliation**: a new close request is validated against held position quantity, not closeable quantity. The backend may accept a new close order before reconciling pending manual close caps; after submission, pending manual close orders are reduced or cancelled so total pending manual close quantity does not exceed the remaining held quantity. LONG close reconciliation reduces/cancels higher limit-price orders first; SHORT reduces/cancels lower limit-price orders first; ties reduce newer orders before older orders.
-- **TP/SL editing**: position-level TP/SL values are displayed on the position card, but inputs are hidden by default and opened via the `Position TP/SL` edit action. Save and clear use `/api/futures/positions/tpsl`, whose persistence source is pending conditional close orders, not `open_positions` TP/SL columns.
+- **TP/SL editing**: position-level TP/SL values are displayed on the position card, but inputs are hidden by default and opened via the `Position TP/SL` edit action. Save and clear use `/api/futures/positions/tpsl`, whose persistence source is pending conditional close orders, not `open_positions` TP/SL columns. Save upserts existing active TP/SL orders in place and does not create extra Order history rows for unchanged or modified TP/SL values.
 - **Frontend open-market 100% sizing**: the local, non-authoritative max quantity for OPEN MARKET orders is `available / (price * (1 / leverage + taker fee rate))`, using the configured taker fee rate from the fee rules (`0.0005`), and is floored to supported quantity precision. Backend margin validation remains authoritative if price or account state changes before submission.
 
 ## Wallet history and Assets chart source

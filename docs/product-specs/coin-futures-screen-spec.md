@@ -274,8 +274,8 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 주문 패널 `Open` `Market` 모드의 100% 수량 보조 UI는 [simulation rules](./coin-futures-simulation-rules.md)의 Open Market helper formula `available / (price * (1 / leverage + taker fee rate))`로 로컬 최대 수량을 구하고 지원 수량 precision에서 내림한다. 이 값은 입력 편의를 위한 비권위 계산이며, 제출 시 백엔드 증거금/수수료 검증과 `pendingCloseQuantity`/`closeableQuantity` cap 처리 권위가 최종 기준이다.
 - 주문 패널 `Close` 모드의 퍼센트/최대 수량 보조 UI도 같은 심볼/방향/마진 모드의 현재 보유 `quantity`를 기준으로 한다. 같은 방향의 포지션이 없거나 반대 방향 포지션만 있으면 제출 결과는 포지션 없음 오류로 표시한다.
 - market close, limit close 체결, liquidation, 새 close 주문 접수로 포지션 수량 또는 pending manual close exposure가 cap을 넘으면 같은 포지션의 pending manual close exposure가 남은 포지션 수량을 넘지 않도록 조정한다. 포지션 수량이 0이 되는 경로는 stale manual close 주문과 stale TP/SL 조건부 주문을 모두 취소한다. 부분 종료로 남은 수량이 있으면 manual close 주문만 남은 수량 이하로 조정하고 TP/SL 조건부 주문은 cap 때문에 취소하지 않는다.
-- 포지션은 order-backed `takeProfitPrice`, `stopLossPrice`를 표시할 수 있다. 화면은 `Position TP/SL` 값을 기본 표시만 하고, edit icon을 눌렀을 때 편집기를 연다. 사용자가 TP/SL을 수정하면 백엔드는 현재 mark price 기준으로 이미 발동된 가격을 거절하고, pending conditional `CLOSE_POSITION` 주문을 생성/교체/취소한다.
-- TP/SL 조건부 주문은 Open orders와 Order history에 `TP Close`, `SL Close`로 표시하며 trigger price를 가격 기준으로 보여준다. 체결 이력의 execution price는 실제 체결가다.
+- 포지션은 order-backed `takeProfitPrice`, `stopLossPrice`를 표시할 수 있다. 화면은 `Position TP/SL` 값을 기본 표시만 하고, edit icon을 눌렀을 때 편집기를 연다. 사용자가 TP/SL을 수정하면 백엔드는 현재 mark price 기준으로 이미 발동된 가격을 거절하고, 기존 pending conditional `CLOSE_POSITION` 주문을 upsert한다. 같은 값 저장은 no-op이고, 기존 active TP/SL이 있으면 새 주문을 만들지 않고 같은 주문의 trigger price 등을 수정한다. 기존에 없던 TP 또는 SL만 새로 생성하고, 입력에서 제거된 TP 또는 SL만 취소한다.
+- TP/SL 조건부 주문은 Open orders와 Order history에 `TP Close`, `SL Close`로 표시하며 trigger price를 가격 기준으로 보여준다. TP/SL 수정 행위 자체는 별도 Order history 항목으로 남기지 않는다. 체결 이력의 execution price는 실제 체결가다.
 - Open orders와 Order history는 주문 시간을 가장 왼쪽 컬럼에 둔다
 - Open orders에서는 예상 증거금과 예상 수수료를 표시하지 않는다
 - 포지션 히스토리는 심볼, Long/Short, 레버리지, Cross/Isolated, 오픈 시간, 평균 진입/탈출 가격, 포지션 규모, PnL, ROI, 종료 시간, 종료 사유를 표시한다

@@ -297,6 +297,34 @@ public record FuturesOrder(
         );
     }
 
+    public FuturesOrder withConditionalCloseTarget(
+            int nextLeverage,
+            double nextQuantity,
+            double nextTriggerPrice,
+            String nextOcoGroupId
+    ) {
+        return new FuturesOrder(
+                orderId,
+                symbol,
+                positionSide,
+                orderType,
+                orderPurpose,
+                marginMode,
+                nextLeverage,
+                nextQuantity,
+                limitPrice,
+                status,
+                feeType,
+                estimatedFee,
+                executionPrice,
+                orderTime,
+                nextTriggerPrice,
+                triggerType,
+                triggerSource,
+                nextOcoGroupId
+        );
+    }
+
     public FuturesOrder withQuantity(double nextQuantity) {
         return new FuturesOrder(
                 orderId,

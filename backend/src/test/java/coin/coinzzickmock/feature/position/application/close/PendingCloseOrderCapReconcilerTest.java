@@ -138,7 +138,10 @@ class PendingCloseOrderCapReconcilerTest {
 
         @Override
         public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
-            FuturesOrder updated = findByMemberIdAndOrderId(memberId, orderId).orElseThrow().cancel();
+            FuturesOrder current = findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+            FuturesOrder updated = FuturesOrder.STATUS_CANCELLED.equals(status)
+                    ? current.cancel()
+                    : current;
             orders.put(key(memberId, orderId), new PendingOrderCandidate(memberId, updated));
             return updated;
         }

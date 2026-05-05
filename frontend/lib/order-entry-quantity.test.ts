@@ -26,5 +26,6 @@ test("quantity precision floors without rounding up at the affordability boundar
 test("invalid inputs resolve to zero quantity", () => {
   assert.equal(calculateMaxOpenMarketQuantity(1000, 0, 100), 0);
   assert.equal(calculateMaxOpenMarketQuantity(1000, 10, 0), 0);
+  assert.equal(calculateMaxOpenMarketQuantity(1000, 10, 100, -0.01), 0);
   assert.equal(floorQuantityToPrecision(Number.NaN), 0);
 });

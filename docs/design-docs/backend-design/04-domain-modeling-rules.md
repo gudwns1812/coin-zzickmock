@@ -13,8 +13,8 @@
 
 먼저 읽어야 하는 문서:
 
-- [README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-- [01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
+- [README.md](./README.md)
+- [01-architecture-foundations.md](./01-architecture-foundations.md)
 
 ## When To Read
 
@@ -216,8 +216,8 @@ domain을 concrete class로 쓴다는 말은 아무 데서나 직접 생성하�
 
 ## Related Documents
 
-- [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-- [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
-- [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
-- [09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
-- [docs/product-specs/coin-futures-platform-mvp.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-platform-mvp.md)
+- [03-application-and-providers.md](./03-application-and-providers.md)
+- [05-testing-and-lint.md](./05-testing-and-lint.md)
+- [06-persistence-rules.md](./06-persistence-rules.md)
+- [09-exception-rules.md](./09-exception-rules.md)
+- [docs/product-specs/coin-futures-platform-mvp.md](../../product-specs/coin-futures-platform-mvp.md)

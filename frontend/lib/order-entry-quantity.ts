@@ -14,7 +14,8 @@ export function calculateMaxOpenMarketQuantity(
     !Number.isFinite(feeRate) ||
     availableBalance <= 0 ||
     leverage <= 0 ||
-    price <= 0
+    price <= 0 ||
+    feeRate < 0
   ) {
     return 0;
   }

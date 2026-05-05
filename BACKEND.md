@@ -13,8 +13,11 @@
 - [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
 - [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 - [docs/design-docs/backend-design/05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
-- [docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+- [docs/design-docs/backend-design/06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
 - [docs/design-docs/backend-design/07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
+- [docs/design-docs/backend-design/08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
+- [docs/design-docs/backend-design/09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
+- [docs/design-docs/backend-design/10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)
 
 ## What This File Does
 
@@ -55,10 +58,17 @@
 ### DB를 읽거나 수정할 때
 
 1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-2. [docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+2. [docs/design-docs/backend-design/06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
 3. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
 4. 스키마를 읽을 때는 항상 `db-schema.md`를 먼저 참고한다.
 5. 스키마를 바꿀 때는 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
+
+### 외부 연동, 예외, 기술 네이밍을 확인할 때
+
+1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+2. 외부 API, SDK, connector는 [docs/design-docs/backend-design/08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
+3. 예외 모델과 HTTP error response는 [docs/design-docs/backend-design/09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
+4. 기술 세부사항을 클래스명에 드러내지 않는 규칙은 [docs/design-docs/backend-design/10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)
 
 ### 백엔드 품질 게이트나 린트를 확인할 때
 

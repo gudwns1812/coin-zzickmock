@@ -161,6 +161,8 @@ annotation 위치와 configuration 소유권을 명확히 드러내야 한다.
 - `@RestController`가 application service 대신 형식적인 `*UseCase` 인터페이스만 바라보도록 강제하지 않는다.
 - 스프링이 관리하는 클래스에서 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
 - 생성자 안에서 값 검증, 정규화, 파생 필드 계산 같은 추가 로직이 있을 때만 수동 생성자를 남긴다.
+- 스프링이 관리하는 클래스에서 로그가 필요하면 Lombok `@Slf4j`를 기본값으로 사용한다. 명시적 `LoggerFactory`
+  필드는 외부 contract나 wiring 제약처럼 코드에 남길 이유가 분명할 때만 둔다.
 
 ### Provider Runtime Exception
 

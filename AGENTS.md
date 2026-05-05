@@ -28,7 +28,7 @@ USE CODEX NATIVE SUBAGENTS FOR INDEPENDENT PARALLEL SUBTASKS WHEN THAT IMPROVES 
 - 백엔드 작업: `BACKEND.md` -> `docs/design-docs/backend-design/`의 관련 문서
 - 프론트 작업: `FRONTEND.md` -> `frontend/README.md` -> `docs/design-docs/ui-design/`의 관련 문서
 - 제품 동작 변경: `docs/product-specs/README.md` -> 관련 제품 명세
-- DB/schema 작업: `docs/generated/db-schema.md` + `docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md`
+- DB/schema 작업: `docs/generated/db-schema.md` + `docs/design-docs/backend-design/06-persistence-rules.md`
 - Bitget 또는 시장 데이터 연동: `docs/references/README.md` -> 관련 `docs/references/bitget/*.md`
 - 배포/릴리즈/롤백: `RELEASE.md` -> `docs/release-docs/README.md`
 - 메트릭, 로그, 대시보드, 관리자 모니터링, 알림: `OBSERVABILITY.md` -> 필요 시 `docs/release-docs/observability/*.md`
@@ -103,9 +103,12 @@ backend/src/main/java/coin/coinzzickmock/
 읽는 순서:
 
 1. `BACKEND.md`
-2. `docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md`
-3. `docs/generated/db-schema.md`
-4. Bitget 작업이면 `docs/references/README.md`와 관련 `docs/references/bitget/*.md`
+2. 영속성과 DB는 `docs/design-docs/backend-design/06-persistence-rules.md`
+3. 외부 연동은 `docs/design-docs/backend-design/08-external-integration-rules.md`
+4. 예외 모델은 `docs/design-docs/backend-design/09-exception-rules.md`
+5. 기술 네이밍 규칙은 `docs/design-docs/backend-design/10-technical-naming-rules.md`
+6. `docs/generated/db-schema.md`
+7. Bitget 작업이면 `docs/references/README.md`와 관련 `docs/references/bitget/*.md`
 
 규칙:
 

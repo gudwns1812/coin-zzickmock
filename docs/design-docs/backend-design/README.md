@@ -16,15 +16,17 @@
 
 ## Responsibility Split Rule
 
-이 디렉터리의 상세 설계는 "한 문서, 한 1차 책임" 원칙으로 유지한다.
+이 디렉터리의 상세 설계는 "한 문서, 한 개념적 책임" 원칙으로 유지한다.
+문서 하나는 하나의 설계 개념만 소유해야 하며, 새 개념이 들어오면 기존 문서에 끼워 넣지 않고 새 번호 문서로 분리한다.
 
 강한 규칙:
 
-- 하나의 문서가 구조, Provider, DB, 네이밍, 테스트, 린트처럼 서로 다른 주제의 원문을 동시에 떠안기 시작하면 분리한다.
+- 하나의 문서가 구조, Provider, DB, 외부 연동, 예외, 네이밍, 테스트, 린트처럼 서로 다른 설계 개념의 원문을 동시에 떠안기 시작하면 반드시 분리한다.
 - 새 규칙을 추가할 때는 가장 큰 번호 문서 하나에 계속 덧붙이지 않는다.
-- 규칙이 둘 이상의 주제에 걸치면 각 문서를 나눠 갱신하고, 이 `README.md`의 문서 설명도 함께 갱신한다.
+- 기존 문서의 개념적 책임에 맞지 않는 새 규칙은 반드시 새 번호 문서로 만든다.
+- 규칙이 둘 이상의 개념에 걸치면 각 문서를 나눠 갱신하고, 이 `README.md`의 문서 설명도 함께 갱신한다.
 - 에이전트는 backend 상세 설계를 수정할 때 어느 번호 문서가 원문인지 먼저 판단한 뒤 편집한다.
-- 적절한 원문 문서가 없으면 기존 문서를 비대하게 키우기보다 새 번호 문서를 추가한다.
+- 적절한 원문 문서가 없으면 기존 문서를 비대하게 키우지 않고 새 번호 문서를 추가한다.
 
 ## Documents
 
@@ -43,11 +45,20 @@
 - [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
   테스트 레이어 기준과 `architectureLint` 계약, advisory-to-strict lint ratchet, 로그 조회 방법.
 
-- [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
-  영속성, 외부 연동, 예외 번역, 기술 중심 네이밍 규칙.
+- [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
+  DB, repository, QueryDSL, migration 같은 영속성 규칙.
 
 - [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
   클래스와 메서드 단위의 책임 분리, 클린 코드 기준, 계획/구현/검증 체크리스트.
+
+- [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
+  외부 API, SDK, connector 같은 outbound integration 규칙.
+
+- [09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
+  `CoreException`, 구조화된 error code, 예외 번역, HTTP error response 경계.
+
+- [10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)
+  기술 세부사항을 클래스명에 드러내지 않는 backend naming 규칙.
 
 ## Task Guide
 
@@ -74,10 +85,24 @@
 
 1. [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
 
-### DB, repository, QueryDSL, 외부 연동 규칙을 볼 때
+### DB, repository, QueryDSL, migration 규칙을 볼 때
 
-1. [06-persistence-external-and-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-external-and-exception-rules.md)
+1. [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
 2. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
+
+### 외부 API, SDK, connector 규칙을 볼 때
+
+1. [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
+2. Provider 경계가 걸리면 [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
+3. Bitget 또는 시장 데이터 연동이면 [docs/references/README.md](/Users/hj.park/projects/coin-zzickmock/docs/references/README.md)
+
+### 예외 모델과 HTTP error response 규칙을 볼 때
+
+1. [09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
+
+### 기술 중심 네이밍 규칙을 볼 때
+
+1. [10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)
 
 ### 테스트 전략이나 아키텍처 린트 규칙을 확인할 때
 
@@ -87,5 +112,6 @@
 ## Maintenance Rule
 
 - 번호 문서를 새로 만들면 이 `README.md`에 링크와 짧은 설명을 추가한다.
+- 새 개념의 설계 규칙을 추가할 때 적절한 원문 문서가 없으면 새 번호 문서를 만드는 것이 필수다.
 - 루트 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)의 읽기 순서가 바뀌면 이 문서도 함께 맞춘다.
 - 더 이상 "백엔드 설계 원문 전체"를 설명하는 단일 문서를 다시 만들지 않는다.

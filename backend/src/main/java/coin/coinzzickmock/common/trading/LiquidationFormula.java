@@ -4,7 +4,7 @@ public final class LiquidationFormula {
     public static final double MAINTENANCE_MARGIN_RATE = 0.005d;
 
     private static final double LEVERAGE_UNIT = 1d;
-    private static final double INVALID_LINEAR_DENOMINATOR = 0d;
+    private static final double LINEAR_DENOMINATOR_EPSILON = 1e-12d;
     private static final double MINIMUM_POSITIVE_FORMULA_VALUE = 0d;
     private static final String POSITION_SIDE_LONG = "LONG";
     private static final String POSITION_SIDE_SHORT = "SHORT";
@@ -54,7 +54,7 @@ public final class LiquidationFormula {
                 || !Double.isFinite(pnlSlope)
                 || !Double.isFinite(maintenanceConstant)
                 || !Double.isFinite(maintenanceSlope)
-                || denominator == INVALID_LINEAR_DENOMINATOR) {
+                || Math.abs(denominator) <= LINEAR_DENOMINATOR_EPSILON) {
             return null;
         }
 

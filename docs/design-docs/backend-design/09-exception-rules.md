@@ -3,13 +3,13 @@
 ## Purpose
 
 이 문서는 백엔드 예외 모델, 예외 번역, HTTP error response 경계만 소유한다.
-영속성 원문은 [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)가,
-외부 연동 원문은 [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)가 소유한다.
+영속성 원문은 [06-persistence-rules.md](./06-persistence-rules.md)가,
+외부 연동 원문은 [08-external-integration-rules.md](./08-external-integration-rules.md)가 소유한다.
 
 먼저 읽어야 하는 문서:
 
-- [README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-- [01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
+- [README.md](./README.md)
+- [01-architecture-foundations.md](./01-architecture-foundations.md)
 
 ## Exception Model
 
@@ -35,6 +35,6 @@ common/error/
 
 ## Related Documents
 
-- [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-- [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
-- [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
+- [04-domain-modeling-rules.md](./04-domain-modeling-rules.md)
+- [08-external-integration-rules.md](./08-external-integration-rules.md)
+- [05-testing-and-lint.md](./05-testing-and-lint.md)

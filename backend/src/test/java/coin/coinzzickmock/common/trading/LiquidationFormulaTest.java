@@ -70,4 +70,14 @@ class LiquidationFormulaTest {
                 ASSERTION_TOLERANCE
         );
     }
+
+    @Test
+    void linearBoundaryIsUnavailableWhenDenominatorIsNearZero() {
+        assertNull(LiquidationFormula.solveLinearBoundary(
+                100,
+                1,
+                0,
+                1 + 5e-13
+        ));
+    }
 }

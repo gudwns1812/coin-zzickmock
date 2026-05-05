@@ -73,7 +73,7 @@ class MarketPersistedCandleReaderTest {
         );
     }
 
-    private static class TrackingMarketHistoryRepository implements MarketHistoryRepository {
+    private static class TrackingMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final List<HourlyMarketCandle> completedHourlyCandles = new ArrayList<>();
         private Instant latestCompletedHourlyOpenTime;
         private int completedHourlyRangeCalls;

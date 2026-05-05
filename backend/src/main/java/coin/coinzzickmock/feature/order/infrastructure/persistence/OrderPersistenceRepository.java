@@ -134,6 +134,32 @@ public class OrderPersistenceRepository implements OrderRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<FuturesOrder> findPendingConditionalCloseOrders(
+            Long memberId,
+            String symbol,
+            String positionSide,
+            String marginMode
+    ) {
+        return findPendingCloseOrders(memberId, symbol, positionSide, marginMode).stream()
+                .filter(FuturesOrder::isConditionalCloseOrder)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FuturesOrder> findPendingConditionalCloseOrdersBySymbol(String symbol) {
+        return futuresOrderEntityRepository.findAllBySymbolAndStatusOrderByCreatedAtAsc(
+                        symbol,
+                        FuturesOrder.STATUS_PENDING
+                )
+                .stream()
+                .map(FuturesOrderEntity::toDomain)
+                .filter(FuturesOrder::isConditionalCloseOrder)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public Optional<FuturesOrder> claimPendingFill(
             Long memberId,

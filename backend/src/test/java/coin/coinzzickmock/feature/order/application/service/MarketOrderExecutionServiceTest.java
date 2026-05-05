@@ -1100,7 +1100,7 @@ class MarketOrderExecutionServiceTest {
         }
     }
 
-    private static class InMemoryAccountRepository implements AccountRepository {
+    private static class InMemoryAccountRepository extends coin.coinzzickmock.testsupport.TestAccountRepository {
         private final Map<Long, TradingAccount> accounts = new LinkedHashMap<>();
 
         private InMemoryAccountRepository() {
@@ -1150,7 +1150,7 @@ class MarketOrderExecutionServiceTest {
         }
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final Map<String, PendingOrderCandidate> orders = new LinkedHashMap<>();
 
         @Override
@@ -1224,7 +1224,7 @@ class MarketOrderExecutionServiceTest {
         }
     }
 
-    private static class InMemoryPositionRepository implements PositionRepository {
+    private static class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final Map<String, OpenPositionCandidate> positions = new LinkedHashMap<>();
         private int saveCount;
 
@@ -1296,7 +1296,7 @@ class MarketOrderExecutionServiceTest {
         }
     }
 
-    private static class InMemoryRewardPointRepository implements RewardPointRepository {
+    private static class InMemoryRewardPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
         private RewardPointWallet wallet = new RewardPointWallet(1L, 0);
 
         @Override

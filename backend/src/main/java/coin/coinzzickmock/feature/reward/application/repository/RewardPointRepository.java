@@ -7,9 +7,7 @@ import java.util.Optional;
 public interface RewardPointRepository {
     Optional<RewardPointWallet> findByMemberId(Long memberId);
 
-    default Optional<RewardPointWallet> findByMemberIdForUpdate(Long memberId) {
-        return findByMemberId(memberId);
-    }
+    Optional<RewardPointWallet> findByMemberIdForUpdate(Long memberId);
 
     RewardPointWallet save(RewardPointWallet rewardPointWallet);
 }

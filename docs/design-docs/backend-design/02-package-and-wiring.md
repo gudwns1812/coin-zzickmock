@@ -88,6 +88,26 @@ backend/src/main/java/coin/coinzzickmock/
 - 컨트롤러 하나만 바라보는 형식적인 `*UseCase`
 - 이미 `Providers`나 repository/gateway가 있는데 그 위에 다시 덧씌운 추상화
 
+### Interface Default Method Rule
+
+운영 인터페이스는 계약만 드러낸다.
+`default` 메서드는 Java 인터페이스에 메서드를 추가할 때 기존 구현체를 깨지 않기 위한 하위 호환성 장치이지, 신규 설계에서 공통 로직이나 테스트 편의 구현을 넣는 장소가 아니다.
+
+강한 규칙:
+
+- 운영 코드의 인터페이스에는 `default` 메서드를 두지 않는다.
+- 조회, 필터링, fallback, 예외 throw, no-op 같은 구현을 인터페이스에 넣지 않는다.
+- 새 메서드가 모든 구현체에 필요하면 인터페이스에는 추상 메서드로 선언하고 각 운영 구현체가 명시적으로 구현한다.
+- 여러 운영 구현체가 같은 로직을 공유해야 하면 인터페이스 `default`가 아니라 목적이 드러나는 domain/application 협력 객체나 concrete base가 필요한지 먼저 설계한다.
+- 테스트 fake가 모든 메서드를 구현하기 번거롭다는 이유로 운영 인터페이스에 `default` 메서드를 추가하지 않는다.
+- 테스트에서 일부 메서드만 필요한 fake는 `src/test/java` 아래 테스트 전용 abstract/stub class를 만들고, 해당 class를 상속해 필요한 메서드만 오버라이드한다.
+
+예시:
+
+- 허용: `src/test/java/.../TestOrderRepository`가 `OrderRepository`를 구현하고 테스트 기본 동작을 제공한다.
+- 금지: `OrderRepository`의 `default cancelPending(...)`에 테스트 fake용 in-memory 취소 로직을 넣는다.
+- 금지: `MarketDataGateway`의 `default loadHistoricalCandles(...)`가 운영 fallback으로 빈 목록을 반환한다.
+
 ## Bean Wiring Boundary
 
 이 저장소에서 "기본값은 concrete class"는 "아무 데서나 직접 생성해도 된다"는 뜻이 아니다.

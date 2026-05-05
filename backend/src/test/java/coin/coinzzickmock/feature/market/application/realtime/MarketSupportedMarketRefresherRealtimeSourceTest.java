@@ -78,7 +78,7 @@ class MarketSupportedMarketRefresherRealtimeSourceTest {
         assertThat(marketDataGateway.loadMarketCalls()).isZero();
     }
 
-    private static final class CountingMarketDataGateway implements MarketDataGateway {
+    private static final class CountingMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private int loadSupportedMarketsCalls;
         private int loadMarketCalls;
 

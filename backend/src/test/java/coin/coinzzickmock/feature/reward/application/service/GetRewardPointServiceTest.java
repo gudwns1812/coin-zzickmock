@@ -20,7 +20,7 @@ class GetRewardPointServiceTest {
         assertEquals("POINT_WALLET", result.tierLabel());
     }
 
-    private static class InMemoryRewardPointRepository implements RewardPointRepository {
+    private static class InMemoryRewardPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
         @Override
         public Optional<RewardPointWallet> findByMemberId(Long memberId) {
             return Optional.empty();

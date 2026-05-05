@@ -67,7 +67,7 @@ class MarketStartupWarmupReadyEventListenerTest {
         return new MarketSnapshot(symbol, symbol + " Perpetual", lastPrice, markPrice, indexPrice, fundingRate, change24h);
     }
 
-    private static class FakeMarketDataGateway implements MarketDataGateway {
+    private static class FakeMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private final List<MarketSnapshot> supportedMarkets;
         private int supportedMarketLoadCalls;
 
@@ -103,7 +103,7 @@ class MarketStartupWarmupReadyEventListenerTest {
 
         @Override
         public AuthProvider auth() {
-            return new AuthProvider() {
+            return new coin.coinzzickmock.testsupport.TestAuthProvider() {
                 @Override
                 public Actor currentActor() {
                     return new Actor(1L, "demo-member", "demo@coinzzickmock.dev", "Demo");
@@ -123,7 +123,7 @@ class MarketStartupWarmupReadyEventListenerTest {
 
         @Override
         public TelemetryProvider telemetry() {
-            return new TelemetryProvider() {
+            return new coin.coinzzickmock.testsupport.TestTelemetryProvider() {
                 @Override
                 public void recordUseCase(String useCaseName) {
                 }

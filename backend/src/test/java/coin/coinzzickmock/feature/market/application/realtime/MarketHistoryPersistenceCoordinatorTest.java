@@ -55,7 +55,7 @@ class MarketHistoryPersistenceCoordinatorTest {
         );
     }
 
-    private static class RecordingMinuteCandleGateway implements MarketDataGateway {
+    private static class RecordingMinuteCandleGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private int loadMinuteCandleCalls;
 
         @Override

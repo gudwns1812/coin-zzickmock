@@ -147,7 +147,7 @@ class CurrentMarketCandleBootstrapperTest {
         );
     }
 
-    private static class RecordingMarketDataGateway implements MarketDataGateway {
+    private static class RecordingMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private final List<MarketHistoricalCandleSnapshot> candles = new ArrayList<>();
         private final List<MarketHistoricalCandleSnapshot> hourlyCandles = new ArrayList<>();
         private final List<String> calls = new ArrayList<>();

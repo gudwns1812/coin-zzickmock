@@ -443,7 +443,7 @@ class MarketRealtimeFeedTest {
         return provider;
     }
 
-    private static class FakeMarketDataGateway implements MarketDataGateway {
+    private static class FakeMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private List<MarketSnapshot> supportedMarkets;
         private final Map<String, List<MarketMinuteCandleSnapshot>> minuteCandles = new LinkedHashMap<>();
         private int minuteHistoryCalls;
@@ -514,7 +514,7 @@ class MarketRealtimeFeedTest {
 
         @Override
         public AuthProvider auth() {
-            return new AuthProvider() {
+            return new coin.coinzzickmock.testsupport.TestAuthProvider() {
                 @Override
                 public Actor currentActor() {
                     return new Actor(1L, "demo-member", "demo@coinzzickmock.dev", "Demo");
@@ -534,7 +534,7 @@ class MarketRealtimeFeedTest {
 
         @Override
         public TelemetryProvider telemetry() {
-            return new TelemetryProvider() {
+            return new coin.coinzzickmock.testsupport.TestTelemetryProvider() {
                 @Override
                 public void recordUseCase(String useCaseName) {
                 }
@@ -551,7 +551,7 @@ class MarketRealtimeFeedTest {
         }
     }
 
-    private static class InMemoryMarketHistoryRepository implements MarketHistoryRepository {
+    private static class InMemoryMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final Map<String, Long> symbolIds = Map.of("BTCUSDT", 1L, "ETHUSDT", 2L);
         private final Map<String, MarketHistoryCandle> minuteCandles = new LinkedHashMap<>();
         private final Map<String, HourlyMarketCandle> hourlyCandles = new LinkedHashMap<>();

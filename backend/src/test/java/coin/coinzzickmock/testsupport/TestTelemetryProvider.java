@@ -1,9 +1,9 @@
-package coin.coinzzickmock.providers.infrastructure;
+package coin.coinzzickmock.testsupport;
 
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.util.Map;
 
-public class NoopTelemetryProvider implements TelemetryProvider {
+public abstract class TestTelemetryProvider implements TelemetryProvider {
     @Override
     public void recordUseCase(String useCaseName) {
     }

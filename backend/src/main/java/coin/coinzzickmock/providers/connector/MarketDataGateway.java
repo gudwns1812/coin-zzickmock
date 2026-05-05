@@ -12,21 +12,17 @@ public interface MarketDataGateway {
 
     MarketSnapshot loadMarket(String symbol);
 
-    default List<MarketMinuteCandleSnapshot> loadMinuteCandles(
+    List<MarketMinuteCandleSnapshot> loadMinuteCandles(
             String symbol,
             Instant fromInclusive,
             Instant toExclusive
-    ) {
-        return List.of();
-    }
+    );
 
-    default List<MarketHistoricalCandleSnapshot> loadHistoricalCandles(
+    List<MarketHistoricalCandleSnapshot> loadHistoricalCandles(
             String symbol,
             MarketCandleInterval interval,
             Instant fromInclusive,
             Instant toExclusive,
             int limit
-    ) {
-        return List.of();
-    }
+    );
 }

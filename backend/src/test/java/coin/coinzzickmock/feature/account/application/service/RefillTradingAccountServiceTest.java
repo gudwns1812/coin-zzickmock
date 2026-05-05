@@ -18,6 +18,7 @@ import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -160,7 +161,7 @@ class RefillTradingAccountServiceTest {
         }
     }
 
-    private static class InMemoryAccountRepository implements AccountRepository {
+    private static class InMemoryAccountRepository extends coin.coinzzickmock.testsupport.TestAccountRepository {
         private TradingAccount account;
 
         private InMemoryAccountRepository(TradingAccount account) {
@@ -210,6 +211,11 @@ class RefillTradingAccountServiceTest {
         }
 
         @Override
+        public Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide) {
+            return Optional.empty();
+        }
+
+        @Override
         public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
             return List.of();
         }
@@ -217,6 +223,20 @@ class RefillTradingAccountServiceTest {
         @Override
         public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             return positionSnapshot;
+        }
+
+        @Override
+        public PositionMutationResult updateWithVersion(
+                Long memberId,
+                PositionSnapshot expectedPosition,
+                PositionSnapshot nextPosition
+        ) {
+            return PositionMutationResult.notFound();
+        }
+
+        @Override
+        public PositionMutationResult deleteWithVersion(Long memberId, PositionSnapshot expectedPosition) {
+            return PositionMutationResult.notFound();
         }
 
         @Override
@@ -256,6 +276,46 @@ class RefillTradingAccountServiceTest {
         }
 
         @Override
+        public List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+                String symbol,
+                double lowerPrice,
+                double upperPrice,
+                boolean sellSide
+        ) {
+            return List.of();
+        }
+
+        @Override
+        public List<FuturesOrder> findPendingCloseOrders(
+                Long memberId,
+                String symbol,
+                String positionSide,
+                String marginMode
+        ) {
+            return List.of();
+        }
+
+        @Override
+        public List<FuturesOrder> findPendingOpenOrders(Long memberId, String symbol, String positionSide) {
+            return List.of();
+        }
+
+        @Override
+        public List<FuturesOrder> findPendingConditionalCloseOrders(
+                Long memberId,
+                String symbol,
+                String positionSide,
+                String marginMode
+        ) {
+            return List.of();
+        }
+
+        @Override
+        public List<FuturesOrder> findPendingConditionalCloseOrdersBySymbol(String symbol) {
+            return List.of();
+        }
+
+        @Override
         public Optional<FuturesOrder> claimPendingFill(
                 Long memberId,
                 String orderId,
@@ -269,6 +329,38 @@ class RefillTradingAccountServiceTest {
         @Override
         public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public FuturesOrder updatePendingConditionalCloseOrder(
+                Long memberId,
+                String orderId,
+                int leverage,
+                double quantity,
+                double triggerPrice,
+                String ocoGroupId
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public int cancelPendingOrders(Long memberId, List<String> orderIds) {
+            return 0;
+        }
+
+        @Override
+        public boolean cancelPending(Long memberId, String orderId) {
+            return false;
+        }
+
+        @Override
+        public FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public int capPendingOrderQuantity(Long memberId, List<String> orderIds, double maxQuantity) {
+            return 0;
         }
     }
 }

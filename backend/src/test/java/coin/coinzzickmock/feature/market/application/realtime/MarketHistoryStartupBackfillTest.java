@@ -162,7 +162,7 @@ class MarketHistoryStartupBackfillTest {
         );
     }
 
-    private static class FakeMarketDataGateway implements MarketDataGateway {
+    private static class FakeMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private final List<MarketSnapshot> supportedMarkets;
         private final Map<String, List<MarketMinuteCandleSnapshot>> minuteCandles = new LinkedHashMap<>();
         private int minuteHistoryCalls;
@@ -202,7 +202,7 @@ class MarketHistoryStartupBackfillTest {
         }
     }
 
-    private static class InMemoryMarketHistoryRepository implements MarketHistoryRepository {
+    private static class InMemoryMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final Map<String, Long> symbolIds = Map.of("BTCUSDT", 1L, "ETHUSDT", 2L);
         private final Map<String, MarketHistoryCandle> minuteCandles = new LinkedHashMap<>();
         private final Map<String, HourlyMarketCandle> hourlyCandles = new LinkedHashMap<>();

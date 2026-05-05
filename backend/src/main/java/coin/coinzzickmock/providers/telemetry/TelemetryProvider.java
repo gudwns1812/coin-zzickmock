@@ -7,6 +7,5 @@ public interface TelemetryProvider {
 
     void recordFailure(String useCaseName, String reason);
 
-    default void recordEvent(String eventName, Map<String, String> tags) {
-    }
+    void recordEvent(String eventName, Map<String, String> tags);
 }

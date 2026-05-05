@@ -556,7 +556,7 @@ class CreateOrderServiceTest {
         }
     }
 
-    private static class InMemoryAccountRepository implements AccountRepository {
+    private static class InMemoryAccountRepository extends coin.coinzzickmock.testsupport.TestAccountRepository {
         private TradingAccount account;
 
         private InMemoryAccountRepository() {
@@ -605,7 +605,7 @@ class CreateOrderServiceTest {
         }
     }
 
-    private static class InMemoryPositionRepository implements PositionRepository {
+    private static class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final List<PositionSnapshot> positions = new ArrayList<>();
 
         @Override
@@ -652,7 +652,7 @@ class CreateOrderServiceTest {
         }
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final List<FuturesOrder> orders = new ArrayList<>();
         private final Runnable afterSave;
 

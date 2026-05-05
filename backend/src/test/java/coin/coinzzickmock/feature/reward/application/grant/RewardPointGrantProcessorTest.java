@@ -58,7 +58,7 @@ class RewardPointGrantProcessorTest {
         assertEquals(17, history.balanceAfter());
     }
 
-    private static class InMemoryRewardPointRepository implements RewardPointRepository {
+    private static class InMemoryRewardPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
         private RewardPointWallet wallet;
         private int lockingFindCount;
         private int saveCount;
@@ -86,7 +86,7 @@ class RewardPointGrantProcessorTest {
         }
     }
 
-    private static class InMemoryRewardPointHistoryRepository implements RewardPointHistoryRepository {
+    private static class InMemoryRewardPointHistoryRepository extends coin.coinzzickmock.testsupport.TestRewardPointHistoryRepository {
         private final List<RewardPointHistory> histories = new ArrayList<>();
 
         @Override

@@ -192,7 +192,7 @@ class UpdatePositionLeverageServiceTest {
         );
     }
 
-    private static class InMemoryPositionRepository implements PositionRepository {
+    private static class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final List<OpenPositionCandidate> positions = new ArrayList<>();
 
         @Override
@@ -249,7 +249,7 @@ class UpdatePositionLeverageServiceTest {
         }
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final List<FuturesOrder> orders = new ArrayList<>();
 
         @Override
@@ -293,7 +293,7 @@ class UpdatePositionLeverageServiceTest {
         }
     }
 
-    private static class InMemoryAccountRepository implements AccountRepository {
+    private static class InMemoryAccountRepository extends coin.coinzzickmock.testsupport.TestAccountRepository {
         private TradingAccount account;
 
         private InMemoryAccountRepository(double availableMargin) {

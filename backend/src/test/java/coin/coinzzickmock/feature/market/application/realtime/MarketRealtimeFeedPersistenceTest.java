@@ -108,7 +108,7 @@ class MarketRealtimeFeedPersistenceTest {
             return new Providers() {
                 @Override
                 public AuthProvider auth() {
-                    return new AuthProvider() {
+                    return new coin.coinzzickmock.testsupport.TestAuthProvider() {
                         @Override
                         public Actor currentActor() {
                             return new Actor(1L, "demo-member", "demo@coinzzickmock.dev", "Demo");
@@ -128,7 +128,7 @@ class MarketRealtimeFeedPersistenceTest {
 
                 @Override
                 public TelemetryProvider telemetry() {
-                    return new TelemetryProvider() {
+                    return new coin.coinzzickmock.testsupport.TestTelemetryProvider() {
                         @Override
                         public void recordUseCase(String useCaseName) {
                         }
@@ -147,7 +147,7 @@ class MarketRealtimeFeedPersistenceTest {
         }
     }
 
-    static class FakeMarketDataGateway implements MarketDataGateway {
+    static class FakeMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private List<MarketSnapshot> supportedMarkets = new ArrayList<>();
         private final List<Boolean> minuteCandleLoadTransactionStates = new ArrayList<>();
 

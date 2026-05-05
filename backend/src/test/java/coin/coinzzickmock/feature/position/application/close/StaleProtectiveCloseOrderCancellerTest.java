@@ -79,7 +79,7 @@ class StaleProtectiveCloseOrderCancellerTest {
         );
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final Map<String, PendingOrderCandidate> orders = new LinkedHashMap<>();
 
         FuturesOrder order(Long memberId, String orderId) {

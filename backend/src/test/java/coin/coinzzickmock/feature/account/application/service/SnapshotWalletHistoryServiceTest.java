@@ -105,6 +105,11 @@ class SnapshotWalletHistoryServiceTest {
         }
 
         @Override
+        public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
+            return Optional.of(account);
+        }
+
+        @Override
         public List<TradingAccount> findAll() {
             return List.of(account);
         }

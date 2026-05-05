@@ -88,7 +88,7 @@ class RewardControllerAuthorizationTest {
         return new Providers() {
             @Override
             public AuthProvider auth() {
-                return new AuthProvider() {
+                return new coin.coinzzickmock.testsupport.TestAuthProvider() {
                     @Override
                     public Actor currentActor() {
                         return actor;

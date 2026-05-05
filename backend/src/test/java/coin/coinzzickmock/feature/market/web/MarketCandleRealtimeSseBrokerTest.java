@@ -249,7 +249,7 @@ class MarketCandleRealtimeSseBrokerTest {
         );
     }
 
-    private static class RecordingMarketHistoryRepository implements MarketHistoryRepository {
+    private static class RecordingMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final List<HourlyMarketCandle> completedHourlyCandles = new ArrayList<>();
 
         @Override

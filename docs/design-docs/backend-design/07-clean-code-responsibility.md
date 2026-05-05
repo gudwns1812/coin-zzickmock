@@ -166,6 +166,7 @@ private PlaceOrderResult toResult(Order order) {
 - 외부 SDK, SecurityContext, Redis client, JPA entity 세부사항을 직접 다루지 않는다.
 - 공유 로직은 `application/service`끼리 호출하지 말고 목적형 협력 객체로 분리한다.
 - command/query/result 타입으로 입출력 의미를 드러낸다.
+- application/repository, gateway, provider 같은 운영 인터페이스에 `default` 메서드를 두지 않는다.
 - 여러 진입점이 같은 계정/포지션 mutation 정책을 적용하면 각 service에 복제하지 않고 `FilledOpenOrderApplier`처럼 transaction 내부에서 호출되는 application 협력 객체로 모은다.
 - 조회 service가 DB range 계산, rollup, cache/provider 보충, telemetry tagging을 모두 품기 시작하면 `Reader`, `Projector`, `Appender`, `Telemetry` 같은 목적형 객체로 나눈다.
 
@@ -234,6 +235,7 @@ private PlaceOrderResult toResult(Order order) {
 - private method가 파라미터보다 클래스 필드와 숨은 상태에 더 많이 기대어 동작한다.
 - 동일한 조건식, 계산식, 매핑 코드가 반복된다.
 - 테스트 setup이 동작 하나에 비해 과하게 커진다.
+- fake 구현을 줄이려고 운영 인터페이스에 `default` 메서드 로직을 추가하고 싶어진다.
 - 로그, 예외 번역, 저장, 도메인 판단이 순서 없이 섞인다.
 - 새 의존성을 넣기 위해 기존 클래스 생성자 파라미터가 계속 늘어난다.
 
@@ -254,6 +256,7 @@ private PlaceOrderResult toResult(Order order) {
 - 새 클래스마다 한 문장으로 책임을 설명할 수 있는가?
 - 테스트가 도메인 규칙, application orchestration, infrastructure adapter를 구분해서 검증하는가?
 - mock/fake가 너무 많아서 클래스 책임이 과한 신호를 숨기고 있지 않은가?
+- 운영 인터페이스 `default` 메서드가 남아 있지 않고, 테스트 편의 구현은 `src/test/java`의 테스트 전용 class에만 있는가?
 - `application/service` 간 직접 의존이 없는가?
 - `./gradlew architectureLint`가 통과하는가?
 - `./gradlew check`가 통과하는가?

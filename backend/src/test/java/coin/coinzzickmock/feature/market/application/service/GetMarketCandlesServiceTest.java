@@ -506,7 +506,7 @@ class GetMarketCandlesServiceTest {
         }
     }
 
-    private static class InMemoryMarketHistoryRepository implements MarketHistoryRepository {
+    private static class InMemoryMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final Map<String, Long> symbolIds = Map.of("BTCUSDT", 1L);
         private final Map<String, MarketHistoryCandle> minuteCandles = new LinkedHashMap<>();
         private final Map<String, HourlyMarketCandle> hourlyCandles = new LinkedHashMap<>();
@@ -635,7 +635,7 @@ class GetMarketCandlesServiceTest {
         }
     }
 
-    private static class RecordingTelemetryProvider implements TelemetryProvider {
+    private static class RecordingTelemetryProvider extends coin.coinzzickmock.testsupport.TestTelemetryProvider {
         private final List<RecordedEvent> events = new ArrayList<>();
 
         @Override
@@ -655,7 +655,7 @@ class GetMarketCandlesServiceTest {
     private record RecordedEvent(String eventName, Map<String, String> tags) {
     }
 
-    private static class FakeMarketDataGateway implements MarketDataGateway {
+    private static class FakeMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private final boolean hasHistoricalCandles;
         private int historicalCallCount;
 

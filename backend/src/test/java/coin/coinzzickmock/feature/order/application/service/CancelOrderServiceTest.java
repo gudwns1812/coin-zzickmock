@@ -62,7 +62,7 @@ class CancelOrderServiceTest {
         assertThrows(CoreException.class, () -> service.cancel(1L, "1"));
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final List<FuturesOrder> orders = new ArrayList<>();
 
         @Override

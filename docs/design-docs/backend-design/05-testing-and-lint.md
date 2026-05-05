@@ -50,6 +50,7 @@
 - feature scheduler/startup/background trigger는 `job` package 아래에 둠
 - `job` 레이어의 persistence/entity/provider infrastructure/feature infrastructure/HTTP/SSE 직접 의존 금지
 - `infrastructure` 레이어의 inbound web delivery와 feature job runtime 소유 금지
+- 운영 인터페이스 `default` 메서드 금지
 - `providers` package의 feature infrastructure import 금지
 - member withdrawal path의 cross-feature infrastructure import 금지
 - auth/member/profile 경로의 member credential lookup은 `findActive*` 또는 의도가 드러나는 `IncludingWithdrawn`/`ForAudit` method만 허용
@@ -89,6 +90,7 @@ PR-7부터 `CROSS_FEATURE_INFRASTRUCTURE_IMPORTS`는 전체 feature infrastructu
 - `rg '"event":"architecture_violation"' backend/build/reports/architecture-lint/violations.jsonl`
 - `rg '"event":"architecture_advisory"' backend/build/reports/architecture-lint/violations.jsonl`
 - `rg '"rule":"DOMAIN_FRAMEWORK_FREE"' backend/build/reports/architecture-lint/violations.jsonl`
+- `rg '"rule":"INTERFACE_DEFAULT_METHOD_FORBIDDEN"' backend/build/reports/architecture-lint/violations.jsonl`
 
 즉, 루프는 아래처럼 동작한다.
 

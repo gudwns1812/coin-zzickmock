@@ -436,7 +436,7 @@ class UpdatePositionTpslServiceTest {
     }
 
     private static AccountRepository accountRepository(double walletBalance) {
-        return new AccountRepository() {
+        return new coin.coinzzickmock.testsupport.TestAccountRepository() {
             @Override
             public Optional<TradingAccount> findByMemberId(Long memberId) {
                 return Optional.of(new TradingAccount(
@@ -468,7 +468,7 @@ class UpdatePositionTpslServiceTest {
         };
     }
 
-    private static class InMemoryPositionRepository implements PositionRepository {
+    private static class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final List<OpenPositionCandidate> positions = new ArrayList<>();
 
         @Override
@@ -525,7 +525,7 @@ class UpdatePositionTpslServiceTest {
         }
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final List<FuturesOrder> orders = new ArrayList<>();
 
         @Override

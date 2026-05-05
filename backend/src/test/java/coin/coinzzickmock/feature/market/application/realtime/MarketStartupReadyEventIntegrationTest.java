@@ -115,7 +115,7 @@ class MarketStartupReadyEventIntegrationTest {
             return new Providers() {
                 @Override
                 public AuthProvider auth() {
-                    return new AuthProvider() {
+                    return new coin.coinzzickmock.testsupport.TestAuthProvider() {
                         @Override
                         public Actor currentActor() {
                             return new Actor(1L, "demo-member", "demo@coinzzickmock.dev", "Demo");
@@ -135,7 +135,7 @@ class MarketStartupReadyEventIntegrationTest {
 
                 @Override
                 public TelemetryProvider telemetry() {
-                    return new TelemetryProvider() {
+                    return new coin.coinzzickmock.testsupport.TestTelemetryProvider() {
                         @Override
                         public void recordUseCase(String useCaseName) {
                         }
@@ -176,7 +176,7 @@ class MarketStartupReadyEventIntegrationTest {
         }
     }
 
-    static class FakeMarketDataGateway implements MarketDataGateway {
+    static class FakeMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private List<MarketSnapshot> supportedMarkets;
         private final java.util.Map<String, List<MarketMinuteCandleSnapshot>> minuteCandles = new java.util.LinkedHashMap<>();
 

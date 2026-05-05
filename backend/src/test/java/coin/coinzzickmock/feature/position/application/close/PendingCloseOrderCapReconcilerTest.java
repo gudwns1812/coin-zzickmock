@@ -95,7 +95,7 @@ class PendingCloseOrderCapReconcilerTest {
         );
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final Map<String, PendingOrderCandidate> orders = new LinkedHashMap<>();
 
         @Override

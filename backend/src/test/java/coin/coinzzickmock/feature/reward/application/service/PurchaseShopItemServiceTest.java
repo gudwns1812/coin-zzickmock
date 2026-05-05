@@ -32,7 +32,12 @@ class PurchaseShopItemServiceTest {
                 new RecordingShopItemRepository(lockOrder),
                 new RecordingUsageRepository(lockOrder),
                 new RecordingPointRepository(lockOrder),
-                history -> history,
+                new coin.coinzzickmock.testsupport.TestRewardPointHistoryRepository() {
+                    @Override
+                    public RewardPointHistory save(RewardPointHistory history) {
+                        return history;
+                    }
+                },
                 new AccountRefillCreditProcessor(refillStateRepository, new AccountRefillDatePolicy())
         );
 
@@ -178,7 +183,7 @@ class PurchaseShopItemServiceTest {
         }
     }
 
-    private static class RecordingPointRepository implements RewardPointRepository {
+    private static class RecordingPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
         private final List<String> lockOrder;
         private RewardPointWallet wallet = new RewardPointWallet(1L, 100);
 

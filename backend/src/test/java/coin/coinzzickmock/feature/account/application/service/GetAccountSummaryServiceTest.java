@@ -41,7 +41,7 @@ class GetAccountSummaryServiceTest {
                 100
         ).withVersion(5));
         GetAccountSummaryService service = new GetAccountSummaryService(
-                new AccountRepository() {
+                new coin.coinzzickmock.testsupport.TestAccountRepository() {
                     @Override
                     public Optional<TradingAccount> findByMemberId(Long memberId) {
                         return Optional.of(new TradingAccount(memberId, "demo@coinzzickmock.dev", "Demo", 100000, 95000));
@@ -62,7 +62,7 @@ class GetAccountSummaryServiceTest {
                         return AccountMutationResult.notFound();
                     }
                 },
-                new RewardPointRepository() {
+                new coin.coinzzickmock.testsupport.TestRewardPointRepository() {
                     @Override
                     public Optional<RewardPointWallet> findByMemberId(Long memberId) {
                         return Optional.of(new RewardPointWallet(memberId, 12));
@@ -128,7 +128,7 @@ class GetAccountSummaryServiceTest {
     @Test
     void throwsDataErrorWhenTradingAccountIsMissing() {
         GetAccountSummaryService service = new GetAccountSummaryService(
-                new AccountRepository() {
+                new coin.coinzzickmock.testsupport.TestAccountRepository() {
                     @Override
                     public Optional<TradingAccount> findByMemberId(Long memberId) {
                         return Optional.empty();
@@ -149,7 +149,7 @@ class GetAccountSummaryServiceTest {
                         return AccountMutationResult.notFound();
                     }
                 },
-                new RewardPointRepository() {
+                new coin.coinzzickmock.testsupport.TestRewardPointRepository() {
                     @Override
                     public Optional<RewardPointWallet> findByMemberId(Long memberId) {
                         return Optional.empty();
@@ -180,7 +180,7 @@ class GetAccountSummaryServiceTest {
                 .isEqualTo(ErrorCode.ACCOUNT_NOT_FOUND);
     }
 
-    private static class ReadOnlyPositionRepository implements PositionRepository {
+    private static class ReadOnlyPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final PositionSnapshot position;
 
         private ReadOnlyPositionRepository(PositionSnapshot position) {

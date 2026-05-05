@@ -101,6 +101,8 @@
 - 계층을 나눈다고 `port`, `usecase` 인터페이스를 기본값처럼 만들지 않는다.
 - 인터페이스는 여러 구현이 실제로 필요하거나, 외부 경계를 격리하는 계약이 꼭 필요할 때만 만든다.
 - 구현체가 하나뿐인데 한 단계 위임만 하는 pass-through 인터페이스는 금지한다.
+- 운영 인터페이스에 `default` 메서드를 두지 않는다. `default`는 하위 호환성 장치이지 설계 기본값이 아니며, 조회, 필터링, fallback, 예외 throw, no-op 같은 구현을 인터페이스에 넣는 것을 금지한다.
+- 테스트에서 일부 메서드만 필요한 fake가 있으면 운영 인터페이스에 `default`를 추가하지 말고 `src/test/java`의 테스트 전용 abstract/stub class를 상속해 필요한 메서드만 오버라이드한다.
 - `application/service`는 API가 호출하는 유스케이스 진입점만 둔다.
 - `application/service`가 다른 `application/service`를 직접 주입하거나 호출하는 것은 금지한다.
 - 여러 유스케이스가 함께 쓰는 런타임/처리 로직은 `application`의 목적별 하위 패키지에 비-Service 협력 객체로 분리한다.

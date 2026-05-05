@@ -104,6 +104,7 @@ tasks.register('architectureLint') {
                     'JOB_TRIGGER_ONLY',
                     'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
                     'DOMAIN_FRAMEWORK_FREE',
+                    'INTERFACE_DEFAULT_METHOD_FORBIDDEN',
                     'APPLICATION_NO_SECURITY_CONTEXT',
                     'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
                     'WEB_NO_INFRASTRUCTURE_IMPORTS',
@@ -249,6 +250,29 @@ tasks.register('architectureLint') {
                 }
 
                 def layer = packageSegments.find { architectureLayers.contains(it) }
+
+                if (text =~ /(?m)^\s*(public\s+)?interface\s+\w+/) {
+                    int lineIndex = 0
+                    while (lineIndex < lines.size()) {
+                        String lineText = lines[lineIndex]
+                        String trimmedLine = lineText.trim()
+                        if (!trimmedLine.startsWith('default ') ||
+                                trimmedLine.startsWith('default ->') ||
+                                trimmedLine.startsWith('default:')) {
+                            lineIndex++
+                            continue
+                        }
+                        logViolation(
+                            sourceFile,
+                            lineIndex + 1,
+                            'INTERFACE_DEFAULT_METHOD_FORBIDDEN',
+                            '운영 인터페이스에는 default 메서드를 두지 않습니다.',
+                            '메서드를 추상 계약으로 선언하고 운영 구현체가 명시적으로 구현하세요. 테스트 편의 기본 구현은 src/test/java의 테스트 전용 abstract/stub class로 옮기세요.',
+                            [packageName: packageName, methodStart: trimmedLine]
+                        )
+                        lineIndex++
+                    }
+                }
 
                 if (text.contains('@Entity') && sourceFile.name.endsWith('JpaEntity.java')) {
                     logViolation(

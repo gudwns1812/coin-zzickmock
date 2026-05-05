@@ -6,13 +6,11 @@ import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
 import java.util.Optional;
 
 public interface LeaderboardSnapshotStore {
-    default Optional<LeaderboardSnapshotResult> findSnapshot(
+    Optional<LeaderboardSnapshotResult> findSnapshot(
             LeaderboardMode mode,
             int limit,
             Long currentMemberId
-    ) {
-        return Optional.empty();
-    }
+    );
 
     void replace(LeaderboardSnapshot snapshot);
 

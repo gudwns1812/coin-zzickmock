@@ -7,7 +7,5 @@ public interface AuthProvider {
 
     boolean isAuthenticated();
 
-    default Optional<Actor> currentActorOptional() {
-        return isAuthenticated() ? Optional.of(currentActor()) : Optional.empty();
-    }
+    Optional<Actor> currentActorOptional();
 }

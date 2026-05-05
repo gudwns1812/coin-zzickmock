@@ -183,7 +183,7 @@ class MarketHistoryRecorderTransactionTest {
         }
     }
 
-    static class RecordingMarketHistoryRepository implements MarketHistoryRepository {
+    static class RecordingMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final List<Boolean> observedTransactionStates = new ArrayList<>();
         private Map<String, Long> symbolIds = new LinkedHashMap<>();
         private MarketHistoryCandle lastSavedMinuteCandle;

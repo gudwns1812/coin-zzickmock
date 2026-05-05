@@ -858,7 +858,7 @@ class ClosePositionServiceTest {
         );
     }
 
-    private static class InMemoryAccountRepository implements AccountRepository {
+    private static class InMemoryAccountRepository extends coin.coinzzickmock.testsupport.TestAccountRepository {
         private TradingAccount account;
 
         private InMemoryAccountRepository(TradingAccount account) {
@@ -897,7 +897,7 @@ class ClosePositionServiceTest {
         }
     }
 
-    private static class InMemoryOrderRepository implements OrderRepository {
+    private static class InMemoryOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         private final Map<String, PendingOrderCandidate> orders = new LinkedHashMap<>();
 
         @Override
@@ -984,7 +984,7 @@ class ClosePositionServiceTest {
         }
     }
 
-    private static class InMemoryPositionRepository implements PositionRepository {
+    private static class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final List<PositionSnapshot> positions = new ArrayList<>();
 
         @Override
@@ -1048,7 +1048,7 @@ class ClosePositionServiceTest {
         }
     }
 
-    private static class InMemoryRewardPointRepository implements RewardPointRepository {
+    private static class InMemoryRewardPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
         private RewardPointWallet wallet = new RewardPointWallet(1L, 0);
 
         @Override

@@ -15,70 +15,32 @@ public interface OrderRepository {
 
     List<PendingOrderCandidate> findPendingBySymbol(String symbol);
 
-    default boolean existsPendingByMemberId(Long memberId) {
-        return findByMemberId(memberId).stream().anyMatch(FuturesOrder::isPending);
-    }
+    boolean existsPendingByMemberId(Long memberId);
 
-    default List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+    List<PendingOrderCandidate> findExecutablePendingLimitOrders(
             String symbol,
             double lowerPrice,
             double upperPrice,
             boolean sellSide
-    ) {
-        return findPendingBySymbol(symbol).stream()
-                .filter(candidate -> !candidate.order().isConditionalOrder())
-                .filter(candidate -> candidate.order().limitPrice() != null)
-                .filter(candidate -> candidate.order().limitPrice() >= lowerPrice)
-                .filter(candidate -> candidate.order().limitPrice() <= upperPrice)
-                .filter(candidate -> sellSide
-                        ? candidate.order().isSellSideLimitOrder()
-                        : candidate.order().isBuySideLimitOrder())
-                .toList();
-    }
+    );
 
-    default List<FuturesOrder> findPendingCloseOrders(
+    List<FuturesOrder> findPendingCloseOrders(
             Long memberId,
             String symbol,
             String positionSide,
             String marginMode
-    ) {
-        return findByMemberId(memberId).stream()
-                .filter(FuturesOrder::isPending)
-                .filter(FuturesOrder::isClosePositionOrder)
-                .filter(order -> order.symbol().equalsIgnoreCase(symbol))
-                .filter(order -> order.positionSide().equalsIgnoreCase(positionSide))
-                .filter(order -> order.marginMode().equalsIgnoreCase(marginMode))
-                .toList();
-    }
+    );
 
-    default List<FuturesOrder> findPendingOpenOrders(Long memberId, String symbol, String positionSide) {
-        return findByMemberId(memberId).stream()
-                .filter(FuturesOrder::isPending)
-                .filter(FuturesOrder::isOpenPositionOrder)
-                .filter(order -> !order.isConditionalOrder())
-                .filter(order -> order.symbol().equalsIgnoreCase(symbol))
-                .filter(order -> order.positionSide().equalsIgnoreCase(positionSide))
-                .toList();
-    }
+    List<FuturesOrder> findPendingOpenOrders(Long memberId, String symbol, String positionSide);
 
-    default List<FuturesOrder> findPendingConditionalCloseOrders(
+    List<FuturesOrder> findPendingConditionalCloseOrders(
             Long memberId,
             String symbol,
             String positionSide,
             String marginMode
-    ) {
-        return findPendingCloseOrders(memberId, symbol, positionSide, marginMode).stream()
-                .filter(FuturesOrder::isConditionalCloseOrder)
-                .toList();
-    }
+    );
 
-    default List<FuturesOrder> findPendingConditionalCloseOrdersBySymbol(String symbol) {
-        return findPendingBySymbol(symbol).stream()
-                .map(PendingOrderCandidate::order)
-                .filter(FuturesOrder::isPending)
-                .filter(FuturesOrder::isConditionalCloseOrder)
-                .toList();
-    }
+    List<FuturesOrder> findPendingConditionalCloseOrdersBySymbol(String symbol);
 
     Optional<FuturesOrder> claimPendingFill(
             Long memberId,
@@ -90,55 +52,20 @@ public interface OrderRepository {
 
     FuturesOrder updateStatus(Long memberId, String orderId, String status);
 
-    default FuturesOrder updatePendingConditionalCloseOrder(
+    FuturesOrder updatePendingConditionalCloseOrder(
             Long memberId,
             String orderId,
             int leverage,
             double quantity,
             double triggerPrice,
             String ocoGroupId
-    ) {
-        throw new UnsupportedOperationException("Pending conditional close order updates are not implemented");
-    }
+    );
 
-    default int cancelPendingOrders(Long memberId, List<String> orderIds) {
-        return (int) orderIds.stream()
-                .filter(orderId -> cancelPending(memberId, orderId))
-                .count();
-    }
+    int cancelPendingOrders(Long memberId, List<String> orderIds);
 
-    default boolean cancelPending(Long memberId, String orderId) {
-        FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId).orElse(null);
-        if (order == null || !order.isPending()) {
-            return false;
-        }
-        updateStatus(memberId, orderId, FuturesOrder.STATUS_CANCELLED);
-        return true;
-    }
+    boolean cancelPending(Long memberId, String orderId);
 
-    default FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
-        if (FuturesOrder.STATUS_CANCELLED.equalsIgnoreCase(status)) {
-            return updateStatus(memberId, orderId, status);
-        }
-        throw new UnsupportedOperationException("Order quantity updates are not implemented");
-    }
+    FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status);
 
-    default int capPendingOrderQuantity(Long memberId, List<String> orderIds, double maxQuantity) {
-        int updated = 0;
-        for (String orderId : orderIds) {
-            Optional<FuturesOrder> order = findByMemberIdAndOrderId(memberId, orderId)
-                    .filter(FuturesOrder::isPending);
-            if (order.isPresent()) {
-                FuturesOrder current = order.orElseThrow();
-                updateQuantityAndStatus(
-                        memberId,
-                        orderId,
-                        Math.min(current.quantity(), maxQuantity),
-                        FuturesOrder.STATUS_PENDING
-                );
-                updated++;
-            }
-        }
-        return updated;
-    }
+    int capPendingOrderQuantity(Long memberId, List<String> orderIds, double maxQuantity);
 }

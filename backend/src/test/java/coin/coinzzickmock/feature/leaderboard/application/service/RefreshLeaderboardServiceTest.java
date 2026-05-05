@@ -74,7 +74,7 @@ class RefreshLeaderboardServiceTest {
         }
     }
 
-    private static class RecordingSnapshotStore implements LeaderboardSnapshotStore {
+    private static class RecordingSnapshotStore extends coin.coinzzickmock.testsupport.TestLeaderboardSnapshotStore {
         private final java.util.ArrayList<LeaderboardEntry> updatedEntries = new java.util.ArrayList<>();
         private final java.util.ArrayList<Long> removedMemberIds = new java.util.ArrayList<>();
 

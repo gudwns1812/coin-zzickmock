@@ -52,7 +52,7 @@ class MarketHistoryLoggingTest {
                 .contains("Resolved market history candle retry");
     }
 
-    private static class ThrowingMinuteCandleGateway implements MarketDataGateway {
+    private static class ThrowingMinuteCandleGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         @Override
         public List<MarketSnapshot> loadSupportedMarkets() {
             return List.of();

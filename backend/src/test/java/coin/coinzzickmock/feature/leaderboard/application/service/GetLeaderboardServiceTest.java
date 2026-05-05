@@ -161,7 +161,7 @@ class GetLeaderboardServiceTest {
         }
     }
 
-    private static class InMemorySnapshotStore implements LeaderboardSnapshotStore {
+    private static class InMemorySnapshotStore extends coin.coinzzickmock.testsupport.TestLeaderboardSnapshotStore {
         private final List<LeaderboardEntry> entries;
         private final Optional<Integer> myRank;
 

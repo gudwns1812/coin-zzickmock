@@ -108,7 +108,7 @@ class GetWalletHistoryServiceTest {
     }
 
     private AccountRepository accountRepository() {
-        return new AccountRepository() {
+        return new coin.coinzzickmock.testsupport.TestAccountRepository() {
             @Override
             public Optional<TradingAccount> findByMemberId(Long memberId) {
                 return Optional.of(new TradingAccount(memberId, "demo@coinzzickmock.dev", "Demo", 100_000, 95_000));
@@ -130,7 +130,7 @@ class GetWalletHistoryServiceTest {
     }
 
     private AccountRepository missingAccountRepository() {
-        return new AccountRepository() {
+        return new coin.coinzzickmock.testsupport.TestAccountRepository() {
             @Override
             public Optional<TradingAccount> findByMemberId(Long memberId) {
                 return Optional.empty();

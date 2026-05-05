@@ -248,7 +248,7 @@ class GetOpenPositionsServiceTest {
         assertNull(positionRepository.position.liquidationPrice());
     }
 
-    private static class ReadOnlyPositionRepository implements PositionRepository {
+    private static class ReadOnlyPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final PositionSnapshot position;
 
         private ReadOnlyPositionRepository(PositionSnapshot position) {
@@ -288,7 +288,7 @@ class GetOpenPositionsServiceTest {
         }
     }
 
-    private static class EmptyOrderRepository implements OrderRepository {
+    private static class EmptyOrderRepository extends coin.coinzzickmock.testsupport.TestOrderRepository {
         @Override
         public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
             return futuresOrder;
@@ -400,7 +400,7 @@ class GetOpenPositionsServiceTest {
         }
     }
 
-    private static class StaticAccountRepository implements AccountRepository {
+    private static class StaticAccountRepository extends coin.coinzzickmock.testsupport.TestAccountRepository {
         private final TradingAccount account;
 
         private StaticAccountRepository() {

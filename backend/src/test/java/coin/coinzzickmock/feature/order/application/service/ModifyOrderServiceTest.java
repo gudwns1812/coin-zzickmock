@@ -152,6 +152,8 @@ class ModifyOrderServiceTest {
                 .modify(modifyCommand(1L, "open-order", 0)));
         assertThrows(CoreException.class, () -> service(orderRepository, 100)
                 .modify(modifyCommand(1L, "open-order", -1)));
+        assertThrows(CoreException.class, () -> service(orderRepository, 100)
+                .modify(new ModifyOrderCommand(1L, "open-order", new BigDecimal("1e-4000"))));
     }
 
     @Test

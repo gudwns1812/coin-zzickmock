@@ -77,7 +77,7 @@ public class ModifyOrderService {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 가격을 확인해주세요.");
         }
         double limitPriceValue = limitPrice.doubleValue();
-        if (!Double.isFinite(limitPriceValue)) {
+        if (!Double.isFinite(limitPriceValue) || limitPriceValue <= 0) {
             throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 가격을 확인해주세요.");
         }
         return limitPriceValue;

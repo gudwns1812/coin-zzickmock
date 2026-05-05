@@ -16,6 +16,7 @@ import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderAppli
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -37,6 +38,7 @@ public class PendingOrderFillProcessor {
     private final PendingOrderExecutionCache pendingOrderExecutionCache;
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
+    private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final FilledOpenOrderApplier filledOpenOrderApplier;
@@ -251,11 +253,18 @@ public class PendingOrderFillProcessor {
                 MAKER_FEE_RATE,
                 PositionHistory.CLOSE_REASON_LIMIT_CLOSE
         );
-        pendingCloseOrderCapReconciler.reconcile(
-                memberId,
-                existing,
-                Math.max(0, existing.quantity() - order.quantity()),
-                executionPrice
-        );
+        cleanupPendingCloseOrders(memberId, existing, Math.max(0, existing.quantity() - order.quantity()), executionPrice);
+    }
+
+    private void cleanupPendingCloseOrders(
+            Long memberId,
+            PositionSnapshot position,
+            double remainingQuantity,
+            double currentPrice
+    ) {
+        pendingCloseOrderCapReconciler.reconcile(memberId, position, remainingQuantity, currentPrice);
+        if (remainingQuantity <= 0) {
+            staleProtectiveCloseOrderCanceller.cancel(memberId, position);
+        }
     }
 }

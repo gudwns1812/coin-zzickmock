@@ -60,7 +60,9 @@
 - TP/SL trigger 판단은 `triggerSource = MARK_PRICE`, execution은 latest/last price를 사용한다.
 - Active pending TP/SL uniqueness는 `futures_orders.active_conditional_trigger_type` unique key로 보장한다. 이 컬럼은 pending conditional close order에만 trigger type을 보관하고, filled/cancelled/manual/open order에서는 `NULL`이어야 한다.
 - V9 legacy position TP/SL 컬럼은 V11 migration에서 조건부 close order로 backfill한 뒤 호환 컬럼으로만 남긴다.
-- TP/SL OCO exposure 공식은 `sum(ungrouped pending close quantity) + sum(max(quantity) per ocoGroupId)`이며, 포지션 summary의 `pendingCloseQuantity`와 `closeableQuantity`도 이 공식을 따른다.
+- Manual close reservation 공식은 `sum(pending non-conditional CLOSE_POSITION quantity)`이며, 포지션 summary의 `pendingCloseQuantity`와 `closeableQuantity = max(0, quantity - pendingCloseQuantity)`도 이 manual-only 공식을 따른다. TP/SL 조건부 주문은 protective lifecycle로 유지되며 manual close reservation/cap 공식에 포함하지 않는다.
+- TP/SL trigger fill은 fill 직전 현재 열린 포지션 수량으로 조건부 주문 수량을 동기화한다. 포지션이 없거나 남은 수량이 0이면 stale TP/SL 조건부 주문은 fill하지 않고 취소한다.
+- 포지션이 full close, pending close fill, liquidation, TP/SL trigger로 0이 되면 application close flow는 manual-only cap으로 stale manual close 주문을 취소하고, 별도 protective cleanup으로 stale TP/SL 조건부 주문을 취소한다. 부분 종료는 manual close cap만 조정하며 TP/SL을 cap 때문에 취소하지 않는다.
 - `open_positions.take_profit_price`, `open_positions.stop_loss_price`는 legacy 호환 컬럼일 뿐 domain/application의 TP/SL read/write/trigger source가 아니다.
 
 도메인에 두지 않는 대상:

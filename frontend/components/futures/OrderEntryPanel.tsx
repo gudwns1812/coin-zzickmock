@@ -8,6 +8,10 @@ import type {
   OrderPreviewResponse,
 } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
+import {
+  calculateMaxOpenMarketQuantity,
+  formatFlooredQuantity,
+} from "@/lib/order-entry-quantity";
 import Modal from "@/components/ui/Modal";
 import { CircleHelp } from "lucide-react";
 import Link from "next/link";
@@ -125,7 +129,13 @@ export default function OrderEntryPanel({
   const isMarginModeLocked = selectedSidePosition !== null;
   const maxOpenQuantity =
     Number.isFinite(effectivePrice) && effectivePrice > 0
-      ? (availableBalance * leverage) / effectivePrice
+      ? orderType === "MARKET"
+        ? calculateMaxOpenMarketQuantity(
+            availableBalance,
+            leverage,
+            effectivePrice
+          )
+        : (availableBalance * leverage) / effectivePrice
       : 0;
   const maxCloseQuantity = matchingPosition?.quantity ?? 0;
   const quantityControlMax =
@@ -1104,9 +1114,5 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function formatQuantityInput(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) {
-    return "0";
-  }
-
-  return value.toFixed(3);
+  return formatFlooredQuantity(value);
 }

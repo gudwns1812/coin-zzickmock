@@ -123,7 +123,7 @@ class GetOpenPositionsServiceTest {
     }
 
     @Test
-    void countsTpslOcoGroupAsSingleCloseExposure() {
+    void reportsTpslPricesWithoutReducingManualCloseableQuantity() {
         ReadOnlyPositionRepository positionRepository = new ReadOnlyPositionRepository(PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
@@ -145,8 +145,37 @@ class GetOpenPositionsServiceTest {
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
 
-        assertEquals(1, result.pendingCloseQuantity(), 0.0001);
-        assertEquals(0, result.closeableQuantity(), 0.0001);
+        assertEquals(0, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(1, result.closeableQuantity(), 0.0001);
+        assertEquals(110, result.takeProfitPrice(), 0.0001);
+        assertEquals(95, result.stopLossPrice(), 0.0001);
+    }
+
+    @Test
+    void reportsManualOnlyPendingCloseQuantityWhenManualAndTpslOrdersCoexist() {
+        ReadOnlyPositionRepository positionRepository = new ReadOnlyPositionRepository(PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        ManualAndTpslOrderRepository orderRepository = new ManualAndTpslOrderRepository();
+        GetOpenPositionsService service = new GetOpenPositionsService(
+                positionRepository,
+                orderRepository,
+                new StaticAccountRepository(),
+                new PendingCloseOrderCapReconciler(orderRepository),
+                realtimePriceReader(100),
+                new LiquidationPolicy()
+        );
+
+        PositionSnapshotResult result = service.getPositions(1L).get(0);
+
+        assertEquals(0.4, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(0.6, result.closeableQuantity(), 0.0001);
         assertEquals(110, result.takeProfitPrice(), 0.0001);
         assertEquals(95, result.stopLossPrice(), 0.0001);
     }
@@ -345,6 +374,29 @@ class GetOpenPositionsServiceTest {
                             "oco-1"
                     )
             );
+        }
+    }
+
+    private static class ManualAndTpslOrderRepository extends TpslOcoOrderRepository {
+        @Override
+        public List<FuturesOrder> findByMemberId(Long memberId) {
+            List<FuturesOrder> orders = new java.util.ArrayList<>(super.findByMemberId(memberId));
+            orders.add(FuturesOrder.place(
+                    "manual-close",
+                    "BTCUSDT",
+                    "LONG",
+                    "LIMIT",
+                    FuturesOrder.PURPOSE_CLOSE_POSITION,
+                    "ISOLATED",
+                    10,
+                    0.4,
+                    120.0,
+                    false,
+                    "MAKER",
+                    0,
+                    120
+            ));
+            return orders;
         }
     }
 

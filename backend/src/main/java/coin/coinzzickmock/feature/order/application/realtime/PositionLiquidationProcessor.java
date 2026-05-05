@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.CrossLiquidationAssessment;
@@ -35,6 +36,7 @@ public class PositionLiquidationProcessor {
     private final LiquidationPolicy liquidationPolicy;
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
+    private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final AccountOrderMutationLock accountOrderMutationLock;
@@ -117,6 +119,7 @@ public class PositionLiquidationProcessor {
                 PositionHistory.CLOSE_REASON_LIQUIDATION
         );
         pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
+        staleProtectiveCloseOrderCanceller.cancel(memberId, position);
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),

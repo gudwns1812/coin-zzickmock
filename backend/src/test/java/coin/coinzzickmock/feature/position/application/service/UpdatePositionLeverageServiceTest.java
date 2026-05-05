@@ -127,6 +127,55 @@ class UpdatePositionLeverageServiceTest {
         assertEquals("EXACT", result.liquidationPriceType());
     }
 
+    @Test
+    void leverageResponseCountsManualCloseOrdersButIgnoresTpslConditionalOrders() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.place(
+                "manual-close",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.25,
+                120.0,
+                false,
+                "MAKER",
+                0,
+                120
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                130,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
+
+        PositionSnapshotResult result = service(positionRepository, orderRepository, accountRepository)
+                .update(1L, "BTCUSDT", "LONG", "ISOLATED", 10);
+
+        assertEquals(0.25, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(0.75, result.closeableQuantity(), 0.0001);
+        assertEquals(130, result.takeProfitPrice(), 0.0001);
+    }
+
     private UpdatePositionLeverageService service(
             InMemoryPositionRepository positionRepository,
             InMemoryOrderRepository orderRepository,

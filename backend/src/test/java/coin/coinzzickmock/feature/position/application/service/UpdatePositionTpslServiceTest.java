@@ -71,6 +71,125 @@ class UpdatePositionTpslServiceTest {
     }
 
     @Test
+    void savingTpslWithFullSizeManualCloseKeepsProtectiveOrdersPendingAndManualCloseableOnly() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.place(
+                "manual-close",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                1,
+                120.0,
+                false,
+                "MAKER",
+                0,
+                120
+        ));
+        UpdatePositionTpslService service = service(positionRepository, orderRepository, 101);
+
+        PositionSnapshotResult result = service.update(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                110.0,
+                95.0
+        );
+
+        assertEquals(1, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(0, result.closeableQuantity(), 0.0001);
+        assertEquals(110, result.takeProfitPrice(), 0.0001);
+        assertEquals(95, result.stopLossPrice(), 0.0001);
+        assertEquals(2, orderRepository.findPendingConditionalCloseOrders(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED"
+        ).size());
+        assertEquals(FuturesOrder.STATUS_PENDING,
+                orderRepository.findByMemberIdAndOrderId(1L, "manual-close").orElseThrow().status());
+    }
+
+    @Test
+    void clearingTpslCancelsProtectiveOrdersWithoutCancellingManualCloseOrders() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.place(
+                "manual-close",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.4,
+                120.0,
+                false,
+                "MAKER",
+                0,
+                120
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "tp",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                110,
+                FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT,
+                "oco-1"
+        ));
+        orderRepository.save(1L, FuturesOrder.conditionalClose(
+                "sl",
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                95,
+                FuturesOrder.TRIGGER_TYPE_STOP_LOSS,
+                "oco-1"
+        ));
+        UpdatePositionTpslService service = service(positionRepository, orderRepository, 101);
+
+        PositionSnapshotResult result = service.update(1L, "BTCUSDT", "LONG", "ISOLATED", null, null);
+
+        assertEquals(null, result.takeProfitPrice());
+        assertEquals(null, result.stopLossPrice());
+        assertEquals(0.4, result.pendingCloseQuantity(), 0.0001);
+        assertEquals(0.6, result.closeableQuantity(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_PENDING,
+                orderRepository.findByMemberIdAndOrderId(1L, "manual-close").orElseThrow().status());
+        assertEquals(FuturesOrder.STATUS_CANCELLED,
+                orderRepository.findByMemberIdAndOrderId(1L, "tp").orElseThrow().status());
+        assertEquals(FuturesOrder.STATUS_CANCELLED,
+                orderRepository.findByMemberIdAndOrderId(1L, "sl").orElseThrow().status());
+    }
+
+    @Test
     void rejectsAlreadyBreachedLongTakeProfit() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         positionRepository.save(1L, PositionSnapshot.open(

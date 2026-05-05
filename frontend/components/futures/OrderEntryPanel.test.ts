@@ -38,6 +38,13 @@ test("close quantity controls use held position quantity", () => {
   assert.equal(source.includes("closeableQuantity"), false);
 });
 
+test("open market max quantity uses fee-aware floored helper while close mode remains position based", () => {
+  assert.equal(source.includes("calculateMaxOpenMarketQuantity"), true);
+  assert.equal(source.includes('orderType === "MARKET"'), true);
+  assert.equal(source.includes("formatFlooredQuantity(value)"), true);
+  assert.equal(source.includes("toFixed(3)"), false);
+});
+
 test("side control lets close helpers target long or short positions", () => {
   assert.equal(source.includes("function SideToggle"), true);
   assert.equal(source.includes('aria-label="Position side"'), true);

@@ -12,6 +12,7 @@ import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
+import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
@@ -33,6 +34,7 @@ public class ClosePositionService {
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final PositionCloseFinalizer positionCloseFinalizer;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
+    private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final OrderPlacementPolicy orderPlacementPolicy;
     private final AccountOrderMutationLock accountOrderMutationLock;
 
@@ -113,13 +115,20 @@ public class ClosePositionService {
                 decision.feeRate(),
                 PositionHistory.CLOSE_REASON_MANUAL
         );
-        pendingCloseOrderCapReconciler.reconcile(
-                memberId,
-                position,
-                Math.max(0, position.quantity() - quantity),
-                market.lastPrice()
-        );
+        cleanupPendingCloseOrders(memberId, position, Math.max(0, position.quantity() - quantity), market.lastPrice());
         return result;
+    }
+
+    private void cleanupPendingCloseOrders(
+            Long memberId,
+            PositionSnapshot position,
+            double remainingQuantity,
+            double currentPrice
+    ) {
+        pendingCloseOrderCapReconciler.reconcile(memberId, position, remainingQuantity, currentPrice);
+        if (remainingQuantity <= 0) {
+            staleProtectiveCloseOrderCanceller.cancel(memberId, position);
+        }
     }
 
     private MarketSnapshot loadMarket(String symbol) {

@@ -100,6 +100,29 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
         this.adminMemo = request.adminMemo();
     }
 
+    public void approvePending(Long adminMemberId, String adminMemo, Instant approvedAt) {
+        this.status = RewardRedemptionStatus.APPROVED.name();
+        this.adminMemberId = adminMemberId;
+        this.adminMemo = adminMemo;
+        this.sentAt = approvedAt;
+    }
+
+    public void rejectPending(Long adminMemberId, String adminMemo, Instant rejectedAt) {
+        this.status = RewardRedemptionStatus.REJECTED.name();
+        this.adminMemberId = adminMemberId;
+        this.adminMemo = adminMemo;
+        this.cancelledAt = rejectedAt;
+    }
+
+    public void cancelPending(Instant cancelledAt) {
+        this.status = RewardRedemptionStatus.CANCELLED.name();
+        this.cancelledAt = cancelledAt;
+    }
+
+    public boolean isPending() {
+        return RewardRedemptionStatus.PENDING.name().equals(status);
+    }
+
     public RewardRedemptionRequest toDomain() {
         return new RewardRedemptionRequest(
                 requestId,

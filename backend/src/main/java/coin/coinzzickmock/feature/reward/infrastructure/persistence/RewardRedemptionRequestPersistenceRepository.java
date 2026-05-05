@@ -63,18 +63,37 @@ public class RewardRedemptionRequestPersistenceRepository implements RewardRedem
     @Override
     @Transactional
     public int claimPendingAsApproved(String requestId, Long adminMemberId, String adminMemo, Instant approvedAt) {
-        return redemptionRequestEntityRepository.claimPendingAsApproved(requestId, adminMemberId, adminMemo, approvedAt);
+        return redemptionRequestEntityRepository.findWithLockingByRequestId(requestId)
+                .filter(RewardRedemptionRequestEntity::isPending)
+                .map(request -> {
+                    request.approvePending(adminMemberId, adminMemo, approvedAt);
+                    return 1;
+                })
+                .orElse(0);
     }
 
     @Override
     @Transactional
     public int claimPendingAsRejected(String requestId, Long adminMemberId, String adminMemo, Instant rejectedAt) {
-        return redemptionRequestEntityRepository.claimPendingAsRejected(requestId, adminMemberId, adminMemo, rejectedAt);
+        return redemptionRequestEntityRepository.findWithLockingByRequestId(requestId)
+                .filter(RewardRedemptionRequestEntity::isPending)
+                .map(request -> {
+                    request.rejectPending(adminMemberId, adminMemo, rejectedAt);
+                    return 1;
+                })
+                .orElse(0);
     }
 
     @Override
     @Transactional
     public int claimPendingAsCancelled(String requestId, Long memberId, Instant cancelledAt) {
-        return redemptionRequestEntityRepository.claimPendingAsCancelled(requestId, memberId, cancelledAt);
+        return redemptionRequestEntityRepository.findWithLockingByRequestId(requestId)
+                .filter(RewardRedemptionRequestEntity::isPending)
+                .filter(request -> request.getMemberId().equals(memberId))
+                .map(request -> {
+                    request.cancelPending(cancelledAt);
+                    return 1;
+                })
+                .orElse(0);
     }
 }

@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -30,6 +31,39 @@ class LiquidationPolicyTest {
         assertEquals(0, assessment.equity(), 0.0001);
         assertEquals(0.9, assessment.maintenanceRequirement(), 0.0001);
         assertTrue(assessment.breached());
+    }
+
+    @Test
+    void crossAssessmentUsesWalletBackedEquityInsteadOfAvailableMargin() {
+        PositionSnapshot cross = PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                50,
+                1_000,
+                100,
+                100
+        );
+        PositionSnapshot isolated = PositionSnapshot.open(
+                "ETHUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                10,
+                100,
+                100
+        );
+
+        CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(
+                99_950,
+                List.of(cross, isolated)
+        );
+
+        assertEquals(99_950, assessment.walletBalance(), 0.0001);
+        assertEquals(100, assessment.isolatedInitialMargin(), 0.0001);
+        assertEquals(99_850, assessment.crossEquity(), 0.0001);
+        assertEquals(500, assessment.maintenanceRequirement(), 0.0001);
+        assertFalse(assessment.breached());
     }
 
     @Test
@@ -74,5 +108,61 @@ class LiquidationPolicyTest {
         assertFalse(assessment.rankedRisks().stream()
                 .map(risk -> risk.position().marginMode())
                 .anyMatch("ISOLATED"::equalsIgnoreCase));
+    }
+
+    @Test
+    void estimatesSingleCrossLongLiquidationPriceAsExact() {
+        PositionSnapshot position = PositionSnapshot.open("BTCUSDT", "LONG", "CROSS", 10, 1, 100, 100);
+
+        CrossLiquidationEstimate estimate = liquidationPolicy.estimateCrossLiquidationPrice(
+                50,
+                List.of(position),
+                "BTCUSDT"
+        );
+
+        assertEquals(CrossLiquidationEstimate.TYPE_EXACT, estimate.liquidationPriceType());
+        assertEquals(50.2512562814, estimate.liquidationPrice(), 0.0001);
+    }
+
+    @Test
+    void estimatesSameSymbolCrossLongShortAsExact() {
+        PositionSnapshot longPosition = PositionSnapshot.open("BTCUSDT", "LONG", "CROSS", 10, 2, 100, 100);
+        PositionSnapshot shortPosition = PositionSnapshot.open("BTCUSDT", "SHORT", "CROSS", 10, 1, 120, 120);
+
+        CrossLiquidationEstimate estimate = liquidationPolicy.estimateCrossLiquidationPrice(
+                50,
+                List.of(longPosition, shortPosition),
+                "BTCUSDT"
+        );
+
+        assertEquals(CrossLiquidationEstimate.TYPE_EXACT, estimate.liquidationPriceType());
+        assertEquals(30.4568527919, estimate.liquidationPrice(), 0.0001);
+    }
+
+    @Test
+    void estimatesMultiSymbolCrossPriceWithFixedOtherMarks() {
+        PositionSnapshot target = PositionSnapshot.open("BTCUSDT", "LONG", "CROSS", 10, 1, 100, 100);
+        PositionSnapshot other = PositionSnapshot.open("ETHUSDT", "LONG", "CROSS", 10, 1, 50, 50);
+
+        CrossLiquidationEstimate estimate = liquidationPolicy.estimateCrossLiquidationPrice(
+                80,
+                List.of(target, other),
+                "BTCUSDT"
+        );
+
+        assertEquals(CrossLiquidationEstimate.TYPE_ESTIMATED, estimate.liquidationPriceType());
+        assertEquals(20.351758794, estimate.liquidationPrice(), 0.0001);
+    }
+
+    @Test
+    void returnsUnavailableWhenTargetSymbolHasNoCrossPosition() {
+        CrossLiquidationEstimate estimate = liquidationPolicy.estimateCrossLiquidationPrice(
+                80,
+                List.of(PositionSnapshot.open("ETHUSDT", "LONG", "CROSS", 10, 1, 50, 50)),
+                "BTCUSDT"
+        );
+
+        assertEquals(CrossLiquidationEstimate.TYPE_UNAVAILABLE, estimate.liquidationPriceType());
+        assertNull(estimate.liquidationPrice());
     }
 }

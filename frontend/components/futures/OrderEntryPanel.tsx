@@ -515,9 +515,10 @@ export default function OrderEntryPanel({
               ? closePositionLabel
               : isPreviewPending
               ? "계산 중"
-              : preview?.estimatedLiquidationPrice
-                ? formatUsd(preview.estimatedLiquidationPrice)
-                : "-"
+              : formatLiquidationPrice(
+                  preview?.estimatedLiquidationPrice,
+                  preview?.estimatedLiquidationPriceType
+                )
           }
         />
       </div>
@@ -997,11 +998,22 @@ function OrderHelpTooltip() {
         </p>
         <p className="mt-2">
           Cost는 예상 증거금, Liq. price는 예상 청산가, Fee는 주문 체결
-          수수료입니다.
+          수수료입니다. Cross 청산가는 계정 단위 평가값이며 여러 심볼 포지션이
+          있으면 현재 다른 심볼 가격을 고정한 추정값으로 표시됩니다.
         </p>
       </div>
     </div>
   );
+}
+
+function formatLiquidationPrice(
+  price: number | null | undefined,
+  type: "EXACT" | "ESTIMATED" | "UNAVAILABLE" | undefined
+) {
+  if (!price || type === "UNAVAILABLE") {
+    return "-";
+  }
+  return type === "ESTIMATED" ? `${formatUsd(price)} (Est.)` : formatUsd(price);
 }
 
 function SegmentedControl({

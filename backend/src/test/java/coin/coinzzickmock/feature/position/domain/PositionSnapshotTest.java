@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.position.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -33,7 +34,8 @@ class PositionSnapshotTest {
         assertEquals(position.quantity(), exposure.quantity(), 0.0001);
         assertEquals(position.entryPrice(), exposure.entryPrice(), 0.0001);
         assertEquals(position.markPrice(), exposure.markPrice(), 0.0001);
-        assertEquals(position.liquidationPrice(), exposure.liquidationPrice(), 0.0001);
+        assertNull(position.liquidationPrice());
+        assertNull(exposure.liquidationPrice());
         assertEquals(position.unrealizedPnl(), exposure.unrealizedPnl(), 0.0001);
         assertEquals(position.notional(120), exposure.notional(120), 0.0001);
         assertEquals(position.initialMargin(), exposure.initialMargin(), 0.0001);

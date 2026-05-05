@@ -602,6 +602,62 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void crossFiftyTimesPendingOpenDoesNotImmediatelyLiquidateWhenWalletEquityIsSufficient() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save(1L, new FuturesOrder(
+                "cross-50x-open",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                FuturesOrder.PURPOSE_OPEN_POSITION,
+                "CROSS",
+                50,
+                40_000,
+                100.0,
+                FuturesOrder.STATUS_PENDING,
+                "TAKER",
+                0,
+                100,
+                Instant.parse("2026-05-05T00:00:00Z")
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(101, 100, 100));
+
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "CROSS").isPresent());
+        assertEquals(99_400, accountRepository.findByMemberId(1L).orElseThrow().walletBalance(), 0.0001);
+        assertEquals(19_400, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+        assertEquals(1, eventPublisher.events.size());
+        assertEquals("ORDER_FILLED", eventPublisher.events.get(0).type());
+    }
+
+    @Test
+    void crossPositionLiquidatesWhenWalletBackedEquityFallsBelowMaintenanceRequirement() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                50,
+                40_000,
+                100,
+                100
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(new MarketSummaryUpdatedEvent(market(97, 97)));
+
+        assertTrue(positionRepository.findOpenPositions(1L).isEmpty());
+        assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
+    }
+
+    @Test
     void risingPriceFillsSellSideLimitsByPathPriceBeforeCreationTime() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();

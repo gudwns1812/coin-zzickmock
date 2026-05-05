@@ -19,6 +19,7 @@ import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCa
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -115,30 +116,73 @@ class UpdatePositionTpslServiceTest {
         ));
     }
 
+    @Test
+    void crossTpslResponseIncludesDynamicLiquidationEstimate() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+
+        PositionSnapshotResult result = service(positionRepository, orderRepository, 100, 50)
+                .update(1L, "BTCUSDT", "LONG", "CROSS", 120.0, null);
+
+        assertEquals(50.2512562814, result.liquidationPrice(), 0.0001);
+        assertEquals("EXACT", result.liquidationPriceType());
+    }
+
     private UpdatePositionTpslService service(
             InMemoryPositionRepository positionRepository,
             InMemoryOrderRepository orderRepository,
             double markPrice
     ) {
+        return service(positionRepository, orderRepository, markPrice, 100_000);
+    }
+
+    private UpdatePositionTpslService service(
+            InMemoryPositionRepository positionRepository,
+            InMemoryOrderRepository orderRepository,
+            double markPrice,
+            double walletBalance
+    ) {
+        AccountRepository accountRepository = accountRepository(walletBalance);
         return new UpdatePositionTpslService(
                 positionRepository,
                 orderRepository,
                 new PendingCloseOrderCapReconciler(orderRepository),
                 realtimePriceReader(markPrice),
-                new AccountOrderMutationLock(accountRepository())
+                new AccountOrderMutationLock(accountRepository),
+                accountRepository,
+                new LiquidationPolicy()
         );
     }
 
     private static AccountRepository accountRepository() {
+        return accountRepository(100_000);
+    }
+
+    private static AccountRepository accountRepository(double walletBalance) {
         return new AccountRepository() {
             @Override
             public Optional<TradingAccount> findByMemberId(Long memberId) {
-                return Optional.of(TradingAccount.openDefault(memberId, "demo@coinzzickmock.dev", "Demo"));
+                return Optional.of(new TradingAccount(
+                        memberId,
+                        "demo@coinzzickmock.dev",
+                        "Demo",
+                        walletBalance,
+                        100_000
+                ));
             }
 
             @Override
             public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
-                return Optional.of(TradingAccount.openDefault(memberId, "demo@coinzzickmock.dev", "Demo"));
+                return findByMemberId(memberId);
             }
 
             @Override

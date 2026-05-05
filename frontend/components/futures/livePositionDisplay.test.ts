@@ -21,6 +21,7 @@ const basePosition = {
   entryPrice: 100,
   markPrice: 100,
   liquidationPrice: 90,
+  liquidationPriceType: "EXACT" as const,
   margin: 20,
   unrealizedPnl: 0,
   roi: 0,

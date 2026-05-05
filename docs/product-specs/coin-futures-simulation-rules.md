@@ -317,17 +317,33 @@ MVP 1차 고정값:
 격리 마진은 포지션 단위로 평가한다.
 해당 포지션의 격리 증거금과 손익만 보고 청산 여부를 판단한다.
 
+- 격리 equity: `initialMargin + unrealizedPnl(markPrice)`
+- 격리 유지 증거금 요구치: `markPrice * quantity * maintenanceMarginRate`
+- LONG 격리 청산가: `entryPrice * (1 - 1 / leverage) / (1 - maintenanceMarginRate)`
+- SHORT 격리 청산가: `entryPrice * (1 + 1 / leverage) / (1 + maintenanceMarginRate)`
+
 ### 교차 마진 청산
 
 교차 마진은 계정 단위로 평가한다.
-같은 계정의 교차 마진 포지션들과 가용 잔고를 함께 보고 청산 여부를 판단한다.
+같은 계정의 교차 마진 포지션들과 지갑 잔고 기반 equity를 함께 보고 청산 여부를 판단한다.
 
 MVP 1차는 아래 순서로 단순화한다.
 
 1. 교차 마진 포지션들의 총 미실현 손익을 계산한다
-2. 계정의 사용 가능 잔고와 합산한다
+2. `walletBalance - sum(isolatedInitialMargin) + totalCrossUnrealizedPnl`을 교차 equity로 계산한다
 3. 총 유지 증거금 요구치를 밑돌면 위험 상태로 본다
-4. 청산 조건 충족 시 가장 위험도가 높은 포지션부터 종료한다
+4. 교차 유지 증거금 요구치는 `sum(markPrice * quantity * maintenanceMarginRate)`다
+5. 청산 조건 충족 시 가장 위험도가 높은 포지션부터 종료한다
+
+위험도 정렬 기준은 `riskRatio = max(0, initialMargin + unrealizedPnl) / maintenanceRequirement`가 낮은 순서다. `maintenanceRequirement <= 0`이면 해당 포지션의 `riskRatio`는 `Infinity`로 두어 0분모를 만들지 않는다. 같은 값이면 절대 미실현 손실이 큰 포지션을 먼저 보고, 그래도 같으면 `symbol + positionSide + marginMode` 안정 키 순서로 결정한다. 이 MVP는 largest absolute loss, margin usage ratio, liquidation price proximity 같은 다른 후보 지표를 사용하지 않는다.
+
+교차 마진의 청산 후보 선정은 MVP 근사 휴리스틱이다. 실제 거래소의 부분청산, 위험한도, ADL 모델과 동일하다고 보지 않는다.
+
+교차 `liquidationPrice`와 주문 `estimatedLiquidationPrice`는 저장 컬럼의 원천값이 아니라 응답 시점의 계정/포지션 상태로 계산한 동적 값이다. 응답은 아래 정확도 타입을 함께 제공한다.
+
+- `EXACT`: 격리 포지션, 또는 교차 포지션 전체가 대상 심볼 하나의 mark price 변수로 풀리는 경우
+- `ESTIMATED`: 여러 심볼 교차 포지션이 있어 대상 심볼만 움직이고 다른 심볼 mark price는 현재 값으로 고정한 경우
+- `UNAVAILABLE`: 입력이 부족하거나 선형 경계식 결과가 유효하지 않은 경우
 
 ## funding 규칙
 
@@ -493,6 +509,7 @@ type OrderPreview = {
   estimatedFee: number;
   estimatedInitialMargin: number;
   estimatedLiquidationPrice: number | null;
+  estimatedLiquidationPriceType: "EXACT" | "ESTIMATED" | "UNAVAILABLE";
   feeType: "MAKER" | "TAKER";
 };
 ```
@@ -509,6 +526,7 @@ type PositionSnapshot = {
   entryPrice: number;
   markPrice: number;
   liquidationPrice: number | null;
+  liquidationPriceType: "EXACT" | "ESTIMATED" | "UNAVAILABLE";
   unrealizedPnl: number;
   realizedPnl: number;
   accumulatedClosedQuantity: number;

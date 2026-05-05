@@ -93,6 +93,7 @@ public class OrderController {
                 preview.estimatedFee(),
                 preview.estimatedInitialMargin(),
                 preview.estimatedLiquidationPrice(),
+                preview.estimatedLiquidationPriceType(),
                 preview.estimatedEntryPrice(),
                 preview.executable()
         ));
@@ -109,6 +110,7 @@ public class OrderController {
                 result.estimatedFee(),
                 result.estimatedInitialMargin(),
                 result.estimatedLiquidationPrice(),
+                result.estimatedLiquidationPriceType(),
                 result.executionPrice()
         ));
     }

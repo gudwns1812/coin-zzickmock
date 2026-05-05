@@ -144,6 +144,30 @@ domain은 프레임워크와 외부 기술을 모른다.
 
 즉, domain은 자신과 `common`에 있는 범용 타입만 의존하는 것이 기본값이다.
 
+### Shared Futures Formula Exception
+
+둘 이상의 futures feature domain이 같은 제품 공식을 사용해야 하고 한 feature domain이 다른 feature domain을
+import하면 dependency rule을 위반하는 경우, `common/trading`에 순수 산식만 둘 수 있다.
+
+허용되는 예:
+
+- order preview와 position liquidation이 함께 사용하는 유지증거금률, 격리 청산가, 선형 청산 경계식
+
+금지되는 예:
+
+- 포지션 목록 해석, 교차 청산 후보 선정, repository/provider 호출, application orchestration, feature 상태 전이
+
+이 예외를 사용할 때도 제품 의미와 후보 선정 정책은 feature domain 또는 제품 명세에 남기고, `common/trading`은
+입력값만 받는 순수 arithmetic 원천으로 제한한다.
+
+순수 산식의 기준:
+
+- 입력값에만 의존하는 stateless deterministic 함수여야 한다.
+- 파일, 네트워크, DB, repository/provider 호출, 전역 상태 변경 같은 side effect를 금지한다.
+- feature domain 객체에 의존하지 않고 primitive 또는 간단한 value type만 입력/출력으로 사용한다.
+- 허용 범위는 산술 계산, 공통 상수/계수표, 기본 입력 검증까지다.
+- 제품 정책 판단, 후보 선정, 상태 전이는 feature domain 또는 제품 명세에 남긴다.
+
 ## Domain Bean And Wiring Rule
 
 domain을 concrete class로 쓴다는 말은 아무 데서나 직접 생성하라는 뜻이 아니다.

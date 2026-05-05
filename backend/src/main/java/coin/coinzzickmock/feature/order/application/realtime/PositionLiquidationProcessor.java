@@ -95,7 +95,7 @@ public class PositionLiquidationProcessor {
                         : position)
                 .toList();
 
-        CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(account.availableMargin(), positions);
+        CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(account.walletBalance(), positions);
         if (!assessment.breached()) {
             return;
         }

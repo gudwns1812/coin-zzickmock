@@ -5,6 +5,7 @@ public record OrderPreview(
         double estimatedFee,
         double estimatedInitialMargin,
         Double estimatedLiquidationPrice,
+        String estimatedLiquidationPriceType,
         double estimatedEntryPrice,
         boolean executable
 ) {

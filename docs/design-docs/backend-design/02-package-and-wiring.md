@@ -64,6 +64,9 @@ backend/src/main/java/coin/coinzzickmock/
 - 루트 패키지의 최상위 하위 패키지는 `common`, `providers`, `feature`만 사용한다.
 - 기능 코드는 반드시 `feature/<feature-name>/` 아래에 둔다.
 - `feature` 바깥에 새 업무용 패키지를 만들지 않는다.
+- 둘 이상의 feature domain이 같은 futures 제품 산식을 공유해야 하는 좁은 경우에는
+  [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)의
+  `common/trading` 순수 산식 예외를 따른다. 이 예외는 feature-first 원칙의 우회로가 아니며, 2개 이상의 feature domain에서 같은 산식이 필요하고 문서/PR에서 근거가 확인된 경우에만 사용한다.
 - 최종 feature layer는 `web`, `job`, `application`, `domain`, `infrastructure`만 사용한다.
 - HTTP delivery Java package는 `web`이다. Java package 이름과 HTTP URL path는 별개이며 `/api/futures/**` path는 유지한다.
 - `support`, `core`, `extern`, `storage`처럼 기술/성격 기준의 광역 패키지는 새로 만들지 않는다.

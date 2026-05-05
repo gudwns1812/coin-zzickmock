@@ -234,7 +234,8 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
   반영한다. 적용 전 입력/슬라이더 조작은 draft 상태이며, 모달을 닫으면 포지션 레버리지를 바꾸지
   않는다. 같은 심볼/방향의 미체결 open 주문이 있으면 레버리지 변경은 실패한다.
 - 주문 타입 옆 `?` 도움말은 Cross/Isolated, 레버리지, Limit/Market, Long/Short, 예상 증거금,
-  청산가, 수수료, 기존 포지션의 마진/레버리지 고정 규칙을 설명한다.
+  청산가, 수수료, 기존 포지션의 마진/레버리지 고정 규칙을 설명한다. Cross 청산가는 계정 단위 평가값이며,
+  여러 심볼 교차 포지션이 있으면 현재 다른 심볼 가격을 고정한 추정값으로 설명한다.
 - 가격 입력은 화면/모달이 열린 순간 또는 사용자가 order book 가격을 선택한 순간의 snapshot 값을 한 번만 채운다. 이후 최신가, mark price, order book 업데이트가 들어와도 사용자가 입력 중인 가격을 자동으로 덮어쓰지 않는다. 단, TP/SL 신규 편집 값은 사용자가 직접 입력하도록 빈 값으로 시작하며 기존 TP/SL 주문이 있을 때만 기존 trigger price를 채운다.
 - 주문 패널의 `Close` 모드는 신규 주문 미리보기를 호출하지 않고 `/positions/close` 종료 주문 API를 사용한다. `Close Long`은 같은 심볼/마진 모드의 열린 `LONG` 포지션만, `Close Short`은 같은 심볼/마진 모드의 열린 `SHORT` 포지션만 종료 대상으로 본다. 대상 포지션이 없거나 반대 방향 포지션만 있으면 `POSITION_NOT_FOUND`를 자연스러운 사용자 오류로 처리하고, 콘솔에 출력하지 않으며 패널 안에 "종료할 포지션이 없습니다." 문구를 표시한다.
 - Account 영역은 주문 미리보기 수수료가 아니라 계정 상태를 보여준다:
@@ -253,7 +254,8 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 핵심 상호작용
 
-- 주문 입력 변경 시 예상 증거금과 청산가 즉시 재계산
+- 주문 입력 변경 시 예상 증거금과 청산가 즉시 재계산. 격리 마진은 항상 `liquidationPriceType = EXACT`이며 숫자를 그대로 표시한다.
+  교차 마진은 계정 단위 계산이 대상 심볼 하나의 mark price 변수로 풀리면 `EXACT`, 여러 심볼 교차 포지션 때문에 다른 심볼 mark price를 현재 값으로 고정하면 `ESTIMATED`, 계산할 수 없으면 `UNAVAILABLE`이다. 화면은 `EXACT` 숫자를 그대로 표시하고, `ESTIMATED`는 `Est.` 같은 추정 표시를 붙이며, `UNAVAILABLE`은 `-`로 표시한다.
 - 사용자가 차트를 과거 구간으로 이동해도 자동 최신 포커스 복귀 없이 현재 보던 위치가 유지된다
 - 사용자는 필요할 때만 "최신 보기" 버튼으로 가장 최근 캔들 영역으로 이동한다
 - indicator는 fresh candle history가 있을 때만 렌더링되고, stale/missing history에서는 config만 유지한 채 표시를 숨긴다
@@ -266,6 +268,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 열린 포지션 카드는 현재 보유 수량인 `Size = quantity + base asset`을 표시한다. `Size`는 아직 열린 수량이고, `Close amount`는 누적 종료 체결 수량이므로 서로 대체하지 않는다.
 - 선택 심볼 포지션의 `Mark Price`, `Unrealized PnL`, `ROE`, 총 미실현 손익은 market SSE의 최신 `markPrice`로 표시 전용 재계산을 할 수 있다. 공식 식은 simulation rules의 `unrealizedPnl = (markPrice - entryPrice) * quantity`(LONG), `(entryPrice - markPrice) * quantity`(SHORT), `roi = unrealizedPnl / margin`이며, `margin`이 0 또는 non-finite이면 화면 ROE는 `0`으로 처리한다.
 - 포지션 응답은 `accumulatedClosedQuantity`, `pendingCloseQuantity`, `closeableQuantity`를 제공한다. 화면의 `Close amount`는 누적 종료 체결 수량인 `accumulatedClosedQuantity`만 의미한다.
+- 포지션 카드의 `Liq. Price`는 서버가 내려준 `liquidationPriceType`을 따른다. `EXACT`는 숫자를 그대로 표시하고, `ESTIMATED`이면 추정 표시를 붙이고, `UNAVAILABLE` 또는 `null`이면 `-`로 표시한다.
 - `pendingCloseQuantity`는 같은 심볼/방향/마진 모드의 미체결 close 주문 effective exposure이고, `closeableQuantity = max(0, quantity - pendingCloseQuantity)`이다. OCO group이 있는 TP/SL sibling은 group별 `max(quantity)`로 한 번만 계산한다. 두 값은 예약 상태/호환 필드이며 `Close amount` 라벨로 표시하지 않는다.
 - close 입력의 최대값과 클라이언트 검증은 `closeableQuantity`가 아니라 현재 보유 `quantity` 기준이다. pending close 수량이 보유 수량과 같아도 새 close 주문은 제출할 수 있고, 백엔드는 접수 후 pending close cap을 조정한다.
 - 주문 패널 `Close` 모드의 퍼센트/최대 수량 보조 UI도 같은 심볼/방향/마진 모드의 현재 보유 `quantity`를 기준으로 한다. 같은 방향의 포지션이 없거나 반대 방향 포지션만 있으면 제출 결과는 포지션 없음 오류로 표시한다.

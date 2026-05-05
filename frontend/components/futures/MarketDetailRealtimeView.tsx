@@ -587,9 +587,7 @@ function PositionCard({ position }: { position: FuturesPosition }) {
         />
         <PositionMetric
           label="Liq. Price"
-          value={
-            position.liquidationPrice ? formatUsd(position.liquidationPrice) : "-"
-          }
+          value={formatPositionLiquidationPrice(position)}
         />
         <PositionMetric
           label="Realized PnL"
@@ -1246,6 +1244,19 @@ function formatCloseReason(reason: string): string {
 
 function formatOptionalUsd(value: number | null | undefined): string {
   return typeof value === "number" ? formatUsd(value) : "-";
+}
+
+function formatPositionLiquidationPrice(position: FuturesPosition): string {
+  if (
+    typeof position.liquidationPrice !== "number" ||
+    position.liquidationPriceType === "UNAVAILABLE"
+  ) {
+    return "-";
+  }
+
+  return position.liquidationPriceType === "ESTIMATED"
+    ? `${formatUsd(position.liquidationPrice)} (Est.)`
+    : formatUsd(position.liquidationPrice);
 }
 
 function formatEditablePrice(value: number | null | undefined): string {

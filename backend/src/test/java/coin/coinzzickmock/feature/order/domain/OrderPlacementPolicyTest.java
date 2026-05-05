@@ -91,6 +91,6 @@ class OrderPlacementPolicyTest {
     }
 
     private OrderPlacementRequest request(String purpose, String positionSide, String orderType, Double limitPrice) {
-        return new OrderPlacementRequest(purpose, positionSide, orderType, limitPrice, 0.1, 10);
+        return new OrderPlacementRequest(purpose, positionSide, orderType, "ISOLATED", limitPrice, 0.1, 10);
     }
 }

@@ -13,7 +13,10 @@ import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCa
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.domain.CrossLiquidationEstimate;
+import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,7 @@ public class UpdatePositionLeverageService {
     private final AccountRepository accountRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final LiquidationPolicy liquidationPolicy;
 
     @Transactional
     public PositionSnapshotResult update(
@@ -105,6 +109,20 @@ public class UpdatePositionLeverageService {
                 snapshot.marginMode()
         );
 
+        CrossLiquidationEstimate crossEstimate = snapshot.isCrossMargin()
+                ? liquidationPolicy.estimateCrossLiquidationPrice(
+                accountRepository.findByMemberId(memberId)
+                        .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND))
+                        .walletBalance(),
+                positionsForResult(memberId, snapshot),
+                snapshot.symbol()
+        )
+                : null;
+        Double liquidationPrice = crossEstimate == null ? snapshot.liquidationPrice() : crossEstimate.liquidationPrice();
+        String liquidationPriceType = crossEstimate == null
+                ? isolatedLiquidationPriceType(snapshot)
+                : crossEstimate.liquidationPriceType();
+
         return new PositionSnapshotResult(
                 snapshot.symbol(),
                 snapshot.positionSide(),
@@ -113,7 +131,8 @@ public class UpdatePositionLeverageService {
                 snapshot.quantity(),
                 snapshot.entryPrice(),
                 snapshot.markPrice(),
-                snapshot.liquidationPrice(),
+                liquidationPrice,
+                liquidationPriceType,
                 snapshot.unrealizedPnl(),
                 snapshot.realizedPnl(),
                 snapshot.initialMargin(),
@@ -124,6 +143,20 @@ public class UpdatePositionLeverageService {
                 triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT),
                 triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_STOP_LOSS)
         );
+    }
+
+    private List<PositionSnapshot> positionsForResult(Long memberId, PositionSnapshot snapshot) {
+        List<PositionSnapshot> positions = new ArrayList<>(positionRepository.findOpenPositions(memberId).stream()
+                .filter(position -> !position.stableKey().equals(snapshot.stableKey()))
+                .toList());
+        positions.add(snapshot);
+        return List.copyOf(positions);
+    }
+
+    private String isolatedLiquidationPriceType(PositionSnapshot snapshot) {
+        return snapshot.liquidationPrice() == null
+                ? CrossLiquidationEstimate.TYPE_UNAVAILABLE
+                : CrossLiquidationEstimate.TYPE_EXACT;
     }
 
     private Double triggerPrice(List<FuturesOrder> orders, String triggerType) {

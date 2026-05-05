@@ -105,6 +105,7 @@ public class PositionController {
                 result.entryPrice(),
                 result.markPrice(),
                 result.liquidationPrice(),
+                result.liquidationPriceType(),
                 result.unrealizedPnl(),
                 result.realizedPnl(),
                 result.margin(),

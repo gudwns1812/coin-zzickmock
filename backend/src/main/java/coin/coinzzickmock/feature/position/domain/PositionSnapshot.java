@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.position.domain;
 
+import coin.coinzzickmock.common.trading.LiquidationFormula;
 import java.time.Instant;
 
 public record PositionSnapshot(
@@ -225,7 +226,7 @@ public record PositionSnapshot(
                 quantity,
                 entryPrice,
                 markPrice,
-                liquidationPrice(positionSide, leverage, entryPrice),
+                LiquidationFormula.liquidationPrice(positionSide, marginMode, leverage, entryPrice),
                 0,
                 Instant.now(),
                 quantity,
@@ -287,7 +288,7 @@ public record PositionSnapshot(
                 totalQuantity,
                 weightedEntryPrice,
                 markPrice,
-                liquidationPrice(positionSide, leverage, weightedEntryPrice),
+                LiquidationFormula.liquidationPrice(positionSide, marginMode, leverage, weightedEntryPrice),
                 0,
                 openedAt,
                 originalQuantity + additionalQuantity,
@@ -365,7 +366,7 @@ public record PositionSnapshot(
                 quantity,
                 entryPrice,
                 markPrice,
-                liquidationPrice(positionSide, nextLeverage, entryPrice),
+                LiquidationFormula.liquidationPrice(positionSide, marginMode, nextLeverage, entryPrice),
                 pnl(markPrice, quantity),
                 openedAt,
                 originalQuantity,
@@ -533,11 +534,4 @@ public record PositionSnapshot(
         return identity().isLong();
     }
 
-    private static double liquidationPrice(String positionSide, int leverage, double entryPrice) {
-        double liquidationGap = entryPrice / leverage;
-        if ("LONG".equalsIgnoreCase(positionSide)) {
-            return entryPrice - liquidationGap;
-        }
-        return entryPrice + liquidationGap;
-    }
 }

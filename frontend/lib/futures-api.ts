@@ -90,6 +90,7 @@ export type FuturesPosition = {
   entryPrice: number;
   markPrice: number;
   liquidationPrice: number | null;
+  liquidationPriceType: LiquidationPriceType;
   margin: number;
   unrealizedPnl: number;
   realizedPnl?: number;
@@ -100,6 +101,8 @@ export type FuturesPosition = {
   takeProfitPrice?: number | null;
   stopLossPrice?: number | null;
 };
+
+export type LiquidationPriceType = "EXACT" | "ESTIMATED" | "UNAVAILABLE";
 
 export type FuturesOpenOrder = {
   orderId: string;
@@ -268,6 +271,7 @@ export type OrderPreviewResponse = {
   estimatedFee: number;
   estimatedInitialMargin: number;
   estimatedLiquidationPrice: number | null;
+  estimatedLiquidationPriceType: LiquidationPriceType;
   estimatedEntryPrice: number;
   executable: boolean;
 };
@@ -280,6 +284,7 @@ export type OrderExecutionResponse = {
   estimatedFee: number;
   estimatedInitialMargin: number;
   estimatedLiquidationPrice: number | null;
+  estimatedLiquidationPriceType: LiquidationPriceType;
   executionPrice: number;
 };
 

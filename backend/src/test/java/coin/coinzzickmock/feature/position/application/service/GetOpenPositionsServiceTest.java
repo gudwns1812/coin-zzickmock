@@ -1,8 +1,12 @@
 package coin.coinzzickmock.feature.position.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
@@ -14,6 +18,7 @@ import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCa
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -36,8 +41,10 @@ class GetOpenPositionsServiceTest {
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
                 new EmptyOrderRepository(),
+                new StaticAccountRepository(),
                 new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
-                realtimePriceReader(110)
+                realtimePriceReader(110),
+                new LiquidationPolicy()
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -73,8 +80,10 @@ class GetOpenPositionsServiceTest {
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
                 new EmptyOrderRepository(),
+                new StaticAccountRepository(),
                 new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
-                realtimePriceReader(100)
+                realtimePriceReader(100),
+                new LiquidationPolicy()
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -99,8 +108,10 @@ class GetOpenPositionsServiceTest {
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
                 orderRepository,
+                new StaticAccountRepository(),
                 new PendingCloseOrderCapReconciler(orderRepository),
-                realtimePriceReader(100)
+                realtimePriceReader(100),
+                new LiquidationPolicy()
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -125,8 +136,10 @@ class GetOpenPositionsServiceTest {
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
                 orderRepository,
+                new StaticAccountRepository(),
                 new PendingCloseOrderCapReconciler(orderRepository),
-                realtimePriceReader(100)
+                realtimePriceReader(100),
+                new LiquidationPolicy()
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -165,8 +178,10 @@ class GetOpenPositionsServiceTest {
         GetOpenPositionsService service = new GetOpenPositionsService(
                 positionRepository,
                 new EmptyOrderRepository(),
+                new StaticAccountRepository(),
                 new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
-                realtimePriceReader(100)
+                realtimePriceReader(100),
+                new LiquidationPolicy()
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -174,6 +189,33 @@ class GetOpenPositionsServiceTest {
         assertEquals(0.5, result.accumulatedClosedQuantity(), 0.0001);
         assertEquals(0, result.pendingCloseQuantity(), 0.0001);
         assertEquals(1.5, result.closeableQuantity(), 0.0001);
+    }
+
+    @Test
+    void crossPositionResultUsesDynamicLiquidationEstimate() {
+        ReadOnlyPositionRepository positionRepository = new ReadOnlyPositionRepository(PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+        GetOpenPositionsService service = new GetOpenPositionsService(
+                positionRepository,
+                new EmptyOrderRepository(),
+                new StaticAccountRepository(50),
+                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
+                realtimePriceReader(100),
+                new LiquidationPolicy()
+        );
+
+        PositionSnapshotResult result = service.getPositions(1L).get(0);
+
+        assertEquals(50.2512562814, result.liquidationPrice(), 0.0001);
+        assertEquals("EXACT", result.liquidationPriceType());
+        assertNull(positionRepository.position.liquidationPrice());
     }
 
     private static class ReadOnlyPositionRepository implements PositionRepository {
@@ -302,6 +344,39 @@ class GetOpenPositionsServiceTest {
                             "oco-1"
                     )
             );
+        }
+    }
+
+    private static class StaticAccountRepository implements AccountRepository {
+        private final TradingAccount account;
+
+        private StaticAccountRepository() {
+            this(100_000);
+        }
+
+        private StaticAccountRepository(double walletBalance) {
+            this.account = new TradingAccount(
+                    1L,
+                    "demo@coinzzickmock.dev",
+                    "Demo",
+                    walletBalance,
+                    100_000
+            );
+        }
+
+        @Override
+        public Optional<TradingAccount> findByMemberId(Long memberId) {
+            return Optional.of(account);
+        }
+
+        @Override
+        public TradingAccount create(TradingAccount account) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public AccountMutationResult updateWithVersion(TradingAccount expectedAccount, TradingAccount nextAccount) {
+            throw new UnsupportedOperationException();
         }
     }
 

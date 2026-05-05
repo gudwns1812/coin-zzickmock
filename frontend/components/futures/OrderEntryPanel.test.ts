@@ -71,3 +71,11 @@ test("order help tooltip explains margin leverage and order concepts", () => {
   assert.equal(source.includes("Limit"), true);
   assert.equal(source.includes("Long"), true);
 });
+
+test("order preview labels estimated and unavailable liquidation prices", () => {
+  assert.equal(source.includes("function formatLiquidationPrice"), true);
+  assert.equal(source.includes('type === "UNAVAILABLE"'), true);
+  assert.equal(source.includes('type === "ESTIMATED"'), true);
+  assert.equal(source.includes("(Est.)"), true);
+  assert.equal(source.includes("현재 다른 심볼 가격을 고정한 추정값"), true);
+});

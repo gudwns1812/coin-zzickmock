@@ -57,6 +57,7 @@ public class ClosePositionService {
                         FuturesOrder.PURPOSE_CLOSE_POSITION,
                         positionSide,
                         orderType,
+                        marginMode,
                         limitPrice,
                         quantity,
                         position.leverage()

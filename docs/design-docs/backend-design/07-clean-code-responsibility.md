@@ -18,7 +18,7 @@
 백엔드 코드는 아래 기준을 기본값으로 삼는다.
 
 - 하나의 클래스는 하나의 변경 이유를 가져야 한다.
-- 하나의 메서드는 한 단계의 추상화 수준에서 한 가지 일을 해야 한다.
+- 하나의 메서드는 한 단계의 추상화 수준에서 하나의 개념적 책임을 가져야 한다.
 - 유스케이스 메서드는 흐름을 읽히게 하고, 세부 계산과 변환은 이름 있는 협력 객체나 private method로 분리한다.
 - 분리는 코드 줄 수가 아니라 책임과 변경 이유를 기준으로 판단한다.
 - 분리한 결과가 단순 위임만 늘리면 다시 합친다.
@@ -26,7 +26,11 @@
 ## Method Responsibility
 
 메서드는 호출자가 기대하는 한 가지 결과를 만들어야 한다.
-아래 일이 한 메서드 안에 세 가지 이상 섞이면 분리 후보로 본다.
+클린 코드와 리팩터링 원칙에서 말하는 "한 가지 일"은 단순히 내부 statement 수가 적다는 뜻이 아니라, 같은 추상화 수준에서 하나의 개념적 책임으로 설명된다는 뜻이다.
+메서드를 설명할 때 서로 다른 변경 이유를 가진 행위를 `그리고`, `또는`, `그 다음 모든 것`으로 이어 붙여야 한다면 책임이 섞였는지 의심한다.
+단, public 유스케이스 메서드에서 같은 추상화 수준의 단계 이름으로 드러나는 것은 orchestration으로 본다.
+문제는 각 단계의 세부 구현이 한 메서드 안에 직접 섞이는 경우다.
+아래 책임들이 세부 구현으로 직접 섞이면 분리 후보로 본다.
 
 - 입력 검증
 - 권한/actor 확인
@@ -42,11 +46,13 @@
 강한 규칙:
 
 - public 유스케이스 메서드는 큰 흐름을 드러내는 orchestration에 집중한다.
+- public 메서드와 그 아래 단계 메서드들은 같은 추상화 수준을 유지한다. 세부 구현이 끼어들면 이름 있는 하위 메서드나 협력 객체로 내린다.
 - 조건이 길어지면 조건식 자체보다 그 판단의 의미를 이름으로 추출한다.
 - 반복문 안에서 조회, 정책 판단, 상태 변경, 저장, 이벤트 발행이 모두 일어나면 처리 단계를 나눈다.
 - `if`/`switch` 분기가 도메인 정책을 표현하면 domain policy 후보로 본다.
 - 같은 계산이나 검증이 두 유스케이스 이상에 복제되면 domain 또는 application 협력 객체 후보로 본다.
 - private method 추출은 같은 클래스의 가독성을 높일 때만 사용한다. 다른 유스케이스도 써야 하는 책임이면 별도 협력 객체로 분리한다.
+- private method가 클래스 필드를 과도하게 공유하거나, 파라미터 없이 숨은 상태에 의존해 많은 일을 하면 협력 객체 분리 후보로 본다.
 
 권장 흐름 예:
 
@@ -68,6 +74,53 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 
 위 예에서 public 메서드는 흐름을 보여 준다.
 계정 조회, 요청 생성, 정책 판단, 결과 변환은 각각 이름 있는 책임으로 드러난다.
+
+## Method Reading Order
+
+메서드의 위치는 호출 흐름이 위에서 아래로 읽히도록 조정한다.
+파일을 처음 읽는 사람이 public 유스케이스 메서드에서 시작해 바로 아래의 하위 단계로 내려가며 의도를 따라갈 수 있어야 한다.
+
+규칙:
+
+- public 유스케이스 메서드를 먼저 두고, 그 메서드가 호출하는 private method를 호출 순서에 가깝게 아래에 배치한다.
+- 같은 public 메서드에 속한 private method 묶음은 흩뜨리지 않는다.
+- private method 내부에서 다시 하위 private method를 호출한다면, 그 하위 메서드는 호출자 바로 아래에 둔다.
+- 여러 public 메서드가 공유하는 private method는 해당 클래스의 공통 개념으로 이름이 충분히 명확할 때만 아래쪽 공통 영역에 모은다.
+- 읽기 순서를 위해 기술 세부 구현을 public 흐름 가까이에 끌어올리지 않는다. 추상화 수준이 낮은 구현은 private method나 협력 객체 뒤로 숨긴다.
+- 메서드 재배치는 동작 변경 없이 한다. 위치 변경과 로직 변경을 같은 diff에 섞어 리뷰가 어려워지면 분리한다.
+
+권장 배치 예:
+
+```java
+public PlaceOrderResult place(PlaceOrderCommand command) {
+    Actor actor = currentActor();
+    TradingAccount account = loadAccount(actor, command);
+    Order order = placeOrder(account, command);
+
+    return toResult(order);
+}
+
+private Actor currentActor() {
+    return providers.auth().currentActor();
+}
+
+private TradingAccount loadAccount(Actor actor, PlaceOrderCommand command) {
+    return accountReader.getActiveAccount(actor, command.accountId());
+}
+
+private Order placeOrder(TradingAccount account, PlaceOrderCommand command) {
+    OrderRequest request = orderRequestFactory.create(command);
+    OrderDecision decision = orderPolicy.decide(account, request);
+
+    return account.place(decision);
+}
+
+private PlaceOrderResult toResult(Order order) {
+    return PlaceOrderResult.from(order);
+}
+```
+
+위 예처럼 위쪽은 이야기의 목차처럼 읽히고, 아래쪽은 목차의 각 장을 펼쳐 보는 순서가 된다.
 
 ## Class Responsibility
 
@@ -176,7 +229,9 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 
 - 한 메서드가 화면에 한 번에 읽히지 않을 정도로 길어진다.
 - `and`가 붙은 메서드명이나 클래스명이 필요해진다.
+- 메서드를 한 문장으로 설명할 수 없거나, 설명에 서로 다른 개념적 책임이 섞인다.
 - 한 private method가 다시 여러 private method를 끌고 다닌다.
+- private method가 파라미터보다 클래스 필드와 숨은 상태에 더 많이 기대어 동작한다.
 - 동일한 조건식, 계산식, 매핑 코드가 반복된다.
 - 테스트 setup이 동작 하나에 비해 과하게 커진다.
 - 로그, 예외 번역, 저장, 도메인 판단이 순서 없이 섞인다.
@@ -195,6 +250,7 @@ public PlaceOrderResult place(PlaceOrderCommand command) {
 백엔드 변경 검증에는 기능 테스트뿐 아니라 책임 분리 확인도 포함한다.
 
 - 변경한 public 유스케이스 메서드를 읽었을 때 흐름이 위에서 아래로 설명되는가?
+- private method 위치가 호출 흐름을 따라 top-down으로 읽히는가?
 - 새 클래스마다 한 문장으로 책임을 설명할 수 있는가?
 - 테스트가 도메인 규칙, application orchestration, infrastructure adapter를 구분해서 검증하는가?
 - mock/fake가 너무 많아서 클래스 책임이 과한 신호를 숨기고 있지 않은가?

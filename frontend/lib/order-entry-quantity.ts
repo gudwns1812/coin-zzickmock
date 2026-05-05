@@ -1,11 +1,11 @@
-export const OPEN_MARKET_TAKER_FEE_RATE = 0.0005;
+export const OPEN_ORDER_TAKER_FEE_RATE = 0.0005;
 export const DEFAULT_QUANTITY_PRECISION = 3;
 
-export function calculateMaxOpenMarketQuantity(
+export function calculateMaxOpenOrderQuantity(
   availableBalance: number,
   leverage: number,
   price: number,
-  feeRate = OPEN_MARKET_TAKER_FEE_RATE
+  feeRate = OPEN_ORDER_TAKER_FEE_RATE
 ): number {
   if (
     !Number.isFinite(availableBalance) ||

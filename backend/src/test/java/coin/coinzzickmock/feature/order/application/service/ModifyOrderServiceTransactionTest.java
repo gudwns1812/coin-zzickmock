@@ -42,7 +42,7 @@ class ModifyOrderServiceTransactionTest {
 
     @Test
     void rollsBackPersistedPriceWhenPostUpdateMarketCheckRejectsModification() {
-        Long memberId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+        Long memberId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
         String orderId = "rollback-edit-" + UUID.randomUUID();
         saveAccount(memberId);
         orderRepository.save(memberId, FuturesOrder.place(

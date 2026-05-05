@@ -9,6 +9,7 @@ public class LiquidationPolicy {
 
     private static final double MINIMUM_RISK_RATIO_EQUITY = 0d;
     private static final double NO_MAINTENANCE_REQUIREMENT = 0d;
+    private static final double MAINTENANCE_REQUIREMENT_EPSILON = 1e-12;
 
     public IsolatedLiquidationAssessment assessIsolated(PositionSnapshot position, double markPrice) {
         double initialMargin = position.initialMargin();
@@ -144,7 +145,8 @@ public class LiquidationPolicy {
                 position.markPrice(),
                 position.quantity()
         );
-        double riskRatio = maintenanceRequirement == NO_MAINTENANCE_REQUIREMENT
+        double riskRatio = Math.abs(maintenanceRequirement - NO_MAINTENANCE_REQUIREMENT)
+                <= MAINTENANCE_REQUIREMENT_EPSILON
                 ? Double.POSITIVE_INFINITY
                 : equity / maintenanceRequirement;
         return new CrossPositionRisk(

@@ -72,7 +72,7 @@ public class UpdatePositionLeverageService {
         }
 
         afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
-        return toResult(memberId, mutation.updatedSnapshot());
+        return toResult(memberId, mutation.updatedSnapshot(), updatedAccount.walletBalance());
     }
 
     private TradingAccount validateAccountMutation(AccountMutationResult mutationResult) {
@@ -98,6 +98,10 @@ public class UpdatePositionLeverageService {
     }
 
     private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot) {
+        return toResult(memberId, snapshot, null);
+    }
+
+    private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot, Double crossWalletBalance) {
         double pendingCloseQuantity = pendingCloseOrderCapReconciler.pendingCloseQuantity(
                 memberId,
                 snapshot
@@ -111,9 +115,7 @@ public class UpdatePositionLeverageService {
 
         CrossLiquidationEstimate crossEstimate = snapshot.isCrossMargin()
                 ? liquidationPolicy.estimateCrossLiquidationPrice(
-                accountRepository.findByMemberId(memberId)
-                        .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND))
-                        .walletBalance(),
+                crossWalletBalance == null ? walletBalance(memberId) : crossWalletBalance,
                 positionsForResult(memberId, snapshot),
                 snapshot.symbol()
         )
@@ -165,5 +167,11 @@ public class UpdatePositionLeverageService {
                 .max(java.util.Comparator.comparing(FuturesOrder::orderTime))
                 .map(FuturesOrder::triggerPrice)
                 .orElse(null);
+    }
+
+    private double walletBalance(Long memberId) {
+        return accountRepository.findByMemberId(memberId)
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND))
+                .walletBalance();
     }
 }

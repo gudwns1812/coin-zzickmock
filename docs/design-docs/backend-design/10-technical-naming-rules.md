@@ -3,12 +3,12 @@
 ## Purpose
 
 이 문서는 backend class, interface, field naming 중 기술 세부사항을 이름에 드러내지 않는 규칙만 소유한다.
-일반 책임 분리와 클린 코드 기준은 [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)가 소유한다.
+일반 책임 분리와 클린 코드 기준은 [07-clean-code-responsibility.md](07-clean-code-responsibility.md)가 소유한다.
 
 먼저 읽어야 하는 문서:
 
-- [README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-- [01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
+- [README.md](README.md)
+- [01-architecture-foundations.md](01-architecture-foundations.md)
 
 ## Technical Naming Rule
 
@@ -50,7 +50,7 @@
 
 ## Related Documents
 
-- [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
-- [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
-- [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
-- [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
+- [02-package-and-wiring.md](02-package-and-wiring.md)
+- [06-persistence-rules.md](06-persistence-rules.md)
+- [07-clean-code-responsibility.md](07-clean-code-responsibility.md)
+- [08-external-integration-rules.md](08-external-integration-rules.md)

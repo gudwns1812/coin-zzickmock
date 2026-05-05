@@ -2,14 +2,10 @@
 import clsx from "clsx";
 import React from "react";
 
-type ButtonProps = {
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   children: React.ReactNode;
   variant?: "primary" | "ghost" | "danger";
   className?: string;
-  onClick?: () => void;
-  type?: "button" | "submit" | "reset";
-  disabled?: boolean;
-  id?: string;
 };
 
 const Button = ({

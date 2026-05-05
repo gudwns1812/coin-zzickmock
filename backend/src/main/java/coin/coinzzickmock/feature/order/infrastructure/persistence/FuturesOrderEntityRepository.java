@@ -43,6 +43,36 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update FuturesOrderEntity order
+               set order.status = :filledStatus,
+                   order.feeType = :feeType,
+                   order.estimatedFee = :estimatedFee,
+                   order.executionPrice = :executionPrice,
+                   order.activeConditionalTriggerType = null
+             where order.memberId = :memberId
+               and order.orderId = :orderId
+               and order.status = :pendingStatus
+               and order.orderType = :limitOrderType
+               and order.limitPrice = :expectedLimitPrice
+               and order.triggerPrice is null
+               and order.triggerType is null
+               and order.triggerSource is null
+               and order.ocoGroupId is null
+            """)
+    int markNonConditionalLimitFilledIfPendingAtPrice(
+            @Param("memberId") Long memberId,
+            @Param("orderId") String orderId,
+            @Param("pendingStatus") String pendingStatus,
+            @Param("filledStatus") String filledStatus,
+            @Param("limitOrderType") String limitOrderType,
+            @Param("expectedLimitPrice") BigDecimal expectedLimitPrice,
+            @Param("feeType") String feeType,
+            @Param("estimatedFee") BigDecimal estimatedFee,
+            @Param("executionPrice") BigDecimal executionPrice
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update FuturesOrderEntity order
                set order.status = :cancelledStatus,
                    order.activeConditionalTriggerType = null
              where order.memberId = :memberId
@@ -54,6 +84,35 @@ public interface FuturesOrderEntityRepository extends JpaRepository<FuturesOrder
             @Param("orderId") String orderId,
             @Param("pendingStatus") String pendingStatus,
             @Param("cancelledStatus") String cancelledStatus
+    );
+
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update FuturesOrderEntity order
+               set order.limitPrice = :limitPrice,
+                   order.feeType = :feeType,
+                   order.estimatedFee = :estimatedFee,
+                   order.executionPrice = :executionPrice
+             where order.memberId = :memberId
+               and order.orderId = :orderId
+               and order.status = :pendingStatus
+               and order.orderType = :limitOrderType
+               and order.limitPrice is not null
+               and order.triggerPrice is null
+               and order.triggerType is null
+               and order.triggerSource is null
+               and order.ocoGroupId is null
+            """)
+    int updatePendingNonConditionalLimitPrice(
+            @Param("memberId") Long memberId,
+            @Param("orderId") String orderId,
+            @Param("pendingStatus") String pendingStatus,
+            @Param("limitOrderType") String limitOrderType,
+            @Param("limitPrice") BigDecimal limitPrice,
+            @Param("feeType") String feeType,
+            @Param("estimatedFee") BigDecimal estimatedFee,
+            @Param("executionPrice") BigDecimal executionPrice
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

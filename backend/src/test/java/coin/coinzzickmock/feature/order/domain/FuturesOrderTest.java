@@ -44,4 +44,31 @@ class FuturesOrderTest {
 
         assertEquals("PENDING", order.status());
     }
+
+    @Test
+    void withLimitPriceChangesPriceAndKeepsOrderIdentity() {
+        FuturesOrder order = FuturesOrder.place(
+                "order-3",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "cross",
+                10,
+                0.25,
+                49000.0,
+                false,
+                "MAKER",
+                4.5,
+                49000
+        );
+
+        FuturesOrder updated = order.withLimitPrice(48500, "MAKER", 1.81875, 48500);
+
+        assertEquals("order-3", updated.orderId());
+        assertEquals("PENDING", updated.status());
+        assertEquals(48500, updated.limitPrice(), 0.0001);
+        assertEquals(1.81875, updated.estimatedFee(), 0.0001);
+        assertEquals(48500, updated.executionPrice(), 0.0001);
+        assertEquals(order.orderTime(), updated.orderTime());
+    }
 }

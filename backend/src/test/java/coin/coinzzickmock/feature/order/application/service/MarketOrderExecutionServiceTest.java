@@ -902,6 +902,193 @@ class MarketOrderExecutionServiceTest {
                 .status());
     }
 
+    @Test
+    void skipsPendingLimitWhenReloadedPriceIsNoLongerInsideMove() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository() {
+            @Override
+            public List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+                    String symbol,
+                    double lowerPrice,
+                    double upperPrice,
+                    boolean sellSide
+            ) {
+                List<PendingOrderCandidate> candidates = super.findExecutablePendingLimitOrders(
+                        symbol,
+                        lowerPrice,
+                        upperPrice,
+                        sellSide
+                );
+                save(
+                        1L,
+                        pendingOpenOrderAt(
+                                "modified-out-of-range",
+                                "LONG",
+                                80,
+                                Instant.parse("2026-04-27T00:00:00Z")
+                        )
+                );
+                return candidates;
+            }
+        };
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save(
+                1L,
+                pendingOpenOrderAt(
+                        "modified-out-of-range",
+                        "LONG",
+                        95,
+                        Instant.parse("2026-04-27T00:00:00Z")
+                )
+        );
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(100, 90, 90));
+
+        FuturesOrder current = orderRepository.findByMemberIdAndOrderId(1L, "modified-out-of-range").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, current.status());
+        assertEquals(80, current.limitPrice(), 0.0001);
+        assertTrue(eventPublisher.events.isEmpty());
+        assertTrue(positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED").isEmpty());
+    }
+
+    @Test
+    void defersCurrentFillLoopWhenReloadedPriceChangesBeforeFill() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository() {
+            private boolean modified;
+
+            @Override
+            public List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+                    String symbol,
+                    double lowerPrice,
+                    double upperPrice,
+                    boolean sellSide
+            ) {
+                List<PendingOrderCandidate> candidates = super.findExecutablePendingLimitOrders(
+                        symbol,
+                        lowerPrice,
+                        upperPrice,
+                        sellSide
+                );
+                if (!modified) {
+                    modified = true;
+                    save(
+                            1L,
+                            pendingOpenOrderAt(
+                                    "was-first",
+                                    "LONG",
+                                    96.5,
+                                    Instant.parse("2026-04-27T00:00:00Z")
+                            )
+                    );
+                }
+                return candidates;
+            }
+        };
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save(
+                1L,
+                pendingOpenOrderAt(
+                        "was-first",
+                        "LONG",
+                        99,
+                        Instant.parse("2026-04-27T00:00:00Z")
+                )
+        );
+        orderRepository.save(
+                1L,
+                pendingOpenOrderAt(
+                        "stays-higher-priority",
+                        "LONG",
+                        97,
+                        Instant.parse("2026-04-27T00:00:01Z")
+                )
+        );
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(100, 96, 96));
+
+        assertTrue(eventPublisher.events.isEmpty());
+        assertEquals(
+                FuturesOrder.STATUS_PENDING,
+                orderRepository.findByMemberIdAndOrderId(1L, "was-first").orElseThrow().status()
+        );
+        assertEquals(96.5, orderRepository.findByMemberIdAndOrderId(1L, "was-first").orElseThrow().limitPrice(), 0.0001);
+        assertEquals(
+                FuturesOrder.STATUS_PENDING,
+                orderRepository.findByMemberIdAndOrderId(1L, "stays-higher-priority").orElseThrow().status()
+        );
+    }
+
+    @Test
+    void stopsCurrentFillLoopWhenGuardedLimitClaimMisses() {
+        AtomicInteger candidateRefreshes = new AtomicInteger();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository() {
+            @Override
+            public List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+                    String symbol,
+                    double lowerPrice,
+                    double upperPrice,
+                    boolean sellSide
+            ) {
+                if (candidateRefreshes.incrementAndGet() > 1) {
+                    throw new AssertionError("guarded claim miss must not spin on the same stale snapshot");
+                }
+                return super.findExecutablePendingLimitOrders(symbol, lowerPrice, upperPrice, sellSide);
+            }
+
+            @Override
+            public Optional<FuturesOrder> claimPendingLimitFill(
+                    Long memberId,
+                    String orderId,
+                    double expectedLimitPrice,
+                    double executionPrice,
+                    String feeType,
+                    double estimatedFee
+            ) {
+                return Optional.empty();
+            }
+        };
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        orderRepository.save(
+                1L,
+                pendingOpenOrderAt(
+                        "stale-claim-miss",
+                        "LONG",
+                        99,
+                        Instant.parse("2026-04-27T00:00:00Z")
+                )
+        );
+        orderRepository.save(
+                1L,
+                pendingOpenOrderAt(
+                        "later-candidate",
+                        "LONG",
+                        98,
+                        Instant.parse("2026-04-27T00:00:01Z")
+                )
+        );
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(100, 97, 97));
+
+        assertEquals(1, candidateRefreshes.get());
+        assertTrue(eventPublisher.events.isEmpty());
+        assertEquals(
+                FuturesOrder.STATUS_PENDING,
+                orderRepository.findByMemberIdAndOrderId(1L, "stale-claim-miss").orElseThrow().status()
+        );
+        assertEquals(
+                FuturesOrder.STATUS_PENDING,
+                orderRepository.findByMemberIdAndOrderId(1L, "later-candidate").orElseThrow().status()
+        );
+    }
+
     private MarketOrderExecutionService service(
             OrderRepository orderRepository,
             PositionRepository positionRepository,

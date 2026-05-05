@@ -2,6 +2,7 @@ import type {
   AccountRefillResult,
   AdminShopItem,
   AdminShopItemInput,
+  ModifyFuturesOrderResult,
   RewardRedemption,
   ShopPurchaseResult,
 } from "@/lib/futures-api";
@@ -59,6 +60,16 @@ export async function cancelOwnRewardRedemption(
   return writeFuturesApi<RewardRedemption>(
     `/shop/redemptions/${encodeURIComponent(requestId)}/cancel`,
     {}
+  );
+}
+
+export async function modifyFuturesOrderPrice(
+  orderId: string,
+  limitPrice: number
+): Promise<ModifyFuturesOrderResult> {
+  return writeFuturesApi<ModifyFuturesOrderResult>(
+    `/orders/${encodeURIComponent(orderId)}/modify`,
+    { limitPrice }
   );
 }
 

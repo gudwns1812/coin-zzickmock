@@ -186,6 +186,34 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional
+    public Optional<FuturesOrder> claimPendingLimitFill(
+            Long memberId,
+            String orderId,
+            double expectedLimitPrice,
+            double executionPrice,
+            String feeType,
+            double estimatedFee
+    ) {
+        int updated = futuresOrderEntityRepository.markNonConditionalLimitFilledIfPendingAtPrice(
+                memberId,
+                orderId,
+                FuturesOrder.STATUS_PENDING,
+                FuturesOrder.STATUS_FILLED,
+                FuturesOrder.TYPE_LIMIT,
+                BigDecimal.valueOf(expectedLimitPrice),
+                feeType,
+                BigDecimal.valueOf(estimatedFee),
+                BigDecimal.valueOf(executionPrice)
+        );
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        return futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
+                .map(FuturesOrderEntity::toDomain);
+    }
+
+    @Override
+    @Transactional
     public FuturesOrder updatePendingConditionalCloseOrder(
             Long memberId,
             String orderId,
@@ -207,6 +235,33 @@ public class OrderPersistenceRepository implements OrderRepository {
                 .orElseThrow();
         entity.updateStatus(status);
         return entity.toDomain();
+    }
+
+    @Override
+    @Transactional
+    public Optional<FuturesOrder> updatePendingLimitPrice(
+            Long memberId,
+            String orderId,
+            double limitPrice,
+            String feeType,
+            double estimatedFee,
+            double executionPrice
+    ) {
+        int updated = futuresOrderEntityRepository.updatePendingNonConditionalLimitPrice(
+                memberId,
+                orderId,
+                FuturesOrder.STATUS_PENDING,
+                FuturesOrder.TYPE_LIMIT,
+                BigDecimal.valueOf(limitPrice),
+                feeType,
+                BigDecimal.valueOf(estimatedFee),
+                BigDecimal.valueOf(executionPrice)
+        );
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        return futuresOrderEntityRepository.findByMemberIdAndOrderId(memberId, orderId)
+                .map(FuturesOrderEntity::toDomain);
     }
 
     @Override

@@ -1,6 +1,7 @@
 "use client";
 
 import CancelOrderButton from "@/components/futures/CancelOrderButton";
+import EditOrderButton from "@/components/futures/EditOrderButton";
 import ClosePositionButton from "@/components/futures/ClosePositionButton";
 import FuturesPriceChart from "@/components/futures/FuturesPriceChart";
 import {
@@ -20,6 +21,7 @@ import type {
   FuturesTradingExecutionEvent,
   MarketApiResponse,
 } from "@/lib/futures-api";
+import { isEditableOpenLimitOrder } from "@/lib/futures-open-order-actions";
 import { formatFundingCountdown } from "@/lib/funding-countdown";
 import {
   formatCompactUsd,
@@ -1029,7 +1031,16 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                   {formatOrderStatus(order.status)}
                 </td>
                 <td className="py-3 text-right">
-                  <CancelOrderButton orderId={order.orderId} />
+                  <div className="flex justify-end gap-2">
+                    {isEditableOpenLimitOrder(order) && (
+                      <EditOrderButton
+                        currentLimitPrice={order.limitPrice}
+                        orderId={order.orderId}
+                        symbol={order.symbol}
+                      />
+                    )}
+                    <CancelOrderButton orderId={order.orderId} />
+                  </div>
                 </td>
               </tr>
             );

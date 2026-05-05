@@ -2,13 +2,16 @@ package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.application.result.OpenOrderResult;
 import coin.coinzzickmock.feature.order.application.result.OrderHistoryResult;
 import coin.coinzzickmock.feature.order.application.service.CancelOrderService;
 import coin.coinzzickmock.feature.order.application.service.CreateOrderService;
 import coin.coinzzickmock.feature.order.application.service.GetOpenOrdersService;
+import coin.coinzzickmock.feature.order.application.service.ModifyOrderService;
 import coin.coinzzickmock.feature.order.application.service.GetOrderHistoryService;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.providers.Providers;
@@ -31,6 +34,7 @@ public class OrderController {
     private final GetOpenOrdersService getOpenOrdersService;
     private final GetOrderHistoryService getOrderHistoryService;
     private final CancelOrderService cancelOrderService;
+    private final ModifyOrderService modifyOrderService;
     private final TradingExecutionSseBroker tradingExecutionSseBroker;
     private final Providers providers;
     private final long streamTimeoutMs;
@@ -40,6 +44,7 @@ public class OrderController {
             GetOpenOrdersService getOpenOrdersService,
             GetOrderHistoryService getOrderHistoryService,
             CancelOrderService cancelOrderService,
+            ModifyOrderService modifyOrderService,
             TradingExecutionSseBroker tradingExecutionSseBroker,
             Providers providers,
             @Value("${coin.trading.sse.timeout-ms:300000}") long streamTimeoutMs
@@ -48,6 +53,7 @@ public class OrderController {
         this.getOpenOrdersService = getOpenOrdersService;
         this.getOrderHistoryService = getOrderHistoryService;
         this.cancelOrderService = cancelOrderService;
+        this.modifyOrderService = modifyOrderService;
         this.tradingExecutionSseBroker = tradingExecutionSseBroker;
         this.providers = providers;
         this.streamTimeoutMs = streamTimeoutMs;
@@ -113,6 +119,19 @@ public class OrderController {
                 result.estimatedLiquidationPriceType(),
                 result.executionPrice()
         ));
+    }
+
+    @PostMapping("/{orderId}/modify")
+    public ApiResponse<ModifyOrderResponse> modify(
+            @PathVariable String orderId,
+            @RequestBody ModifyOrderRequest request
+    ) {
+        ModifyOrderResult result = modifyOrderService.modify(new ModifyOrderCommand(
+                providers.auth().currentActor().memberId(),
+                orderId,
+                request.limitPrice()
+        ));
+        return ApiResponse.success(ModifyOrderResponse.from(result));
     }
 
     @PostMapping("/{orderId}/cancel")

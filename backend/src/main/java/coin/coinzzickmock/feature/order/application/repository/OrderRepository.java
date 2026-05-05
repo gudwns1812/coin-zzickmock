@@ -50,6 +50,15 @@ public interface OrderRepository {
             double estimatedFee
     );
 
+    Optional<FuturesOrder> claimPendingLimitFill(
+            Long memberId,
+            String orderId,
+            double expectedLimitPrice,
+            double executionPrice,
+            String feeType,
+            double estimatedFee
+    );
+
     FuturesOrder updateStatus(Long memberId, String orderId, String status);
 
     FuturesOrder updatePendingConditionalCloseOrder(
@@ -59,6 +68,15 @@ public interface OrderRepository {
             double quantity,
             double triggerPrice,
             String ocoGroupId
+    );
+
+    Optional<FuturesOrder> updatePendingLimitPrice(
+            Long memberId,
+            String orderId,
+            double limitPrice,
+            String feeType,
+            double estimatedFee,
+            double executionPrice
     );
 
     int cancelPendingOrders(Long memberId, List<String> orderIds);

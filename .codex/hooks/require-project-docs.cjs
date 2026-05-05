@@ -53,6 +53,11 @@ const IMPLEMENTATION_PATTERNS = [
   /\b(implement|fix|change|update|add|remove|delete|create|build|refactor|clean\s*up|migrate|test|verify|plan|review)\b/i,
 ];
 
+const REPOSITORY_GROUNDED_ANSWER_PATTERNS = [
+  /왜|이유|근거|문서|내\s*문서|리포지토리|레포|repo|저장소|AGENTS|설계\s*문서|규칙|맞아\?|맞는/u,
+  /\b(why|reason|rationale|basis|justify|justification|ground|evidence|docs?|document|repository|repo|rule|policy|architecture|design|decision|correct)\b/i,
+];
+
 const CATEGORY_RULES = [
   {
     label: "repository overview/tooling",
@@ -83,7 +88,7 @@ const CATEGORY_RULES = [
   },
   {
     label: "backend persistence/db/external/exception",
-    patterns: [/DB|schema|스키마|migration|Flyway|JPA|QueryDSL|Redis|MySQL|H2|entity|테이블|영속|예외|exception|CoreException|ErrorType/u],
+    patterns: [/DB|schema|스키마|migration|Flyway|JPA|QueryDSL|Redis|MySQL|H2|entity|테이블|영속|예외|exception|CoreException|ErrorType|@?Modifying|dirty\s*checking|bulk\s*update|bulk|batch|JPQL|flushAutomatically|clearAutomatically/u],
     docs: [
       "BACKEND.md",
       "docs/design-docs/backend-design/06-persistence-rules.md",
@@ -173,8 +178,9 @@ function buildContext(root, prompt) {
 
   return [
     "[coin-zzickmock project document gate]",
-    "Before planning, implementing, editing files, or running implementation-focused tools in this repository, you MUST read the project guidance documents selected from AGENTS.md.",
+    "Before planning, implementing, editing files, running implementation-focused tools, or explaining/evaluating/justifying repository code/design decisions in this repository, you MUST read the project guidance documents selected from AGENTS.md.",
     "Do not make code or documentation edits until these reads are complete. If the scope changes while working, read the additional AGENTS.md-mapped documents before continuing.",
+    "For repository-grounded questions, use repository documents and current code as the primary source. Use external sources only as explicitly-labeled supporting context after repo evidence is checked.",
     "In the final response, briefly state which project documents were read for this turn.",
     "",
     `Matched scope: ${scope}`,
@@ -227,7 +233,7 @@ function main() {
   }
 
   const prompt = firstText(payload.prompt, payload.user_prompt, payload.userPrompt);
-  if (!hasAny(prompt, IMPLEMENTATION_PATTERNS)) {
+  if (!hasAny(prompt, IMPLEMENTATION_PATTERNS) && !hasAny(prompt, REPOSITORY_GROUNDED_ANSWER_PATTERNS)) {
     process.stdout.write("{}");
     return;
   }

@@ -40,6 +40,9 @@ services:
   backend:
     build:
       context: ./backend
+    labels:
+      coin.zzickmock.application: coin-zzickmock
+      coin.zzickmock.environment: ${APP_ENV:-local}
     environment:
       APP_ENV: ${APP_ENV:-local}
       MYSQL_HOST: mysql
@@ -78,7 +81,7 @@ services:
     ports:
       - "${NGINX_PORT:-80}:80"
     volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/nginx_status | grep -q 'Active connections'"]
       interval: 10s
@@ -98,6 +101,7 @@ services:
       - backend
       - nginx-exporter
       - redis-exporter
+      - node-exporter
       - loki
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
@@ -171,6 +175,19 @@ services:
         condition: service_healthy
     expose:
       - "9121"
+    networks:
+      - coin
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.11.1
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($$|/)
+    expose:
+      - "9100"
+    volumes:
+      - /:/host:ro,rslave
     networks:
       - coin
 

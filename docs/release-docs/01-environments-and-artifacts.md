@@ -106,7 +106,7 @@
   - `docker-compose.prod.yml`
   - `backend/src/main/resources/application-prod.yml`
   - `infra/prod.env.example`
-- 의미: 운영 프로필과 Docker Compose로 backend, Redis, Nginx, Prometheus, Grafana, Loki, Promtail, exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다.
+- 의미: 운영 프로필과 Docker Compose로 backend, Redis, Nginx, Prometheus, Grafana, Loki, Promtail, Redis/Nginx/Node exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다.
 
 ### Documentation And Config Artifact
 

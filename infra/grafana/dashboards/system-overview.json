@@ -20,15 +20,20 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
               },
               {
-                "color": "green",
-                "value": 1
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -41,7 +46,7 @@
       "id": 1,
       "options": {
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
@@ -57,12 +62,12 @@
       "pluginVersion": "11.5.2",
       "targets": [
         {
-          "expr": "up{job=\"coin-zzickmock-backend\"}",
-          "legendFormat": "backend",
+          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\", mode=\"idle\"}[5m])))",
+          "legendFormat": "cpu",
           "refId": "A"
         }
       ],
-      "title": "Backend Up",
+      "title": "Host CPU Usage",
       "type": "stat"
     },
     {
@@ -81,11 +86,16 @@
                 "value": null
               },
               {
+                "color": "orange",
+                "value": 70
+              },
+              {
                 "color": "red",
-                "value": 1
+                "value": 85
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -114,12 +124,12 @@
       "pluginVersion": "11.5.2",
       "targets": [
         {
-          "expr": "sum(rate(http_request_total{status_family=\"5xx\"}[5m]))",
-          "legendFormat": "5xx/s",
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"} / node_memory_MemTotal_bytes{job=\"coin-zzickmock-node\"}))",
+          "legendFormat": "memory",
           "refId": "A"
         }
       ],
-      "title": "Backend 5xx Rate",
+      "title": "Host Memory Usage",
       "type": "stat"
     },
     {
@@ -130,37 +140,42 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
-          "unit": "reqps"
+          "unit": "bytes"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 6,
-        "w": 12,
+        "w": 6,
         "x": 12,
         "y": 0
       },
       "id": 3,
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+        "textMode": "auto",
+        "wideLayout": true
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
-          "expr": "sum by (endpoint_group, status_family) (rate(http_request_total[5m]))",
-          "legendFormat": "{{endpoint_group}} {{status_family}}",
+          "expr": "node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"}",
+          "legendFormat": "available",
           "refId": "A"
         }
       ],
-      "title": "HTTP Traffic By Endpoint Group",
-      "type": "timeseries"
+      "title": "Host Memory Available",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -170,37 +185,42 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
-          "unit": "s"
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 6
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 0
       },
       "id": 4,
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+        "textMode": "auto",
+        "wideLayout": true
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, endpoint_group) (rate(http_request_duration_seconds_bucket[10m])))",
-          "legendFormat": "p95 {{endpoint_group}}",
+          "expr": "100 * max by (mountpoint) ((node_filesystem_size_bytes{job=\"coin-zzickmock-node\", fstype!~\"tmpfs|overlay\"} - node_filesystem_avail_bytes{job=\"coin-zzickmock-node\", fstype!~\"tmpfs|overlay\"}) / node_filesystem_size_bytes{job=\"coin-zzickmock-node\", fstype!~\"tmpfs|overlay\"})",
+          "legendFormat": "{{mountpoint}}",
           "refId": "A"
         }
       ],
-      "title": "HTTP P95 By Endpoint Group",
-      "type": "timeseries"
+      "title": "Filesystem Usage",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -209,14 +229,15 @@
       },
       "fieldConfig": {
         "defaults": {
-          "mappings": []
+          "mappings": [],
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 12,
-        "x": 12,
+        "x": 0,
         "y": 6
       },
       "id": 5,
@@ -233,12 +254,17 @@
       },
       "targets": [
         {
-          "expr": "sum by (stream) (sse_connections_current)",
-          "legendFormat": "{{stream}}",
+          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\", mode=\"idle\"}[5m])))",
+          "legendFormat": "total",
           "refId": "A"
+        },
+        {
+          "expr": "100 * sum by (mode) (rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\", mode!=\"idle\"}[5m])) / ignoring(mode) group_left sum(rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\"}[5m]))",
+          "legendFormat": "{{mode}}",
+          "refId": "B"
         }
       ],
-      "title": "SSE Active Connections",
+      "title": "CPU Usage Over Time",
       "type": "timeseries"
     },
     {
@@ -249,15 +275,15 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
-          "unit": "reqps"
+          "unit": "bytes"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 13
+        "x": 12,
+        "y": 6
       },
       "id": 6,
       "options": {
@@ -273,91 +299,30 @@
       },
       "targets": [
         {
-          "expr": "sum by (operation, result) (rate(market_bitget_request_total[1m]))",
-          "legendFormat": "{{operation}} {{result}}",
+          "expr": "node_memory_MemTotal_bytes{job=\"coin-zzickmock-node\"}",
+          "legendFormat": "total",
           "refId": "A"
-        }
-      ],
-      "title": "Bitget Request Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "unit": "short"
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 13
-      },
-      "id": 7,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        {
+          "expr": "node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"}",
+          "legendFormat": "available",
+          "refId": "B"
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
         {
-          "expr": "sum by (source, result) (rate(dau_activity_record_total[5m]))",
-          "legendFormat": "{{source}} {{result}}",
-          "refId": "A"
+          "expr": "node_memory_MemTotal_bytes{job=\"coin-zzickmock-node\"} - node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"}",
+          "legendFormat": "used",
+          "refId": "C"
         }
       ],
-      "title": "DAU Activity Recording",
+      "title": "Memory Over Time",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 20
-      },
-      "id": 8,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
-      },
-      "targets": [
-        {
-          "expr": "{application=\"coin-zzickmock\", service=\"backend\"} |~ \"ERROR|WARN|event=http.request.slow|event=sse.connection.rejected\"",
-          "refId": "A"
-        }
-      ],
-      "title": "Important Logs",
-      "type": "logs"
     }
   ],
   "refresh": "10s",
   "schemaVersion": 40,
   "tags": [
     "coin-zzickmock",
-    "local",
+    "system",
     "observability"
   ],
   "templating": {
@@ -369,8 +334,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Coin Zzickmock Backend Overview",
-  "uid": "coin-backend-overview",
+  "title": "Coin Zzickmock System Overview",
+  "uid": "coin-system-overview",
   "version": 1,
   "weekStart": ""
 }

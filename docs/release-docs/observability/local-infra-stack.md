@@ -13,7 +13,7 @@
 - `grafana`: Prometheus와 Loki datasource, backend overview dashboard
 - `loki`: 로컬 로그 저장소
 - `promtail`: Docker container log 수집
-- `nginx-exporter`, `redis-exporter`: proxy/cache infra metrics
+- `nginx-exporter`, `redis-exporter`, `node-exporter`: proxy/cache/host infra metrics
 
 ## Commands
 
@@ -62,6 +62,7 @@ Grafana local default account:
 Nginx는 `/api/futures/**`와 `/actuator/health`를 backend로 보내고, `/grafana/`를 Grafana로 보낸다.
 프론트엔드 운영 배포는 Vercel이 담당하므로 이 Compose 스택에서 `/`는 제공하지 않는다.
 `/actuator/prometheus`는 외부 Nginx 경로로 노출하지 않고 Prometheus가 Compose 내부 네트워크에서 직접 scrape한다.
+로컬 compose는 인증서가 필요한 운영 Nginx 설정 대신 `infra/nginx/nginx.local.conf`의 HTTP-only 설정을 사용한다.
 
 SSE가 끊기지 않도록 backend API proxy는 buffering을 끄고 긴 read timeout을 사용한다.
 
@@ -77,6 +78,13 @@ Grafana provisioning:
 - `infra/grafana/provisioning/datasources/datasources.yml`
 - `infra/grafana/provisioning/dashboards/dashboards.yml`
 - `infra/grafana/dashboards/backend-overview.json`
+- `infra/grafana/dashboards/system-overview.json`
+
+Host CPU and memory:
+
+- `node-exporter` exposes host-level CPU, memory, filesystem, and network metrics to Prometheus.
+- On Linux production hosts this represents the EC2/host machine. On Docker Desktop local environments this can represent the Docker VM rather than the physical laptop.
+- Container-by-container CPU or memory breakdown is a separate signal and needs cAdvisor or Docker engine metrics; the default dashboard here tracks host saturation only.
 
 Loki/Promtail 설정:
 
@@ -85,6 +93,8 @@ Loki/Promtail 설정:
 
 Prometheus label과 Loki label은 `OBSERVABILITY.md`의 낮은 카디널리티 기준을 따른다.
 회원 ID, 주문 ID, request ID, raw query string, email, phone number, token 원문은 metric label로 넣지 않는다.
+Promtail은 compose 전체 컨테이너 로그를 수집하지만, `application=coin-zzickmock` Loki label은 backend 컨테이너에만 붙인다.
+Grafana의 backend 로그 패널은 Loki/Grafana/Promtail 자체 로그가 query 문자열 때문에 다시 잡히지 않도록 backend stream만 조회한다.
 
 ## Verification
 
@@ -97,4 +107,4 @@ curl -fsS http://localhost:9090/-/ready
 curl -fsS http://localhost:3100/ready
 ```
 
-Grafana에서는 `Coin Zzickmock Backend Overview` dashboard가 자동으로 provision되어야 한다.
+Grafana에서는 `Coin Zzickmock Backend Overview`와 `Coin Zzickmock System Overview` dashboard가 자동으로 provision되어야 한다.

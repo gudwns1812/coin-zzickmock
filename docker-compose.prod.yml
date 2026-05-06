@@ -18,6 +18,9 @@ services:
   backend:
     image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE}
     restart: unless-stopped
+    labels:
+      coin.zzickmock.application: coin-zzickmock
+      coin.zzickmock.environment: ${APP_ENV:-prod}
     environment:
       SPRING_PROFILES_ACTIVE: prod
       APP_ENV: prod
@@ -84,6 +87,7 @@ services:
       - backend
       - nginx-exporter
       - redis-exporter
+      - node-exporter
       - loki
     ports:
       - "${PROMETHEUS_BIND_ADDRESS:-127.0.0.1}:${PROMETHEUS_PORT:-9090}:9090"
@@ -160,6 +164,20 @@ services:
         condition: service_healthy
     expose:
       - "9121"
+    networks:
+      - coin
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.11.1
+    restart: unless-stopped
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($$|/)
+    expose:
+      - "9100"
+    volumes:
+      - /:/host:ro,rslave
     networks:
       - coin
 

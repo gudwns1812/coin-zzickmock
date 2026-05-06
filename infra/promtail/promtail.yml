@@ -29,7 +29,9 @@ scrape_configs:
       - source_labels: ["__meta_docker_container_name"]
         regex: "/(.*)"
         target_label: container
-      - target_label: application
-        replacement: coin-zzickmock
-      - target_label: environment
-        replacement: local
+      - source_labels: ["__meta_docker_container_label_coin_zzickmock_application"]
+        regex: "(.+)"
+        target_label: application
+      - source_labels: ["__meta_docker_container_label_coin_zzickmock_environment"]
+        regex: "(.+)"
+        target_label: environment

@@ -22,7 +22,7 @@
 5. repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 EC2의 `EC2_DEPLOY_PATH`로 복사한다.
 6. EC2의 `EC2_DEPLOY_PATH`에서 서버 전용 `.env.prod`를 함께 사용한다.
 7. 새 backend image와 관측성 스택 image를 pull한다.
-8. backend와 관측성 container(Redis, Loki, Promtail, Redis exporter, Nginx exporter, Prometheus, Grafana)를 재시작한다.
+8. backend와 관측성 container(Redis, Loki, Promtail, Redis exporter, Nginx exporter, Node exporter, Prometheus, Grafana)를 재시작한다.
 9. Nginx container가 실행 중이면 설정 검사를 통과한 뒤 reload한다. Nginx가 실행 중이 아니면 backend/Grafana 배포를 막지 않고 경고만 남긴다.
 
 ## Image
@@ -107,7 +107,7 @@ sudo cp -R /tmp/coin-zzickmock-<tag>/infra/* <EC2_DEPLOY_PATH>/infra/
 
 env BACKEND_IMAGE=<docker-hub-backend-image> \
   <compose-command> --env-file .env.prod -f docker-compose.prod.yml pull \
-  backend redis loki promtail redis-exporter nginx-exporter prometheus grafana
+  backend redis loki promtail redis-exporter nginx-exporter node-exporter prometheus grafana
 
 env BACKEND_IMAGE=<docker-hub-backend-image> \
   <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps \
@@ -115,7 +115,7 @@ env BACKEND_IMAGE=<docker-hub-backend-image> \
 
 env BACKEND_IMAGE=<docker-hub-backend-image> \
   <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps \
-  backend promtail redis-exporter nginx-exporter prometheus grafana
+  backend promtail redis-exporter nginx-exporter node-exporter prometheus grafana
 
 nginx_container="$(
   env BACKEND_IMAGE=<docker-hub-backend-image> \

@@ -80,3 +80,33 @@ groups:
         annotations:
           summary: Redis exporter scrape is down
           description: Prometheus cannot scrape Redis exporter metrics.
+
+      - alert: NodeExporterDown
+        expr: up{job="coin-zzickmock-node"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          service: node
+        annotations:
+          summary: Node exporter scrape is down
+          description: Prometheus cannot scrape host CPU and memory metrics.
+
+      - alert: HostCpuHigh
+        expr: 100 * (1 - avg(rate(node_cpu_seconds_total{job="coin-zzickmock-node", mode="idle"}[5m]))) > 85
+        for: 10m
+        labels:
+          severity: warning
+          service: node
+        annotations:
+          summary: Host CPU usage is high
+          description: Host CPU usage has stayed above 85% for at least 10 minutes.
+
+      - alert: HostMemoryHigh
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes{job="coin-zzickmock-node"} / node_memory_MemTotal_bytes{job="coin-zzickmock-node"})) > 85
+        for: 10m
+        labels:
+          severity: warning
+          service: node
+        annotations:
+          summary: Host memory usage is high
+          description: Host memory usage has stayed above 85% for at least 10 minutes.

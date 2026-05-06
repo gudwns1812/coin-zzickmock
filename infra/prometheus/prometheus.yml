@@ -34,6 +34,12 @@ scrape_configs:
         labels:
           service: redis
 
+  - job_name: coin-zzickmock-node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: node
+
   - job_name: coin-zzickmock-loki
     static_configs:
       - targets: ["loki:3100"]

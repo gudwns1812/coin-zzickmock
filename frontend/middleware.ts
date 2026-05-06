@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getJwtToken } from "./utils/auth";
 import { isSupportedMarketSymbol } from "./lib/markets";
 
 export async function middleware(req: NextRequest) {
@@ -11,7 +10,7 @@ export async function middleware(req: NextRequest) {
       userAgent
     );
 
-  const token = await getJwtToken();
+  const token = req.cookies.get("accessToken")?.value;
 
   if (isMobile && pathname !== "/only-desktop") {
     return NextResponse.redirect(new URL("/only-desktop", req.url));

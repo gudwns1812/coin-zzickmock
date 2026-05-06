@@ -181,8 +181,9 @@ jobs:
           fi
 
           echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml pull backend
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend grafana
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml pull backend redis loki promtail redis-exporter nginx-exporter prometheus grafana
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps redis loki
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend promtail redis-exporter nginx-exporter prometheus grafana
           nginx_container="$(env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps -q nginx || true)"
           if [[ -n "${nginx_container}" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" == "true" ]]; then
             if env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -t; then
@@ -196,5 +197,5 @@ jobs:
             echo "Nginx service is not running; skipped Nginx reload so backend/grafana deployment can complete." >&2
           fi
           docker image prune -f
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps backend grafana nginx
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps redis backend grafana prometheus loki promtail redis-exporter nginx-exporter nginx
           REMOTE_DEPLOY

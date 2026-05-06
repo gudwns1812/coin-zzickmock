@@ -36,7 +36,7 @@
   - 백엔드 `./gradlew check`를 다시 수행한다
   - backend Docker 이미지를 Docker Hub에 push한다
   - SSH로 EC2에 접속해 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 복사한다
-  - EC2에서 backend 이미지를 pull/restart한다
+  - EC2에서 backend 이미지와 관측성 스택 이미지를 pull/restart한다
 - 상세 기준: [04-production-cd.md](04-production-cd.md)
 
 ### Preview
@@ -106,7 +106,7 @@
   - `docker-compose.prod.yml`
   - `backend/src/main/resources/application-prod.yml`
   - `infra/prod.env.example`
-- 의미: 운영 프로필과 Docker Compose로 backend, Redis, Nginx, Prometheus, Grafana, Loki를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다.
+- 의미: 운영 프로필과 Docker Compose로 backend, Redis, Nginx, Prometheus, Grafana, Loki, Promtail, exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다.
 
 ### Documentation And Config Artifact
 

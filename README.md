@@ -173,8 +173,9 @@ CI는 브랜치명 정책, 프론트 typecheck/build, 백엔드 `./gradlew check
 - 운영 환경/산출물 기준: [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
 - Backend production CD 기준: [docs/release-docs/04-production-cd.md](docs/release-docs/04-production-cd.md)
 
-현재 CD는 `main`/`master`의 backend, production compose, infra 변경 또는 수동 실행을 기준으로 backend 릴리즈 후보를 검증하고, Docker Hub에 ARM64
-backend 이미지를 발행한 뒤 EC2에서 backend 컨테이너를 pull/restart합니다.
+현재 CD는 `main`/`master`의 backend, production compose, infra 변경 또는 수동 실행을 배포 효과로 분류합니다. Backend 코드 변경은 backend 릴리즈 후보를
+검증하고 Docker Hub에 ARM64 backend 이미지를 발행한 뒤 EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 바꿔 backend를 pull/restart합니다.
+Infra/compose 변경은 backend image를 새로 만들지 않고, 분류된 runtime 범위에 따라 backend 또는 non-backend 서비스를 재시작하거나 Nginx 설정만 reload합니다.
 
 ## 작업 기준 문서
 

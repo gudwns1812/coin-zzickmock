@@ -11,12 +11,23 @@ on:
       - "infra/**"
   workflow_dispatch:
     inputs:
+      deploy_scope:
+        description: "Deployment effect to apply. Use auto only for push-style path classification."
+        required: true
+        default: backend-image
+        type: choice
+        options:
+          - backend-image
+          - backend-runtime
+          - infra-runtime
+          - all
+          - auto
       image_tag:
         description: "Backend image tag to publish and deploy. Defaults to the short commit SHA."
         required: false
         type: string
       deploy:
-        description: "Deploy the published backend image to EC2."
+        description: "Deploy to EC2 after classification/verification/publish."
         required: true
         default: true
         type: boolean
@@ -29,17 +40,154 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Verify Backend Release Candidate
+  classify:
+    name: Classify Deployment Effects
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    outputs:
+      backend_image: ${{ steps.effects.outputs.backend_image }}
+      backend_runtime: ${{ steps.effects.outputs.backend_runtime }}
+      infra_runtime: ${{ steps.effects.outputs.infra_runtime }}
+      nginx_config: ${{ steps.effects.outputs.nginx_config }}
+      nginx_service_definition: ${{ steps.effects.outputs.nginx_service_definition }}
+      deploy: ${{ steps.effects.outputs.deploy }}
+      has_effect: ${{ steps.effects.outputs.has_effect }}
+      image_tag: ${{ steps.effects.outputs.image_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Resolve deployment effects
+        id: effects
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before || '' }}
+          INPUT_DEPLOY_SCOPE: ${{ github.event.inputs.deploy_scope || 'auto' }}
+          INPUT_IMAGE_TAG: ${{ github.event.inputs.image_tag || '' }}
+          INPUT_DEPLOY: ${{ github.event.inputs.deploy || 'true' }}
+        run: |
+          set -euo pipefail
+
+          backend_image=false
+          backend_runtime=false
+          infra_runtime=false
+          nginx_config=false
+          nginx_service_definition=false
+          deploy="${INPUT_DEPLOY:-true}"
+          image_tag="${INPUT_IMAGE_TAG:-${GITHUB_SHA::7}}"
+          use_path_classification=true
+
+          if [[ ! "${image_tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "::error title=Invalid image_tag::Docker image tag must match ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$."
+            exit 1
+          fi
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            use_path_classification=false
+            case "${INPUT_DEPLOY_SCOPE}" in
+              backend-image)
+                backend_image=true
+                ;;
+              backend-runtime)
+                backend_runtime=true
+                ;;
+              infra-runtime)
+                infra_runtime=true
+                ;;
+              all)
+                backend_image=true
+                backend_runtime=true
+                infra_runtime=true
+                ;;
+              auto)
+                use_path_classification=true
+                ;;
+              *)
+                echo "::error title=Unknown deploy_scope::Unsupported deploy_scope '${INPUT_DEPLOY_SCOPE}'."
+                exit 1
+                ;;
+            esac
+          fi
+
+          if [[ "${use_path_classification}" == "true" ]]; then
+            before="${EVENT_BEFORE}"
+            if [[ -z "${before}" || "${before}" =~ ^0+$ ]]; then
+              before="$(git rev-parse "${GITHUB_SHA}^")"
+            fi
+
+            changed_files="$(git diff --name-only "${before}" "${GITHUB_SHA}")"
+            if grep -q '^backend/' <<< "${changed_files}"; then
+              backend_image=true
+            fi
+            if grep -Eq '^infra/(prometheus|grafana|loki|promtail)/' <<< "${changed_files}"; then
+              infra_runtime=true
+            fi
+            if grep -q '^infra/nginx/' <<< "${changed_files}"; then
+              nginx_config=true
+            fi
+            if grep -q '^docker-compose\.prod\.yml$' <<< "${changed_files}"; then
+              compose_result="$(GITHUB_OUTPUT= node .github/cd/classify-compose-changes.cjs --before "${before}" --after "${GITHUB_SHA}")"
+              echo "Compose classification: ${compose_result}"
+              compose_backend_runtime="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(String(data.backend_runtime));' "${compose_result}")"
+              compose_infra_runtime="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(String(data.infra_runtime));' "${compose_result}")"
+              compose_nginx_service_definition="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(String(data.nginx_service_definition));' "${compose_result}")"
+              if [[ "${compose_backend_runtime}" == "true" ]]; then
+                backend_runtime=true
+              fi
+              if [[ "${compose_infra_runtime}" == "true" ]]; then
+                infra_runtime=true
+              fi
+              if [[ "${compose_nginx_service_definition}" == "true" ]]; then
+                nginx_service_definition=true
+              fi
+            fi
+          fi
+
+          has_effect=false
+          if [[ "${backend_image}" == "true" || "${backend_runtime}" == "true" || "${infra_runtime}" == "true" || "${nginx_config}" == "true" || "${nginx_service_definition}" == "true" ]]; then
+            has_effect=true
+          fi
+
+          {
+            echo "backend_image=${backend_image}"
+            echo "backend_runtime=${backend_runtime}"
+            echo "infra_runtime=${infra_runtime}"
+            echo "nginx_config=${nginx_config}"
+            echo "nginx_service_definition=${nginx_service_definition}"
+            echo "deploy=${deploy}"
+            echo "has_effect=${has_effect}"
+            echo "image_tag=${image_tag}"
+          } >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "### CD effect classification"
+            echo ""
+            echo "- backend_image: \`${backend_image}\`"
+            echo "- backend_runtime: \`${backend_runtime}\`"
+            echo "- infra_runtime: \`${infra_runtime}\`"
+            echo "- nginx_config: \`${nginx_config}\`"
+            echo "- nginx_service_definition: \`${nginx_service_definition}\`"
+            echo "- deploy: \`${deploy}\`"
+            echo "- image_tag: \`${image_tag}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  verify_backend_candidate:
+    name: Verify Backend Release Candidate
+    runs-on: ubuntu-latest
+    needs: classify
+    steps:
+      - name: No backend verification needed
+        if: ${{ needs.classify.outputs.backend_image != 'true' }}
+        run: echo "backend_image=false; skipping backend Gradle check." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        uses: actions/checkout@v5
 
       - name: Setup Java
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -47,65 +195,82 @@ jobs:
           cache: gradle
 
       - name: Ensure Gradle wrapper is executable
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        working-directory: backend
         run: chmod +x gradlew
 
       - name: Run backend check
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        working-directory: backend
         run: ./gradlew check --console=plain
 
-  publish:
+  publish_backend_image:
     name: Publish Backend Image To Docker Hub
     runs-on: ubuntu-latest
-    needs: verify
-    outputs:
-      image_tag: ${{ steps.meta.outputs.image_tag }}
+    needs:
+      - classify
+      - verify_backend_candidate
     steps:
+      - name: No backend image publish needed
+        if: ${{ needs.classify.outputs.backend_image != 'true' }}
+        run: echo "backend_image=false; skipping Docker Hub publish." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Checkout
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
         uses: actions/checkout@v5
 
       - name: Setup QEMU for ARM64 build
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
         uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
       - name: Setup Docker Buildx
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
         uses: docker/setup-buildx-action@v4
 
       - name: Login to Docker Hub
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Resolve backend image metadata
-        id: meta
-        shell: bash
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          INPUT_IMAGE_TAG: ${{ inputs.image_tag || '' }}
-        run: |
-          image_tag="${INPUT_IMAGE_TAG:-${GITHUB_SHA::7}}"
-          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
-
       - name: Build and push backend image
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
         uses: docker/build-push-action@v7
         with:
           context: ./backend
           platforms: linux/arm64
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ steps.meta.outputs.image_tag }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ needs.classify.outputs.image_tag }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
-  deploy:
-    name: Deploy Backend Image To EC2
+  deploy_to_ec2:
+    name: Deploy Classified Effects To EC2
     runs-on: ubuntu-latest
-    needs: publish
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy) }}
+    needs:
+      - classify
+      - publish_backend_image
     steps:
+      - name: Summarize skipped deploy
+        if: ${{ needs.classify.outputs.deploy != 'true' || needs.classify.outputs.has_effect != 'true' }}
+        run: |
+          {
+            echo "### CD deploy skipped"
+            echo ""
+            echo "- deploy: \`${{ needs.classify.outputs.deploy }}\`"
+            echo "- has_effect: \`${{ needs.classify.outputs.has_effect }}\`"
+            echo "- No SSH deploy, remote mutation, service operation, or health check was run."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Checkout
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
         uses: actions/checkout@v5
 
       - name: Prepare SSH
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
         shell: bash
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -124,31 +289,25 @@ jobs:
 
           ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$EC2_HOST" >> ~/.ssh/known_hosts
 
-      - name: Sync compose and infra files to EC2
+      - name: Stage compose and infra files on EC2
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
         shell: bash
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
           EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
+          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-${{ github.sha }}-${{ github.run_attempt }}
         run: |
-          deploy_tmp="/tmp/coin-zzickmock-${GITHUB_SHA::7}"
           ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
-            "rm -rf '${deploy_tmp}' && mkdir -p '${deploy_tmp}/infra'"
+            "rm -rf '${REMOTE_STAGE_DIR}' && mkdir -p '${REMOTE_STAGE_DIR}/infra'"
           scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.prod.yml \
-            "${EC2_USER}@${EC2_HOST}:${deploy_tmp}/docker-compose.prod.yml"
+            "${EC2_USER}@${EC2_HOST}:${REMOTE_STAGE_DIR}/docker-compose.prod.yml"
           scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
             infra/nginx infra/prometheus infra/grafana infra/loki infra/promtail \
-            "${EC2_USER}@${EC2_HOST}:${deploy_tmp}/infra/"
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
-            "bash -lc \"set -euo pipefail
-             sudo mkdir -p '${EC2_DEPLOY_PATH}/infra'
-             sudo cp '${deploy_tmp}/docker-compose.prod.yml' '${EC2_DEPLOY_PATH}/docker-compose.prod.yml'
-             sudo rm -rf '${EC2_DEPLOY_PATH}/infra/nginx' '${EC2_DEPLOY_PATH}/infra/prometheus' '${EC2_DEPLOY_PATH}/infra/grafana' '${EC2_DEPLOY_PATH}/infra/loki' '${EC2_DEPLOY_PATH}/infra/promtail'
-             sudo cp -R '${deploy_tmp}/infra/nginx' '${deploy_tmp}/infra/prometheus' '${deploy_tmp}/infra/grafana' '${deploy_tmp}/infra/loki' '${deploy_tmp}/infra/promtail' '${EC2_DEPLOY_PATH}/infra/'
-             rm -rf '${deploy_tmp}'\""
+            "${EC2_USER}@${EC2_HOST}:${REMOTE_STAGE_DIR}/infra/"
 
-      - name: Pull and restart backend on EC2
+      - name: Apply classified effects on EC2
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
         shell: bash
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -157,45 +316,242 @@ jobs:
           EC2_DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ needs.publish.outputs.image_tag }}
+          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-${{ github.sha }}-${{ github.run_attempt }}
+          BACKEND_IMAGE_EFFECT: ${{ needs.classify.outputs.backend_image }}
+          BACKEND_RUNTIME_EFFECT: ${{ needs.classify.outputs.backend_runtime }}
+          INFRA_RUNTIME_EFFECT: ${{ needs.classify.outputs.infra_runtime }}
+          NGINX_CONFIG_EFFECT: ${{ needs.classify.outputs.nginx_config }}
+          NGINX_SERVICE_DEFINITION_EFFECT: ${{ needs.classify.outputs.nginx_service_definition }}
+          CANDIDATE_BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ needs.classify.outputs.image_tag }}
         run: |
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
-            "BACKEND_IMAGE='${BACKEND_IMAGE}' DOCKERHUB_USERNAME='${DOCKERHUB_USERNAME}' DOCKERHUB_TOKEN='${DOCKERHUB_TOKEN}' EC2_DEPLOY_PATH='${EC2_DEPLOY_PATH}' bash -s" <<'REMOTE_DEPLOY'
           set -euo pipefail
+
+          remote_command=""
+          for name in \
+            BACKEND_IMAGE_EFFECT \
+            BACKEND_RUNTIME_EFFECT \
+            INFRA_RUNTIME_EFFECT \
+            NGINX_CONFIG_EFFECT \
+            NGINX_SERVICE_DEFINITION_EFFECT \
+            CANDIDATE_BACKEND_IMAGE \
+            DOCKERHUB_USERNAME \
+            DOCKERHUB_TOKEN \
+            EC2_DEPLOY_PATH \
+            REMOTE_STAGE_DIR
+          do
+            value="${!name}"
+            remote_command+="${name}=$(printf '%q' "${value}") "
+          done
+
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
+            "${remote_command}bash -s" <<'REMOTE_DEPLOY'
+          set -euo pipefail
+
+          infra_services=(redis loki promtail redis-exporter nginx-exporter node-exporter prometheus grafana)
+          infra_dirs=(nginx prometheus grafana loki promtail)
+
+          require_backend_image_line() {
+            local env_file="$1"
+            if [[ ! -f "${env_file}" ]]; then
+              echo ".env.prod is missing at ${env_file}." >&2
+              exit 1
+            fi
+            if ! grep -q '^BACKEND_IMAGE=' "${env_file}"; then
+              echo ".env.prod must contain BACKEND_IMAGE before CD can preflight compose." >&2
+              exit 1
+            fi
+          }
+
+          detect_compose() {
+            if docker compose version >/dev/null 2>&1; then
+              compose=(docker compose)
+            elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+              compose=(docker-compose)
+            else
+              echo "Docker Compose is not available on the EC2 host. Install Docker Compose v2 plugin or docker-compose." >&2
+              docker version || true
+              exit 1
+            fi
+          }
+
+          validate_candidate_image() {
+            if [[ "${BACKEND_IMAGE_EFFECT}" != "true" ]]; then
+              return
+            fi
+            if [[ -z "${CANDIDATE_BACKEND_IMAGE}" ]]; then
+              echo "Candidate backend image is empty." >&2
+              exit 1
+            fi
+            if [[ "${CANDIDATE_BACKEND_IMAGE}" =~ [[:space:]\"\'\;\`\$\\] ]]; then
+              echo "Candidate backend image contains unsupported characters." >&2
+              exit 1
+            fi
+            local tag="${CANDIDATE_BACKEND_IMAGE##*:}"
+            if [[ ! "${tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+              echo "Candidate backend image tag is invalid." >&2
+              exit 1
+            fi
+          }
+
+          replace_backend_image_line() {
+            local source_env="$1"
+            local target_env="$2"
+            awk -v image="${CANDIDATE_BACKEND_IMAGE}" '
+              BEGIN { replaced = 0 }
+              /^BACKEND_IMAGE=/ {
+                print "BACKEND_IMAGE=" image
+                replaced = 1
+                next
+              }
+              { print }
+              END {
+                if (replaced != 1) {
+                  exit 3
+                }
+              }
+            ' "${source_env}" > "${target_env}"
+          }
+
+          should_promote_compose_file() {
+            [[ "${BACKEND_RUNTIME_EFFECT}" == "true" || "${INFRA_RUNTIME_EFFECT}" == "true" || "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]
+          }
+
+          should_promote_infra_files() {
+            [[ "${INFRA_RUNTIME_EFFECT}" == "true" || "${NGINX_CONFIG_EFFECT}" == "true" || "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]
+          }
+
+          install_candidate_env() {
+            local mode owner group temp_live_env
+            mode="$(stat -c '%a' "${live_env}")"
+            owner="$(stat -c '%u' "${live_env}")"
+            group="$(stat -c '%g' "${live_env}")"
+            temp_live_env="${EC2_DEPLOY_PATH}/.env.prod.tmp.$$"
+            sudo install -m "${mode}" -o "${owner}" -g "${group}" "${candidate_env}" "${temp_live_env}"
+            sudo mv "${temp_live_env}" "${live_env}"
+          }
+
+          preflight_candidate() {
+            local compose_file
+            if should_promote_compose_file; then
+              compose_file="${REMOTE_STAGE_DIR}/docker-compose.prod.yml"
+              echo "Preflighting staged compose contract."
+            else
+              compose_file="${EC2_DEPLOY_PATH}/docker-compose.prod.yml"
+              echo "Preflighting live compose contract with candidate environment."
+            fi
+            env -u BACKEND_IMAGE "${compose[@]}" --env-file "${candidate_env}" -f "${compose_file}" config --quiet
+          }
+
+          promote_candidate() {
+            if should_promote_compose_file; then
+              sudo mkdir -p "${EC2_DEPLOY_PATH}/infra"
+              sudo cp "${REMOTE_STAGE_DIR}/docker-compose.prod.yml" "${EC2_DEPLOY_PATH}/docker-compose.prod.yml"
+            fi
+            if should_promote_infra_files; then
+              sudo mkdir -p "${EC2_DEPLOY_PATH}/infra"
+              for dir in "${infra_dirs[@]}"; do
+                sudo rm -rf "${EC2_DEPLOY_PATH}/infra/${dir}"
+                sudo cp -R "${REMOTE_STAGE_DIR}/infra/${dir}" "${EC2_DEPLOY_PATH}/infra/"
+              done
+            fi
+            if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
+              install_candidate_env
+            fi
+          }
+
+          compose_live() {
+            env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml "$@"
+          }
+
+          check_backend_health() {
+            local container
+            container="$(compose_live ps -q backend || true)"
+            if [[ -z "${container}" ]]; then
+              echo "Backend container is missing after recreate." >&2
+              exit 1
+            fi
+
+            for _ in $(seq 1 24); do
+              local status
+              status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${container}" 2>/dev/null || true)"
+              if [[ "${status}" == "healthy" || "${status}" == "running" ]]; then
+                echo "Backend container health/status is ${status}."
+                return
+              fi
+              if [[ "${status}" == "unhealthy" || "${status}" == "exited" || "${status}" == "dead" ]]; then
+                echo "Backend container became ${status}. Automatic rollback is intentionally not performed." >&2
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo "Backend health did not become healthy in time. Automatic rollback is intentionally not performed." >&2
+            exit 1
+          }
+
+          reload_nginx_config() {
+            local nginx_container
+            nginx_container="$(compose_live ps -q nginx || true)"
+            if [[ -z "${nginx_container}" ]] || [[ "$(docker inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" != "true" ]]; then
+              echo "Nginx config changed, but nginx is not running; refusing to recreate nginx for config-only changes." >&2
+              exit 1
+            fi
+            compose_live exec -T nginx nginx -t
+            compose_live exec -T nginx nginx -s reload
+          }
+
+          recreate_nginx_service() {
+            compose_live pull nginx
+            compose_live up -d --no-deps nginx
+            compose_live exec -T nginx nginx -t
+          }
+
+          cleanup() {
+            rm -rf "${REMOTE_STAGE_DIR}" || true
+          }
+          trap cleanup EXIT
+
+          detect_compose
+          validate_candidate_image
+
+          live_env="${EC2_DEPLOY_PATH}/.env.prod"
+          require_backend_image_line "${live_env}"
+          candidate_env="${REMOTE_STAGE_DIR}/.env.prod.candidate"
+          if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
+            replace_backend_image_line "${live_env}" "${candidate_env}" || {
+              echo "Failed to create candidate .env.prod with updated BACKEND_IMAGE." >&2
+              exit 1
+            }
+          else
+            cp "${live_env}" "${candidate_env}"
+          fi
+
+          preflight_candidate
+          promote_candidate
 
           cd "${EC2_DEPLOY_PATH}"
 
-          if docker compose version >/dev/null 2>&1; then
-            compose=(docker compose)
-          elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
-            compose=(docker-compose)
-          else
-            echo "Docker Compose is not available on the EC2 host. Install the Docker Compose v2 plugin or the docker-compose binary." >&2
-            docker version || true
-            exit 1
+          if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
+            echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+            compose_live pull backend
+            compose_live up -d --no-deps backend
+            check_backend_health
+          elif [[ "${BACKEND_RUNTIME_EFFECT}" == "true" ]]; then
+            compose_live up -d --no-deps backend
+            check_backend_health
           fi
 
-          if [[ -z "${BACKEND_IMAGE}" ]]; then
-            echo "BACKEND_IMAGE is empty. Check the CD image tag output and Docker Hub namespace secrets." >&2
-            exit 1
+          if [[ "${INFRA_RUNTIME_EFFECT}" == "true" ]]; then
+            compose_live pull "${infra_services[@]}"
+            compose_live up -d --no-deps "${infra_services[@]}"
           fi
 
-          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml pull backend redis loki promtail redis-exporter nginx-exporter node-exporter prometheus grafana
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps redis loki
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend promtail redis-exporter nginx-exporter node-exporter prometheus grafana
-          nginx_container="$(env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps -q nginx || true)"
-          if [[ -n "${nginx_container}" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" == "true" ]]; then
-            if env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -t; then
-              if ! env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -s reload; then
-                echo "Nginx reload failed; backend/grafana deployment remains applied." >&2
-              fi
-            else
-              echo "Nginx config validation failed; backend/grafana deployment remains applied, but Nginx was not reloaded." >&2
-            fi
-          else
-            echo "Nginx service is not running; skipped Nginx reload so backend/grafana deployment can complete." >&2
+          if [[ "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]; then
+            recreate_nginx_service
+          elif [[ "${NGINX_CONFIG_EFFECT}" == "true" ]]; then
+            reload_nginx_config
           fi
+
           docker image prune -f
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps redis backend grafana prometheus loki promtail redis-exporter nginx-exporter node-exporter nginx
+          compose_live ps redis backend grafana prometheus loki promtail redis-exporter nginx-exporter node-exporter nginx
           REMOTE_DEPLOY

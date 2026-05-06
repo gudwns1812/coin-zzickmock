@@ -33,10 +33,11 @@
 - 현재 구현: `.github/workflows/cd.yml`
 - 기본 동작:
   - `main`/`master`의 `backend/**`, `docker-compose.prod.yml`, `infra/**` 변경 또는 수동 실행으로 시작한다
-  - 백엔드 `./gradlew check`를 다시 수행한다
-  - backend Docker 이미지를 Docker Hub에 push한다
-  - SSH로 EC2에 접속해 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 복사한다
-  - EC2에서 backend 이미지와 관측성 스택 이미지를 pull/restart한다
+  - 변경 범위를 `backend_image`, `backend_runtime`, `infra_runtime`, `nginx_config` 배포 효과로 분류한다
+  - `backend_image`일 때만 백엔드 `./gradlew check`와 backend Docker image push를 수행한다
+  - SSH로 EC2에 접속해 staged compose/env preflight를 먼저 수행한다
+  - `backend_image`는 EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 교체한 뒤 backend를 pull/restart한다
+  - `backend_runtime`, `infra_runtime`, `nginx_config`는 backend image를 새로 만들지 않고 필요한 runtime 파일과 서비스만 반영한다
 - 상세 기준: [04-production-cd.md](04-production-cd.md)
 
 ### Preview
@@ -158,7 +159,9 @@
 ### Production Docker Host
 
 - 서버에는 비밀값을 담은 `.env.prod`가 있어야 한다.
-- CD는 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 배포 때마다 서버로 복사한다.
+- `.env.prod`에는 현재 운영 backend image를 가리키는 `BACKEND_IMAGE`가 있어야 한다.
+- CD는 backend image 배포 때 `.env.prod`의 `BACKEND_IMAGE` 한 줄만 새 Docker Hub 태그로 교체한다.
+- CD는 backend/infra runtime 설정 변경 때 staged compose/env preflight가 통과한 뒤 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 서버로 복사한다.
 - `.env.prod`의 공개 가능한 예시는 `infra/prod.env.example`에서 관리한다.
 - CD의 EC2 SSH 사용자는 배포 경로 파일 반영을 위해 passwordless `sudo` 권한이 필요하며, Docker Compose는 `sudo` 없이 실행할 수 있어야 한다.
 - GitHub Actions secret `EC2_SSH_PRIVATE_KEY`는 passphrase 없는 SSH private key 원문 전체를 실제 줄바꿈과 함께 저장해야 한다. `-----BEGIN ... PRIVATE KEY-----`/`-----END ... PRIVATE KEY-----` 경계를 포함하고, 터미널 프롬프트 문자나 zsh의 no-newline 표시인 `%` 같은 문자를 포함하지 않는다.

@@ -1,0 +1,77 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT:3306}/${MYSQL_DATABASE}?useSSL=true&serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&characterEncoding=UTF-8}
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${MYSQL_POOL_MAX_SIZE:20}
+      minimum-idle: ${MYSQL_POOL_MIN_IDLE:5}
+      connection-timeout: ${MYSQL_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${MYSQL_VALIDATION_TIMEOUT_MS:5000}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT:30s}
+
+server:
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:info}
+    coin.coinzzickmock: ${LOG_LEVEL_APP:info}
+    org.hibernate.SQL: warn
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      environment: prod
+
+app:
+  auth:
+    jwt-secret: ${JWT_SECRET}
+
+coin:
+  bitget:
+    websocket:
+      enabled: ${BITGET_WEBSOCKET_ENABLED:true}
+  cache:
+    redis:
+      enabled: true
+  leaderboard:
+    redis:
+      enabled: ${LEADERBOARD_REDIS_ENABLED:true}
+    refresh:
+      enabled: ${LEADERBOARD_REFRESH_ENABLED:false}
+  activity:
+    summary:
+      enabled: ${DAU_SUMMARY_ENABLED:true}

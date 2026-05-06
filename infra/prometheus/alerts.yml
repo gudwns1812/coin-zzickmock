@@ -1,0 +1,82 @@
+groups:
+  - name: coin-zzickmock-local
+    rules:
+      - alert: BackendDown
+        expr: up{job="coin-zzickmock-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: Backend actuator scrape is down
+          description: Prometheus cannot scrape backend /actuator/prometheus.
+
+      - alert: NginxDown
+        expr: up{job="coin-zzickmock-nginx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: nginx
+        annotations:
+          summary: Nginx exporter scrape is down
+          description: The reverse proxy or nginx exporter is unavailable.
+
+      - alert: BackendServerErrors
+        expr: sum(rate(http_request_total{status_family="5xx"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: Backend 5xx responses are increasing
+          description: Backend HTTP 5xx responses have been observed for at least 5 minutes.
+
+      - alert: BackendEndpointP95High
+        expr: histogram_quantile(0.95, sum by (le, endpoint_group) (rate(http_request_duration_seconds_bucket[10m]))) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: Backend endpoint p95 latency is high
+          description: At least one endpoint_group p95 has exceeded the local warning threshold.
+
+      - alert: SseRejections
+        expr: sum by (stream) (rate(sse_connections_rejected_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: SSE connections are being rejected
+          description: SSE rejection count is increasing by stream.
+
+      - alert: BitgetFallbackUsed
+        expr: sum by (operation) (rate(market_bitget_fallback_total[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: Bitget fallback path is active
+          description: Market data fallback is being used for at least one operation.
+
+      - alert: DauActivityFailures
+        expr: sum(rate(dau_activity_record_total{result=~"failure|rejected"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: DAU activity recording is failing
+          description: DAU activity record failures or rejections have been observed.
+
+      - alert: RedisExporterDown
+        expr: up{job="coin-zzickmock-redis"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: Redis exporter scrape is down
+          description: Prometheus cannot scrape Redis exporter metrics.

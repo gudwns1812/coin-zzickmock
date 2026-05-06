@@ -34,10 +34,9 @@ test("admin pages navigate through the admin hub", () => {
   assert.match(shopItemsSource, /href="\/admin"/);
   assert.match(adminHubSource, /href="\/admin\/reward-redemptions"/);
   assert.match(adminHubSource, /href="\/admin\/shop-items"/);
-  assert.match(
-    adminHubSource,
-    /Promise\.all\(\[getAuthUser\(\), getJwtToken\(\)\]\)/
-  );
+  assert.match(adminHubSource, /const token = await getJwtToken\(\);/);
+  assert.match(adminHubSource, /redirect\("\/login"\);/);
+  assert.match(adminHubSource, /const authUser = await getAuthUser\(\);/);
   assert.match(
     adminHubSource,
     /authUser\?\.admin \?\? token\?\.admin \?\? token\?\.role === "ADMIN"/

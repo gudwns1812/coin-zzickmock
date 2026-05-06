@@ -1,8 +1,15 @@
 import { getFuturesMarkets } from "@/lib/futures-api";
 import { formatPercent, formatUsd } from "@/lib/markets";
+import { getJwtToken } from "@/utils/auth";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function WatchlistPage() {
+  const token = await getJwtToken();
+  if (!token) {
+    redirect("/login");
+  }
+
   const markets = await getFuturesMarkets();
 
   return (

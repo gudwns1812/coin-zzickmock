@@ -2,10 +2,16 @@ import { getAuthUser } from "@/lib/futures-api";
 import { getJwtToken } from "@/utils/auth";
 import { Package, ShieldAlert, ShieldCheck, TicketCheck } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export default async function AdminPage() {
-  const [authUser, token] = await Promise.all([getAuthUser(), getJwtToken()]);
+  const token = await getJwtToken();
+  if (!token) {
+    redirect("/login");
+  }
+
+  const authUser = await getAuthUser();
   const isAdmin = authUser?.admin ?? token?.admin ?? token?.role === "ADMIN";
 
   if (!isAdmin) {

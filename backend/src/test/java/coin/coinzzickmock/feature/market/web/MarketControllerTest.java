@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -100,6 +101,13 @@ class MarketControllerTest {
         GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);
         MarketRealtimeSseBroker marketBroker = mock(MarketRealtimeSseBroker.class);
         MarketCandleRealtimeSseBroker candleBroker = mock(MarketCandleRealtimeSseBroker.class);
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = new MarketCandleRealtimeSseBroker.SubscriptionKey(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_MINUTE
+        );
+        MarketCandleRealtimeSseBroker.SseSubscriptionPermit permit =
+                mock(MarketCandleRealtimeSseBroker.SseSubscriptionPermit.class);
+        when(candleBroker.reserve(key)).thenReturn(permit);
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RealtimeMarketCandleProjector projector = new RealtimeMarketCandleProjector(store);
         Instant open = Instant.parse("2026-04-30T04:00:00Z");
@@ -129,7 +137,9 @@ class MarketControllerTest {
         SseEmitter emitter = controller.candleStream("BTCUSDT", "1m");
 
         assertTrue(((FailingSseEmitter) emitter).completed);
-        verify(candleBroker, never()).register(eq("BTCUSDT"), eq(MarketCandleInterval.ONE_MINUTE), any(SseEmitter.class));
+        verify(candleBroker).reserve(key);
+        verify(candleBroker).release(permit);
+        verify(candleBroker, never()).register(eq(permit), any(SseEmitter.class));
     }
 
     @Test
@@ -139,6 +149,13 @@ class MarketControllerTest {
         MarketRealtimeSseBroker marketBroker = mock(MarketRealtimeSseBroker.class);
         MarketCandleRealtimeSseBroker candleBroker = mock(MarketCandleRealtimeSseBroker.class);
         CurrentMarketCandleBootstrapper bootstrapper = mock(CurrentMarketCandleBootstrapper.class);
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = new MarketCandleRealtimeSseBroker.SubscriptionKey(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_MINUTE
+        );
+        MarketCandleRealtimeSseBroker.SseSubscriptionPermit permit =
+                mock(MarketCandleRealtimeSseBroker.SseSubscriptionPermit.class);
+        when(candleBroker.reserve(key)).thenReturn(permit);
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RealtimeMarketCandleProjector projector = new RealtimeMarketCandleProjector(store);
         Instant open = Instant.parse("2026-04-30T04:00:00Z");
@@ -171,8 +188,40 @@ class MarketControllerTest {
 
         controller.candleStream("BTCUSDT", "1m");
 
-        verify(bootstrapper).bootstrapIfNeeded("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
-        verify(candleBroker).register(eq("BTCUSDT"), eq(MarketCandleInterval.ONE_MINUTE), any(SseEmitter.class));
+        org.mockito.InOrder inOrder = inOrder(candleBroker, bootstrapper);
+        inOrder.verify(candleBroker).reserve(key);
+        inOrder.verify(bootstrapper).bootstrapIfNeeded("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        inOrder.verify(candleBroker).register(eq(permit), any(SseEmitter.class));
+        verify(candleBroker, never()).release(permit);
+    }
+
+    @Test
+    void failsCandleStreamBeforeEmitterCreationWhenCapacityIsExceeded() {
+        GetMarketSummaryService summaryService = mock(GetMarketSummaryService.class);
+        GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);
+        MarketRealtimeSseBroker marketBroker = mock(MarketRealtimeSseBroker.class);
+        MarketCandleRealtimeSseBroker candleBroker = mock(MarketCandleRealtimeSseBroker.class);
+        RealtimeMarketCandleProjector projector = new RealtimeMarketCandleProjector(new RealtimeMarketDataStore());
+        MarketController controller = new TestableMarketController(
+                summaryService,
+                candleService,
+                marketBroker,
+                candleBroker,
+                projector,
+                SSE_TIMEOUT_MS
+        );
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = new MarketCandleRealtimeSseBroker.SubscriptionKey(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_MINUTE
+        );
+        CoreException exception = new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+        org.mockito.Mockito.doThrow(exception).when(candleBroker).reserve(key);
+
+        CoreException thrown = assertThrows(CoreException.class, () -> controller.candleStream("BTCUSDT", "1m"));
+
+        assertTrue(thrown.errorCode() == ErrorCode.TOO_MANY_REQUESTS);
+        verify(candleBroker).reserve(key);
+        verify(candleBroker, never()).register(any(), any());
     }
 
     @Test

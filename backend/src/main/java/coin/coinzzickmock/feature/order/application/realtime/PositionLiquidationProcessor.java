@@ -49,22 +49,48 @@ public class PositionLiquidationProcessor {
         if (realtimeMarket == null) {
             return;
         }
+        liquidateBreachedCandidates(realtimeMarket);
+    }
+
+    private void liquidateBreachedCandidates(MarketSummaryResult realtimeMarket) {
         List<OpenPositionCandidate> candidates = positionRepository.findOpenBySymbol(realtimeMarket.symbol());
         Set<Long> assessedCrossMembers = new HashSet<>();
-
         for (OpenPositionCandidate candidate : candidates) {
-            PositionSnapshot marked = candidate.position().markToMarket(realtimeMarket.markPrice());
-            if (marked.isCrossMargin()) {
-                if (assessedCrossMembers.add(candidate.memberId())) {
-                    liquidateCrossIfNeeded(candidate.memberId(), realtimeMarket);
-                }
-                continue;
-            }
+            liquidateCandidateIfBreached(candidate, realtimeMarket, assessedCrossMembers);
+        }
+    }
 
-            IsolatedLiquidationAssessment assessment = liquidationPolicy.assessIsolated(marked, realtimeMarket.markPrice());
-            if (assessment.breached()) {
-                liquidate(candidate.memberId(), marked, realtimeMarket.lastPrice(), realtimeMarket.markPrice());
-            }
+    private void liquidateCandidateIfBreached(
+            OpenPositionCandidate candidate,
+            MarketSummaryResult market,
+            Set<Long> assessedCrossMembers
+    ) {
+        PositionSnapshot marked = candidate.position().markToMarket(market.markPrice());
+        if (marked.isCrossMargin()) {
+            liquidateCrossMemberOnce(candidate.memberId(), market, assessedCrossMembers);
+            return;
+        }
+        liquidateIsolatedIfBreached(candidate.memberId(), marked, market);
+    }
+
+    private void liquidateCrossMemberOnce(
+            Long memberId,
+            MarketSummaryResult market,
+            Set<Long> assessedCrossMembers
+    ) {
+        if (assessedCrossMembers.add(memberId)) {
+            liquidateCrossIfNeeded(memberId, market);
+        }
+    }
+
+    private void liquidateIsolatedIfBreached(
+            Long memberId,
+            PositionSnapshot marked,
+            MarketSummaryResult market
+    ) {
+        IsolatedLiquidationAssessment assessment = liquidationPolicy.assessIsolated(marked, market.markPrice());
+        if (assessment.breached()) {
+            liquidate(memberId, marked, market.lastPrice(), market.markPrice());
         }
     }
 
@@ -122,14 +148,24 @@ public class PositionLiquidationProcessor {
         );
         pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
         cancelStaleProtectiveOrders(memberId, position);
+        publishPositionLiquidated(memberId, position, result.closedQuantity(), executionPrice, result.realizedPnl());
+    }
+
+    private void publishPositionLiquidated(
+            Long memberId,
+            PositionSnapshot position,
+            double closedQuantity,
+            double executionPrice,
+            double realizedPnl
+    ) {
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionLiquidated(
                 memberId,
                 position.symbol(),
                 position.positionSide(),
                 position.marginMode(),
-                result.closedQuantity(),
+                closedQuantity,
                 executionPrice,
-                result.realizedPnl()
+                realizedPnl
         ));
     }
 

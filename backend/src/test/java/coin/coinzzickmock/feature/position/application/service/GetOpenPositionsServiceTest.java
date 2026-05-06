@@ -15,6 +15,7 @@ import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
+import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
@@ -38,13 +39,11 @@ class GetOpenPositionsServiceTest {
                 100,
                 100
         ).withVersion(3));
-        GetOpenPositionsService service = new GetOpenPositionsService(
+        GetOpenPositionsService service = service(
                 positionRepository,
                 new EmptyOrderRepository(),
                 new StaticAccountRepository(),
-                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
-                realtimePriceReader(110),
-                new LiquidationPolicy()
+                realtimePriceReader(110)
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -78,13 +77,11 @@ class GetOpenPositionsServiceTest {
                 7.5,
                 0.04
         ));
-        GetOpenPositionsService service = new GetOpenPositionsService(
+        GetOpenPositionsService service = service(
                 positionRepository,
                 new EmptyOrderRepository(),
                 new StaticAccountRepository(),
-                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
-                realtimePriceReader(100),
-                new LiquidationPolicy()
+                realtimePriceReader(100)
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -106,13 +103,11 @@ class GetOpenPositionsServiceTest {
                 100
         ));
         PendingCloseOrderRepository orderRepository = new PendingCloseOrderRepository();
-        GetOpenPositionsService service = new GetOpenPositionsService(
+        GetOpenPositionsService service = service(
                 positionRepository,
                 orderRepository,
                 new StaticAccountRepository(),
-                new PendingCloseOrderCapReconciler(orderRepository),
-                realtimePriceReader(100),
-                new LiquidationPolicy()
+                realtimePriceReader(100)
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -134,13 +129,11 @@ class GetOpenPositionsServiceTest {
                 100
         ));
         TpslOcoOrderRepository orderRepository = new TpslOcoOrderRepository();
-        GetOpenPositionsService service = new GetOpenPositionsService(
+        GetOpenPositionsService service = service(
                 positionRepository,
                 orderRepository,
                 new StaticAccountRepository(),
-                new PendingCloseOrderCapReconciler(orderRepository),
-                realtimePriceReader(100),
-                new LiquidationPolicy()
+                realtimePriceReader(100)
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -163,13 +156,11 @@ class GetOpenPositionsServiceTest {
                 100
         ));
         ManualAndTpslOrderRepository orderRepository = new ManualAndTpslOrderRepository();
-        GetOpenPositionsService service = new GetOpenPositionsService(
+        GetOpenPositionsService service = service(
                 positionRepository,
                 orderRepository,
                 new StaticAccountRepository(),
-                new PendingCloseOrderCapReconciler(orderRepository),
-                realtimePriceReader(100),
-                new LiquidationPolicy()
+                realtimePriceReader(100)
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -205,13 +196,11 @@ class GetOpenPositionsServiceTest {
                 null,
                 0
         ));
-        GetOpenPositionsService service = new GetOpenPositionsService(
+        GetOpenPositionsService service = service(
                 positionRepository,
                 new EmptyOrderRepository(),
                 new StaticAccountRepository(),
-                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
-                realtimePriceReader(100),
-                new LiquidationPolicy()
+                realtimePriceReader(100)
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -232,13 +221,11 @@ class GetOpenPositionsServiceTest {
                 100,
                 100
         ));
-        GetOpenPositionsService service = new GetOpenPositionsService(
+        GetOpenPositionsService service = service(
                 positionRepository,
                 new EmptyOrderRepository(),
                 new StaticAccountRepository(50),
-                new PendingCloseOrderCapReconciler(new EmptyOrderRepository()),
-                realtimePriceReader(100),
-                new LiquidationPolicy()
+                realtimePriceReader(100)
         );
 
         PositionSnapshotResult result = service.getPositions(1L).get(0);
@@ -246,6 +233,26 @@ class GetOpenPositionsServiceTest {
         assertEquals(50.2512562814, result.liquidationPrice(), 0.0001);
         assertEquals("EXACT", result.liquidationPriceType());
         assertNull(positionRepository.position.liquidationPrice());
+    }
+
+    private GetOpenPositionsService service(
+            ReadOnlyPositionRepository positionRepository,
+            OrderRepository orderRepository,
+            AccountRepository accountRepository,
+            RealtimeMarketPriceReader realtimeMarketPriceReader
+    ) {
+        return new GetOpenPositionsService(
+                positionRepository,
+                accountRepository,
+                realtimeMarketPriceReader,
+                new PositionSnapshotResultAssembler(
+                        positionRepository,
+                        orderRepository,
+                        accountRepository,
+                        new PendingCloseOrderCapReconciler(orderRepository),
+                        new LiquidationPolicy()
+                )
+        );
     }
 
     private static class ReadOnlyPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {

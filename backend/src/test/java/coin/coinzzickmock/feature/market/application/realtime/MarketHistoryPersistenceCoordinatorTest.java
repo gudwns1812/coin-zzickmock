@@ -1,6 +1,13 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -18,7 +25,9 @@ class MarketHistoryPersistenceCoordinatorTest {
     @Test
     void returnsAlreadyRecordedWithoutCallingProviderOrRecorderAgain() {
         RecordingMinuteCandleGateway gateway = new RecordingMinuteCandleGateway();
-        RecordingMarketHistoryRecorder recorder = new RecordingMarketHistoryRecorder();
+        MarketHistoryRecorder recorder = mock(MarketHistoryRecorder.class);
+        when(recorder.recordClosedMinuteCandlesBySymbol(anyMap(), eq(OPEN_TIME), eq(CLOSE_TIME)))
+                .thenReturn(Map.of("BTCUSDT", true));
         MarketHistoryPersistenceCoordinator coordinator = new MarketHistoryPersistenceCoordinator(gateway, recorder);
 
         List<MarketHistoryPersistenceResult> firstResults = coordinator.persistClosedMinuteCandles(
@@ -37,9 +46,66 @@ class MarketHistoryPersistenceCoordinatorTest {
                 .isEqualTo(MarketHistoryPersistenceStatus.PERSISTED);
         assertThat(secondResults).singleElement()
                 .extracting(MarketHistoryPersistenceResult::status)
-                .isEqualTo(MarketHistoryPersistenceStatus.ALREADY_RECORDED);
+                    .isEqualTo(MarketHistoryPersistenceStatus.ALREADY_RECORDED);
         assertThat(gateway.loadMinuteCandleCalls).isEqualTo(1);
-        assertThat(recorder.recordClosedMinuteCandleCalls).isEqualTo(1);
+        verify(recorder).recordClosedMinuteCandlesBySymbol(anyMap(), eq(OPEN_TIME), eq(CLOSE_TIME));
+    }
+
+    @Test
+    void returnsEmptyWhenProviderHasNoClosedMinuteCandle() {
+        RecordingMinuteCandleGateway gateway = new RecordingMinuteCandleGateway();
+        gateway.minuteCandles = List.of();
+        MarketHistoryRecorder recorder = mock(MarketHistoryRecorder.class);
+        MarketHistoryPersistenceCoordinator coordinator = new MarketHistoryPersistenceCoordinator(gateway, recorder);
+
+        List<MarketHistoryPersistenceResult> results = coordinator.persistClosedMinuteCandles(
+                List.of("BTCUSDT"),
+                OPEN_TIME,
+                CLOSE_TIME
+        );
+
+        assertThat(results).singleElement()
+                .extracting(MarketHistoryPersistenceResult::status)
+                .isEqualTo(MarketHistoryPersistenceStatus.EMPTY);
+        verify(recorder, never()).recordClosedMinuteCandlesBySymbol(any(), any(), any());
+    }
+
+    @Test
+    void returnsFailedWhenProviderLoadFails() {
+        RecordingMinuteCandleGateway gateway = new RecordingMinuteCandleGateway();
+        gateway.loadFailure = new IllegalStateException("provider unavailable");
+        MarketHistoryRecorder recorder = mock(MarketHistoryRecorder.class);
+        MarketHistoryPersistenceCoordinator coordinator = new MarketHistoryPersistenceCoordinator(gateway, recorder);
+
+        List<MarketHistoryPersistenceResult> results = coordinator.persistClosedMinuteCandles(
+                List.of("BTCUSDT"),
+                OPEN_TIME,
+                CLOSE_TIME
+        );
+
+        assertThat(results).singleElement()
+                .extracting(MarketHistoryPersistenceResult::status)
+                .isEqualTo(MarketHistoryPersistenceStatus.FAILED);
+        verify(recorder, never()).recordClosedMinuteCandlesBySymbol(any(), any(), any());
+    }
+
+    @Test
+    void returnsFailedWhenRecorderDoesNotPersistLoadedCandle() {
+        RecordingMinuteCandleGateway gateway = new RecordingMinuteCandleGateway();
+        MarketHistoryRecorder recorder = mock(MarketHistoryRecorder.class);
+        when(recorder.recordClosedMinuteCandlesBySymbol(anyMap(), eq(OPEN_TIME), eq(CLOSE_TIME)))
+                .thenReturn(Map.of("BTCUSDT", false));
+        MarketHistoryPersistenceCoordinator coordinator = new MarketHistoryPersistenceCoordinator(gateway, recorder);
+
+        List<MarketHistoryPersistenceResult> results = coordinator.persistClosedMinuteCandles(
+                List.of("BTCUSDT"),
+                OPEN_TIME,
+                CLOSE_TIME
+        );
+
+        assertThat(results).singleElement()
+                .extracting(MarketHistoryPersistenceResult::status)
+                .isEqualTo(MarketHistoryPersistenceStatus.FAILED);
     }
 
     private static MarketMinuteCandleSnapshot minuteCandle() {
@@ -57,6 +123,8 @@ class MarketHistoryPersistenceCoordinatorTest {
 
     private static class RecordingMinuteCandleGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private int loadMinuteCandleCalls;
+        private List<MarketMinuteCandleSnapshot> minuteCandles = List.of(minuteCandle());
+        private RuntimeException loadFailure;
 
         @Override
         public List<MarketSnapshot> loadSupportedMarkets() {
@@ -75,25 +143,10 @@ class MarketHistoryPersistenceCoordinatorTest {
                 Instant toExclusive
         ) {
             loadMinuteCandleCalls++;
-            return List.of(minuteCandle());
-        }
-    }
-
-    private static class RecordingMarketHistoryRecorder extends MarketHistoryRecorder {
-        private int recordClosedMinuteCandleCalls;
-
-        private RecordingMarketHistoryRecorder() {
-            super(null);
-        }
-
-        @Override
-        public Map<String, Boolean> recordClosedMinuteCandlesBySymbol(
-                Map<String, List<MarketMinuteCandleSnapshot>> minuteCandlesBySymbol,
-                Instant openTime,
-                Instant closeTime
-        ) {
-            recordClosedMinuteCandleCalls++;
-            return Map.of("BTCUSDT", true);
+            if (loadFailure != null) {
+                throw loadFailure;
+            }
+            return minuteCandles;
         }
     }
 }

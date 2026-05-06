@@ -1,7 +1,10 @@
 package coin.coinzzickmock.feature.market.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryFinalizedEvent;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
@@ -26,6 +29,96 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 class MarketCandleRealtimeSseBrokerTest {
+    @Test
+    void reservesRegistersAndReleasesSubscriberPermit() {
+        MarketCandleRealtimeSseBroker broker = brokerWithLimits(1, 1);
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+
+        MarketCandleRealtimeSseBroker.SseSubscriptionPermit releasedPermit = broker.reserve(key);
+        broker.release(releasedPermit);
+        MarketCandleRealtimeSseBroker.SseSubscriptionPermit registeredPermit = broker.reserve(key);
+        CapturingSseEmitter emitter = new CapturingSseEmitter();
+
+        broker.register(registeredPermit, emitter);
+        broker.unregister(key, emitter);
+
+        assertThat(broker.hasSubscriberLimit(key)).isFalse();
+    }
+
+    @Test
+    void registerFailureAfterSubscriptionRegistrationReleasesSubscriberPermit() {
+        MarketCandleRealtimeSseBroker broker = brokerWithLimits(1, 1);
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+
+        assertThrows(IllegalStateException.class, () -> broker.register(
+                broker.reserve(key),
+                new LifecycleFailingSseEmitter()
+        ));
+
+        assertThat(broker.hasSubscriberLimit(key)).isFalse();
+        broker.register(broker.reserve(key), new CapturingSseEmitter());
+    }
+
+    @Test
+    void rejectsWhenPerKeyLimitIsExceeded() {
+        MarketCandleRealtimeSseBroker broker = brokerWithLimits(1, 2);
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        broker.register(broker.reserve(key), new CapturingSseEmitter());
+
+        CoreException exception = assertThrows(CoreException.class, () -> broker.reserve(key));
+
+        assertThat(exception.errorCode()).isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void rejectsWhenTotalLimitIsExceeded() {
+        MarketCandleRealtimeSseBroker broker = brokerWithLimits(2, 1);
+        broker.register(
+                broker.reserve(key("BTCUSDT", MarketCandleInterval.ONE_MINUTE)),
+                new CapturingSseEmitter()
+        );
+
+        CoreException exception = assertThrows(CoreException.class,
+                () -> broker.reserve(key("ETHUSDT", MarketCandleInterval.ONE_MINUTE)));
+
+        assertThat(exception.errorCode()).isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void unregisterCleansUpLimitForKey() {
+        MarketCandleRealtimeSseBroker broker = brokerWithLimits(1, 1);
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        CapturingSseEmitter emitter = new CapturingSseEmitter();
+        broker.register(broker.reserve(key), emitter);
+
+        broker.unregister(key, emitter);
+
+        assertThat(broker.hasSubscriberLimit(key)).isFalse();
+        broker.register(broker.reserve(key), new CapturingSseEmitter());
+    }
+
+    @Test
+    void sendFailureReleasesLimitForReplacementSubscriber() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
+                Runnable::run,
+                new RealtimeMarketCandleProjector(store),
+                1,
+                1
+        );
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        broker.register(broker.reserve(key), new FailingSseEmitter());
+        store.acceptCandle(candle(Instant.parse("2026-04-30T04:00:00Z")));
+
+        broker.onCandleUpdated(new MarketCandleUpdatedEvent("BTCUSDT"));
+
+        CapturingSseEmitter replacementEmitter = new CapturingSseEmitter();
+        broker.register(broker.reserve(key), replacementEmitter);
+        broker.onCandleUpdated(new MarketCandleUpdatedEvent("BTCUSDT"));
+
+        assertThat(replacementEmitter.events()).hasSize(1);
+    }
+
     @Test
     void deliversProjectedCandleToMatchingIntervalSubscribers() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
@@ -233,6 +326,22 @@ class MarketCandleRealtimeSseBrokerTest {
         );
     }
 
+    private MarketCandleRealtimeSseBroker brokerWithLimits(int maxSubscribersPerKey, int maxSubscribersTotal) {
+        return new MarketCandleRealtimeSseBroker(
+                Runnable::run,
+                new RealtimeMarketCandleProjector(new RealtimeMarketDataStore()),
+                maxSubscribersPerKey,
+                maxSubscribersTotal
+        );
+    }
+
+    private static MarketCandleRealtimeSseBroker.SubscriptionKey key(
+            String symbol,
+            MarketCandleInterval interval
+    ) {
+        return new MarketCandleRealtimeSseBroker.SubscriptionKey(symbol, interval);
+    }
+
     private static HourlyMarketCandle hourly(Instant openTime) {
         return new HourlyMarketCandle(
                 1L,
@@ -320,6 +429,13 @@ class MarketCandleRealtimeSseBrokerTest {
 
         @Override
         public void saveHourlyCandle(HourlyMarketCandle candle) {
+        }
+    }
+
+    private static class LifecycleFailingSseEmitter extends SseEmitter {
+        @Override
+        public synchronized void onCompletion(Runnable callback) {
+            throw new IllegalStateException("lifecycle callback rejected");
         }
     }
 

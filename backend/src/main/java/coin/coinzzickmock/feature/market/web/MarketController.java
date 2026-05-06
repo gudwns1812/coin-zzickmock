@@ -124,17 +124,27 @@ public class MarketController {
     @GetMapping(value = "/{symbol}/candles/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter candleStream(@PathVariable String symbol, @RequestParam String interval) {
         MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
+        MarketCandleRealtimeSseBroker.SubscriptionKey key =
+                new MarketCandleRealtimeSseBroker.SubscriptionKey(symbol, candleInterval);
+        MarketCandleRealtimeSseBroker.SseSubscriptionPermit permit = marketCandleRealtimeSseBroker.reserve(key);
         SseEmitter emitter = createEmitter();
-        if (currentMarketCandleBootstrapper != null) {
-            currentMarketCandleBootstrapper.bootstrapIfNeeded(symbol, candleInterval);
+        try {
+            if (currentMarketCandleBootstrapper != null) {
+                currentMarketCandleBootstrapper.bootstrapIfNeeded(symbol, candleInterval);
+            }
+            boolean initialSendSucceeded = realtimeMarketCandleProjector.latest(symbol, candleInterval)
+                    .map(candle -> sendCandleEvent(emitter, candle))
+                    .orElse(true);
+            if (initialSendSucceeded) {
+                marketCandleRealtimeSseBroker.register(permit, emitter);
+            } else {
+                marketCandleRealtimeSseBroker.release(permit);
+            }
+            return emitter;
+        } catch (RuntimeException exception) {
+            marketCandleRealtimeSseBroker.release(permit);
+            throw exception;
         }
-        boolean initialSendSucceeded = realtimeMarketCandleProjector.latest(symbol, candleInterval)
-                .map(candle -> sendCandleEvent(emitter, candle))
-                .orElse(true);
-        if (initialSendSucceeded) {
-            marketCandleRealtimeSseBroker.register(symbol, candleInterval, emitter);
-        }
-        return emitter;
     }
 
     private MarketSummaryResponse toResponse(MarketSummaryResult result) {

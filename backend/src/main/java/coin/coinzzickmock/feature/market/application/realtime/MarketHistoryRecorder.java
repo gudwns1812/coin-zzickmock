@@ -42,20 +42,40 @@ public class MarketHistoryRecorder {
             return Map.of();
         }
 
+        Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol =
+                nonEmptyMinuteCandlesBySymbol(minuteCandlesBySymbol);
+        if (nonEmptyMinuteCandlesBySymbol.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, Long> symbolIds = loadSymbolIds(nonEmptyMinuteCandlesBySymbol);
+        return recordHistoricalMinuteCandlesByKnownSymbols(nonEmptyMinuteCandlesBySymbol, symbolIds);
+    }
+
+    private Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol(
+            Map<String, List<MarketMinuteCandleSnapshot>> minuteCandlesBySymbol
+    ) {
         Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol = new LinkedHashMap<>();
         minuteCandlesBySymbol.forEach((symbol, minuteCandles) -> {
             if (symbol != null && minuteCandles != null && !minuteCandles.isEmpty()) {
                 nonEmptyMinuteCandlesBySymbol.put(symbol, minuteCandles);
             }
         });
-        if (nonEmptyMinuteCandlesBySymbol.isEmpty()) {
-            return Map.of();
-        }
+        return nonEmptyMinuteCandlesBySymbol;
+    }
 
-        Map<String, Long> symbolIds = marketHistoryRepository.findSymbolIdsBySymbols(
+    private Map<String, Long> loadSymbolIds(
+            Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol
+    ) {
+        return marketHistoryRepository.findSymbolIdsBySymbols(
                 nonEmptyMinuteCandlesBySymbol.keySet().stream().toList()
         );
+    }
 
+    private Map<String, Boolean> recordHistoricalMinuteCandlesByKnownSymbols(
+            Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol,
+            Map<String, Long> symbolIds
+    ) {
         Map<String, Boolean> saveResults = new LinkedHashMap<>();
         nonEmptyMinuteCandlesBySymbol.forEach((symbol, minuteCandles) -> {
             Long symbolId = symbolIds.get(symbol);
@@ -76,16 +96,23 @@ public class MarketHistoryRecorder {
             Instant closeTime
     ) {
         Map<String, Boolean> saveResults = recordHistoricalMinuteCandlesBySymbol(minuteCandlesBySymbol);
-        if (afterCommitEventPublisher == null) {
-            return saveResults;
-        }
+        publishFinalizedEvents(saveResults, openTime, closeTime);
+        return saveResults;
+    }
 
-        saveResults.forEach((symbol, saved) -> {
-            if (Boolean.TRUE.equals(saved)) {
+    private void publishFinalizedEvents(
+            Map<String, Boolean> saveResults,
+            Instant openTime,
+            Instant closeTime
+    ) {
+        if (afterCommitEventPublisher == null) {
+            return;
+        }
+        saveResults.forEach((symbol, wasSaved) -> {
+            if (Boolean.TRUE.equals(wasSaved)) {
                 afterCommitEventPublisher.publish(new MarketHistoryFinalizedEvent(symbol, openTime, closeTime));
             }
         });
-        return saveResults;
     }
 
     @Transactional
@@ -94,12 +121,22 @@ public class MarketHistoryRecorder {
             return;
         }
 
-        List<MarketHistoryCandle> historicalCandles = minuteCandles.stream()
+        List<MarketHistoryCandle> historicalCandles = toSortedHistoryCandles(symbolId, minuteCandles);
+        historicalCandles.forEach(marketHistoryRepository::saveMinuteCandle);
+        rebuildAffectedHourlyCandles(symbolId, historicalCandles);
+    }
+
+    private List<MarketHistoryCandle> toSortedHistoryCandles(
+            long symbolId,
+            List<MarketMinuteCandleSnapshot> minuteCandles
+    ) {
+        return minuteCandles.stream()
                 .sorted(Comparator.comparing(MarketMinuteCandleSnapshot::openTime))
                 .map(candle -> candle.toHistoryCandle(symbolId))
                 .toList();
+    }
 
-        historicalCandles.forEach(marketHistoryRepository::saveMinuteCandle);
+    private void rebuildAffectedHourlyCandles(long symbolId, List<MarketHistoryCandle> historicalCandles) {
         historicalCandles.stream()
                 .map(MarketHistoryCandle::openTime)
                 .map(openTime -> truncate(openTime, ChronoUnit.HOURS))

@@ -29,47 +29,70 @@ public class PurchaseShopItemService {
 
     @Transactional
     public ShopPurchaseResult purchase(Long memberId, String itemCode) {
+        String normalizedItemCode = requireItemCode(itemCode);
+        RewardShopItem item = loadPurchasableRefillItemForUpdate(normalizedItemCode);
+        RewardShopMemberItemUsage usage = loadUsageForUpdate(memberId, item);
+        validatePurchase(item, usage);
+
+        RewardPointWallet deductedWallet = deductWallet(memberId, item.price());
+        AccountRefillCreditResult refillCredit = applyRefillCredit(memberId);
+        ReservedShopPurchase reservedPurchase = reserveItemAndUsage(item, usage);
+
+        persistReservation(reservedPurchase);
+        RewardPointWallet savedWallet = rewardPointRepository.save(deductedWallet);
+        recordHistory(memberId, item.price(), savedWallet.rewardPoint());
+
+        return new ShopPurchaseResult(normalizedItemCode, savedWallet.rewardPoint(), refillCredit.remainingCount());
+    }
+
+    private String requireItemCode(String itemCode) {
         if (itemCode == null || itemCode.isBlank()) {
             throw invalid();
         }
+        return itemCode;
+    }
 
-        RewardShopItem requestedItem = rewardShopItemRepository.findByCode(itemCode)
-                .orElseThrow(() -> invalid());
-        if (!requestedItem.accountRefillCount()) {
-            throw invalid();
-        }
+    private AccountRefillCreditResult applyRefillCredit(Long memberId) {
+        return accountRefillCreditProcessor.addTodayCount(memberId, 1);
+    }
 
-        AccountRefillCreditResult refillCredit = accountRefillCreditProcessor.addTodayCount(memberId, 1);
+    private RewardShopItem loadPurchasableRefillItemForUpdate(String itemCode) {
         RewardShopItem item = rewardShopItemRepository.findByCodeForUpdate(itemCode)
-                .orElseThrow(() -> invalid());
+                .orElseThrow(this::invalid);
         if (!item.accountRefillCount()) {
             throw invalid();
         }
+        return item;
+    }
 
-        RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
+    private RewardShopMemberItemUsage loadUsageForUpdate(Long memberId, RewardShopItem item) {
+        return rewardShopMemberItemUsageRepository
                 .findByMemberIdAndShopItemIdForUpdate(memberId, item.id())
                 .orElse(RewardShopMemberItemUsage.empty(memberId, item.id()));
-        validatePurchase(item, usage);
+    }
 
+    private RewardPointWallet deductWallet(Long memberId, int price) {
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(memberId)
                 .orElse(RewardPointWallet.empty(memberId));
-        RewardPointWallet deductedWallet = wallet.deduct(item.price());
-        RewardShopItem reservedItem = item.reserveOne();
-        RewardShopMemberItemUsage reservedUsage = usage.increment();
+        return wallet.deduct(price);
+    }
 
-        rewardShopItemRepository.save(reservedItem);
-        rewardShopMemberItemUsageRepository.save(reservedUsage);
-        RewardPointWallet savedWallet = rewardPointRepository.save(deductedWallet);
+    private ReservedShopPurchase reserveItemAndUsage(RewardShopItem item, RewardShopMemberItemUsage usage) {
+        return new ReservedShopPurchase(item.reserveOne(), usage.increment());
+    }
 
-        String purchaseId = UUID.randomUUID().toString();
+    private void persistReservation(ReservedShopPurchase reservedPurchase) {
+        rewardShopItemRepository.save(reservedPurchase.item());
+        rewardShopMemberItemUsageRepository.save(reservedPurchase.usage());
+    }
+
+    private void recordHistory(Long memberId, int price, int balanceAfter) {
         rewardPointHistoryRepository.save(RewardPointHistory.instantShopPurchaseDeduct(
                 memberId,
-                item.price(),
-                savedWallet.rewardPoint(),
-                purchaseId
+                price,
+                balanceAfter,
+                UUID.randomUUID().toString()
         ));
-
-        return new ShopPurchaseResult(item.code(), savedWallet.rewardPoint(), refillCredit.remainingCount());
     }
 
     private void validatePurchase(RewardShopItem item, RewardShopMemberItemUsage usage) {
@@ -86,5 +109,11 @@ public class PurchaseShopItemService {
 
     private CoreException invalid() {
         return new CoreException(ErrorCode.INVALID_REQUEST);
+    }
+
+    private record ReservedShopPurchase(
+            RewardShopItem item,
+            RewardShopMemberItemUsage usage
+    ) {
     }
 }

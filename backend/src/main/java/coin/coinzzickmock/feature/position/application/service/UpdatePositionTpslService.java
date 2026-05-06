@@ -9,12 +9,10 @@ import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
+import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
-import coin.coinzzickmock.feature.position.domain.CrossLiquidationEstimate;
-import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -32,7 +30,7 @@ public class UpdatePositionTpslService {
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final AccountOrderMutationLock accountOrderMutationLock;
     private final AccountRepository accountRepository;
-    private final LiquidationPolicy liquidationPolicy;
+    private final PositionSnapshotResultAssembler positionSnapshotResultAssembler;
 
     @Transactional
     public PositionSnapshotResult update(
@@ -55,7 +53,7 @@ public class UpdatePositionTpslService {
         upsertTpslOrders(memberId, marked, takeProfitPrice, stopLossPrice);
         pendingCloseOrderCapReconciler.reconcile(memberId, marked, marked.quantity(), market.lastPrice());
 
-        return toResult(memberId, marked);
+        return positionSnapshotResultAssembler.assemble(memberId, marked);
     }
 
     private void validateTargetPrices(
@@ -218,72 +216,4 @@ public class UpdatePositionTpslService {
                 && Objects.equals(order.ocoGroupId(), ocoGroupId);
     }
 
-    private PositionSnapshotResult toResult(Long memberId, PositionSnapshot snapshot) {
-        List<FuturesOrder> tpslOrders = orderRepository.findPendingConditionalCloseOrders(
-                memberId,
-                snapshot.symbol(),
-                snapshot.positionSide(),
-                snapshot.marginMode()
-        );
-        double pendingCloseQuantity = pendingCloseOrderCapReconciler.pendingCloseQuantity(
-                memberId,
-                snapshot
-        );
-        CrossLiquidationEstimate crossEstimate = snapshot.isCrossMargin()
-                ? liquidationPolicy.estimateCrossLiquidationPrice(
-                accountRepository.findByMemberId(memberId)
-                        .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND))
-                        .walletBalance(),
-                positionsForResult(memberId, snapshot),
-                snapshot.symbol()
-        )
-                : null;
-        Double liquidationPrice = crossEstimate == null ? snapshot.liquidationPrice() : crossEstimate.liquidationPrice();
-        String liquidationPriceType = crossEstimate == null
-                ? isolatedLiquidationPriceType(snapshot)
-                : crossEstimate.liquidationPriceType();
-
-        return new PositionSnapshotResult(
-                snapshot.symbol(),
-                snapshot.positionSide(),
-                snapshot.marginMode(),
-                snapshot.leverage(),
-                snapshot.quantity(),
-                snapshot.entryPrice(),
-                snapshot.markPrice(),
-                liquidationPrice,
-                liquidationPriceType,
-                snapshot.unrealizedPnl(),
-                snapshot.realizedPnl(),
-                snapshot.initialMargin(),
-                snapshot.roi(),
-                snapshot.accumulatedClosedQuantity(),
-                pendingCloseQuantity,
-                Math.max(0, snapshot.quantity() - pendingCloseQuantity),
-                triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_TAKE_PROFIT),
-                triggerPrice(tpslOrders, FuturesOrder.TRIGGER_TYPE_STOP_LOSS)
-        );
-    }
-
-    private List<PositionSnapshot> positionsForResult(Long memberId, PositionSnapshot snapshot) {
-        List<PositionSnapshot> positions = new ArrayList<>(positionRepository.findOpenPositions(memberId).stream()
-                .filter(position -> !position.stableKey().equals(snapshot.stableKey()))
-                .toList());
-        positions.add(snapshot);
-        return List.copyOf(positions);
-    }
-
-    private String isolatedLiquidationPriceType(PositionSnapshot snapshot) {
-        return snapshot.liquidationPrice() == null
-                ? CrossLiquidationEstimate.TYPE_UNAVAILABLE
-                : CrossLiquidationEstimate.TYPE_EXACT;
-    }
-
-    private Double triggerPrice(List<FuturesOrder> orders, String triggerType) {
-        return orders.stream()
-                .filter(order -> triggerType.equalsIgnoreCase(order.triggerType()))
-                .max(Comparator.comparing(FuturesOrder::orderTime))
-                .map(FuturesOrder::triggerPrice)
-                .orElse(null);
-    }
 }

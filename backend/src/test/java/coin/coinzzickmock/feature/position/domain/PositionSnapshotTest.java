@@ -71,6 +71,29 @@ class PositionSnapshotTest {
     }
 
     @Test
+    void accountingRecordsCloseWithoutChangingOpenFeeOrFundingCost() {
+        PositionAccounting accounting = new PositionAccounting(
+                2,
+                0.5,
+                55,
+                5,
+                12,
+                0.02,
+                3
+        );
+
+        PositionAccounting next = accounting.recordClose(0.25, 120, 7.5, 0.03);
+
+        assertEquals(2, next.originalQuantity(), 0.0001);
+        assertEquals(0.75, next.accumulatedClosedQuantity(), 0.0001);
+        assertEquals(85, next.accumulatedExitNotional(), 0.0001);
+        assertEquals(12.5, next.accumulatedRealizedPnl(), 0.0001);
+        assertEquals(12, next.accumulatedOpenFee(), 0.0001);
+        assertEquals(0.05, next.accumulatedCloseFee(), 0.0001);
+        assertEquals(3, next.accumulatedFundingCost(), 0.0001);
+    }
+
+    @Test
     void restorePreservesPersistedAccountingRiskAndTriggerFields() {
         Instant openedAt = Instant.parse("2026-05-03T00:00:00Z");
 

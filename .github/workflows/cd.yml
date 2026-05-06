@@ -1,0 +1,166 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "backend/**"
+      - "docker-compose.prod.yml"
+      - "infra/**"
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Backend image tag to publish and deploy. Defaults to the short commit SHA."
+        required: false
+        type: string
+      deploy:
+        description: "Deploy the published backend image to EC2."
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Backend Release Candidate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Ensure Gradle wrapper is executable
+        run: chmod +x gradlew
+
+      - name: Run backend check
+        run: ./gradlew check --console=plain
+
+  publish:
+    name: Publish Backend Image To Docker Hub
+    runs-on: ubuntu-latest
+    needs: verify
+    outputs:
+      backend_ref: ${{ steps.meta.outputs.backend_ref }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup QEMU for ARM64 build
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Resolve backend image metadata
+        id: meta
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag || '' }}
+        run: |
+          image_tag="${INPUT_IMAGE_TAG:-${GITHUB_SHA::7}}"
+          backend_ref="${DOCKERHUB_USERNAME}/coin-zzickmock-backend:${image_tag}"
+          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
+          echo "backend_ref=${backend_ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.backend_ref }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  deploy:
+    name: Deploy Backend Image To EC2
+    runs-on: ubuntu-latest
+    needs: publish
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy) }}
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync compose and infra files to EC2
+        shell: bash
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
+        run: |
+          deploy_tmp="/tmp/coin-zzickmock-${GITHUB_SHA::7}"
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
+            "rm -rf '${deploy_tmp}' && mkdir -p '${deploy_tmp}/infra'"
+          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.prod.yml \
+            "${EC2_USER}@${EC2_HOST}:${deploy_tmp}/docker-compose.prod.yml"
+          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
+            infra/nginx infra/prometheus infra/grafana infra/loki infra/promtail \
+            "${EC2_USER}@${EC2_HOST}:${deploy_tmp}/infra/"
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
+            "bash -lc \"set -euo pipefail
+             sudo mkdir -p '${EC2_DEPLOY_PATH}/infra'
+             sudo cp '${deploy_tmp}/docker-compose.prod.yml' '${EC2_DEPLOY_PATH}/docker-compose.prod.yml'
+             sudo rm -rf '${EC2_DEPLOY_PATH}/infra/nginx' '${EC2_DEPLOY_PATH}/infra/prometheus' '${EC2_DEPLOY_PATH}/infra/grafana' '${EC2_DEPLOY_PATH}/infra/loki' '${EC2_DEPLOY_PATH}/infra/promtail'
+             sudo cp -R '${deploy_tmp}/infra/nginx' '${deploy_tmp}/infra/prometheus' '${deploy_tmp}/infra/grafana' '${deploy_tmp}/infra/loki' '${deploy_tmp}/infra/promtail' '${EC2_DEPLOY_PATH}/infra/'
+             rm -rf '${deploy_tmp}'\""
+
+      - name: Pull and restart backend on EC2
+        shell: bash
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          BACKEND_IMAGE: ${{ needs.publish.outputs.backend_ref }}
+        run: |
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
+            "bash -lc \"set -euo pipefail
+             cd '${EC2_DEPLOY_PATH}'
+             echo '${DOCKERHUB_TOKEN}' | sudo docker login -u '${DOCKERHUB_USERNAME}' --password-stdin
+             sudo env BACKEND_IMAGE='${BACKEND_IMAGE}' docker compose --env-file .env.prod -f docker-compose.prod.yml pull backend
+             sudo env BACKEND_IMAGE='${BACKEND_IMAGE}' docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend
+             sudo docker image prune -f
+             sudo env BACKEND_IMAGE='${BACKEND_IMAGE}' docker compose --env-file .env.prod -f docker-compose.prod.yml ps backend\""

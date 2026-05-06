@@ -4,11 +4,11 @@
 
 ## Structure
 
-- [active](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/active)
+- [active](active)
   승인되어 현재 진행 중인 계획
-- [completed](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/completed)
+- [completed](completed)
   현재 작업이 닫힌 뒤 보관하는 계획
-- [plan-template.md](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/plan-template.md)
+- [plan-template.md](plan-template.md)
   새 계획을 만들 때 시작점으로 쓰는 템플릿
 
 ## Workflow
@@ -24,9 +24,9 @@
 
 상세 규칙은 아래 문서를 따른다.
 
-- [plan-template.md](/Users/hj.park/projects/coin-zzickmock/docs/exec-plans/plan-template.md)
+- [plan-template.md](plan-template.md)
   새 실행 계획의 기본 섹션과 진행 현황 형식을 고정한다.
-- [branch-and-pr-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/process/branch-and-pr-rules.md)
+- [branch-and-pr-rules.md](../process/branch-and-pr-rules.md)
   브랜치/PR 이름과 CI branch policy를 고정한다.
-- [ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml)
+- [ci.yml](../../.github/workflows/ci.yml)
   현재 PR 검증 workflow의 실제 실행 기준이다.

@@ -53,10 +53,11 @@ export default function CancelOrderButton({ orderId }: Props) {
 
   return (
     <Button
-      className="py-2"
+      className="h-9 min-w-[92px] px-3 py-0 text-sm-custom font-semibold leading-none"
       disabled={isPending}
       onClick={handleCancel}
-      variant="ghost"
+      type="button"
+      variant="danger"
     >
       {isPending ? "취소 중..." : "주문 취소"}
     </Button>

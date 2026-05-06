@@ -53,9 +53,10 @@ export default function EditOrderButton({
     <>
       <Button
         aria-label="Edit Open Order Price"
-        className="py-2"
+        className="h-9 min-w-[92px] px-3 py-0 text-sm-custom font-semibold leading-none"
         disabled={isPending}
         onClick={openModal}
+        type="button"
         variant="ghost"
       >
         주문 수정

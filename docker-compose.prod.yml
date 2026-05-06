@@ -3,12 +3,12 @@ name: coin-zzickmock
 services:
   redis:
     image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     restart: unless-stopped
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -44,7 +44,7 @@ services:
     expose:
       - "8080"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      test: [ "CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'" ]
       interval: 10s
       timeout: 5s
       retries: 18
@@ -59,10 +59,13 @@ services:
       - backend
     ports:
       - "${NGINX_PORT:-80}:80"
+      - "443:443"
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/nginx_status | grep -q 'Active connections'"]
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1/nginx_status | grep -q 'Active connections'" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -116,7 +119,7 @@ services:
   loki:
     image: grafana/loki:3.4.2
     restart: unless-stopped
-    command: ["-config.file=/etc/loki/loki.yml"]
+    command: [ "-config.file=/etc/loki/loki.yml" ]
     volumes:
       - ./infra/loki/loki.yml:/etc/loki/loki.yml:ro
       - loki-data:/loki
@@ -126,7 +129,7 @@ services:
   promtail:
     image: grafana/promtail:3.4.2
     restart: unless-stopped
-    command: ["-config.file=/etc/promtail/promtail.yml"]
+    command: [ "-config.file=/etc/promtail/promtail.yml" ]
     depends_on:
       - loki
     volumes:

@@ -2,6 +2,13 @@
 
 `coin-zzickmock`의 현재 사용자 경험을 담당하는 Next.js 워크스페이스입니다.
 
+## Production
+
+- Website: [https://coin-zzickmock-frontend.vercel.app](https://coin-zzickmock-frontend.vercel.app)
+- Backend API: [https://coin-zzickmock.duckdns.org](https://coin-zzickmock.duckdns.org)
+- Vercel project: `coin-zzickmock-frontend`
+- Framework preset: `nextjs` via `vercel.json`
+
 ## Stack
 
 - Next.js 15

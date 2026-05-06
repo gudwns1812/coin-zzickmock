@@ -177,7 +177,7 @@ services:
     expose:
       - "9100"
     volumes:
-      - /:/host:ro,rslave
+      - /:/host:ro
     networks:
       - coin
 

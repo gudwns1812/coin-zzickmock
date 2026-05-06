@@ -4,6 +4,9 @@
 
 실제 자산 수탁, 실주문 전송, 현금 입출금은 범위에 포함하지 않습니다. 시장 데이터는 실제 거래소 데이터를 사용할 수 있지만 주문 체결과 손익 반영은 서비스의 시뮬레이션 규칙을 따릅니다.
 
+- Website: [https://coin-zzickmock-frontend.vercel.app](https://coin-zzickmock-frontend.vercel.app)
+- Backend API: [https://coin-zzickmock.duckdns.org](https://coin-zzickmock.duckdns.org)
+
 ## 프로젝트 기능
 
 - 회원가입/로그인과 계정별 초기 가상 잔고 `100000 USDT`
@@ -18,7 +21,7 @@
 
 ## 기술 스택
 
-- Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 4, React Query, Zustand, MSW, Sentry
+- Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 4, React Query, Zustand, MSW
 - Backend: Spring Boot 3.5, Java 17, Spring Data JPA, QueryDSL, Flyway, Spring Cache, Redis, MySQL, H2 tests, Actuator,
   Micrometer
 - Infra/Operations: Docker Compose, Nginx, Prometheus, Grafana, Loki, Promtail, GitHub Actions CI/CD, Docker Hub, EC2
@@ -163,6 +166,8 @@ CI는 브랜치명 정책, 프론트 typecheck/build, 백엔드 `./gradlew check
 ## 배포와 운영
 
 - CI: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+- Frontend production: [https://coin-zzickmock-frontend.vercel.app](https://coin-zzickmock-frontend.vercel.app)
+- Frontend Vercel 운영: [docs/release-docs/05-frontend-vercel-operations.md](docs/release-docs/05-frontend-vercel-operations.md)
 - Backend CD: [.github/workflows/cd.yml](.github/workflows/cd.yml)
 - 운영 compose 계약: [docker-compose.prod.yml](docker-compose.prod.yml)
 - 운영 환경/산출물 기준: [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)

@@ -34,7 +34,6 @@ jobs:
     needs: branch-name
     env:
       NEXT_TELEMETRY_DISABLED: "1"
-      SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

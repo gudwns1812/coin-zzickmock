@@ -45,7 +45,8 @@ docker compose down -v
 
 - Backend health via Nginx: `http://localhost/actuator/health`
 - Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001`
+- Grafana via Nginx: `http://localhost/grafana/`
+- Grafana direct local port: `http://localhost:3001/grafana/`
 - Loki API: `http://localhost:3100`
 
 Grafana local default account:
@@ -58,7 +59,7 @@ Grafana local default account:
 
 ## Routing
 
-Nginx는 `/api/futures/**`와 `/actuator/health`를 backend로 보낸다.
+Nginx는 `/api/futures/**`와 `/actuator/health`를 backend로 보내고, `/grafana/`를 Grafana로 보낸다.
 프론트엔드 운영 배포는 Vercel이 담당하므로 이 Compose 스택에서 `/`는 제공하지 않는다.
 `/actuator/prometheus`는 외부 Nginx 경로로 노출하지 않고 Prometheus가 Compose 내부 네트워크에서 직접 scrape한다.
 

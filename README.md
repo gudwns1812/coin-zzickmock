@@ -96,7 +96,8 @@ docker compose down
 
 - Backend health via Nginx: `http://localhost/actuator/health`
 - Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001` (`admin` / `admin`)
+- Grafana via Nginx: `http://localhost/grafana/` (`admin` / `admin`)
+- Grafana direct local port: `http://localhost:3001/grafana/`
 - Loki API: `http://localhost:3100`
 
 자세한 기준은 [docs/release-docs/observability/local-infra-stack.md](docs/release-docs/observability/local-infra-stack.md)를

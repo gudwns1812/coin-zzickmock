@@ -3,7 +3,7 @@
 ## Purpose
 
 이 문서는 GitHub Actions backend CD와 EC2 Docker Compose 배포 계약을 정의한다.
-목표는 backend 변경을 검증한 뒤 Docker Hub에 backend 이미지를 발행하고, repo의 compose/infra 설정을 EC2에 반영한 다음 해당 이미지를 pull/restart하는 것이다.
+목표는 backend 변경을 검증한 뒤 Docker Hub에 backend 이미지를 발행하고, repo의 compose/infra 설정을 EC2에 반영한 다음 해당 이미지를 pull/restart하고 Nginx/Grafana 운영 설정을 적용하는 것이다.
 
 ## Workflow
 
@@ -22,7 +22,8 @@
 5. repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 EC2의 `EC2_DEPLOY_PATH`로 복사한다.
 6. EC2의 `EC2_DEPLOY_PATH`에서 서버 전용 `.env.prod`를 함께 사용한다.
 7. 새 backend image를 pull한다.
-8. backend container만 재시작한다.
+8. backend와 Grafana container를 재시작한다.
+9. Nginx를 재기동하고 설정 검사를 통과한 뒤 reload한다.
 
 ## Image
 
@@ -81,6 +82,7 @@ EC2 `.env.prod`에는 최소 아래 값이 필요하다.
 - `JWT_SECRET`
 - `GRAFANA_ADMIN_USER`
 - `GRAFANA_ADMIN_PASSWORD`
+- `GRAFANA_ROOT_URL`: public Grafana URL including `/grafana/`, for example `http://coin-zzickmock.duckdns.org/grafana/`
 
 CD 실행 시 `BACKEND_IMAGE`는 새 Docker Hub 이미지로 주입된다. GitHub Actions job output에는 secret-derived image reference 전체를 싣지 않고, secret이 아닌 image tag만 전달한 뒤 deploy job에서 Docker Hub namespace와 조합한다.
 수동으로 EC2에서 compose를 실행할 때만 shell 환경에 `BACKEND_IMAGE`를 별도로 지정한다.
@@ -108,6 +110,18 @@ env BACKEND_IMAGE=<docker-hub-backend-image> \
 
 env BACKEND_IMAGE=<docker-hub-backend-image> \
   <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend
+
+env BACKEND_IMAGE=<docker-hub-backend-image> \
+  <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps grafana
+
+env BACKEND_IMAGE=<docker-hub-backend-image> \
+  <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d nginx
+
+env BACKEND_IMAGE=<docker-hub-backend-image> \
+  <compose-command> --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -t
+
+env BACKEND_IMAGE=<docker-hub-backend-image> \
+  <compose-command> --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -s reload
 ```
 
 배포 후에는 backend health와 Nginx proxy 상태를 릴리즈 기록에 남긴다.

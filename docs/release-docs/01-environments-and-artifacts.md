@@ -164,6 +164,7 @@
 - GitHub Actions secret `EC2_SSH_PRIVATE_KEY`는 passphrase 없는 SSH private key 원문 전체를 실제 줄바꿈과 함께 저장해야 한다. `-----BEGIN ... PRIVATE KEY-----`/`-----END ... PRIVATE KEY-----` 경계를 포함하고, 터미널 프롬프트 문자나 zsh의 no-newline 표시인 `%` 같은 문자를 포함하지 않는다.
 - Redis는 운영 compose 내부 서비스로 실행하고 host port를 공개하지 않는다.
 - 운영 MySQL은 compose 내부에 포함하지 않고 `MYSQL_HOST` 또는 동등한 네트워크 경로로 연결한다.
+- Grafana는 운영 Nginx의 `/grafana/` 경로 뒤에서 제공하며, `GRAFANA_ROOT_URL`은 사용자가 접속하는 public URL과 같은 `/grafana/` suffix를 가져야 한다.
 - 프론트엔드 이미지, Vercel 변수, `NEXT_PUBLIC_*` 값은 EC2 Docker host 계약에 넣지 않는다.
 
 ### Shared Rule

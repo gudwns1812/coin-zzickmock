@@ -182,7 +182,10 @@ jobs:
 
           echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
           env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml pull backend
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend grafana
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d nginx
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -t
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -s reload
           docker image prune -f
-          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps backend
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps backend grafana nginx
           REMOTE_DEPLOY

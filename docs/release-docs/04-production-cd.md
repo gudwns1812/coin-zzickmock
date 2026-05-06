@@ -23,7 +23,7 @@
 6. EC2의 `EC2_DEPLOY_PATH`에서 서버 전용 `.env.prod`를 함께 사용한다.
 7. 새 backend image를 pull한다.
 8. backend와 Grafana container를 재시작한다.
-9. 기존 Nginx container에서 설정 검사를 통과한 뒤 reload한다.
+9. Nginx container가 실행 중이면 설정 검사를 통과한 뒤 reload한다. Nginx가 실행 중이 아니면 backend/Grafana 배포를 막지 않고 경고만 남긴다.
 
 ## Image
 
@@ -114,11 +114,21 @@ env BACKEND_IMAGE=<docker-hub-backend-image> \
 env BACKEND_IMAGE=<docker-hub-backend-image> \
   <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps grafana
 
-env BACKEND_IMAGE=<docker-hub-backend-image> \
-  <compose-command> --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -t
+nginx_container="$(
+  env BACKEND_IMAGE=<docker-hub-backend-image> \
+    <compose-command> --env-file .env.prod -f docker-compose.prod.yml ps -q nginx || true
+)"
 
-env BACKEND_IMAGE=<docker-hub-backend-image> \
-  <compose-command> --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -s reload
+if [[ -n "${nginx_container}" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" == "true" ]]; then
+  env BACKEND_IMAGE=<docker-hub-backend-image> \
+    <compose-command> --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -t
+  if ! env BACKEND_IMAGE=<docker-hub-backend-image> \
+    <compose-command> --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -s reload; then
+    echo "Nginx reload failed; backend/grafana deployment remains applied."
+  fi
+else
+  echo "Nginx service is not running; skipped Nginx reload so backend/grafana deployment can complete."
+fi
 ```
 
 배포 후에는 backend health와 Nginx proxy 상태를 릴리즈 기록에 남긴다.

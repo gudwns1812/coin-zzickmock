@@ -108,13 +108,14 @@ non-conditional 주문으로 제한한다. TP/SL 조건부 주문은 포지션 T
 
 - 수정 가능한 필드: `limitPrice`만 해당한다. 수량, 레버리지, 마진 모드, 방향, 주문 목적은 바꾸지 않는다.
 - 새 가격은 양수 finite 값이어야 한다.
-- 새 가격이 최신 체결가 기준 즉시 체결 가능한 가격이면 수정 요청은 거절하고 기존 pending 주문을 유지한다.
-  즉시 체결을 원하면 기존 주문 생성/종료 또는 후속 cancel-replace 플로우를 사용한다.
-- 수정은 계정 주문 변경 lock을 잡은 단일 트랜잭션 안에서 `modify -> 저장 -> 최신가 재조회` 순서로 처리한다.
-  수정 저장 직후 최신 체결가가 다시 움직여 새 가격이 즉시 체결 가능해졌다면 예외를 던져 해당 트랜잭션을 rollback하고 거절하므로 기존 pending 주문이 유지된다.
-- pending open limit 주문의 `feeType`, `estimatedFee`, `executionPrice`는 새 지정가 기준 maker preview 값으로 갱신한다.
-- pending manual close limit 주문의 `feeType`은 `MAKER`, `estimatedFee`는 체결 전 예상 수수료 규칙에 따라 `0`,
+- 수정은 계정 주문 변경 lock을 잡은 단일 트랜잭션 안에서 `modify -> 저장 -> 최신가 재조회 -> 필요 시 체결` 순서로 처리한다.
+- 저장 직후 재조회한 최신 체결가 기준으로 새 가격이 즉시 체결 가능하면, 같은 주문 row를 `FILLED`로 claim하고 `TAKER` 체결로 처리한다.
+  이때 체결 가격과 수수료 기준 가격은 재조회한 최신 체결가다.
+- 저장 직후 재조회한 최신 체결가 기준으로 아직 즉시 체결 가능하지 않으면 pending 주문으로 유지한다.
+  pending open limit 주문의 `feeType`, `estimatedFee`, `executionPrice`는 새 지정가 기준 maker preview 값으로 갱신한다.
+- pending manual close limit 주문이 즉시 체결되지 않으면 `feeType`은 `MAKER`, `estimatedFee`는 체결 전 예상 수수료 규칙에 따라 `0`,
   `executionPrice`는 새 지정가로 갱신한다.
+- guarded update나 guarded fill claim이 실패하면 주문 상태/가격이 이미 바뀐 것으로 보고 수정 요청을 거절한다.
 - 주문 생성 시각과 주문 이력 row identity는 유지한다.
 
 #### Pending limit 체결 순서

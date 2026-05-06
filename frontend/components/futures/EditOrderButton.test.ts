@@ -49,6 +49,33 @@ test("edit order modal submits a positive limit price through the modify API", a
   assert.deepEqual(errorMessages, []);
 });
 
+test("edit order modal reports immediate fill when modified price is marketable", async () => {
+  const successMessages: string[] = [];
+
+  const submitted = await submitOrderPriceEdit({
+    orderId: "open-order",
+    limitPrice: "101",
+    modifyOrderPrice: async (orderId, limitPrice) => ({
+      ...baseResult,
+      orderId,
+      status: "FILLED",
+      limitPrice,
+      feeType: "TAKER",
+      estimatedFee: 0.005,
+      executionPrice: 100,
+    }),
+    refresh: () => {},
+    closeModal: () => {},
+    showSuccess: (message) => successMessages.push(message),
+    showError: () => {
+      throw new Error("error toast should not run for a filled edit");
+    },
+  });
+
+  assert.equal(submitted, true);
+  assert.deepEqual(successMessages, ["BTCUSDT 주문이 즉시 체결되었습니다."]);
+});
+
 test("edit order modal blocks invalid limit prices before the modify API", async () => {
   for (const limitPrice of ["0", "-1", "Infinity", "NaN", ""] as const) {
     const calls: Array<[string, number]> = [];

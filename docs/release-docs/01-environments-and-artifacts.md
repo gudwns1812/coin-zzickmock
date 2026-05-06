@@ -160,7 +160,7 @@
 - 서버에는 비밀값을 담은 `.env.prod`가 있어야 한다.
 - CD는 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 배포 때마다 서버로 복사한다.
 - `.env.prod`의 공개 가능한 예시는 `infra/prod.env.example`에서 관리한다.
-- CD의 EC2 SSH 사용자는 배포 경로 파일 반영과 Docker Compose 실행을 위해 passwordless `sudo` 권한이 필요하다.
+- CD의 EC2 SSH 사용자는 `EC2_DEPLOY_PATH`에 파일을 쓸 수 있고 Docker Compose를 `sudo` 없이 실행할 수 있어야 한다.
 - GitHub Actions secret `EC2_SSH_PRIVATE_KEY`는 passphrase 없는 SSH private key 원문 전체를 실제 줄바꿈과 함께 저장해야 한다. `-----BEGIN ... PRIVATE KEY-----`/`-----END ... PRIVATE KEY-----` 경계를 포함하고, 터미널 프롬프트 문자나 zsh의 no-newline 표시인 `%` 같은 문자를 포함하지 않는다.
 - Redis는 운영 compose 내부 서비스로 실행하고 host port를 공개하지 않는다.
 - 운영 MySQL은 compose 내부에 포함하지 않고 `MYSQL_HOST` 또는 동등한 네트워크 경로로 연결한다.

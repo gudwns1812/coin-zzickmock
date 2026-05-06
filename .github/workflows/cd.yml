@@ -142,10 +142,10 @@ jobs:
             "${EC2_USER}@${EC2_HOST}:${deploy_tmp}/infra/"
           ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
             "bash -lc \"set -euo pipefail
-             sudo mkdir -p '${EC2_DEPLOY_PATH}/infra'
-             sudo cp '${deploy_tmp}/docker-compose.prod.yml' '${EC2_DEPLOY_PATH}/docker-compose.prod.yml'
-             sudo rm -rf '${EC2_DEPLOY_PATH}/infra/nginx' '${EC2_DEPLOY_PATH}/infra/prometheus' '${EC2_DEPLOY_PATH}/infra/grafana' '${EC2_DEPLOY_PATH}/infra/loki' '${EC2_DEPLOY_PATH}/infra/promtail'
-             sudo cp -R '${deploy_tmp}/infra/nginx' '${deploy_tmp}/infra/prometheus' '${deploy_tmp}/infra/grafana' '${deploy_tmp}/infra/loki' '${deploy_tmp}/infra/promtail' '${EC2_DEPLOY_PATH}/infra/'
+             mkdir -p '${EC2_DEPLOY_PATH}/infra'
+             cp '${deploy_tmp}/docker-compose.prod.yml' '${EC2_DEPLOY_PATH}/docker-compose.prod.yml'
+             rm -rf '${EC2_DEPLOY_PATH}/infra/nginx' '${EC2_DEPLOY_PATH}/infra/prometheus' '${EC2_DEPLOY_PATH}/infra/grafana' '${EC2_DEPLOY_PATH}/infra/loki' '${EC2_DEPLOY_PATH}/infra/promtail'
+             cp -R '${deploy_tmp}/infra/nginx' '${deploy_tmp}/infra/prometheus' '${deploy_tmp}/infra/grafana' '${deploy_tmp}/infra/loki' '${deploy_tmp}/infra/promtail' '${EC2_DEPLOY_PATH}/infra/'
              rm -rf '${deploy_tmp}'\""
 
       - name: Pull and restart backend on EC2
@@ -165,13 +165,13 @@ jobs:
 
           cd "${EC2_DEPLOY_PATH}"
 
-          if sudo docker compose version >/dev/null 2>&1; then
+          if docker compose version >/dev/null 2>&1; then
             compose=(docker compose)
-          elif command -v docker-compose >/dev/null 2>&1 && sudo docker-compose version >/dev/null 2>&1; then
+          elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
             compose=(docker-compose)
           else
             echo "Docker Compose is not available on the EC2 host. Install the Docker Compose v2 plugin or the docker-compose binary." >&2
-            sudo docker version || true
+            docker version || true
             exit 1
           fi
 
@@ -180,9 +180,9 @@ jobs:
             exit 1
           fi
 
-          echo "${DOCKERHUB_TOKEN}" | sudo docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
-          sudo env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml pull backend
-          sudo env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend
-          sudo docker image prune -f
-          sudo env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps backend
+          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml pull backend
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend
+          docker image prune -f
+          env BACKEND_IMAGE="${BACKEND_IMAGE}" "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml ps backend
           REMOTE_DEPLOY

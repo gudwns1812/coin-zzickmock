@@ -4,7 +4,7 @@
 
 실제 자산 수탁, 실주문 전송, 현금 입출금은 범위에 포함하지 않습니다. 시장 데이터는 실제 거래소 데이터를 사용할 수 있지만 주문 체결과 손익 반영은 서비스의 시뮬레이션 규칙을 따릅니다.
 
-## 현재 제품 범위
+## 프로젝트 기능
 
 - 회원가입/로그인과 계정별 초기 가상 잔고 `100000 USDT`
 - `BTCUSDT`, `ETHUSDT` 중심의 코인 선물 마켓 목록과 심볼 상세
@@ -19,8 +19,10 @@
 ## 기술 스택
 
 - Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 4, React Query, Zustand, MSW, Sentry
-- Backend: Spring Boot 3.5, Java 17, Spring Data JPA, QueryDSL, Flyway, Spring Cache, Redis, MySQL, H2 tests, Actuator, Micrometer
-- Infra/Operations: Docker Compose, Nginx, Prometheus, Grafana, Loki, Promtail, GitHub Actions CI/CD, Docker Hub, EC2 SSH deploy
+- Backend: Spring Boot 3.5, Java 17, Spring Data JPA, QueryDSL, Flyway, Spring Cache, Redis, MySQL, H2 tests, Actuator,
+  Micrometer
+- Infra/Operations: Docker Compose, Nginx, Prometheus, Grafana, Loki, Promtail, GitHub Actions CI/CD, Docker Hub, EC2
+  SSH deploy
 - Workspace: npm workspace for `frontend/`, Gradle wrapper for `backend/`
 
 ## 프로젝트 구조
@@ -97,7 +99,8 @@ docker compose down
 - Grafana: `http://localhost:3001` (`admin` / `admin`)
 - Loki API: `http://localhost:3100`
 
-자세한 기준은 [docs/release-docs/observability/local-infra-stack.md](docs/release-docs/observability/local-infra-stack.md)를 참고합니다.
+자세한 기준은 [docs/release-docs/observability/local-infra-stack.md](docs/release-docs/observability/local-infra-stack.md)를
+참고합니다.
 
 ### 백엔드 단독 실행
 
@@ -164,7 +167,8 @@ CI는 브랜치명 정책, 프론트 typecheck/build, 백엔드 `./gradlew check
 - 운영 환경/산출물 기준: [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
 - Backend production CD 기준: [docs/release-docs/04-production-cd.md](docs/release-docs/04-production-cd.md)
 
-현재 CD는 `main`/`master`의 backend, production compose, infra 변경 또는 수동 실행을 기준으로 backend 릴리즈 후보를 검증하고, Docker Hub에 ARM64 backend 이미지를 발행한 뒤 EC2에서 backend 컨테이너를 pull/restart합니다.
+현재 CD는 `main`/`master`의 backend, production compose, infra 변경 또는 수동 실행을 기준으로 backend 릴리즈 후보를 검증하고, Docker Hub에 ARM64
+backend 이미지를 발행한 뒤 EC2에서 backend 컨테이너를 pull/restart합니다.
 
 ## 작업 기준 문서
 

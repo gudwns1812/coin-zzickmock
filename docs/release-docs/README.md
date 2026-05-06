@@ -21,6 +21,11 @@
 - [04-production-cd.md](04-production-cd.md)
   Docker Hub backend 이미지 발행, EC2 SSH 배포, 서버 환경 변수 계약.
 
+### Frontend Vercel Operations
+
+- [05-frontend-vercel-operations.md](05-frontend-vercel-operations.md)
+  Vercel Git Integration 기반 frontend 배포, 환경 변수, Preview/Production 운영, rollback 기준.
+
 ### Release Checklist
 
 - [02-release-checklist.md](02-release-checklist.md)

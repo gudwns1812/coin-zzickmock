@@ -80,6 +80,7 @@
 - 환경과 산출물: [01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
 - 실행 체크리스트: [02-release-checklist.md](docs/release-docs/02-release-checklist.md)
 - 롤아웃/롤백: [03-rollout-and-rollback.md](docs/release-docs/03-rollout-and-rollback.md)
+- 프론트 Vercel 운영: [05-frontend-vercel-operations.md](docs/release-docs/05-frontend-vercel-operations.md)
 - 기록 템플릿: [release-note-template.md](docs/release-docs/release-note-template.md)
 
 운영 기준이 길어질수록 이 파일을 키우는 대신 `docs/release-docs/`를 갱신한다.

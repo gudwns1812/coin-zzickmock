@@ -14,6 +14,7 @@
 - 관련 PR, 계획 문서, 릴리즈 메모 초안이 연결되어 있다.
 - 현재 CI가 모두 성공했다.
 - 프론트 변경이 있으면 `npm run build` 결과를 확인했다.
+- 프론트 Vercel 배포가 포함되면 [05-frontend-vercel-operations.md](05-frontend-vercel-operations.md)의 environment variable 계약과 Preview URL을 확인했다.
 - 백엔드 변경이 있으면 `./gradlew check` 결과를 확인했다.
 - 구조 변경이 있으면 `./gradlew architectureLint` 결과를 확인했다.
 - 환경 변수 또는 비밀값 변경 여부를 확인했다.
@@ -49,6 +50,7 @@
 - 프론트 주요 페이지 진입이 가능하다.
 - 백엔드 핵심 API 또는 상태 점검 경로가 정상이다.
 - 치명적 콘솔 에러나 서버 예외가 즉시 발생하지 않는다.
+- Vercel 배포가 포함되면 deployment status가 `READY`이고, `FUTURES_API_BASE_URL`이 의도한 backend URL을 가리킨다.
 
 변경 범위가 클수록 아래도 추가한다.
 

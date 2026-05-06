@@ -42,11 +42,13 @@
 ### Preview
 
 - 목적: PR 단위 확인용 임시 환경
-- 현재 상태: 아직 저장소 표준으로 고정되지 않음
-- 도입 시 최소 조건:
-  - PR 또는 브랜치와 URL이 연결되어야 한다
-  - 만료 정책 또는 정리 정책이 있어야 한다
-  - 운영 비밀값을 그대로 공유하지 않는다
+- 현재 구현 기준: frontend Vercel Preview Deployment
+- 기본 backend 연결: `https://coin-zzickmock.duckdns.org`
+- 상세 기준: [05-frontend-vercel-operations.md](05-frontend-vercel-operations.md)
+- 최소 조건:
+  - PR 또는 브랜치와 Vercel Preview URL이 연결되어야 한다
+  - 운영 데이터에 영향을 줄 수 있는 write 검증은 테스트 계정으로 제한한다
+  - 운영 비밀값을 클라이언트 번들로 노출하지 않는다
 
 ### Staging
 
@@ -66,6 +68,7 @@
   - 롤백 기준점이 없는 배포를 하지 않는다
   - frontend 운영 배포는 Vercel에서 담당한다
   - backend 운영 배포는 Docker Hub 이미지와 EC2 Docker Compose로 담당한다
+- frontend backend 연결: `FUTURES_API_BASE_URL=https://coin-zzickmock.duckdns.org`
 
 ## Artifact Contract
 
@@ -79,6 +82,7 @@
 - 의미: Vercel에서 Next.js 프로덕션 빌드가 가능한 상태
 - 기록 항목:
   - 대상 commit SHA
+  - Vercel deployment URL
   - 빌드 성공 시각
   - 사용한 환경 변수 세트 이름
 
@@ -137,9 +141,12 @@
 - `NEXT_PUBLIC_*`는 공개 가능한 값만 넣는다.
 - 비밀값은 프론트 클라이언트 번들로 노출하지 않는다.
 - 현재 확인되는 프론트 변수:
+  - `FUTURES_API_BASE_URL`: server-only backend base URL. production 값은 `https://coin-zzickmock.duckdns.org`
   - `NEXT_PUBLIC_BASE_URL`
   - `NEXT_PUBLIC_BASE_URL2`
+  - `JWT_SECRET`: server-only JWT verification secret
   - `NEXT_PUBLIC_API_MOCKING`
+- Vercel 환경 변수 계약과 Preview/Production 값은 [05-frontend-vercel-operations.md](05-frontend-vercel-operations.md)를 따른다.
 
 ### Backend
 

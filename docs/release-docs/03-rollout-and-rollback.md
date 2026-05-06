@@ -65,6 +65,7 @@ DB 변경은 아래 원칙을 따른다.
 - 롤백은 새 변경을 덮는 임시 수정보다 우선 검토한다.
 - 데이터 마이그레이션이 되돌릴 수 없는 경우에는 서비스 보호 조치를 먼저 수행한다.
 - 롤백 후에도 원인과 영향 범위를 기록한다.
+- Frontend Vercel rollback 절차와 판단 기준은 [05-frontend-vercel-operations.md](05-frontend-vercel-operations.md)를 따른다.
 
 ## Incident Response Flow
 

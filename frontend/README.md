@@ -175,7 +175,11 @@ npm run build --workspace frontend
 
 ## Environment Variables
 
+- `FUTURES_API_BASE_URL` (server-only, Vercel production: `https://coin-zzickmock.duckdns.org`)
 - `NEXT_PUBLIC_BASE_URL`
 - `NEXT_PUBLIC_BASE_URL2`
-- `JWT_SECRET`
+- `JWT_SECRET` (server-only)
 - `NEXT_PUBLIC_API_MOCKING=enabled` (선택, MSW 사용 시)
+
+Frontend Vercel 운영 환경 변수와 Preview/Production 배포 기준은
+[docs/release-docs/05-frontend-vercel-operations.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/05-frontend-vercel-operations.md)를 따른다.

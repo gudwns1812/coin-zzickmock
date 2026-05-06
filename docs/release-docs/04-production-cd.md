@@ -47,7 +47,7 @@ GitHub repository secrets에 아래 secret을 둔다.
 - `EC2_HOST`: 운영 EC2 public host 또는 연결 가능한 host
 - `EC2_SSH_PORT`: SSH port. 생략 시 workflow에서 `22`를 사용한다
 - `EC2_USER`: EC2 SSH 사용자. 배포 경로 파일 반영과 Docker 명령을 위해 passwordless `sudo` 권한이 필요하다
-- `EC2_SSH_PRIVATE_KEY`: EC2 접속용 private key
+- `EC2_SSH_PRIVATE_KEY`: EC2 접속용 private key. 실제 줄바꿈을 유지한 private key 원문 전체를 저장해야 한다
 - `EC2_DEPLOY_PATH`: EC2에서 compose 파일과 `.env.prod`를 둔 디렉터리
 
 ## EC2 Server Files
@@ -82,8 +82,10 @@ EC2 `.env.prod`에는 최소 아래 값이 필요하다.
 - `GRAFANA_ADMIN_USER`
 - `GRAFANA_ADMIN_PASSWORD`
 
-CD 실행 시 `BACKEND_IMAGE`는 새 Docker Hub 이미지로 주입된다.
+CD 실행 시 `BACKEND_IMAGE`는 새 Docker Hub 이미지로 주입된다. GitHub Actions job output에는 secret-derived image reference 전체를 싣지 않고, secret이 아닌 image tag만 전달한 뒤 deploy job에서 Docker Hub namespace와 조합한다.
 수동으로 EC2에서 compose를 실행할 때만 shell 환경에 `BACKEND_IMAGE`를 별도로 지정한다.
+
+EC2에는 Docker Compose 실행기가 필요하다. CD는 `docker compose` v2 plugin을 먼저 사용하고, 없으면 legacy `docker-compose` binary를 사용한다. 둘 다 없으면 backend restart 전에 중단한다.
 
 ## Deploy Command
 
@@ -97,11 +99,15 @@ sudo mkdir -p <EC2_DEPLOY_PATH>/infra
 sudo cp /tmp/coin-zzickmock-<tag>/docker-compose.prod.yml <EC2_DEPLOY_PATH>/docker-compose.prod.yml
 sudo cp -R /tmp/coin-zzickmock-<tag>/infra/* <EC2_DEPLOY_PATH>/infra/
 
-sudo env BACKEND_IMAGE=<docker-hub-backend-image> \
-  docker compose --env-file .env.prod -f docker-compose.prod.yml pull backend
+# workflow는 EC2에서 사용 가능한 Compose 실행기를 감지한다:
+# - docker compose
+# - docker-compose
 
 sudo env BACKEND_IMAGE=<docker-hub-backend-image> \
-  docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend
+  <compose-command> --env-file .env.prod -f docker-compose.prod.yml pull backend
+
+sudo env BACKEND_IMAGE=<docker-hub-backend-image> \
+  <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps backend
 ```
 
 배포 후에는 backend health와 Nginx proxy 상태를 릴리즈 기록에 남긴다.

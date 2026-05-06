@@ -57,13 +57,33 @@ Root Directory, build command, environment variables, production branch는 Verce
 
 Vercel에는 환경별로 값을 나눠 둔다.
 실제 secret 원문은 문서와 Git에 넣지 않는다.
+Next.js 환경 파일은 `frontend/`를 project root로 보고 그 아래에 둔다.
+
+Tracked defaults and templates:
+
+| File | Purpose |
+| --- | --- |
+| `frontend/.env.development` | 로컬 개발용 비밀 없는 기본값 |
+| `frontend/.env.test` | 테스트용 결정적 기본값 |
+| `frontend/.env.example` | `.env.local` 작성 시작점 |
+| `frontend/.env.preview.example` | Vercel Preview scope에 넣을 값의 템플릿 |
+| `frontend/.env.production.example` | Vercel Production scope에 넣을 값의 템플릿 |
+
+Untracked local override files:
+
+- `frontend/.env.local`
+- `frontend/.env.development.local`
+- `frontend/.env.production.local`
+- `frontend/.env.test.local`
+
+Next.js는 이미 존재하는 `process.env` 값을 가장 먼저 사용한다.
+따라서 Vercel Production/Preview에서는 dashboard 또는 `vercel env`로 주입한 값이 committed `.env.*` 파일보다 우선한다.
 
 ### Production
 
 | Name | Value | Visibility | Purpose |
 | --- | --- | --- | --- |
 | `FUTURES_API_BASE_URL` | `https://coin-zzickmock.duckdns.org` | Server-only | Next.js rewrite, route handler, server fetch가 호출할 backend base URL |
-| `JWT_SECRET` | secret value | Server-only | frontend middleware/server boundary에서 JWT를 검증할 때 사용하는 값 |
 | `NEXT_PUBLIC_API_MOCKING` | unset | Public | production에서는 MSW를 켜지 않는다 |
 | `NEXT_PUBLIC_BASE_URL` | 운영 legacy stock API base URL, 필요한 경우만 | Public | 남아 있는 legacy stock route용 |
 | `NEXT_PUBLIC_BASE_URL2` | 운영 legacy stock API base URL, 필요한 경우만 | Public | 남아 있는 legacy stock API 호출용 |
@@ -72,9 +92,10 @@ Vercel에는 환경별로 값을 나눠 둔다.
 강한 규칙:
 
 - `FUTURES_API_BASE_URL`에는 `/api/futures`를 붙이지 않는다. `frontend/next.config.ts`와 route handler가 path를 붙인다.
+- Vercel 배포에서 `FUTURES_API_BASE_URL`이 없으면 frontend build/runtime은 실패해야 한다. 조용히 localhost fallback으로 배포하지 않는다.
 - `NEXT_PUBLIC_*`에는 공개 가능한 값만 둔다.
 - production Vercel env에서 `NEXT_PUBLIC_API_MOCKING=enabled`를 설정하지 않는다.
-- `JWT_SECRET`은 backend에서 발급한 토큰을 frontend server boundary가 읽는 경우 같은 계약을 사용해야 한다.
+- backend JWT signing secret은 backend runtime에만 둔다. 현재 frontend는 쿠키 토큰을 표시용으로 decode할 뿐 서명 검증을 하지 않는다.
 
 ### Preview
 
@@ -96,7 +117,14 @@ Preview 환경도 기본값은 production backend URL을 사용한다.
 로컬 개발은 기존 기본값을 유지한다.
 
 ```bash
-FUTURES_API_BASE_URL=http://127.0.0.1:8080 npm run dev --workspace frontend
+npm run dev --workspace frontend
+```
+
+로컬 secret이나 개인별 override가 필요하면 `frontend/.env.example`을 `frontend/.env.local`로 복사해 수정한다.
+Vercel Development scope 값을 가져와 맞춰 보고 싶으면 repository root에서 project link를 잡은 뒤 아래처럼 가져온다.
+
+```bash
+vercel env pull frontend/.env.local --environment=development --yes
 ```
 
 ## Release Flow

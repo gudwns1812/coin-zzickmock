@@ -1,11 +1,8 @@
 "use server";
 
 import { cookies } from "next/headers";
-// import jwt from "jsonwebtoken";
 import { JwtToken } from "@/type/jwt";
 import { jwtDecode } from "jwt-decode";
-
-const SECRET = process.env.JWT_SECRET!;
 
 type RawJwtToken = Partial<JwtToken> & {
   memberId?: number | string;
@@ -19,7 +16,6 @@ export async function getJwtToken() {
   if (!token) return null;
 
   try {
-    // const decoded = jwt.verify(token, SECRET);
     const decoded = jwtDecode<RawJwtToken>(token);
     const legacyAccount =
       typeof decoded.memberId === "string" ? decoded.memberId : "";

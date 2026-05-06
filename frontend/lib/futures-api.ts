@@ -8,6 +8,7 @@ import {
   type MarketSymbol,
   isSupportedMarketSymbol,
 } from "@/lib/markets";
+import { FUTURES_API_BASE_URL } from "./futures-env";
 
 type ApiResponse<T> = {
   success: boolean;
@@ -314,9 +315,6 @@ export type FuturesTradingExecutionEvent = {
   realizedPnl: number;
   message: string;
 };
-
-const FUTURES_API_BASE_URL =
-  process.env.FUTURES_API_BASE_URL ?? "http://127.0.0.1:8080";
 
 const SHOP_ITEM_FALLBACKS: ShopItem[] = [
   {

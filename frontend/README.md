@@ -175,11 +175,25 @@ npm run build --workspace frontend
 
 ## Environment Variables
 
-- `FUTURES_API_BASE_URL` (server-only, Vercel production: `https://coin-zzickmock.duckdns.org`)
-- `NEXT_PUBLIC_BASE_URL`
-- `NEXT_PUBLIC_BASE_URL2`
-- `JWT_SECRET` (server-only)
-- `NEXT_PUBLIC_API_MOCKING=enabled` (선택, MSW 사용 시)
+- `FUTURES_API_BASE_URL`: server-only backend base URL. 로컬 기본값은 `http://127.0.0.1:8080`, Vercel production 값은 `https://coin-zzickmock.duckdns.org`
+- `NEXT_PUBLIC_BASE_URL`: public legacy stock API base URL
+- `NEXT_PUBLIC_BASE_URL2`: public legacy stock API base URL
+- `NEXT_PUBLIC_API_MOCKING=enabled`: 선택, MSW 사용 시
 
 Frontend Vercel 운영 환경 변수와 Preview/Production 배포 기준은
 [docs/release-docs/05-frontend-vercel-operations.md](/Users/hj.park/projects/coin-zzickmock/docs/release-docs/05-frontend-vercel-operations.md)를 따른다.
+
+Tracked environment defaults:
+
+- `.env.development`: local non-secret defaults
+- `.env.test`: deterministic test defaults
+- `.env.example`: local override template
+- `.env.preview.example`: Vercel Preview scope template
+- `.env.production.example`: Vercel Production scope template
+
+Untracked local overrides:
+
+- `.env.local`
+- `.env.development.local`
+- `.env.production.local`
+- `.env.test.local`

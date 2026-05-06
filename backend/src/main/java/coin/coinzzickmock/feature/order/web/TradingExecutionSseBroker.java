@@ -61,7 +61,7 @@ public class TradingExecutionSseBroker {
         }
 
         recordConnectionRejected("member_limit");
-        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS, "거래 이벤트 스트림 연결이 너무 많습니다.");
+        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
@@ -95,7 +95,7 @@ public class TradingExecutionSseBroker {
         try {
             sseEventExecutor.execute(() -> sendToSubscribers(event.memberId(), memberEmitters, response));
         } catch (RejectedExecutionException exception) {
-            log.debug("Trading SSE executor rejected fan-out. memberId={}", event.memberId(), exception);
+            log.debug("Trading SSE executor rejected fan-out. stream=trading_execution", exception);
             recordExecutorRejected();
         }
     }
@@ -107,7 +107,7 @@ public class TradingExecutionSseBroker {
             emitter.complete();
         });
         emitter.onError(error -> {
-            log.debug("Trading SSE emitter reported an error; closing subscription. memberId={}", permit.memberId(), error);
+            log.debug("Trading SSE emitter reported an error; closing subscription. stream=trading_execution", error);
             unregister(permit.memberId(), emitter, "error");
         });
     }
@@ -118,7 +118,7 @@ public class TradingExecutionSseBroker {
             emitter.send(response);
             recordSend("success", startedAt);
         } catch (IOException exception) {
-            log.debug("Trading SSE send failed; closing subscription. memberId={}", memberId, exception);
+            log.debug("Trading SSE send failed; closing subscription. stream=trading_execution reason=send_failure", exception);
             recordSend("failure", startedAt);
             unregister(memberId, emitter, "send_failure");
         }

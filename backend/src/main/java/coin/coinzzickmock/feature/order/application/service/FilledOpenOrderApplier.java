@@ -16,8 +16,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class FilledOpenOrderApplier {
-    private static final String DEFAULT_MARGIN_MODE_MISMATCH_MESSAGE = "기존 포지션과 다른 마진 모드로 주문할 수 없습니다.";
-
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
@@ -30,7 +28,7 @@ public class FilledOpenOrderApplier {
         ).orElse(null);
 
         if (existing != null && !existing.marginMode().equalsIgnoreCase(order.marginMode())) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, order.marginModeMismatchMessage());
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         int effectiveLeverage = existing == null ? order.leverage() : existing.leverage();
@@ -106,15 +104,8 @@ public class FilledOpenOrderApplier {
             double executionPrice,
             double markPrice,
             double estimatedFee,
-            Double reservedInitialMargin,
-            String marginModeMismatchMessage
+            Double reservedInitialMargin
     ) {
-        public FilledOpenOrder {
-            if (marginModeMismatchMessage == null || marginModeMismatchMessage.isBlank()) {
-                marginModeMismatchMessage = DEFAULT_MARGIN_MODE_MISMATCH_MESSAGE;
-            }
-        }
-
         public FilledOpenOrder(
                 Long memberId,
                 String orderId,
@@ -138,37 +129,7 @@ public class FilledOpenOrderApplier {
                     executionPrice,
                     markPrice,
                     estimatedFee,
-                    null,
-                    DEFAULT_MARGIN_MODE_MISMATCH_MESSAGE
-            );
-        }
-
-        public FilledOpenOrder(
-                Long memberId,
-                String orderId,
-                String symbol,
-                String positionSide,
-                String marginMode,
-                int leverage,
-                double quantity,
-                double executionPrice,
-                double markPrice,
-                double estimatedFee,
-                String marginModeMismatchMessage
-        ) {
-            this(
-                    memberId,
-                    orderId,
-                    symbol,
-                    positionSide,
-                    marginMode,
-                    leverage,
-                    quantity,
-                    executionPrice,
-                    markPrice,
-                    estimatedFee,
-                    null,
-                    marginModeMismatchMessage
+                    null
             );
         }
 

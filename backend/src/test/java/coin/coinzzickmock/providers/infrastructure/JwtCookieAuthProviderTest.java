@@ -90,7 +90,7 @@ class JwtCookieAuthProviderTest {
         @Override
         public AuthSessionClaims parse(String token) {
             if ("malformed".equals(token)) {
-                throw new CoreException(ErrorCode.UNAUTHORIZED, "bad token");
+                throw new CoreException(ErrorCode.UNAUTHORIZED);
             }
             return new AuthSessionClaims(1L, "demo", "Demo", "demo@example.com", ActorRole.USER);
         }

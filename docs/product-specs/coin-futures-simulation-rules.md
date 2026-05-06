@@ -470,7 +470,7 @@ MVP 1차는 아래 순서로 단순화한다.
 
 - 새 교환권 요청 생성 후 DB commit 이후 SMTP 알림을 보낸다.
 - 관리자 수신자는 `coin.reward.notification.admin-email` 설정값이며 기본값은 `gudwns1812@naver.com`이다.
-- SMTP 실패는 요청을 롤백하지 않고 request id와 수신자를 포함해 로그로 남긴다.
+- SMTP 실패는 요청을 롤백하지 않고 request id와 실패 사유를 로그로 남긴다. 수신자 email 원문은 로그에 남기지 않는다.
 - Discord 등 추가 알림 채널은 같은 notification boundary에 구현한다.
 
 ## 데이터 저장 규칙

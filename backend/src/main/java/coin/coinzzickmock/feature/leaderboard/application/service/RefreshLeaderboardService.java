@@ -50,7 +50,7 @@ public class RefreshLeaderboardService {
             try {
                 snapshotStore.update(entry);
             } catch (RuntimeException exception) {
-                log.warn("Leaderboard member refresh failed. memberId={}", memberId, exception);
+                log.warn("Leaderboard member refresh failed. operation=refresh_member", exception);
             }
         }
     }
@@ -60,7 +60,7 @@ public class RefreshLeaderboardService {
             try {
                 snapshotStore.remove(memberId);
             } catch (RuntimeException exception) {
-                log.warn("Leaderboard member removal failed. memberId={}", memberId, exception);
+                log.warn("Leaderboard member removal failed. operation=remove_member", exception);
             }
         }
     }

@@ -272,8 +272,7 @@ public class PendingOrderFillProcessor {
                 order.quantity(),
                 executionPrice,
                 markPrice,
-                order.estimatedFee(),
-                "기존 포지션과 다른 마진 모드의 대기 주문은 체결할 수 없습니다."
+                order.estimatedFee()
         ));
     }
 

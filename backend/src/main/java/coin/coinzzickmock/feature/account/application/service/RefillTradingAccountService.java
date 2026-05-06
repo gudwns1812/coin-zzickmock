@@ -16,9 +16,11 @@ import coin.coinzzickmock.feature.position.application.repository.PositionReposi
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefillTradingAccountService {
@@ -37,7 +39,10 @@ public class RefillTradingAccountService {
         accountRefillStateRepository.provisionDailyStateIfAbsent(memberId, refillDate);
         LockedAccountRefillState lockedState = accountRefillStateRepository
                 .findByMemberIdAndRefillDateForUpdate(memberId, refillDate)
-                .orElseThrow(() -> invalid("사용 가능한 리필 횟수가 없습니다."));
+                .orElseThrow(() -> {
+                    log.error("Account refill state was not found after provisioning. operation=refill_trading_account");
+                    return new CoreException(ErrorCode.INTERNAL_SERVER_ERROR);
+                });
         AccountRefillState state = lockedState.state();
 
         validateRefillable(memberId, account, state);
@@ -58,16 +63,16 @@ public class RefillTradingAccountService {
 
     private void validateRefillable(Long memberId, TradingAccount account, AccountRefillState state) {
         if (state.remainingCount() <= 0) {
-            throw invalid("사용 가능한 리필 횟수가 없습니다.");
+            throw invalid();
         }
         if (!account.refillableToInitialBalance()) {
-            throw invalid("이미 100,000 USDT 기준 잔고에 도달했습니다.");
+            throw invalid();
         }
         if (positionRepository.existsOpenByMemberId(memberId)) {
-            throw invalid("열린 포지션이 있을 때는 리필할 수 없습니다.");
+            throw invalid();
         }
         if (orderRepository.existsPendingByMemberId(memberId)) {
-            throw invalid("대기 중인 주문이 있을 때는 리필할 수 없습니다.");
+            throw invalid();
         }
     }
 
@@ -81,7 +86,7 @@ public class RefillTradingAccountService {
         throw new CoreException(ErrorCode.ACCOUNT_CHANGED);
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

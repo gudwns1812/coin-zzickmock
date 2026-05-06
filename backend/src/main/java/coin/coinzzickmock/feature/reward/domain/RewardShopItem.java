@@ -21,19 +21,19 @@ public record RewardShopItem(
 
     public RewardShopItem {
         if (price <= 0) {
-            throw invalid("상품 가격은 0보다 커야 합니다.");
+            throw invalid();
         }
         if (soldQuantity < 0) {
-            throw invalid("판매 수량은 음수일 수 없습니다.");
+            throw invalid();
         }
         if (totalStock != null && totalStock < 0) {
-            throw invalid("총 재고는 음수일 수 없습니다.");
+            throw invalid();
         }
         if (totalStock != null && soldQuantity > totalStock) {
-            throw invalid("판매 수량은 총 재고를 초과할 수 없습니다.");
+            throw invalid();
         }
         if (perMemberPurchaseLimit != null && perMemberPurchaseLimit <= 0) {
-            throw invalid("회원별 구매 제한은 0보다 커야 합니다.");
+            throw invalid();
         }
     }
 
@@ -71,10 +71,10 @@ public record RewardShopItem(
 
     public RewardShopItem reserveOne() {
         if (!active) {
-            throw invalid("비활성 상품은 구매할 수 없습니다.");
+            throw invalid();
         }
         if (soldOut()) {
-            throw invalid("품절된 상품입니다.");
+            throw invalid();
         }
         return new RewardShopItem(
                 id,
@@ -93,7 +93,7 @@ public record RewardShopItem(
 
     public RewardShopItem releaseOne() {
         if (soldQuantity == 0) {
-            throw invalid("판매 수량은 음수로 복구할 수 없습니다.");
+            throw invalid();
         }
         return new RewardShopItem(
                 id,
@@ -125,7 +125,7 @@ public record RewardShopItem(
         return Math.max(0, perMemberPurchaseLimit - purchaseCount);
     }
 
-    private static CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private static CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

@@ -57,7 +57,8 @@ public class MarketHistoricalCandleSegmentFetcher {
             acquired = providerLane.tryAcquire(PROVIDER_PERMIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             if (!acquired) {
                 telemetry.record("market.history.bitget.timeout", segment, "bitget", "timeout");
-                log.warn("Timed out waiting for Bitget historical lane. key={}", segment.cacheKey());
+                log.warn("Timed out waiting for Bitget historical lane. provider=bitget symbol={} interval={} rangeBucket={}",
+                        segment.symbol(), segment.interval().value(), rangeBucket(segment));
                 return List.of();
             }
 
@@ -91,13 +92,18 @@ public class MarketHistoricalCandleSegmentFetcher {
             return List.of();
         } catch (RuntimeException exception) {
             telemetry.record("market.history.bitget.failure", segment, "bitget", "failure");
-            log.warn("Failed to load Bitget historical candles. key={}", segment.cacheKey(), exception);
+            log.warn("Failed to load Bitget historical candles. provider=bitget symbol={} interval={} rangeBucket={}",
+                    segment.symbol(), segment.interval().value(), rangeBucket(segment), exception);
             return List.of();
         } finally {
             if (acquired) {
                 providerLane.release();
             }
         }
+    }
+
+    private String rangeBucket(MarketHistoricalCandleSegment segment) {
+        return segment.granularity() + ":size" + segment.size();
     }
 
     private MarketCandleResult toResult(MarketHistoricalCandleSnapshot candle) {

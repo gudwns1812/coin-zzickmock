@@ -223,7 +223,7 @@ public class RewardController {
                 try {
                     yield RewardRedemptionStatus.valueOf(status);
                 } catch (IllegalArgumentException exception) {
-                    throw new CoreException(ErrorCode.INVALID_REQUEST, "지원하지 않는 교환권 요청 상태입니다.");
+                    throw new CoreException(ErrorCode.INVALID_REQUEST);
                 }
             }
         };
@@ -231,7 +231,7 @@ public class RewardController {
 
     private AdminRewardShopItemService.AdminShopItemCommand toAdminShopItemCommand(AdminShopItemRequest request) {
         if (request == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "상점 상품 정보는 필수입니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return request.toCommand();
     }

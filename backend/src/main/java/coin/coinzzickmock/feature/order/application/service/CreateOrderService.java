@@ -164,8 +164,7 @@ public class CreateOrderService {
                 executionPrice,
                 marketSnapshot.markPrice(),
                 preview.estimatedFee(),
-                preview.estimatedInitialMargin(),
-                null
+                preview.estimatedInitialMargin()
         ));
     }
 
@@ -292,10 +291,10 @@ public class CreateOrderService {
 
         PositionSnapshot position = existing.orElseThrow();
         if (!position.marginMode().equalsIgnoreCase(command.marginMode())) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "기존 포지션과 다른 마진 모드로 주문할 수 없습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (position.leverage() != command.leverage()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "기존 포지션 레버리지를 먼저 적용한 뒤 주문해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 
@@ -317,7 +316,7 @@ public class CreateOrderService {
 
     private void validateOrderType(String orderType) {
         if (!ORDER_TYPE_MARKET.equalsIgnoreCase(orderType) && !ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 유형을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 

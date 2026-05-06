@@ -36,12 +36,12 @@ public class CreateRewardRedemptionService {
     @Transactional
     public RewardRedemptionResult create(Long memberId, String itemCode, String phoneNumber) {
         if (itemCode == null || itemCode.isBlank()) {
-            throw invalid("상점 상품 코드는 필수입니다.");
+            throw invalid();
         }
         RewardShopItem item = rewardShopItemRepository.findByCodeForUpdate(itemCode)
-                .orElseThrow(() -> invalid("존재하지 않는 상점 상품입니다."));
+                .orElseThrow(() -> invalid());
         if (!item.coffeeVoucher()) {
-            throw invalid("교환권 신청 상품이 아닙니다.");
+            throw invalid();
         }
 
         RewardPhoneNumber normalizedPhoneNumber = RewardPhoneNumber.from(phoneNumber);
@@ -81,17 +81,17 @@ public class CreateRewardRedemptionService {
 
     private void validatePurchase(RewardShopItem item, RewardShopMemberItemUsage usage) {
         if (!item.active()) {
-            throw invalid("비활성 상품은 구매할 수 없습니다.");
+            throw invalid();
         }
         if (item.soldOut()) {
-            throw invalid("품절된 상품입니다.");
+            throw invalid();
         }
         if (item.memberReachedLimit(usage.purchaseCount())) {
-            throw invalid("회원별 구매 제한에 도달했습니다.");
+            throw invalid();
         }
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

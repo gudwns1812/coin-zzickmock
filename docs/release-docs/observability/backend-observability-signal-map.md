@@ -13,6 +13,8 @@
 - 외부 HTTP 연동 계측은 connector/infrastructure 경계에서 처리한다.
 - SSE connection lifecycle은 feature API broker가 직접 소유하므로 `providers.telemetry.SseTelemetry`라는 좁은 목적형 interface를 주입한다.
   Micrometer 구현은 `providers.infrastructure.MicrometerSseTelemetry`에만 둔다.
+- 처리된 backend domain/application 실패 로그는 `GlobalExceptionHandler`의 `ErrorCode.logLevel()` 정책을 기준으로 본다.
+  feature/provider/application boundary 로그는 raw identifier나 provider detail 대신 `provider`, `cache`, `operation`, `reason`, `symbol`, `interval`, `range_bucket` 같은 낮은 카디널리티 context만 보완한다.
 
 ## Priority Signal Map
 
@@ -147,3 +149,4 @@ Implemented `result` values:
 - `symbol`은 지원 market symbol처럼 집합이 제한된 값에만 사용한다.
 - Provider 기반 계측 context도 같은 민감정보 금지 기준을 따른다.
 - member-specific 조사가 필요하면 metric label이 아니라 접근 제어가 있는 관리자 화면 또는 correlation id 기반 로그 조회를 사용한다.
+- CoreException detail, upstream provider message, raw route/URI, raw cache key는 release log check에서 결함으로 본다.

@@ -142,16 +142,16 @@ public class ClosePositionService {
             PositionSnapshot position
     ) {
         if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "종료 수량을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         if (!ORDER_TYPE_MARKET.equalsIgnoreCase(orderType) && !ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 유형을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         if (ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)
                 && (limitPrice == null || !Double.isFinite(limitPrice) || limitPrice <= 0)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "지정가 종료 가격을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 

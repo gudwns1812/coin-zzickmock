@@ -12,9 +12,11 @@ import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import coin.coinzzickmock.feature.reward.domain.RewardShopMemberItemUsage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RewardRedemptionRefundProcessor {
@@ -26,12 +28,12 @@ public class RewardRedemptionRefundProcessor {
     @Transactional
     public void refundReservation(RewardRedemptionRequest request) {
         RewardShopItem item = rewardShopItemRepository.findByIdForUpdate(request.shopItemId())
-                .orElseThrow(() -> invalid("상점 상품을 찾을 수 없습니다."));
+                .orElseThrow(() -> internal("shop_item_missing"));
         RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
                 .findByMemberIdAndShopItemIdForUpdate(request.memberId(), request.shopItemId())
-                .orElseThrow(() -> invalid("구매 제한 사용량을 찾을 수 없습니다."));
+                .orElseThrow(() -> internal("member_item_usage_missing"));
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(request.memberId())
-                .orElseThrow(() -> invalid("포인트 지갑을 찾을 수 없습니다."));
+                .orElseThrow(() -> internal("reward_wallet_missing"));
 
         RewardShopItem releasedItem = item.releaseOne();
         RewardShopMemberItemUsage releasedUsage = usage.decrement();
@@ -48,7 +50,8 @@ public class RewardRedemptionRefundProcessor {
         ));
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException internal(String reason) {
+        log.error("Reward redemption refund state was inconsistent. operation=refund_reservation reason={}", reason);
+        return new CoreException(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 }

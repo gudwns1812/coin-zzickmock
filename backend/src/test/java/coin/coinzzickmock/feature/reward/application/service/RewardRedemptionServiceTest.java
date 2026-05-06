@@ -139,7 +139,6 @@ class RewardRedemptionServiceTest {
                 () -> createRewardRedemptionService.create(MEMBER_ID, REFILL_ITEM_CODE, "bad phone"));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-        assertEquals("교환권 신청 상품이 아닙니다.", thrown.getMessage());
         assertEquals(50, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
         assertEquals(0, rewardShopItemRepository.findByCode(REFILL_ITEM_CODE).orElseThrow().soldQuantity());
     }

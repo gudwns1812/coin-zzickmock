@@ -15,31 +15,31 @@ public record RewardShopMemberItemUsage(
 
     public RewardShopMemberItemUsage {
         if (memberId == null) {
-            throw invalid("회원 ID는 필수입니다.");
+            throw invalid();
         }
         if (shopItemId == null) {
-            throw invalid("상점 상품 ID는 필수입니다.");
+            throw invalid();
         }
         if (purchaseCount < 0) {
-            throw invalid("구매 수량은 음수일 수 없습니다.");
+            throw invalid();
         }
     }
 
     public RewardShopMemberItemUsage increment() {
         if (purchaseCount == Integer.MAX_VALUE) {
-            throw invalid("구매 수량이 허용 범위를 초과합니다.");
+            throw invalid();
         }
         return new RewardShopMemberItemUsage(id, memberId, shopItemId, purchaseCount + 1);
     }
 
     public RewardShopMemberItemUsage decrement() {
         if (purchaseCount == 0) {
-            throw invalid("구매 수량은 음수로 복구할 수 없습니다.");
+            throw invalid();
         }
         return new RewardShopMemberItemUsage(id, memberId, shopItemId, purchaseCount - 1);
     }
 
-    private static CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private static CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

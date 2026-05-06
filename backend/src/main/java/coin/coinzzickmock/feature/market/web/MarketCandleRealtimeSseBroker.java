@@ -142,7 +142,8 @@ public class MarketCandleRealtimeSseBroker {
         try {
             sseEventExecutor.execute(() -> keyEmitters.forEach(emitter -> send(key, emitter, response)));
         } catch (RejectedExecutionException exception) {
-            log.debug("Market candle SSE executor rejected fan-out. key={}", key, exception);
+            log.debug("Market candle SSE executor rejected fan-out. stream={} symbol={} interval={}",
+                    STREAM, key.symbol(), key.interval().value(), exception);
             recordExecutorRejected();
         }
     }
@@ -154,7 +155,8 @@ public class MarketCandleRealtimeSseBroker {
             emitter.complete();
         });
         emitter.onError(error -> {
-            log.debug("Market candle SSE emitter reported an error; closing subscription. key={}", key, error);
+            log.debug("Market candle SSE emitter reported an error; closing subscription. stream={} symbol={} interval={}",
+                    STREAM, key.symbol(), key.interval().value(), error);
             unregister(key, emitter, "error");
         });
     }
@@ -165,7 +167,8 @@ public class MarketCandleRealtimeSseBroker {
             emitter.send(response);
             recordSend("success", startedAt);
         } catch (IOException | IllegalStateException exception) {
-            log.debug("Market candle SSE send failed; closing subscription. key={}", key, exception);
+            log.debug("Market candle SSE send failed; closing subscription. stream={} symbol={} interval={} reason=send_failure",
+                    STREAM, key.symbol(), key.interval().value(), exception);
             recordSend("failure", startedAt);
             unregister(key, emitter, "send_failure");
         }

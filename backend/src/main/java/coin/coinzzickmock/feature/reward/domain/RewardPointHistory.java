@@ -13,22 +13,22 @@ public record RewardPointHistory(
 ) {
     public RewardPointHistory {
         if (memberId == null) {
-            throw invalid("회원 ID는 필수입니다.");
+            throw invalid();
         }
         if (historyType == null) {
-            throw invalid("포인트 이력 타입은 필수입니다.");
+            throw invalid();
         }
         if (amount == 0) {
-            throw invalid("포인트 이력 금액은 0일 수 없습니다.");
+            throw invalid();
         }
         if (balanceAfter < 0) {
-            throw invalid("포인트 잔액은 음수일 수 없습니다.");
+            throw invalid();
         }
     }
 
     public static RewardPointHistory grant(Long memberId, int amount, int balanceAfter, String sourceReference) {
         if (amount <= 0) {
-            throw invalid("적립 포인트는 0보다 커야 합니다.");
+            throw invalid();
         }
         return new RewardPointHistory(
                 memberId,
@@ -42,7 +42,7 @@ public record RewardPointHistory(
 
     public static RewardPointHistory redemptionDeduct(Long memberId, int amount, int balanceAfter, String requestId) {
         if (amount <= 0) {
-            throw invalid("차감 포인트는 0보다 커야 합니다.");
+            throw invalid();
         }
         return new RewardPointHistory(
                 memberId,
@@ -61,7 +61,7 @@ public record RewardPointHistory(
             String purchaseId
     ) {
         if (amount <= 0) {
-            throw invalid("차감 포인트는 0보다 커야 합니다.");
+            throw invalid();
         }
         return new RewardPointHistory(
                 memberId,
@@ -75,7 +75,7 @@ public record RewardPointHistory(
 
     public static RewardPointHistory redemptionRefund(Long memberId, int amount, int balanceAfter, String requestId) {
         if (amount <= 0) {
-            throw invalid("환급 포인트는 0보다 커야 합니다.");
+            throw invalid();
         }
         return new RewardPointHistory(
                 memberId,
@@ -87,7 +87,7 @@ public record RewardPointHistory(
         );
     }
 
-    private static CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private static CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

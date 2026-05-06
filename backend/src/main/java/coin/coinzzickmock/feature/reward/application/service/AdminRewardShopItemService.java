@@ -5,14 +5,15 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
+import java.util.List;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.function.Function;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminRewardShopItemService {
@@ -28,10 +29,10 @@ public class AdminRewardShopItemService {
     @Transactional
     public AdminShopItemResult create(AdminShopItemCommand command) {
         AdminShopItemCommand normalized = normalize(command);
-        String code = requireText(normalized.code(), "상점 상품 코드는 필수입니다.", String::trim);
+        String code = requireText(normalized.code(), String::trim);
         rewardShopItemRepository.findByCode(code)
                 .ifPresent(existing -> {
-                    throw invalid("이미 존재하는 상점 상품 코드입니다.");
+                    throw invalid();
                 });
         RewardShopItem item = new RewardShopItem(
                 null,
@@ -49,7 +50,9 @@ public class AdminRewardShopItemService {
         try {
             return AdminShopItemResult.from(rewardShopItemRepository.save(item));
         } catch (DataIntegrityViolationException exception) {
-            throw invalid("이미 존재하는 상점 상품 코드입니다.");
+            log.warn("Reward shop item create failed because of a data integrity violation. operation=admin_reward_shop_item_create",
+                    exception);
+            throw invalid();
         }
     }
 
@@ -58,7 +61,7 @@ public class AdminRewardShopItemService {
         AdminShopItemCommand normalized = normalize(command);
         RewardShopItem current = findForUpdate(code);
         if (normalized.totalStock() != null && normalized.totalStock() < current.soldQuantity()) {
-            throw invalid("총 재고는 이미 판매/예약된 수량보다 작을 수 없습니다.");
+            throw invalid();
         }
         RewardShopItem item = new RewardShopItem(
                 current.id(),
@@ -96,27 +99,27 @@ public class AdminRewardShopItemService {
     }
 
     private RewardShopItem findForUpdate(String code) {
-        String normalizedCode = requireText(code, "상점 상품 코드는 필수입니다.", String::trim);
+        String normalizedCode = requireText(code, String::trim);
         return rewardShopItemRepository.findByCodeForUpdate(normalizedCode)
-                .orElseThrow(() -> invalid("존재하지 않는 상점 상품입니다."));
+                .orElseThrow(() -> invalid());
     }
 
     private AdminShopItemCommand normalize(AdminShopItemCommand command) {
         if (command == null) {
-            throw invalid("상점 상품 정보는 필수입니다.");
+            throw invalid();
         }
         String code = command.code() == null ? null : command.code().trim();
-        String name = requireText(command.name(), "상점 상품명은 필수입니다.", String::trim);
-        String description = requireText(command.description(), "상점 상품 설명은 필수입니다.", String::trim);
-        String itemType = requireText(command.itemType(), "상점 상품 타입은 필수입니다.", String::trim);
+        String name = requireText(command.name(), String::trim);
+        String description = requireText(command.description(), String::trim);
+        String itemType = requireText(command.itemType(), String::trim);
         if (command.price() <= 0) {
-            throw invalid("상점 상품 가격은 0보다 커야 합니다.");
+            throw invalid();
         }
         if (command.totalStock() != null && command.totalStock() < 0) {
-            throw invalid("총 재고는 음수일 수 없습니다.");
+            throw invalid();
         }
         if (command.perMemberPurchaseLimit() != null && command.perMemberPurchaseLimit() <= 0) {
-            throw invalid("회원별 구매 제한은 0보다 커야 합니다.");
+            throw invalid();
         }
         return new AdminShopItemCommand(
                 code,
@@ -131,15 +134,15 @@ public class AdminRewardShopItemService {
         );
     }
 
-    private String requireText(String value, String message, Function<String, String> normalizer) {
+    private String requireText(String value, Function<String, String> normalizer) {
         if (value == null || value.isBlank()) {
-            throw invalid(message);
+            throw invalid();
         }
         return normalizer.apply(value);
     }
 
-    private CoreException invalid(String message) {
-        return new CoreException(ErrorCode.INVALID_REQUEST, message);
+    private CoreException invalid() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 
     public record AdminShopItemCommand(

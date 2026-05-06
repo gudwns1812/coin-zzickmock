@@ -33,7 +33,7 @@ public class GetWalletHistoryService {
         LocalDate to = query.to() == null ? today : WalletHistoryDate.from(query.to());
         LocalDate from = query.from() == null ? to.minusDays(DEFAULT_HISTORY_DAYS - 1) : WalletHistoryDate.from(query.from());
         if (from.isAfter(to)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "지갑 이력 조회 기간을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         List<WalletHistoryResult> results = new ArrayList<>(walletHistoryRepository

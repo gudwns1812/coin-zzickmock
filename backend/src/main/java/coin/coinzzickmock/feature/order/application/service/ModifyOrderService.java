@@ -43,7 +43,7 @@ public class ModifyOrderService {
         OrderPlacementRequest request = placementRequest(order, nextLimitPrice);
         OrderPlacementDecision decision = orderPlacementPolicy.decide(request, market.lastPrice());
         if (decision.executable()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "즉시 체결 가능한 가격으로는 대기 주문을 수정할 수 없습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
         double estimatedFee = estimatedFee(order, request, market.lastPrice());
@@ -54,7 +54,7 @@ public class ModifyOrderService {
                 FEE_TYPE_MAKER,
                 estimatedFee,
                 nextLimitPrice
-        ).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST, "수정 가능한 대기 지정가 주문이 아닙니다."));
+        ).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
         rejectIfBecameMarketableAfterUpdate(updated);
 
         return new ModifyOrderResult(
@@ -74,24 +74,24 @@ public class ModifyOrderService {
 
     private double validatedLimitPrice(BigDecimal limitPrice) {
         if (limitPrice == null || limitPrice.signum() <= 0) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 가격을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         double limitPriceValue = limitPrice.doubleValue();
         if (!Double.isFinite(limitPriceValue) || limitPriceValue <= 0) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "주문 가격을 확인해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return limitPriceValue;
     }
 
     private void validateEditable(FuturesOrder order) {
         if (!order.isPending()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "대기 주문만 수정할 수 있습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (!ORDER_TYPE_LIMIT.equalsIgnoreCase(order.orderType()) || order.limitPrice() == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "지정가 주문만 수정할 수 있습니다.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (order.isConditionalOrder()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST, "TP/SL 주문은 포지션 TP/SL 편집에서 수정해주세요.");
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
 
@@ -125,6 +125,6 @@ public class ModifyOrderService {
             return;
         }
 
-        throw new CoreException(ErrorCode.INVALID_REQUEST, "즉시 체결 가능한 가격으로는 대기 주문을 수정할 수 없습니다.");
+        throw new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

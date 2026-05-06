@@ -475,35 +475,14 @@ public record PositionSnapshot(
         double closeFee = executionPrice * safeCloseQuantity * takerFeeRate;
         double releasedMargin = (entryPrice * safeCloseQuantity) / leverage;
         double remainingQuantity = quantity - safeCloseQuantity;
-        double nextAccumulatedClosedQuantity = accumulatedClosedQuantity + safeCloseQuantity;
-        double nextAccumulatedExitNotional = accumulatedExitNotional + (executionPrice * safeCloseQuantity);
-        double nextAccumulatedRealizedPnl = accumulatedRealizedPnl + realizedPnl;
-        double nextAccumulatedCloseFee = accumulatedCloseFee + closeFee;
-
-        PositionSnapshot remainingPosition = remainingQuantity <= 0
-                ? null
-                : new PositionSnapshot(
-                symbol,
-                positionSide,
-                marginMode,
-                leverage,
-                remainingQuantity,
-                entryPrice,
-                markPrice,
-                liquidationPrice,
-                pnl(markPrice, remainingQuantity),
-                openedAt,
-                originalQuantity,
-                nextAccumulatedClosedQuantity,
-                nextAccumulatedExitNotional,
-                nextAccumulatedRealizedPnl,
-                accumulatedOpenFee,
-                nextAccumulatedCloseFee,
-                accumulatedFundingCost,
-                takeProfitPrice,
-                stopLossPrice,
-                version
+        PositionAccounting nextAccounting = accounting().recordClose(
+                safeCloseQuantity,
+                executionPrice,
+                realizedPnl,
+                closeFee
         );
+
+        PositionSnapshot remainingPosition = remainingAfterClose(remainingQuantity, markPrice, nextAccounting);
 
         return new PositionCloseOutcome(
                 safeCloseQuantity,
@@ -512,14 +491,46 @@ public record PositionSnapshot(
                 releasedMargin,
                 remainingPosition,
                 openedAt,
-                originalQuantity,
+                nextAccounting.originalQuantity(),
                 entryPrice,
-                nextAccumulatedClosedQuantity,
-                nextAccumulatedExitNotional,
-                nextAccumulatedRealizedPnl,
-                accumulatedOpenFee,
-                nextAccumulatedCloseFee,
-                accumulatedFundingCost
+                nextAccounting.accumulatedClosedQuantity(),
+                nextAccounting.accumulatedExitNotional(),
+                nextAccounting.accumulatedRealizedPnl(),
+                nextAccounting.accumulatedOpenFee(),
+                nextAccounting.accumulatedCloseFee(),
+                nextAccounting.accumulatedFundingCost()
+        );
+    }
+
+    private PositionSnapshot remainingAfterClose(
+            double remainingQuantity,
+            double nextMarkPrice,
+            PositionAccounting nextAccounting
+    ) {
+        if (remainingQuantity <= 0) {
+            return null;
+        }
+        return new PositionSnapshot(
+                symbol,
+                positionSide,
+                marginMode,
+                leverage,
+                remainingQuantity,
+                entryPrice,
+                nextMarkPrice,
+                liquidationPrice,
+                pnl(nextMarkPrice, remainingQuantity),
+                openedAt,
+                nextAccounting.originalQuantity(),
+                nextAccounting.accumulatedClosedQuantity(),
+                nextAccounting.accumulatedExitNotional(),
+                nextAccounting.accumulatedRealizedPnl(),
+                nextAccounting.accumulatedOpenFee(),
+                nextAccounting.accumulatedCloseFee(),
+                nextAccounting.accumulatedFundingCost(),
+                takeProfitPrice,
+                stopLossPrice,
+                version
         );
     }
 

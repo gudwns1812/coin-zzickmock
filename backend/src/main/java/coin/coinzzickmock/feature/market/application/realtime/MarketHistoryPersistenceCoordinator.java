@@ -38,50 +38,80 @@ public class MarketHistoryPersistenceCoordinator {
             Instant openTime,
             Instant closeTime
     ) {
-        if (openTime.equals(recordedClosedMinuteOpenTimes.get(symbol))) {
-            return new MarketHistoryPersistenceResult(
-                    symbol,
-                    openTime,
-                    closeTime,
-                    MarketHistoryPersistenceStatus.ALREADY_RECORDED
-            );
+        if (isAlreadyRecorded(symbol, openTime)) {
+            return toPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.ALREADY_RECORDED);
         }
 
-        List<MarketMinuteCandleSnapshot> minuteCandles;
+        LoadedMinuteCandles loadedMinuteCandles = loadClosedMinuteCandlesSafely(symbol, openTime, closeTime);
+        if (loadedMinuteCandles.failed()) {
+            return toPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
+        }
+        List<MarketMinuteCandleSnapshot> minuteCandles = loadedMinuteCandles.minuteCandles();
+        if (minuteCandles.isEmpty()) {
+            log.debug("Closed market minute candle history is not ready yet. symbol={} openTime={} closeTime={}",
+                    symbol, openTime, closeTime);
+            return toPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.EMPTY);
+        }
+
+        if (!recordClosedMinuteCandles(symbol, minuteCandles, openTime, closeTime)) {
+            log.warn("Closed market minute candle history was not persisted. symbol={} openTime={} closeTime={}",
+                    symbol, openTime, closeTime);
+            return toPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
+        }
+
+        recordedClosedMinuteOpenTimes.put(symbol, openTime);
+        return toPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.PERSISTED);
+    }
+
+    private boolean isAlreadyRecorded(String symbol, Instant openTime) {
+        return openTime.equals(recordedClosedMinuteOpenTimes.get(symbol));
+    }
+
+    private LoadedMinuteCandles loadClosedMinuteCandlesSafely(
+            String symbol,
+            Instant openTime,
+            Instant closeTime
+    ) {
         try {
-            minuteCandles = marketDataGateway.loadMinuteCandles(symbol, openTime, closeTime);
+            List<MarketMinuteCandleSnapshot> minuteCandles = marketDataGateway.loadMinuteCandles(symbol, openTime, closeTime);
+            return new LoadedMinuteCandles(
+                    minuteCandles == null ? List.of() : minuteCandles,
+                    false
+            );
         } catch (Exception exception) {
             log.warn("Failed to load closed market minute candle history. symbol={} openTime={} closeTime={}",
                     symbol, openTime, closeTime, exception);
-            return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
+            return new LoadedMinuteCandles(List.of(), true);
         }
+    }
 
-        if (minuteCandles == null || minuteCandles.isEmpty()) {
-            log.debug("Closed market minute candle history is not ready yet. symbol={} openTime={} closeTime={}",
-                    symbol, openTime, closeTime);
-            return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.EMPTY);
-        }
-
-        Map<String, Boolean> saveResults;
+    private boolean recordClosedMinuteCandles(
+            String symbol,
+            List<MarketMinuteCandleSnapshot> minuteCandles,
+            Instant openTime,
+            Instant closeTime
+    ) {
         try {
-            saveResults = marketHistoryRecorder.recordClosedMinuteCandlesBySymbol(
+            Map<String, Boolean> saveResults = marketHistoryRecorder.recordClosedMinuteCandlesBySymbol(
                     Map.of(symbol, minuteCandles),
                     openTime,
                     closeTime
             );
+            return Boolean.TRUE.equals(saveResults.get(symbol));
         } catch (RuntimeException exception) {
             log.warn("Failed to persist closed market minute candle history. symbol={} openTime={} closeTime={}",
                     symbol, openTime, closeTime, exception);
-            return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
+            return false;
         }
-        if (!Boolean.TRUE.equals(saveResults.get(symbol))) {
-            log.warn("Closed market minute candle history was not persisted. symbol={} openTime={} closeTime={}",
-                    symbol, openTime, closeTime);
-            return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.FAILED);
-        }
+    }
 
-        recordedClosedMinuteOpenTimes.put(symbol, openTime);
-        return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.PERSISTED);
+    private MarketHistoryPersistenceResult toPersistenceResult(
+            String symbol,
+            Instant openTime,
+            Instant closeTime,
+            MarketHistoryPersistenceStatus status
+    ) {
+        return new MarketHistoryPersistenceResult(symbol, openTime, closeTime, status);
     }
 
     private List<String> distinctSymbols(List<String> symbols) {
@@ -90,5 +120,8 @@ public class MarketHistoryPersistenceCoordinator {
                 .filter(symbol -> symbol != null && !symbol.isBlank())
                 .forEach(symbol -> distinctSymbols.putIfAbsent(symbol, symbol));
         return distinctSymbols.values().stream().toList();
+    }
+
+    private record LoadedMinuteCandles(List<MarketMinuteCandleSnapshot> minuteCandles, boolean failed) {
     }
 }

@@ -10,10 +10,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class MarketSupportedMarketRefresher {
     private final Providers providers;
@@ -58,28 +60,21 @@ public class MarketSupportedMarketRefresher {
             return realtimeMarkets;
         }
 
-        List<MarketSummaryResult> refreshedMarkets = providers.connector().marketDataGateway().loadSupportedMarkets()
-                .stream()
-                .filter(Objects::nonNull)
-                .map(this::toResult)
-                .toList();
+        List<MarketSummaryResult> refreshedMarkets = loadSupportedMarketsFromProvider();
         if (refreshedMarkets.isEmpty()) {
             return List.of();
         }
 
-        Map<String, MarketSummaryUpdatedEvent> events = refreshedMarkets.stream()
-                .collect(Collectors.toMap(
-                        MarketSummaryResult::symbol,
-                        result -> MarketSummaryUpdatedEvent.from(
-                                marketSnapshotStore.getMarket(result.symbol()).orElse(null),
-                                result
-                        ),
-                        (first, second) -> second,
-                        LinkedHashMap::new
-                ));
-        marketSnapshotStore.putSupportedMarkets(refreshedMarkets);
-        refreshedMarkets.forEach(result -> applicationEventPublisher.publishEvent(events.get(result.symbol())));
+        updateSupportedMarkets(refreshedMarkets);
         return refreshedMarkets;
+    }
+
+    private List<MarketSummaryResult> loadSupportedMarketsFromProvider() {
+        return providers.connector().marketDataGateway().loadSupportedMarkets()
+                .stream()
+                .filter(Objects::nonNull)
+                .map(this::toResult)
+                .toList();
     }
 
     private List<MarketSummaryResult> refreshFromRealtimeStore() {
@@ -96,7 +91,26 @@ public class MarketSupportedMarketRefresher {
             return List.of();
         }
 
-        Map<String, MarketSummaryUpdatedEvent> events = realtimeMarkets.stream()
+        updateSupportedMarkets(realtimeMarkets);
+        return realtimeMarkets;
+    }
+
+    private void updateSupportedMarkets(List<MarketSummaryResult> markets) {
+        Map<String, MarketSummaryUpdatedEvent> events = marketUpdateEvents(markets);
+        marketSnapshotStore.putSupportedMarkets(markets);
+        markets.forEach(result -> publishMarketUpdateEvent(result.symbol(), events.get(result.symbol())));
+    }
+
+    private void publishMarketUpdateEvent(String symbol, MarketSummaryUpdatedEvent event) {
+        try {
+            applicationEventPublisher.publishEvent(event);
+        } catch (RuntimeException exception) {
+            log.warn("Market summary update event publication failed. symbol={}", symbol, exception);
+        }
+    }
+
+    private Map<String, MarketSummaryUpdatedEvent> marketUpdateEvents(List<MarketSummaryResult> markets) {
+        return markets.stream()
                 .collect(Collectors.toMap(
                         MarketSummaryResult::symbol,
                         result -> MarketSummaryUpdatedEvent.from(
@@ -106,9 +120,6 @@ public class MarketSupportedMarketRefresher {
                         (first, second) -> second,
                         LinkedHashMap::new
                 ));
-        marketSnapshotStore.putSupportedMarkets(realtimeMarkets);
-        realtimeMarkets.forEach(result -> applicationEventPublisher.publishEvent(events.get(result.symbol())));
-        return realtimeMarkets;
     }
 
     private MarketSummaryResult toResult(MarketSnapshot snapshot) {

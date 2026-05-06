@@ -92,6 +92,61 @@ class MarketHistoryRecorderTransactionTest {
     }
 
     @Test
+    void filtersEmptyInputsAndReturnsFalseForUnknownSymbol() {
+        repository.replaceSymbolIds(Map.of("BTCUSDT", 1L));
+
+        Map<String, Boolean> results = recorder.recordHistoricalMinuteCandlesBySymbol(new LinkedHashMap<>() {{
+            put("BTCUSDT", List.of(minuteCandle()));
+            put("ETHUSDT", List.of(minuteCandle()));
+            put("EMPTY", List.of());
+            put("NULL_CANDLES", null);
+            put(null, List.of(minuteCandle()));
+        }});
+
+        assertThat(results).containsEntry("BTCUSDT", true)
+                .containsEntry("ETHUSDT", false)
+                .doesNotContainKeys("EMPTY", "NULL_CANDLES", null);
+        assertThat(repository.savedMinuteCandles()).hasSize(1);
+    }
+
+    @Test
+    void rebuildsEachAffectedHourlyCandleOnce() {
+        Instant nextHourOpenTime = OPEN_TIME.plus(1, ChronoUnit.HOURS);
+
+        recorder.recordHistoricalMinuteCandles(1L, List.of(
+                minuteCandle(),
+                minuteCandle(nextHourOpenTime)
+        ));
+
+        assertThat(repository.savedHourlyCandles())
+                .extracting(HourlyMarketCandle::openTime)
+                .containsExactly(OPEN_TIME, nextHourOpenTime);
+    }
+
+    @Test
+    void publishesFinalizedEventOnlyForPersistedSymbols() {
+        repository.replaceSymbolIds(Map.of("BTCUSDT", 1L));
+
+        Map<String, Boolean> results = recorder.recordClosedMinuteCandlesBySymbol(
+                Map.of(
+                        "BTCUSDT", List.of(minuteCandle()),
+                        "ETHUSDT", List.of(minuteCandle())
+                ),
+                OPEN_TIME,
+                OPEN_TIME.plus(1, ChronoUnit.MINUTES)
+        );
+
+        assertThat(results).containsEntry("BTCUSDT", true)
+                .containsEntry("ETHUSDT", false);
+        assertThat(eventPublisher.events())
+                .containsExactly(new MarketHistoryFinalizedEvent(
+                        "BTCUSDT",
+                        OPEN_TIME,
+                        OPEN_TIME.plus(1, ChronoUnit.MINUTES)
+                ));
+    }
+
+    @Test
     void doesNotPublishClosedMinuteFinalizedEventAfterRollback() {
         repository.replaceSymbolIds(Map.of("BTCUSDT", 1L));
 
@@ -103,9 +158,13 @@ class MarketHistoryRecorderTransactionTest {
     }
 
     private static MarketMinuteCandleSnapshot minuteCandle() {
+        return minuteCandle(OPEN_TIME);
+    }
+
+    private static MarketMinuteCandleSnapshot minuteCandle(Instant openTime) {
         return new MarketMinuteCandleSnapshot(
-                OPEN_TIME,
-                OPEN_TIME.plus(1, ChronoUnit.MINUTES),
+                openTime,
+                openTime.plus(1, ChronoUnit.MINUTES),
                 101000.0,
                 101500.0,
                 100500.0,
@@ -186,7 +245,8 @@ class MarketHistoryRecorderTransactionTest {
     static class RecordingMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final List<Boolean> observedTransactionStates = new ArrayList<>();
         private Map<String, Long> symbolIds = new LinkedHashMap<>();
-        private MarketHistoryCandle lastSavedMinuteCandle;
+        private final List<MarketHistoryCandle> savedMinuteCandles = new ArrayList<>();
+        private final List<HourlyMarketCandle> savedHourlyCandles = new ArrayList<>();
 
         @Override
         public Map<String, Long> findSymbolIdsBySymbols(List<String> symbols) {
@@ -234,10 +294,11 @@ class MarketHistoryRecorderTransactionTest {
         @Override
         public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
             recordTransactionState();
-            if (lastSavedMinuteCandle == null) {
-                return List.of();
-            }
-            return List.of(lastSavedMinuteCandle);
+            return savedMinuteCandles.stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                    .filter(candle -> candle.openTime().isBefore(toExclusive))
+                    .toList();
         }
 
         @Override
@@ -253,18 +314,20 @@ class MarketHistoryRecorderTransactionTest {
         @Override
         public void saveMinuteCandle(MarketHistoryCandle candle) {
             recordTransactionState();
-            lastSavedMinuteCandle = candle;
+            savedMinuteCandles.add(candle);
         }
 
         @Override
         public void saveHourlyCandle(HourlyMarketCandle candle) {
             recordTransactionState();
+            savedHourlyCandles.add(candle);
         }
 
         void reset() {
             observedTransactionStates.clear();
             symbolIds = new LinkedHashMap<>();
-            lastSavedMinuteCandle = null;
+            savedMinuteCandles.clear();
+            savedHourlyCandles.clear();
         }
 
         void replaceSymbolIds(Map<String, Long> symbolIds) {
@@ -273,6 +336,14 @@ class MarketHistoryRecorderTransactionTest {
 
         List<Boolean> observedTransactionStates() {
             return List.copyOf(observedTransactionStates);
+        }
+
+        List<MarketHistoryCandle> savedMinuteCandles() {
+            return List.copyOf(savedMinuteCandles);
+        }
+
+        List<HourlyMarketCandle> savedHourlyCandles() {
+            return List.copyOf(savedHourlyCandles);
         }
 
         private void recordTransactionState() {

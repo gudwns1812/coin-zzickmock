@@ -35,48 +35,86 @@ public class CreateRewardRedemptionService {
 
     @Transactional
     public RewardRedemptionResult create(Long memberId, String itemCode, String phoneNumber) {
+        String normalizedItemCode = requireItemCode(itemCode);
+        RewardShopItem item = loadCoffeeVoucherForUpdate(normalizedItemCode);
+        RewardPhoneNumber normalizedPhoneNumber = RewardPhoneNumber.from(phoneNumber);
+        RewardShopMemberItemUsage usage = loadUsageForUpdate(memberId, item);
+        validatePurchase(item, usage);
+
+        RewardPointWallet deductedWallet = deductWallet(memberId, item.price());
+        RewardRedemptionRequest request = createPendingRequest(memberId, item, normalizedPhoneNumber);
+        ReservedRewardRedemption reservedRedemption = reserveItemAndUsage(item, usage);
+
+        persistReservation(reservedRedemption);
+        RewardPointWallet savedWallet = rewardPointRepository.save(deductedWallet);
+        RewardRedemptionRequest savedRequest = rewardRedemptionRequestRepository.save(request);
+        recordHistory(memberId, item.price(), savedWallet.rewardPoint(), savedRequest.requestId());
+        publishRedemptionCreated(savedRequest);
+        return RewardRedemptionResult.from(savedRequest);
+    }
+
+    private String requireItemCode(String itemCode) {
         if (itemCode == null || itemCode.isBlank()) {
             throw invalid();
         }
+        return itemCode;
+    }
+
+    private RewardShopItem loadCoffeeVoucherForUpdate(String itemCode) {
         RewardShopItem item = rewardShopItemRepository.findByCodeForUpdate(itemCode)
-                .orElseThrow(() -> invalid());
+                .orElseThrow(this::invalid);
         if (!item.coffeeVoucher()) {
             throw invalid();
         }
+        return item;
+    }
 
-        RewardPhoneNumber normalizedPhoneNumber = RewardPhoneNumber.from(phoneNumber);
-        RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
+    private RewardShopMemberItemUsage loadUsageForUpdate(Long memberId, RewardShopItem item) {
+        return rewardShopMemberItemUsageRepository
                 .findByMemberIdAndShopItemIdForUpdate(memberId, item.id())
                 .orElse(RewardShopMemberItemUsage.empty(memberId, item.id()));
-        validatePurchase(item, usage);
+    }
 
+    private RewardPointWallet deductWallet(Long memberId, int price) {
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(memberId)
                 .orElse(RewardPointWallet.empty(memberId));
-        RewardPointWallet deductedWallet = wallet.deduct(item.price());
-        String requestId = UUID.randomUUID().toString();
-        RewardRedemptionRequest request = RewardRedemptionRequest.pending(
-                requestId,
+        return wallet.deduct(price);
+    }
+
+    private RewardRedemptionRequest createPendingRequest(
+            Long memberId,
+            RewardShopItem item,
+            RewardPhoneNumber phoneNumber
+    ) {
+        return RewardRedemptionRequest.pending(
+                UUID.randomUUID().toString(),
                 memberId,
                 item,
-                normalizedPhoneNumber,
+                phoneNumber,
                 Instant.now()
         );
+    }
 
-        RewardShopItem reservedItem = item.reserveOne();
-        RewardShopMemberItemUsage reservedUsage = usage.increment();
+    private ReservedRewardRedemption reserveItemAndUsage(RewardShopItem item, RewardShopMemberItemUsage usage) {
+        return new ReservedRewardRedemption(item.reserveOne(), usage.increment());
+    }
 
-        rewardShopItemRepository.save(reservedItem);
-        rewardShopMemberItemUsageRepository.save(reservedUsage);
-        RewardPointWallet savedWallet = rewardPointRepository.save(deductedWallet);
-        RewardRedemptionRequest savedRequest = rewardRedemptionRequestRepository.save(request);
+    private void persistReservation(ReservedRewardRedemption reservedRedemption) {
+        rewardShopItemRepository.save(reservedRedemption.item());
+        rewardShopMemberItemUsageRepository.save(reservedRedemption.usage());
+    }
+
+    private void recordHistory(Long memberId, int price, int balanceAfter, String requestId) {
         rewardPointHistoryRepository.save(RewardPointHistory.redemptionDeduct(
                 memberId,
-                item.price(),
-                savedWallet.rewardPoint(),
+                price,
+                balanceAfter,
                 requestId
         ));
+    }
+
+    private void publishRedemptionCreated(RewardRedemptionRequest savedRequest) {
         afterCommitEventPublisher.publish(RewardRedemptionCreatedEvent.from(savedRequest));
-        return RewardRedemptionResult.from(savedRequest);
     }
 
     private void validatePurchase(RewardShopItem item, RewardShopMemberItemUsage usage) {
@@ -93,5 +131,11 @@ public class CreateRewardRedemptionService {
 
     private CoreException invalid() {
         return new CoreException(ErrorCode.INVALID_REQUEST);
+    }
+
+    private record ReservedRewardRedemption(
+            RewardShopItem item,
+            RewardShopMemberItemUsage usage
+    ) {
     }
 }

@@ -9,6 +9,23 @@ public record PositionAccounting(
         double accumulatedCloseFee,
         double accumulatedFundingCost
 ) {
+    public PositionAccounting recordClose(
+            double closedQuantity,
+            double executionPrice,
+            double grossRealizedPnl,
+            double closeFee
+    ) {
+        return new PositionAccounting(
+                originalQuantity,
+                accumulatedClosedQuantity + closedQuantity,
+                accumulatedExitNotional + (executionPrice * closedQuantity),
+                accumulatedRealizedPnl + grossRealizedPnl,
+                accumulatedOpenFee,
+                accumulatedCloseFee + closeFee,
+                accumulatedFundingCost
+        );
+    }
+
     public double netRealizedPnl() {
         if (originalQuantity <= 0 || accumulatedClosedQuantity <= 0) {
             return 0;

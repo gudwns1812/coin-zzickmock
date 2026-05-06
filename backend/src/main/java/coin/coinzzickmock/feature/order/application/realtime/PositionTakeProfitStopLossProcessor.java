@@ -16,6 +16,7 @@ import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,16 +41,19 @@ public class PositionTakeProfitStopLossProcessor {
         if (realtimeMarket == null) {
             return;
         }
+        triggeredCandidates(realtimeMarket).forEach(candidate ->
+                closeIfTriggered(candidate.memberId(), candidate.order(), realtimeMarket)
+        );
+    }
+
+    private List<PendingOrderCandidate> triggeredCandidates(MarketSummaryResult realtimeMarket) {
         double markPrice = realtimeMarket.markPrice();
-        List<PendingOrderCandidate> candidates = orderRepository.findPendingBySymbol(realtimeMarket.symbol()).stream()
+        return orderRepository.findPendingBySymbol(realtimeMarket.symbol()).stream()
                 .filter(candidate -> candidate.order().isConditionalCloseOrder())
                 .filter(candidate -> candidate.order().usesMarkPriceTrigger())
                 .filter(candidate -> isTriggered(candidate.order(), markPrice))
                 .sorted(triggeredOrderComparator())
                 .toList();
-        for (PendingOrderCandidate candidate : candidates) {
-            closeIfTriggered(candidate.memberId(), candidate.order(), realtimeMarket);
-        }
     }
 
     private MarketSummaryResult freshMarket(MarketSummaryResult eventMarket) {
@@ -75,13 +79,53 @@ public class PositionTakeProfitStopLossProcessor {
     }
 
     private void closeIfTriggered(Long memberId, FuturesOrder candidate, MarketSummaryResult market) {
-        accountOrderMutationLock.lock(memberId);
-        FuturesOrder order = orderRepository.findByMemberIdAndOrderId(memberId, candidate.orderId())
-                .orElse(candidate);
-        if (!order.isPending() || !order.isConditionalCloseOrder() || !isTriggered(order, market.markPrice())) {
+        lockAccountOrderMutation(memberId);
+        Optional<FuturesOrder> reloadedOrder = reloadOrder(memberId, candidate);
+        if (reloadedOrder.isEmpty()) {
             return;
         }
 
+        FuturesOrder order = reloadedOrder.get();
+        if (!isStillTriggered(order, market.markPrice())) {
+            return;
+        }
+
+        PositionSnapshot position = openPositionOrCancelStale(memberId, order);
+        if (position == null) {
+            return;
+        }
+
+        PositionSnapshot marked = position.markToMarket(market.markPrice());
+        if (Double.compare(marked.quantity(), 0d) == 0) {
+            staleProtectiveCloseOrderCanceller.cancel(memberId, marked);
+            return;
+        }
+        order = syncQuantityToCurrentPosition(memberId, order, marked);
+
+        FuturesOrder filled = claimTriggeredOrder(memberId, order, market.lastPrice());
+        if (filled == null) {
+            return;
+        }
+
+        finishTriggeredClose(memberId, marked, filled, market);
+    }
+
+    private void lockAccountOrderMutation(Long memberId) {
+        // AccountOrderMutationLock obtains a transactional row lock; Spring releases it when this transaction ends.
+        accountOrderMutationLock.lock(memberId);
+    }
+
+    private Optional<FuturesOrder> reloadOrder(Long memberId, FuturesOrder candidate) {
+        return orderRepository.findByMemberIdAndOrderId(memberId, candidate.orderId());
+    }
+
+    private boolean isStillTriggered(FuturesOrder order, double markPrice) {
+        return order.isPending()
+                && order.isConditionalCloseOrder()
+                && isTriggered(order, markPrice);
+    }
+
+    private PositionSnapshot openPositionOrCancelStale(Long memberId, FuturesOrder order) {
         PositionSnapshot position = positionRepository.findOpenPosition(
                 memberId,
                 order.symbol(),
@@ -95,26 +139,25 @@ public class PositionTakeProfitStopLossProcessor {
                     order.positionSide(),
                     order.marginMode()
             );
-            return;
         }
+        return position;
+    }
 
-        PositionSnapshot marked = position.markToMarket(market.markPrice());
-        if (marked.quantity() <= 0) {
-            staleProtectiveCloseOrderCanceller.cancel(memberId, marked);
-            return;
+    private FuturesOrder syncQuantityToCurrentPosition(Long memberId, FuturesOrder order, PositionSnapshot position) {
+        if (Double.compare(position.quantity(), order.quantity()) == 0) {
+            return order;
         }
-        if (Double.compare(marked.quantity(), order.quantity()) != 0) {
-            order = orderRepository.updateQuantityAndStatus(
-                    memberId,
-                    order.orderId(),
-                    marked.quantity(),
-                    FuturesOrder.STATUS_PENDING
-            );
-        }
+        return orderRepository.updateQuantityAndStatus(
+                memberId,
+                order.orderId(),
+                position.quantity(),
+                FuturesOrder.STATUS_PENDING
+        );
+    }
 
-        double executionPrice = market.lastPrice();
+    private FuturesOrder claimTriggeredOrder(Long memberId, FuturesOrder order, double executionPrice) {
         double estimatedFee = executionPrice * order.quantity() * TAKER_FEE_RATE;
-        FuturesOrder filled = orderRepository.claimPendingFill(
+        return orderRepository.claimPendingFill(
                         memberId,
                         order.orderId(),
                         executionPrice,
@@ -122,14 +165,19 @@ public class PositionTakeProfitStopLossProcessor {
                         estimatedFee
                 )
                 .orElse(null);
-        if (filled == null) {
-            return;
-        }
+    }
 
+    private void finishTriggeredClose(
+            Long memberId,
+            PositionSnapshot position,
+            FuturesOrder filled,
+            MarketSummaryResult market
+    ) {
         String closeReason = closeReason(filled);
+        double executionPrice = market.lastPrice();
         var result = positionCloseFinalizer.close(
                 memberId,
-                marked,
+                position,
                 filled.quantity(),
                 market.markPrice(),
                 executionPrice,
@@ -137,15 +185,26 @@ public class PositionTakeProfitStopLossProcessor {
                 closeReason
         );
         cancelOcoSiblings(memberId, filled);
-        cleanupPendingCloseOrders(memberId, marked, Math.max(0, marked.quantity() - filled.quantity()), executionPrice);
+        cleanupPendingCloseOrders(memberId, position, Math.max(0, position.quantity() - result.closedQuantity()), executionPrice);
+        publishPositionClosedByTrigger(memberId, position, result.closedQuantity(), executionPrice, result.realizedPnl(), closeReason);
+    }
+
+    private void publishPositionClosedByTrigger(
+            Long memberId,
+            PositionSnapshot position,
+            double closedQuantity,
+            double executionPrice,
+            double realizedPnl,
+            String closeReason
+    ) {
         afterCommitEventPublisher.publish(TradingExecutionEvent.positionClosedByTrigger(
                 memberId,
-                marked.symbol(),
-                marked.positionSide(),
-                marked.marginMode(),
-                result.closedQuantity(),
+                position.symbol(),
+                position.positionSide(),
+                position.marginMode(),
+                closedQuantity,
                 executionPrice,
-                result.realizedPnl(),
+                realizedPnl,
                 closeReason
         ));
     }

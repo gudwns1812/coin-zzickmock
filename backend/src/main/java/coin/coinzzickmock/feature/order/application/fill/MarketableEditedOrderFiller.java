@@ -22,6 +22,8 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class MarketableEditedOrderFiller {
+    private static final double QUANTITY_EPSILON = 1e-9;
+
     private final OrderRepository orderRepository;
     private final PositionRepository positionRepository;
     private final FilledOpenOrderApplier filledOpenOrderApplier;
@@ -101,7 +103,7 @@ public class MarketableEditedOrderFiller {
             double currentPrice
     ) {
         pendingCloseOrderCapReconciler.reconcile(memberId, position, remainingQuantity, currentPrice);
-        if (remainingQuantity <= 0) {
+        if (remainingQuantity <= QUANTITY_EPSILON) {
             staleProtectiveCloseOrderCanceller.cancel(memberId, position);
         }
     }

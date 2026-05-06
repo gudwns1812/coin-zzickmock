@@ -41,7 +41,7 @@
 
 - `.github/workflows/ci.yml`는 프론트엔드 빌드와 백엔드 `check`를 검증한다.
 - `.github/workflows/cd.yml`는 `main`/`master`의 `backend/**`, `docker-compose.prod.yml`, `infra/**` 변경 또는 수동 실행 기준으로 backend 릴리즈 후보를 다시 검증하고, backend Docker 이미지를 Docker Hub에 발행한다.
-- CD는 SSH로 EC2에 접속해 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 동기화한 뒤, 서버의 `.env.prod`를 사용해 backend 이미지만 pull/restart한다.
+- CD는 SSH로 EC2에 접속해 `sudo`로 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 동기화한 뒤, 서버의 `.env.prod`를 사용해 backend 이미지만 `sudo` 없이 pull/restart한다.
 - 현재 기본 원칙은 "CI/CD 검증을 통과한 backend 고정 이미지 태그를 기준으로 하는 EC2 Docker Compose 릴리즈"다.
 
 ## Open Release TODOs

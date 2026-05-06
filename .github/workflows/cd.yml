@@ -142,10 +142,10 @@ jobs:
             "${EC2_USER}@${EC2_HOST}:${deploy_tmp}/infra/"
           ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
             "bash -lc \"set -euo pipefail
-             mkdir -p '${EC2_DEPLOY_PATH}/infra'
-             cp '${deploy_tmp}/docker-compose.prod.yml' '${EC2_DEPLOY_PATH}/docker-compose.prod.yml'
-             rm -rf '${EC2_DEPLOY_PATH}/infra/nginx' '${EC2_DEPLOY_PATH}/infra/prometheus' '${EC2_DEPLOY_PATH}/infra/grafana' '${EC2_DEPLOY_PATH}/infra/loki' '${EC2_DEPLOY_PATH}/infra/promtail'
-             cp -R '${deploy_tmp}/infra/nginx' '${deploy_tmp}/infra/prometheus' '${deploy_tmp}/infra/grafana' '${deploy_tmp}/infra/loki' '${deploy_tmp}/infra/promtail' '${EC2_DEPLOY_PATH}/infra/'
+             sudo mkdir -p '${EC2_DEPLOY_PATH}/infra'
+             sudo cp '${deploy_tmp}/docker-compose.prod.yml' '${EC2_DEPLOY_PATH}/docker-compose.prod.yml'
+             sudo rm -rf '${EC2_DEPLOY_PATH}/infra/nginx' '${EC2_DEPLOY_PATH}/infra/prometheus' '${EC2_DEPLOY_PATH}/infra/grafana' '${EC2_DEPLOY_PATH}/infra/loki' '${EC2_DEPLOY_PATH}/infra/promtail'
+             sudo cp -R '${deploy_tmp}/infra/nginx' '${deploy_tmp}/infra/prometheus' '${deploy_tmp}/infra/grafana' '${deploy_tmp}/infra/loki' '${deploy_tmp}/infra/promtail' '${EC2_DEPLOY_PATH}/infra/'
              rm -rf '${deploy_tmp}'\""
 
       - name: Pull and restart backend on EC2

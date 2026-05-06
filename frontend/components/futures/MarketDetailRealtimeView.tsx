@@ -973,9 +973,21 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
     return <EmptyPanelMessage message="현재 열린 지정가 주문이 없습니다." />;
   }
 
+  const displayOrders = [...orders].sort(compareOpenOrdersForDisplay);
+
   return (
     <ScrollableTableFrame>
-      <table className="w-full min-w-[1040px] text-left text-sm-custom">
+      <table className="w-full min-w-[1120px] table-fixed text-left text-sm-custom">
+        <colgroup>
+          <col className="w-[150px]" />
+          <col className="w-[120px]" />
+          <col className="w-[110px]" />
+          <col className="w-[150px]" />
+          <col className="w-[140px]" />
+          <col className="w-[150px]" />
+          <col className="w-[110px]" />
+          <col className="w-[190px]" />
+        </colgroup>
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
             <th className="py-3 font-semibold">Order time</th>
@@ -985,11 +997,11 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
             <th className="py-3 font-semibold">Quantity</th>
             <th className="py-3 font-semibold">Limit</th>
             <th className="py-3 font-semibold">Status</th>
-            <th className="py-3 text-right font-semibold">Action</th>
+            <th className="py-3 text-left font-semibold">Action</th>
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => {
+          {displayOrders.map((order) => {
             const orderTime = formatOrderHistoryTime(order.orderTime);
 
             return (
@@ -1011,14 +1023,14 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                     getOrderDirectionTone(order),
                   ].join(" ")}
                 >
-                  {formatOrderDirection(order)}
+                  {order.positionSide}
                 </td>
                 <td className="py-3 font-semibold text-main-dark-gray">
                   {order.symbol}
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
                   <span className="block font-semibold text-main-dark-gray">
-                    {formatOrderPurpose(order)}
+                    {formatOrderPurpose(order)} · {order.orderType}
                   </span>
                 </td>
                 <td className="py-3 text-main-dark-gray/70">
@@ -1030,8 +1042,8 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                 <td className="py-3 font-semibold text-main-dark-gray">
                   {formatOrderStatus(order.status)}
                 </td>
-                <td className="py-3 text-right">
-                  <div className="flex justify-end gap-2">
+                <td className="py-3 text-left">
+                  <div className="flex min-w-[190px] justify-start gap-2">
                     {isEditableOpenLimitOrder(order) && (
                       <EditOrderButton
                         currentLimitPrice={order.limitPrice}
@@ -1049,6 +1061,26 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
       </table>
     </ScrollableTableFrame>
   );
+}
+
+function compareOpenOrdersForDisplay(
+  first: FuturesOpenOrder,
+  second: FuturesOpenOrder
+) {
+  const timeDelta =
+    Date.parse(second.orderTime) - Date.parse(first.orderTime);
+
+  if (Number.isFinite(timeDelta) && timeDelta !== 0) {
+    return timeDelta;
+  }
+
+  const symbolDelta = first.symbol.localeCompare(second.symbol);
+
+  if (symbolDelta !== 0) {
+    return symbolDelta;
+  }
+
+  return first.orderId.localeCompare(second.orderId);
 }
 
 function ScrollableTableFrame({
@@ -1198,14 +1230,6 @@ function formatOrderStatus(status: FuturesOrderHistory["status"]): string {
   }
 
   return "Rejected";
-}
-
-function formatOrderDirection(
-  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide" | "triggerType">
-): string {
-  return `${formatOrderPurpose(order)} ${
-    order.positionSide === "LONG" ? "Long" : "Short"
-  }`;
 }
 
 function getOrderDirectionTone(

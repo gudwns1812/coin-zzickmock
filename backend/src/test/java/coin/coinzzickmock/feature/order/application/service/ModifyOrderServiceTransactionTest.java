@@ -1,20 +1,20 @@
 package coin.coinzzickmock.feature.order.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
-import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
+import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
-import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
+import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,15 +35,21 @@ class ModifyOrderServiceTransactionTest {
     private AccountRepository accountRepository;
 
     @Autowired
+    private PositionRepository positionRepository;
+
+    @Autowired
+    private MarketableEditedOrderFiller marketableEditedOrderFiller;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private TransactionTemplate transactionTemplate;
 
     @Test
-    void rollsBackPersistedPriceWhenPostUpdateMarketCheckRejectsModification() {
+    void fillsPersistedOrderWhenPostUpdateMarketCheckBecomesMarketable() {
         Long memberId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
-        String orderId = "rollback-edit-" + UUID.randomUUID();
+        String orderId = "marketable-edit-" + UUID.randomUUID();
         saveAccount(memberId);
         orderRepository.save(memberId, FuturesOrder.place(
                 orderId,
@@ -59,19 +65,64 @@ class ModifyOrderServiceTransactionTest {
                 0.00135,
                 90.0
         ));
-        FuturesOrder original = orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
-        ModifyOrderService service = serviceWithMarketSequence(100.0, 94.0);
+        ModifyOrderService service = serviceWithMarketSequence(94.0, 94.0);
 
-        assertThrows(CoreException.class, () -> transactionTemplate.executeWithoutResult(status ->
+        transactionTemplate.executeWithoutResult(status ->
                 service.modify(new ModifyOrderCommand(memberId, orderId, BigDecimal.valueOf(95.0)))
-        ));
+        );
 
         FuturesOrder persisted = orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
-        assertEquals(FuturesOrder.STATUS_PENDING, persisted.status());
-        assertEquals(original.limitPrice(), persisted.limitPrice(), 0.0001);
-        assertEquals(original.feeType(), persisted.feeType());
-        assertEquals(original.estimatedFee(), persisted.estimatedFee(), 0.000001);
-        assertEquals(original.executionPrice(), persisted.executionPrice(), 0.0001);
+        assertEquals(FuturesOrder.STATUS_FILLED, persisted.status());
+        assertEquals(95, persisted.limitPrice(), 0.0001);
+        assertEquals("TAKER", persisted.feeType());
+        assertEquals(0.0047, persisted.estimatedFee(), 0.000001);
+        assertEquals(94, persisted.executionPrice(), 0.0001);
+        assertEquals(1, positionRepository.findOpenPositions(memberId).size());
+    }
+
+    @Test
+    void fillsPendingCloseOrderWhenEditedPriceIsMarketable() {
+        Long memberId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+        String orderId = "marketable-close-edit-" + UUID.randomUUID();
+        saveAccount(memberId);
+        positionRepository.save(memberId, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.2,
+                90.0,
+                100.0,
+                0.0018
+        ));
+        orderRepository.save(memberId, FuturesOrder.place(
+                orderId,
+                "BTCUSDT",
+                "LONG",
+                FuturesOrder.TYPE_LIMIT,
+                FuturesOrder.PURPOSE_CLOSE_POSITION,
+                "ISOLATED",
+                10,
+                0.2,
+                110.0,
+                false,
+                "MAKER",
+                0,
+                110.0
+        ));
+        ModifyOrderService service = serviceWithMarketSequence(100.0, 100.0);
+
+        transactionTemplate.executeWithoutResult(status ->
+                service.modify(new ModifyOrderCommand(memberId, orderId, BigDecimal.valueOf(99.0)))
+        );
+
+        FuturesOrder persisted = orderRepository.findByMemberIdAndOrderId(memberId, orderId).orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, persisted.status());
+        assertEquals(99, persisted.limitPrice(), 0.0001);
+        assertEquals("TAKER", persisted.feeType());
+        assertEquals(0.01, persisted.estimatedFee(), 0.000001);
+        assertEquals(100, persisted.executionPrice(), 0.0001);
+        assertEquals(0, positionRepository.findOpenPositions(memberId).size());
     }
 
     private ModifyOrderService serviceWithMarketSequence(double firstLastPrice, double secondLastPrice) {
@@ -80,8 +131,8 @@ class ModifyOrderServiceTransactionTest {
                 orderRepository,
                 new SequencedMarketPriceReader(firstLastPrice, secondLastPrice),
                 orderPlacementPolicy,
-                new OrderPreviewPolicy(orderPlacementPolicy),
-                new AccountOrderMutationLock(accountRepository)
+                new AccountOrderMutationLock(accountRepository),
+                marketableEditedOrderFiller
         );
     }
 

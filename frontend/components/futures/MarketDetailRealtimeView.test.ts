@@ -105,3 +105,10 @@ test("Open Orders table renders edit and cancel actions for editable limit order
   assert.equal(source.includes("isEditableOpenLimitOrder(order)"), true);
   assert.equal(source.includes("<CancelOrderButton orderId={order.orderId} />"), true);
 });
+
+test("Open Orders table uses stable display sorting and fixed action layout", () => {
+  assert.equal(source.includes("[...orders].sort(compareOpenOrdersForDisplay)"), true);
+  assert.equal(source.includes("min-w-[1120px] table-fixed"), true);
+  assert.equal(source.includes("flex min-w-[190px] justify-start gap-2"), true);
+  assert.equal(source.includes("{formatOrderPurpose(order)} · {order.orderType}"), true);
+});

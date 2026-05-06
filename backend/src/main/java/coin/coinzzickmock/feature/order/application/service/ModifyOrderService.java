@@ -5,14 +5,12 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
+import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
-import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
-import coin.coinzzickmock.feature.order.domain.OrderPreview;
-import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,8 +25,8 @@ public class ModifyOrderService {
     private final OrderRepository orderRepository;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final OrderPlacementPolicy orderPlacementPolicy;
-    private final OrderPreviewPolicy orderPreviewPolicy;
     private final AccountOrderMutationLock accountOrderMutationLock;
+    private final MarketableEditedOrderFiller marketableEditedOrderFiller;
 
     @Transactional
     public ModifyOrderResult modify(ModifyOrderCommand command) {
@@ -39,14 +37,7 @@ public class ModifyOrderService {
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
         validateEditable(order);
 
-        MarketSnapshot market = realtimeMarketPriceReader.requireFreshMarket(order.symbol());
-        OrderPlacementRequest request = placementRequest(order, nextLimitPrice);
-        OrderPlacementDecision decision = orderPlacementPolicy.decide(request, market.lastPrice());
-        if (decision.executable()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-
-        double estimatedFee = estimatedFee(order, request, market.lastPrice());
+        double estimatedFee = pendingMakerEstimatedFee(order, nextLimitPrice);
         FuturesOrder updated = orderRepository.updatePendingLimitPrice(
                 command.memberId(),
                 order.orderId(),
@@ -55,17 +46,9 @@ public class ModifyOrderService {
                 estimatedFee,
                 nextLimitPrice
         ).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        rejectIfBecameMarketableAfterUpdate(updated);
+        FuturesOrder result = fillIfMarketable(command.memberId(), updated);
 
-        return new ModifyOrderResult(
-                updated.orderId(),
-                updated.symbol(),
-                updated.status(),
-                toBigDecimal(updated.limitPrice()),
-                updated.feeType(),
-                toBigDecimal(updated.estimatedFee()),
-                toBigDecimal(updated.executionPrice())
-        );
+        return result(result);
     }
 
     private BigDecimal toBigDecimal(double value) {
@@ -95,36 +78,47 @@ public class ModifyOrderService {
         }
     }
 
-    private OrderPlacementRequest placementRequest(FuturesOrder order, double nextLimitPrice) {
+    private OrderPlacementRequest placementRequest(FuturesOrder order, double limitPrice) {
         return new OrderPlacementRequest(
                 order.orderPurpose(),
                 order.positionSide(),
                 ORDER_TYPE_LIMIT,
                 order.marginMode(),
-                nextLimitPrice,
+                limitPrice,
                 order.quantity(),
                 order.leverage()
         );
     }
 
-    private double estimatedFee(FuturesOrder order, OrderPlacementRequest request, double latestTradePrice) {
+    private double pendingMakerEstimatedFee(FuturesOrder order, double nextLimitPrice) {
         if (order.isClosePositionOrder()) {
             return 0;
         }
-        OrderPreview preview = orderPreviewPolicy.preview(request, latestTradePrice);
-        return preview.estimatedFee();
+        return nextLimitPrice * order.quantity() * OrderPlacementPolicy.MAKER_FEE_RATE;
     }
 
-    private void rejectIfBecameMarketableAfterUpdate(FuturesOrder updated) {
+    private FuturesOrder fillIfMarketable(Long memberId, FuturesOrder updated) {
         MarketSnapshot latestMarket = realtimeMarketPriceReader.requireFreshMarket(updated.symbol());
-        OrderPlacementDecision latestDecision = orderPlacementPolicy.decide(
+        var latestDecision = orderPlacementPolicy.decide(
                 placementRequest(updated, updated.limitPrice()),
                 latestMarket.lastPrice()
         );
         if (!latestDecision.executable()) {
-            return;
+            return updated;
         }
 
-        throw new CoreException(ErrorCode.INVALID_REQUEST);
+        return marketableEditedOrderFiller.fill(memberId, updated, latestMarket, latestDecision);
+    }
+
+    private ModifyOrderResult result(FuturesOrder order) {
+        return new ModifyOrderResult(
+                order.orderId(),
+                order.symbol(),
+                order.status(),
+                toBigDecimal(order.limitPrice()),
+                order.feeType(),
+                toBigDecimal(order.estimatedFee()),
+                toBigDecimal(order.executionPrice())
+        );
     }
 }

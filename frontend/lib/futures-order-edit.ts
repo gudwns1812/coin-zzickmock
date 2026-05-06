@@ -40,7 +40,11 @@ export async function submitOrderPriceEdit({
 
   try {
     const result = await modifyOrderPrice(orderId, nextLimitPrice);
-    showSuccess(`${result.symbol} 대기 주문 가격을 수정했습니다.`);
+    if (result.status === "FILLED") {
+      showSuccess(`${result.symbol} 주문이 즉시 체결되었습니다.`);
+    } else {
+      showSuccess(`${result.symbol} 대기 주문 가격을 수정했습니다.`);
+    }
     closeModal();
     refresh();
     return true;

@@ -5,15 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
+import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
 import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
+import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
-import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.testsupport.TestAccountRepository;
 import coin.coinzzickmock.testsupport.TestOrderRepository;
 import java.math.BigDecimal;
@@ -97,19 +99,24 @@ class ModifyOrderServiceTest {
     }
 
     @Test
-    void rejectsMarketableLimitPriceModification() {
+    void fillsMarketableLimitPriceModification() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         orderRepository.save(1L, pendingOpenOrder("open-order", 90));
 
-        assertThrows(CoreException.class, () -> service(orderRepository, 100)
-                .modify(modifyCommand(1L, "open-order", 101)));
+        ModifyOrderResult result = service(orderRepository, 100)
+                .modify(modifyCommand(1L, "open-order", 101));
 
-        FuturesOrder unchanged = orderRepository.findByMemberIdAndOrderId(1L, "open-order").orElseThrow();
-        assertEquals(90, unchanged.limitPrice(), 0.0001);
+        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId(1L, "open-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, result.status());
+        assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
+        assertEquals(101, filled.limitPrice(), 0.0001);
+        assertEquals("TAKER", filled.feeType());
+        assertEquals(0.005, filled.estimatedFee(), 0.000001);
+        assertEquals(100, filled.executionPrice(), 0.0001);
     }
 
     @Test
-    void rejectsModificationWhenLatestPriceMovesIntoEditedLimitAfterUpdate() {
+    void fillsWhenLatestPriceMovesIntoEditedLimitAfterUpdate() {
         RealtimeMarketDataStore marketDataStore = realtimeMarketStore(100);
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository() {
             @Override
@@ -137,8 +144,16 @@ class ModifyOrderServiceTest {
         };
         orderRepository.save(1L, pendingOpenOrder("open-order", 90));
 
-        assertThrows(CoreException.class, () -> service(orderRepository, marketDataStore)
-                .modify(modifyCommand(1L, "open-order", 95)));
+        ModifyOrderResult result = service(orderRepository, marketDataStore)
+                .modify(modifyCommand(1L, "open-order", 95));
+
+        FuturesOrder filled = orderRepository.findByMemberIdAndOrderId(1L, "open-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, result.status());
+        assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
+        assertEquals(95, filled.limitPrice(), 0.0001);
+        assertEquals("TAKER", filled.feeType());
+        assertEquals(0.0047, filled.estimatedFee(), 0.000001);
+        assertEquals(94, filled.executionPrice(), 0.0001);
     }
 
     @Test
@@ -207,8 +222,8 @@ class ModifyOrderServiceTest {
                 orderRepository,
                 new RealtimeMarketPriceReader(realtimeMarketDataStore),
                 orderPlacementPolicy,
-                new OrderPreviewPolicy(orderPlacementPolicy),
-                new AccountOrderMutationLock(new LockingAccountRepository())
+                new AccountOrderMutationLock(new LockingAccountRepository()),
+                new ClaimOnlyMarketableEditedOrderFiller(orderRepository)
         );
     }
 
@@ -291,7 +306,56 @@ class ModifyOrderServiceTest {
             return Optional.of(updated);
         }
 
+        @Override
+        public Optional<FuturesOrder> claimPendingLimitFill(
+                Long memberId,
+                String orderId,
+                double expectedLimitPrice,
+                double executionPrice,
+                String feeType,
+                double estimatedFee
+        ) {
+            FuturesOrder order = findByMemberIdAndOrderId(memberId, orderId)
+                    .filter(FuturesOrder::isPending)
+                    .filter(found -> FuturesOrder.TYPE_LIMIT.equalsIgnoreCase(found.orderType()))
+                    .filter(found -> !found.isConditionalOrder())
+                    .filter(found -> Double.compare(found.limitPrice(), expectedLimitPrice) == 0)
+                    .orElse(null);
+            if (order == null) {
+                return Optional.empty();
+            }
+            FuturesOrder filled = order.fill(executionPrice, feeType, estimatedFee);
+            save(memberId, filled);
+            return Optional.of(filled);
+        }
+
         private record MemberOrder(Long memberId, FuturesOrder futuresOrder) {
+        }
+    }
+
+    private static class ClaimOnlyMarketableEditedOrderFiller extends MarketableEditedOrderFiller {
+        private final InMemoryOrderRepository orderRepository;
+
+        private ClaimOnlyMarketableEditedOrderFiller(InMemoryOrderRepository orderRepository) {
+            super(null, null, null, null, null, null, null);
+            this.orderRepository = orderRepository;
+        }
+
+        @Override
+        public FuturesOrder fill(
+                Long memberId,
+                FuturesOrder order,
+                MarketSnapshot market,
+                OrderPlacementDecision decision
+        ) {
+            return orderRepository.claimPendingLimitFill(
+                    memberId,
+                    order.orderId(),
+                    order.limitPrice(),
+                    decision.executionPrice(),
+                    decision.feeType(),
+                    decision.estimatedFee(order.quantity())
+            ).orElseThrow(() -> new CoreException(coin.coinzzickmock.common.error.ErrorCode.INVALID_REQUEST));
         }
     }
 

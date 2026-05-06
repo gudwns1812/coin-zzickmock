@@ -641,7 +641,9 @@ Grafana에 추가할 지표:
 - backend에는 이미 `TelemetryProvider` 추상화와 no-op 구현이 있다.
 - market history cache와 Bitget lookup 경로는 이미 `symbol`, `interval`, `range_bucket`, `source`, `result` 같은 낮은 카디널리티 개념을 사용한다.
 - frontend에는 이미 Sentry 설정과 `/monitoring` tunnel route가 있다.
-- release docs는 smoke-test 결과와 post-release risk 기록을 요구하지만, 구체 dashboard 이름과 알림 기준은 아직 구현으로 고정되어 있지 않다.
+- 로컬 통합 인프라는 루트 `docker-compose.yml`과 `infra/` 아래 설정으로 실행한다.
+- local Grafana는 `Coin Zzickmock Backend Overview` dashboard를 자동 provision한다.
+- local Prometheus alert rule은 `infra/prometheus/alerts.yml`에 둔다. 운영 alert 기준으로 승격하려면 baseline과 owner/runbook을 별도 릴리즈 문서에 고정한다.
 
 이 메모는 현재 저장소 상태를 설명한다.
 관측성 구현이 실제로 추가되면 함께 갱신한다.

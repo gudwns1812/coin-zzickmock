@@ -16,6 +16,11 @@
 - [01-environments-and-artifacts.md](01-environments-and-artifacts.md)
   환경 분류, 산출물, 설정값, 릴리즈 기록 기준.
 
+### Production CD
+
+- [04-production-cd.md](04-production-cd.md)
+  Docker Hub backend 이미지 발행, EC2 SSH 배포, 서버 환경 변수 계약.
+
 ### Release Checklist
 
 - [02-release-checklist.md](02-release-checklist.md)
@@ -35,6 +40,8 @@
 
 - [observability/backend-observability-signal-map.md](observability/backend-observability-signal-map.md)
   backend 관측성 metric, trace, log 우선순위와 릴리즈 확인 기준.
+- [observability/local-infra-stack.md](observability/local-infra-stack.md)
+  로컬 Docker Compose 기반 Nginx, Prometheus, Grafana, Loki 실행 기준.
 - [observability/dau-dashboard.md](observability/dau-dashboard.md)
   DB 기반 DAU 집계와 Grafana 패널 구성을 위한 SQL/PromQL 기준.
 

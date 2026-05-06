@@ -14,6 +14,8 @@
 - 목적: 개발과 수동 확인
 - 소유: 각 개발자 로컬 머신
 - 기본 검증: `npm run build`, `./gradlew check`
+- 통합 인프라 확인: 루트 `docker compose up --build`
+- 관측성 확인: [observability/local-infra-stack.md](observability/local-infra-stack.md)
 - 비고: 운영 환경의 대체물이 아니라 사전 확인 단계다
 
 ### CI
@@ -24,6 +26,18 @@
   - 프론트엔드 `npm run lint`, `npm run build`
   - 백엔드 `./gradlew check`
 - 비고: 현재는 배포를 수행하지 않는다
+
+### CD
+
+- 목적: 고정된 릴리즈 후보를 운영 이미지와 운영 Compose 스택으로 승격
+- 현재 구현: `.github/workflows/cd.yml`
+- 기본 동작:
+  - `main`/`master`의 `backend/**`, `docker-compose.prod.yml`, `infra/**` 변경 또는 수동 실행으로 시작한다
+  - 백엔드 `./gradlew check`를 다시 수행한다
+  - backend Docker 이미지를 Docker Hub에 push한다
+  - SSH로 EC2에 접속해 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 복사한다
+  - EC2에서 backend 이미지를 pull/restart한다
+- 상세 기준: [04-production-cd.md](04-production-cd.md)
 
 ### Preview
 
@@ -50,6 +64,8 @@
   - 검증된 commit SHA만 배포한다
   - 실행자와 배포 시각을 기록한다
   - 롤백 기준점이 없는 배포를 하지 않는다
+  - frontend 운영 배포는 Vercel에서 담당한다
+  - backend 운영 배포는 Docker Hub 이미지와 EC2 Docker Compose로 담당한다
 
 ## Artifact Contract
 
@@ -59,7 +75,8 @@
 
 - 기준 명령: 루트에서 `npm run build`
 - 기준 워크스페이스: `frontend/`
-- 의미: Next.js 프로덕션 빌드가 가능한 상태
+- 배포 기준: Vercel
+- 의미: Vercel에서 Next.js 프로덕션 빌드가 가능한 상태
 - 기록 항목:
   - 대상 commit SHA
   - 빌드 성공 시각
@@ -75,12 +92,41 @@
   - 검증 결과
   - jar 생성 여부
 
+### Production Docker Artifact
+
+- 기준 워크플로: `.github/workflows/cd.yml`
+- 기준 이미지:
+  - `dockerhub-user/coin-zzickmock-backend:<tag>`
+- 기준 플랫폼: `linux/arm64` Amazon Linux `aarch64`
+- 운영 compose 기준:
+  - `docker-compose.prod.yml`
+  - `backend/src/main/resources/application-prod.yml`
+  - `infra/prod.env.example`
+- 의미: 운영 프로필과 Docker Compose로 backend, Redis, Nginx, Prometheus, Grafana, Loki를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다.
+
 ### Documentation And Config Artifact
 
 - 설정값, 도메인, 비밀값 계약이 바뀌면 관련 문서도 릴리즈 산출물 일부로 본다.
 - 최소 포함 문서:
   - [RELEASE.md](/Users/hj.park/projects/coin-zzickmock/RELEASE.md) 또는 상세 릴리즈 문서
   - 환경 계약이 바뀐 경우 관련 README나 운영 문서
+
+### Local Infra Artifact
+
+- 기준 명령: 루트에서 `docker compose up --build`
+- 의미: 로컬에서 backend, MySQL, Redis, Nginx, Prometheus, Grafana, Loki를 함께 실행 가능해야 한다.
+- 설정 위치:
+  - `docker-compose.yml`
+  - `infra/nginx/nginx.conf`
+  - `infra/prometheus/prometheus.yml`
+  - `infra/prometheus/alerts.yml`
+  - `infra/grafana/`
+  - `infra/loki/loki.yml`
+  - `infra/promtail/promtail.yml`
+- 기록 항목:
+  - 사용한 commit SHA
+  - 변경한 host port 또는 환경 변수
+  - `docker compose ps`와 핵심 health/ready 확인 결과
 
 ## Environment Variable Policy
 
@@ -100,12 +146,24 @@
 - 백엔드 비밀값은 서버 전용 환경에만 둔다.
 - 운영 자격증명은 코드, 샘플 파일, 문서 예시에 넣지 않는다.
 - 설정값이 바뀌면 적용 대상 환경과 주입 위치를 릴리즈 기록에 남긴다.
+- 운영 프로필은 `backend/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
+
+### Production Docker Host
+
+- 서버에는 비밀값을 담은 `.env.prod`가 있어야 한다.
+- CD는 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 배포 때마다 서버로 복사한다.
+- `.env.prod`의 공개 가능한 예시는 `infra/prod.env.example`에서 관리한다.
+- CD의 EC2 SSH 사용자는 배포 경로 파일 반영과 Docker Compose 실행을 위해 passwordless `sudo` 권한이 필요하다.
+- Redis는 운영 compose 내부 서비스로 실행하고 host port를 공개하지 않는다.
+- 운영 MySQL은 compose 내부에 포함하지 않고 `MYSQL_HOST` 또는 동등한 네트워크 경로로 연결한다.
+- 프론트엔드 이미지, Vercel 변수, `NEXT_PUBLIC_*` 값은 EC2 Docker host 계약에 넣지 않는다.
 
 ### Shared Rule
 
 - 어떤 값이 필요한지 이름과 용도는 문서화한다.
 - 실제 비밀값 원문은 문서화하지 않는다.
 - 새 환경 변수를 추가하면 배포 전에 "누가, 어느 환경에, 어떤 이름으로" 넣는지 명확해야 한다.
+- 로컬 Compose 기본값은 `infra/local.env.example`에 공개 가능한 값만 둔다.
 
 ## Release Record Contract
 

@@ -23,7 +23,7 @@
 6. EC2의 `EC2_DEPLOY_PATH`에서 서버 전용 `.env.prod`를 함께 사용한다.
 7. 새 backend image를 pull한다.
 8. backend와 Grafana container를 재시작한다.
-9. Nginx를 재기동하고 설정 검사를 통과한 뒤 reload한다.
+9. 기존 Nginx container에서 설정 검사를 통과한 뒤 reload한다.
 
 ## Image
 
@@ -113,9 +113,6 @@ env BACKEND_IMAGE=<docker-hub-backend-image> \
 
 env BACKEND_IMAGE=<docker-hub-backend-image> \
   <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d --no-deps grafana
-
-env BACKEND_IMAGE=<docker-hub-backend-image> \
-  <compose-command> --env-file .env.prod -f docker-compose.prod.yml up -d nginx
 
 env BACKEND_IMAGE=<docker-hub-backend-image> \
   <compose-command> --env-file .env.prod -f docker-compose.prod.yml exec -T nginx nginx -t

@@ -41,7 +41,7 @@
 ## Key Entry Points
 
 - `app/layout.tsx`
-  전역 앱 셸입니다. Query Client, MSW, Sentry, Toast를 조립합니다.
+  전역 앱 셸입니다. Query Client, MSW, Toast를 조립합니다.
 - `app/page.tsx`
   루트 진입점입니다. 현재는 `/markets` 쪽 흐름으로 보냅니다.
 - `app/(main)/layout.tsx`

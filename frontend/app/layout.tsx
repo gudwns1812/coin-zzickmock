@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ToastContainer } from "react-toastify";
-import SentryProvider from "../components/router/SentryProvider";
 import "./globals.css";
 import "driver.js/dist/driver.css";
 import QueryClientProvider from "../components/router/QueryClientProvider";
@@ -44,9 +43,7 @@ export default async function RootLayout({
               newestOnTop={false}
               closeOnClick
             />
-            <SentryProvider>
-              {children}
-            </SentryProvider>
+            {children}
           </MSWProvider>
         </QueryClientProvider>
       </body>

@@ -55,7 +55,7 @@ const OnlyDesktopPage = () => {
             className="text-center text-white z-20"
           >
             <p className="text-lg-custom mb-1">
-              주식 찍먹은 <br />
+              코인 선물 찍먹은 <br />
               PC(데스크탑) 환경에서만 <br />
               이용하실 수 있습니다.
             </p>

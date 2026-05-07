@@ -2,6 +2,7 @@
 
 import {
   formatPercent,
+  formatRatioPercent,
   formatCompactUsd,
   formatUsd,
   getMarketLogoPath,
@@ -317,13 +318,13 @@ function MarketTableRow({
         </div>
       </td>
       <td className={`px-main py-5 font-semibold ${changeClassName}`}>
-        {isMarketDataDegraded ? "-" : formatPercent(market.change24h)}
+        {isMarketDataDegraded ? "-" : formatRatioPercent(market.change24h)}
       </td>
       <td className="px-main py-5 text-main-dark-gray/70">
         {isMarketDataDegraded ? "-" : formatUsd(market.markPrice)}
       </td>
       <td className={`px-main py-5 font-semibold ${fundingClassName}`}>
-        {isMarketDataDegraded ? "-" : formatPercent(market.fundingRate * 100)}
+        {isMarketDataDegraded ? "-" : formatRatioPercent(market.fundingRate, 4)}
       </td>
       <td className="px-main py-5 text-main-dark-gray/70">
         {isMarketDataDegraded ? "-" : formatUsd(market.indexPrice)}

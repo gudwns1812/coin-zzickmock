@@ -5,7 +5,13 @@ const marketsModule: typeof import("./markets") = await import(
   new URL("./markets.ts", import.meta.url).href
 );
 
-const { formatMarketRank, getMarketLogoPath, getMarketRankIconPath } =
+const {
+  formatMarketRank,
+  formatPercent,
+  formatRatioPercent,
+  getMarketLogoPath,
+  getMarketRankIconPath,
+} =
   marketsModule;
 
 test("maps supported futures symbols to bundled logo images", () => {
@@ -25,4 +31,14 @@ test("formats current user rank for compact UI", () => {
   assert.equal(formatMarketRank(7), "7위");
   assert.equal(formatMarketRank(null), "집계 중");
   assert.equal(formatMarketRank(undefined), "집계 중");
+});
+
+test("formats percent point values without changing legacy callers", () => {
+  assert.equal(formatPercent(12.345), "+12.35%");
+  assert.equal(formatPercent(-1.2), "-1.20%");
+});
+
+test("formats Bitget ratio values as display percentages", () => {
+  assert.equal(formatRatioPercent(-0.01201), "-1.20%");
+  assert.equal(formatRatioPercent(0.000043, 4), "+0.0043%");
 });

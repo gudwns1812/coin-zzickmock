@@ -175,3 +175,8 @@ export function formatPercent(value: number) {
   const formatted = `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
   return formatted;
 }
+
+export function formatRatioPercent(value: number, fractionDigits = 2) {
+  const percentValue = value * 100;
+  return `${percentValue >= 0 ? "+" : ""}${percentValue.toFixed(fractionDigits)}%`;
+}

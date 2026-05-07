@@ -28,6 +28,7 @@ import {
   formatCompactUsd,
   SUPPORTED_MARKET_SYMBOLS,
   formatPercent,
+  formatRatioPercent,
   formatSignedUsd,
   formatUsd,
   getMarketLogoPath,
@@ -274,7 +275,7 @@ export default function MarketDetailRealtimeView({
               >
                 <p className="text-xs-custom font-semibold uppercase">24H</p>
                 <p className="mt-2 text-lg-custom font-bold">
-                  {formatPercent(market.change24h)}
+                  {formatRatioPercent(market.change24h)}
                 </p>
               </div>
             </div>
@@ -290,7 +291,7 @@ export default function MarketDetailRealtimeView({
               <Stat
                 label="Funding"
                 tone={market.fundingRate >= 0 ? "positive" : "negative"}
-                value={formatPercent(market.fundingRate * 100)}
+                value={formatRatioPercent(market.fundingRate, 4)}
                 subValue={`Next ${fundingCountdown}`}
               />
               <Stat
@@ -346,7 +347,7 @@ export default function MarketDetailRealtimeView({
                   : "bg-rose-50 text-rose-600",
               ].join(" ")}
             >
-              {formatPercent(market.change24h)}
+              {formatRatioPercent(market.change24h)}
             </span>
           </div>
 

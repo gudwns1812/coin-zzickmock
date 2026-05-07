@@ -16,16 +16,6 @@ const nextConfig: NextConfig = {
         destination: `${FUTURES_API_BASE_URL}/api/futures/auth/:path*`,
       },
       {
-        // 메인서버
-        source: "/proxy/:path*",
-        destination: "https://news-toss.click/api/:path*",
-      },
-      {
-        // 증권서버
-        source: "/proxy2/:path*",
-        destination: "http://43.201.62.55:8080/api/:path*",
-      },
-      {
         // 코인 선물 백엔드
         source: "/proxy-futures/:path*",
         destination: `${FUTURES_API_BASE_URL}/api/futures/:path*`,
@@ -37,11 +27,8 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     domains: [
       "placehold.co",
-      "imgnews.pstatic.net",
-      "ssl.pstatic.net",
       "s3-symbol-logo.tradingview.com",
       "encrypted-tbn0.gstatic.com",
-      "thumb.tossinvest.com",
     ],
   },
 };

@@ -1,5 +1,5 @@
 import { getFuturesMarkets } from "@/lib/futures-api";
-import { formatPercent, formatUsd } from "@/lib/markets";
+import { formatRatioPercent, formatUsd } from "@/lib/markets";
 import { getJwtToken } from "@/utils/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -43,10 +43,10 @@ export default async function WatchlistPage() {
             </div>
             <div className="grid grid-cols-3 gap-main">
               <MiniMetric label="가격" value={formatUsd(market.lastPrice)} />
-              <MiniMetric label="24h" value={formatPercent(market.change24h)} />
+              <MiniMetric label="24h" value={formatRatioPercent(market.change24h)} />
               <MiniMetric
                 label="Funding"
-                value={formatPercent(market.fundingRate * 100)}
+                value={formatRatioPercent(market.fundingRate, 4)}
               />
             </div>
           </Link>

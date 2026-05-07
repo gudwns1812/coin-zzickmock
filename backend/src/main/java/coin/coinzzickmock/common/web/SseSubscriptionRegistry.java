@@ -115,6 +115,15 @@ public final class SseSubscriptionRegistry<K> {
         return List.copyOf(keyEmitters.values());
     }
 
+    public synchronized int subscriberCount(K key) {
+        ConcurrentMap<String, SseEmitter> keyEmitters = emitters.get(key);
+        return keyEmitters == null ? 0 : keyEmitters.size();
+    }
+
+    public synchronized int totalSubscriberCount() {
+        return emitters.values().stream().mapToInt(ConcurrentMap::size).sum();
+    }
+
     public synchronized boolean hasSubscriberLimit(K key) {
         return subscriberLimits.containsKey(key);
     }

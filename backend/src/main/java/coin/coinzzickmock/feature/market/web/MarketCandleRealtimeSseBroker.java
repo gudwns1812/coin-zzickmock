@@ -37,6 +37,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 public class MarketCandleRealtimeSseBroker {
     private static final String STREAM = "market_candle";
+    private static final String CLIENT_REPLACED_REASON = "client_replaced";
     private static final List<MarketCandleInterval> COMPLETED_HOURLY_INTERVALS = List.of(
             MarketCandleInterval.ONE_HOUR,
             MarketCandleInterval.FOUR_HOURS,
@@ -138,7 +139,8 @@ public class MarketCandleRealtimeSseBroker {
                 activeKeys.add(key);
             }
             recordConnectionOpened();
-            completeReplacedEmitter(registration.replacedEmitter());
+            logLifecycle(key, "register", "accepted");
+            completeReplacedEmitter(key, registration.replacedEmitter());
         } catch (RuntimeException exception) {
             discardRegisteredSubscription(key, emitter);
             release(permit);
@@ -165,6 +167,7 @@ public class MarketCandleRealtimeSseBroker {
         if (subscriptions.unregister(key, emitter)) {
             cleanupActiveKey(key);
             recordConnectionClosed(reason);
+            logLifecycle(key, "unregister", reason);
         }
     }
 
@@ -172,11 +175,14 @@ public class MarketCandleRealtimeSseBroker {
         if (subscriptions.unregister(key, clientKey, emitter)) {
             cleanupActiveKey(key);
             recordConnectionClosed(reason);
+            logLifecycle(key, "unregister", reason);
         }
     }
 
     public void release(SseSubscriptionPermit permit) {
-        subscriptions.release(permit.delegate);
+        if (subscriptions.release(permit.delegate)) {
+            logLifecycle(permit.key(), "release", "before_register");
+        }
     }
 
     @EventListener
@@ -396,7 +402,7 @@ public class MarketCandleRealtimeSseBroker {
         recordConnectionRejected("key_limit");
     }
 
-    private void completeReplacedEmitter(SseEmitter replacedEmitter) {
+    private void completeReplacedEmitter(SubscriptionKey key, SseEmitter replacedEmitter) {
         if (replacedEmitter == null) {
             return;
         }
@@ -405,7 +411,19 @@ public class MarketCandleRealtimeSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed("client_replaced");
+        recordConnectionClosed(CLIENT_REPLACED_REASON);
+        logLifecycle(key, "replace", CLIENT_REPLACED_REASON);
+    }
+
+    private void logLifecycle(SubscriptionKey key, String action, String reason) {
+        log.info("sse_lifecycle stream={} action={} reason={} symbol={} interval={} active_emitters={} total_active_emitters={}",
+                STREAM,
+                action,
+                reason,
+                key.symbol(),
+                key.interval().value(),
+                subscriptions.subscriberCount(key),
+                subscriptions.totalSubscriberCount());
     }
 
     private void recordConnectionOpened() {

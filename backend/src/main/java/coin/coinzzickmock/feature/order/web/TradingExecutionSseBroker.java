@@ -25,6 +25,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 public class TradingExecutionSseBroker {
     private static final String STREAM = "trading_execution";
+    private static final String CLIENT_REPLACED_REASON = "client_replaced";
 
     private final SseSubscriptionRegistry<Long> subscriptions;
     private final Executor sseEventExecutor;
@@ -74,7 +75,8 @@ public class TradingExecutionSseBroker {
             throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         }
         recordConnectionOpened();
-        completeReplacedEmitter(registration.replacedEmitter());
+        logLifecycle(permit.memberId(), "register", "accepted");
+        completeReplacedEmitter(permit.memberId(), registration.replacedEmitter());
     }
 
     public void unregister(Long memberId, SseEmitter emitter) {
@@ -84,17 +86,21 @@ public class TradingExecutionSseBroker {
     private void unregister(Long memberId, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(memberId, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(memberId, "unregister", reason);
         }
     }
 
     private void unregister(Long memberId, String clientKey, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(memberId, clientKey, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(memberId, "unregister", reason);
         }
     }
 
     public void release(SseSubscriptionPermit permit) {
-        subscriptions.release(permit.delegate);
+        if (subscriptions.release(permit.delegate)) {
+            logLifecycle(permit.memberId(), "release", "before_register");
+        }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -146,7 +152,7 @@ public class TradingExecutionSseBroker {
         recordConnectionRejected("member_limit");
     }
 
-    private void completeReplacedEmitter(SseEmitter replacedEmitter) {
+    private void completeReplacedEmitter(Long memberId, SseEmitter replacedEmitter) {
         if (replacedEmitter == null) {
             return;
         }
@@ -155,7 +161,17 @@ public class TradingExecutionSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed("client_replaced");
+        recordConnectionClosed(CLIENT_REPLACED_REASON);
+        logLifecycle(memberId, "replace", CLIENT_REPLACED_REASON);
+    }
+
+    private void logLifecycle(Long memberId, String action, String reason) {
+        log.info("sse_lifecycle stream={} action={} reason={} subscription=authenticated_member active_emitters={} total_active_emitters={}",
+                STREAM,
+                action,
+                reason,
+                subscriptions.subscriberCount(memberId),
+                subscriptions.totalSubscriberCount());
     }
 
     private void recordConnectionOpened() {

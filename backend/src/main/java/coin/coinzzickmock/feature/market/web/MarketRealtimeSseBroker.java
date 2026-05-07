@@ -24,6 +24,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 public class MarketRealtimeSseBroker {
     private static final String STREAM = "market";
+    private static final String CLIENT_REPLACED_REASON = "client_replaced";
 
     private final SseSubscriptionRegistry<String> subscriptions;
     private final Executor sseEventExecutor;
@@ -73,7 +74,8 @@ public class MarketRealtimeSseBroker {
             throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         }
         recordConnectionOpened();
-        completeReplacedEmitter(registration.replacedEmitter());
+        logLifecycle(permit.symbol(), "register", "accepted");
+        completeReplacedEmitter(permit.symbol(), registration.replacedEmitter());
     }
 
     public void unregister(String symbol, SseEmitter emitter) {
@@ -83,17 +85,21 @@ public class MarketRealtimeSseBroker {
     private void unregister(String symbol, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(symbol, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(symbol, "unregister", reason);
         }
     }
 
     private void unregister(String symbol, String clientKey, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(symbol, clientKey, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(symbol, "unregister", reason);
         }
     }
 
     public void release(SseSubscriptionPermit permit) {
-        subscriptions.release(permit.delegate);
+        if (subscriptions.release(permit.delegate)) {
+            logLifecycle(permit.symbol(), "release", "before_register");
+        }
     }
 
     @EventListener
@@ -151,7 +157,7 @@ public class MarketRealtimeSseBroker {
         recordConnectionRejected("symbol_limit");
     }
 
-    private void completeReplacedEmitter(SseEmitter replacedEmitter) {
+    private void completeReplacedEmitter(String symbol, SseEmitter replacedEmitter) {
         if (replacedEmitter == null) {
             return;
         }
@@ -160,7 +166,18 @@ public class MarketRealtimeSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed("client_replaced");
+        recordConnectionClosed(CLIENT_REPLACED_REASON);
+        logLifecycle(symbol, "replace", CLIENT_REPLACED_REASON);
+    }
+
+    private void logLifecycle(String symbol, String action, String reason) {
+        log.info("sse_lifecycle stream={} action={} reason={} symbol={} active_emitters={} total_active_emitters={}",
+                STREAM,
+                action,
+                reason,
+                symbol,
+                subscriptions.subscriberCount(symbol),
+                subscriptions.totalSubscriberCount());
     }
 
     private void recordConnectionOpened() {

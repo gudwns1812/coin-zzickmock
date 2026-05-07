@@ -1,5 +1,6 @@
 export const DEFAULT_EVENT_SOURCE_BASE_RECONNECT_MS = 500;
 export const DEFAULT_EVENT_SOURCE_MAX_RECONNECT_MS = 10_000;
+export const EVENT_SOURCE_VISIBLE_RECONNECT_AFTER_HIDDEN_MS = 30_000;
 
 export type EventSourceReconnectStatus =
   | "idle"
@@ -38,6 +39,19 @@ export function shouldDeferEventSourceReconnect({
   return documentVisibilityState === "hidden";
 }
 
-export function shouldForceReconnectOnVisible() {
-  return true;
+export function shouldForceReconnectOnVisible({
+  hiddenDurationMs,
+  status,
+}: {
+  hiddenDurationMs: number | null;
+  status: EventSourceReconnectStatus;
+}) {
+  if (status !== "open") {
+    return true;
+  }
+
+  return (
+    hiddenDurationMs !== null &&
+    hiddenDurationMs >= EVENT_SOURCE_VISIBLE_RECONNECT_AFTER_HIDDEN_MS
+  );
 }

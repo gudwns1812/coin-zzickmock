@@ -5,6 +5,7 @@ const policyModule: typeof import("../hooks/resilientEventSourcePolicy") =
   await import(new URL("../hooks/resilientEventSourcePolicy.ts", import.meta.url).href);
 
 const {
+  EVENT_SOURCE_VISIBLE_RECONNECT_AFTER_HIDDEN_MS,
   getEventSourceReconnectDelayMs,
   shouldDeferEventSourceReconnect,
   shouldForceReconnectOnVisible,
@@ -48,6 +49,29 @@ test("hidden tabs defer background reconnect loops", () => {
   );
 });
 
-test("visible tab return always forces reconnect", () => {
-  assert.equal(shouldForceReconnectOnVisible(), true);
+test("visible tab return keeps a healthy stream open after a short tab switch", () => {
+  assert.equal(
+    shouldForceReconnectOnVisible({
+      hiddenDurationMs: EVENT_SOURCE_VISIBLE_RECONNECT_AFTER_HIDDEN_MS - 1,
+      status: "open",
+    }),
+    false
+  );
+});
+
+test("visible tab return reconnects degraded or long-hidden streams", () => {
+  assert.equal(
+    shouldForceReconnectOnVisible({
+      hiddenDurationMs: 1,
+      status: "degraded",
+    }),
+    true
+  );
+  assert.equal(
+    shouldForceReconnectOnVisible({
+      hiddenDurationMs: EVENT_SOURCE_VISIBLE_RECONNECT_AFTER_HIDDEN_MS,
+      status: "open",
+    }),
+    true
+  );
 });

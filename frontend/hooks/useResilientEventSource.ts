@@ -71,9 +71,17 @@ export function useResilientEventSource({
   const streamRef = useRef<EventSource | null>(null);
   const urlRef = useRef(url);
   const enabledRef = useRef(enabled);
-  const [status, setStatus] = useState<EventSourceReconnectStatus>(
-    enabled && url ? "connecting" : "idle"
-  );
+  const initialStatus: EventSourceReconnectStatus =
+    enabled && url ? "connecting" : "idle";
+  const statusRef = useRef<EventSourceReconnectStatus>(initialStatus);
+  const hiddenAtRef = useRef<number | null>(null);
+  const [status, setStatus] =
+    useState<EventSourceReconnectStatus>(initialStatus);
+
+  const updateStatus = useCallback((nextStatus: EventSourceReconnectStatus) => {
+    statusRef.current = nextStatus;
+    setStatus(nextStatus);
+  }, []);
 
   useEffect(() => {
     callbacksRef.current = {
@@ -113,7 +121,7 @@ export function useResilientEventSource({
       const nextUrl = urlRef.current;
 
       if (!enabledRef.current || !nextUrl) {
-        setStatus("idle");
+        updateStatus("idle");
         return;
       }
 
@@ -122,7 +130,7 @@ export function useResilientEventSource({
 
       const generation = generationRef.current + 1;
       generationRef.current = generation;
-      setStatus(attemptRef.current > 0 ? "reconnecting" : "connecting");
+      updateStatus(attemptRef.current > 0 ? "reconnecting" : "connecting");
 
       if (reason) {
         callbacksRef.current.onReconnect?.(reason);
@@ -137,7 +145,7 @@ export function useResilientEventSource({
         }
 
         attemptRef.current = 0;
-        setStatus("open");
+        updateStatus("open");
         callbacksRef.current.onOpen?.(event);
       };
 
@@ -162,11 +170,11 @@ export function useResilientEventSource({
             documentVisibilityState: getDocumentVisibilityState(),
           })
         ) {
-          setStatus("degraded");
+          updateStatus("degraded");
           return;
         }
 
-        setStatus("reconnecting");
+        updateStatus("reconnecting");
         const delayMs = getEventSourceReconnectDelayMs({
           attempt: attemptRef.current,
           baseDelayMs: baseReconnectDelayMs,
@@ -185,6 +193,7 @@ export function useResilientEventSource({
       closeCurrentStream,
       eventSourceFactory,
       maxReconnectDelayMs,
+      updateStatus,
     ]
   );
 
@@ -200,7 +209,7 @@ export function useResilientEventSource({
     if (!enabled || !url) {
       clearReconnectTimer();
       closeCurrentStream();
-      setStatus("idle");
+      updateStatus("idle");
       return;
     }
 
@@ -211,7 +220,14 @@ export function useResilientEventSource({
       clearReconnectTimer();
       closeCurrentStream();
     };
-  }, [clearReconnectTimer, closeCurrentStream, enabled, openStream, url]);
+  }, [
+    clearReconnectTimer,
+    closeCurrentStream,
+    enabled,
+    openStream,
+    updateStatus,
+    url,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -219,10 +235,23 @@ export function useResilientEventSource({
     }
 
     const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+
+      const hiddenAtMs = hiddenAtRef.current;
+      const hiddenDurationMs =
+        hiddenAtMs === null ? null : Date.now() - hiddenAtMs;
+      hiddenAtRef.current = null;
+
       if (
         reconnectOnVisible &&
         document.visibilityState === "visible" &&
-        shouldForceReconnectOnVisible()
+        shouldForceReconnectOnVisible({
+          hiddenDurationMs,
+          status: statusRef.current,
+        })
       ) {
         reconnect("visible");
       }

@@ -37,11 +37,18 @@ test("markets landing can clear initial fallback after live stream recovery", ()
   );
 });
 
-test("tab return reconnect policy force-reconnects instead of health-checking", () => {
+test("tab return reconnect policy keeps recently healthy streams open", () => {
   const source = readFrontendSource("hooks/resilientEventSourcePolicy.ts");
 
   assert.equal(source.includes("shouldForceReconnectOnVisible"), true);
-  assert.equal(source.includes("return true;"), true);
+  assert.equal(
+    source.includes("EVENT_SOURCE_VISIBLE_RECONNECT_AFTER_HIDDEN_MS"),
+    true
+  );
+  assert.equal(
+    source.includes("export function shouldForceReconnectOnVisible()"),
+    false
+  );
 });
 
 test("candle stream invalidates futures candle queries by prefix", () => {
@@ -55,7 +62,7 @@ test("candle stream invalidates futures candle queries by prefix", () => {
   );
 });
 
-test("frontend SSE route handlers abort upstream fetches on client disconnect", () => {
+test("frontend SSE route handlers use the cancellable SSE proxy", () => {
   const routeSources = [
     "app/api/futures/markets/[symbol]/stream/route.ts",
     "app/api/futures/markets/[symbol]/candles/stream/route.ts",
@@ -63,6 +70,13 @@ test("frontend SSE route handlers abort upstream fetches on client disconnect", 
   ].map(readFrontendSource);
 
   for (const source of routeSources) {
-    assert.equal(source.includes("signal: request.signal"), true);
+    assert.equal(source.includes("proxySseStream({"), true);
+    assert.equal(source.includes("createSseUpstreamHeaders(request)"), true);
   }
+
+  const proxySource = readFrontendSource("lib/sse-proxy.ts");
+
+  assert.equal(proxySource.includes("new AbortController()"), true);
+  assert.equal(proxySource.includes("upstreamReader?.cancel()"), true);
+  assert.equal(proxySource.includes("async cancel()"), true);
 });

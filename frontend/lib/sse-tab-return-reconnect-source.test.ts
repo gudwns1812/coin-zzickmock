@@ -77,6 +77,7 @@ test("frontend SSE route handlers use the cancellable SSE proxy", () => {
   const proxySource = readFrontendSource("lib/sse-proxy.ts");
 
   assert.equal(proxySource.includes("new AbortController()"), true);
-  assert.equal(proxySource.includes("upstreamReader?.cancel()"), true);
+  assert.equal(proxySource.includes("reader?.cancel()"), true);
+  assert.equal(proxySource.includes("start(controller)"), true);
   assert.equal(proxySource.includes("async cancel()"), true);
 });

@@ -64,6 +64,19 @@ coin:
   bitget:
     websocket:
       enabled: ${BITGET_WEBSOCKET_ENABLED:true}
+  market:
+    history-repair:
+      queue-key: ${MARKET_HISTORY_REPAIR_QUEUE_KEY:coin:market:history-repair:events}
+      worker:
+        enabled: ${MARKET_HISTORY_REPAIR_WORKER_ENABLED:true}
+        fixed-delay-ms: ${MARKET_HISTORY_REPAIR_WORKER_FIXED_DELAY_MS:1000}
+        block-timeout-ms: ${MARKET_HISTORY_REPAIR_WORKER_BLOCK_TIMEOUT_MS:2000}
+      persistence-retry:
+        max-attempts: ${MARKET_HISTORY_REPAIR_PERSISTENCE_RETRY_MAX_ATTEMPTS:5}
+        delay-ms: ${MARKET_HISTORY_REPAIR_PERSISTENCE_RETRY_DELAY_MS:1000}
+      enqueue-retry:
+        max-attempts: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_MAX_ATTEMPTS:5}
+        delay-ms: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_DELAY_MS:1000}
   cache:
     redis:
       enabled: true

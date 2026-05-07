@@ -16,7 +16,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ## Status
 
 - 상태: 구현 반영됨
-- 마지막 스키마 동기화: 2026-05-04
+- 마지막 스키마 동기화: 2026-05-07
 - 기준 소스: Flyway migration + JPA entity + Spring Boot datasource 설정
 
 ## Source Of Truth
@@ -428,7 +428,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 시간 기준:
   `open_time`, `close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
-  현재는 전용 JPA entity가 없고 `feature.market`의 향후 시계열 영속성 기준 테이블로 예약되어 있다.
+  [MarketCandle1mEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1mEntity.java),
+  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
 - 관련 migration 또는 schema 파일:
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
@@ -440,7 +441,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ### `market_candles_1h`
 
 - 목적:
-  1분봉 원본에서 만들어진 1시간봉 롤업 데이터를 저장해 차트 조회 비용을 줄인다.
+  1분봉 원본에서 만들어진 REST-visible completed 1시간봉 롤업 데이터를 저장해 차트 조회 비용을 줄인다.
+  이 테이블의 row는 해당 hour의 60개 연속 `market_candles_1m` row가 저장 또는 재빌드 시점에 확인된 경우에만 남는다.
+  partial 후보 row는 저장하지 않는다.
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
@@ -448,14 +451,15 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 시간 기준:
   `open_time`, `close_time`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
-  현재는 전용 JPA entity가 없고 `feature.market`의 향후 롤업 영속성 기준 테이블로 예약되어 있다.
+  [MarketCandle1hEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1hEntity.java),
+  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
 - 관련 migration 또는 schema 파일:
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
   [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
 - 인덱스:
   `uk_market_candles_1h_symbol_open_time`로 심볼별 시각 중복을 막고,
-  `idx_market_candles_1h_open_time_symbol`로 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
+  `idx_market_candles_1h_open_time_symbol`로 completed hourly 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
 
 ## Relationships
 
@@ -532,7 +536,6 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V19__add_member_daily_activity.sql`로 DB 기반 DAU 수집용 `member_daily_activity`와 식별자 없는 장기 집계용 `daily_active_user_summary`를 추가했다.
 - 2026-05-03:
   `V20__add_member_withdrawn_at.sql`로 `member_credentials.withdrawn_at` nullable soft-delete column과 보조 index를 추가했다. 기존 row는 `withdrawn_at IS NULL` active member로 해석하며, `account` unique 제약은 유지한다.
-
 ## Update Rule
 
 아래 상황에서는 이 문서를 같이 갱신한다.

@@ -52,8 +52,7 @@ class MarketHistoryStartupBackfillTest {
 
         assertEquals(1, marketDataGateway.minuteHistoryCalls());
         assertEquals(3, marketHistoryRepository.minuteCandleCount());
-        assertEquals(1, marketHistoryRepository.hourlyCandleCount());
-        assertEquals(101900, marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z").closePrice(), 0.0001);
+        assertEquals(0, marketHistoryRepository.hourlyCandleCount());
     }
 
     @Test
@@ -126,7 +125,7 @@ class MarketHistoryStartupBackfillTest {
 
         assertEquals(1, marketDataGateway.minuteHistoryCalls());
         assertEquals(4, marketHistoryRepository.minuteCandleCount());
-        assertEquals(101900, marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z").closePrice(), 0.0001);
+        assertEquals(0, marketHistoryRepository.hourlyCandleCount());
     }
 
     private static MarketSnapshot snapshot(
@@ -301,10 +300,6 @@ class MarketHistoryStartupBackfillTest {
         @Override
         public void saveHourlyCandle(HourlyMarketCandle candle) {
             hourlyCandles.put(key(candle.symbolId(), candle.openTime()), candle);
-        }
-
-        private HourlyMarketCandle hourlyCandle(long symbolId, String openTime) {
-            return hourlyCandles.get(key(symbolId, Instant.parse(openTime)));
         }
 
         private int minuteCandleCount() {

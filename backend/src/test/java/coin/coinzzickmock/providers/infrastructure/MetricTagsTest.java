@@ -3,7 +3,9 @@ package coin.coinzzickmock.providers.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import io.micrometer.core.instrument.Tags;
+import java.util.Arrays;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +29,18 @@ class MetricTagsTest {
                 "source", "authenticated_api",
                 "result", "success"
         ))).isNotEmpty();
+    }
+
+    @Test
+    void acceptsAllSupportedCandleIntervalTags() {
+        assertThat(Arrays.stream(MarketCandleInterval.values()).map(MarketCandleInterval::value))
+                .isNotEmpty()
+                .doesNotContainNull()
+                .doesNotHaveDuplicates()
+                .allSatisfy(interval -> assertThat(MetricTags.of(Map.of("interval", interval))
+                        .stream()
+                        .map(tag -> tag.getKey() + "=" + tag.getValue()))
+                        .containsExactly("interval=" + interval));
     }
 
     @Test

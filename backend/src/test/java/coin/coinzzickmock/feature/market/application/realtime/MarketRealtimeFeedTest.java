@@ -173,7 +173,7 @@ class MarketRealtimeFeedTest {
     }
 
     @Test
-    void recordsClosedProviderMinuteCandlesWithVolumeIntoMinuteAndHourlyHistory() {
+    void recordsClosedProviderMinuteCandlesWithVolumeWithoutPublishingPartialHourlyHistory() {
         FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
                 snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2),
                 snapshot("ETHUSDT", 3300, 3295, 3290, 0.00008, 2.1)
@@ -198,7 +198,6 @@ class MarketRealtimeFeedTest {
         ));
 
         MarketHistoryCandle firstMinute = marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:00:00Z");
-        HourlyMarketCandle firstHour = marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z");
 
         assertEquals(101000, firstMinute.openPrice(), 0.0001);
         assertEquals(102500, firstMinute.highPrice(), 0.0001);
@@ -206,11 +205,7 @@ class MarketRealtimeFeedTest {
         assertEquals(102000, firstMinute.closePrice(), 0.0001);
         assertEquals(12.5, firstMinute.volume(), 0.0001);
         assertEquals(1_275_000, firstMinute.quoteVolume(), 0.0001);
-        assertEquals(101000, firstHour.openPrice(), 0.0001);
-        assertEquals(102500, firstHour.highPrice(), 0.0001);
-        assertEquals(100500, firstHour.lowPrice(), 0.0001);
-        assertEquals(102000, firstHour.closePrice(), 0.0001);
-        assertEquals(12.5, firstHour.volume(), 0.0001);
+        assertEquals(0, marketHistoryRepository.hourlyCandleCount());
     }
 
     @Test
@@ -653,11 +648,12 @@ class MarketRealtimeFeedTest {
         }
 
         private MarketHistoryCandle minuteCandle(long symbolId, String openTime) {
-            return minuteCandles.get(key(symbolId, Instant.parse(openTime)));
-        }
-
-        private HourlyMarketCandle hourlyCandle(long symbolId, String openTime) {
-            return hourlyCandles.get(key(symbolId, Instant.parse(openTime)));
+            String key = key(symbolId, Instant.parse(openTime));
+            MarketHistoryCandle candle = minuteCandles.get(key);
+            if (candle == null) {
+                throw new AssertionError("Missing minute candle for key=" + key);
+            }
+            return candle;
         }
 
         private String key(long symbolId, Instant openTime) {

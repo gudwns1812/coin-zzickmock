@@ -87,4 +87,5 @@ public abstract class TestMarketHistoryRepository implements MarketHistoryReposi
     public void saveHourlyCandle(HourlyMarketCandle candle) {
         throw new UnsupportedOperationException("saveHourlyCandle is not implemented for this test fake");
     }
+
 }

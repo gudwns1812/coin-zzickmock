@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +61,7 @@ class MarketRealtimeFeedPersistenceTest {
     }
 
     @Test
-    void persistsMinuteAndHourlyHistoryWhenMinuteClosedEventArrives() {
+    void persistsMinuteHistoryWithoutPublishingPartialHourlyRowWhenMinuteClosedEventArrives() {
         marketRealtimeFeed.refreshSupportedMarkets();
         marketMinuteCandleHistoryListener.onMinuteClosed(new MarketMinuteClosedEvent(
                 Instant.parse("2026-04-17T06:00:00Z"),
@@ -68,9 +69,11 @@ class MarketRealtimeFeedPersistenceTest {
         ));
 
         assertThat(count("market_candles_1m")).isEqualTo(2);
-        assertThat(count("market_candles_1h")).isEqualTo(2);
+        assertThat(count("market_candles_1h")).isZero();
         assertThat(volume("market_candles_1m")).isGreaterThan(0.0);
-        assertThat(marketDataGateway.minuteCandleLoadTransactionStates()).containsOnly(false);
+        assertThat(marketDataGateway.minuteCandleLoadTransactionStates())
+                .hasSize(2)
+                .containsOnly(false);
     }
 
     private int count(String tableName) {
@@ -149,7 +152,7 @@ class MarketRealtimeFeedPersistenceTest {
 
     static class FakeMarketDataGateway extends coin.coinzzickmock.testsupport.TestMarketDataGateway {
         private List<MarketSnapshot> supportedMarkets = new ArrayList<>();
-        private final List<Boolean> minuteCandleLoadTransactionStates = new ArrayList<>();
+        private final List<Boolean> minuteCandleLoadTransactionStates = new CopyOnWriteArrayList<>();
 
         @Override
         public List<MarketSnapshot> loadSupportedMarkets() {

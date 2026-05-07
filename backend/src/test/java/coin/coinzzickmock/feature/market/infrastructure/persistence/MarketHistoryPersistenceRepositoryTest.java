@@ -16,10 +16,15 @@ import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Resources;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -144,31 +149,83 @@ class MarketHistoryPersistenceRepositoryTest {
     }
 
     @Test
-    void completedHourlyCandlesRequireContiguousMinuteCoverage() {
+    void completedHourlyReadsTrustPersistedHourlyTableDirectly() {
         Long symbolId = jdbcTemplate.queryForObject(
                 "SELECT id FROM market_symbols WHERE symbol = 'BTCUSDT'", Long.class);
 
-        Instant completeHour = Instant.parse("2026-04-17T06:00:00Z");
-        Instant missingFirstHour = Instant.parse("2026-04-17T07:00:00Z");
-        Instant missingMiddleHour = Instant.parse("2026-04-17T08:00:00Z");
-        Instant missingLastHour = Instant.parse("2026-04-17T09:00:00Z");
-        saveHourWithMinutesExcept(symbolId, completeHour, -1);
-        saveHourWithMinutesExcept(symbolId, missingFirstHour, 0);
-        saveHourWithMinutesExcept(symbolId, missingMiddleHour, 30);
-        saveHourWithMinutesExcept(symbolId, missingLastHour, 59);
+        Instant firstHour = Instant.parse("2026-04-17T06:00:00Z");
+        Instant secondHour = Instant.parse("2026-04-17T07:00:00Z");
+        marketHistoryRepository.saveHourlyCandle(hourly(symbolId, firstHour));
+        marketHistoryRepository.saveHourlyCandle(hourly(symbolId, secondHour));
 
         List<HourlyMarketCandle> completedCandles = marketHistoryRepository.findCompletedHourlyCandles(
                 symbolId,
-                completeHour,
-                missingLastHour.plusSeconds(3600)
+                firstHour,
+                secondHour.plusSeconds(3600)
         );
 
-        assertEquals(List.of(completeHour), completedCandles.stream().map(HourlyMarketCandle::openTime).toList());
-        assertEquals(completeHour, marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId).orElseThrow());
-        assertEquals(completeHour, marketHistoryRepository.findLatestCompletedHourlyCandleOpenTimeBefore(
+        assertEquals(List.of(firstHour, secondHour), completedCandles.stream().map(HourlyMarketCandle::openTime).toList());
+        assertEquals(secondHour, marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId).orElseThrow());
+        assertEquals(firstHour, marketHistoryRepository.findLatestCompletedHourlyCandleOpenTimeBefore(
                 symbolId,
-                missingLastHour.plusSeconds(1800)
+                secondHour
         ).orElseThrow());
+    }
+
+    @Test
+    @ResourceLock(Resources.TIME_ZONE)
+    void mapsCandleTimesAsUtcWhenJvmDefaultTimezoneIsNotUtc() {
+        TimeZone originalTimeZone = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+        try {
+            Long symbolId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM market_symbols WHERE symbol = 'BTCUSDT'", Long.class);
+            Instant minuteOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+            Instant hourOpenTime = Instant.parse("2026-04-17T07:00:00Z");
+
+            marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
+                    symbolId,
+                    minuteOpenTime,
+                    minuteOpenTime.plusSeconds(60),
+                    101000,
+                    101200,
+                    100900,
+                    101100,
+                    1.0,
+                    101100.0
+            ));
+            marketHistoryRepository.saveHourlyCandle(hourly(symbolId, hourOpenTime));
+
+            assertEquals(minuteOpenTime, marketHistoryRepository.findMinuteCandle(symbolId, minuteOpenTime)
+                    .orElseThrow()
+                    .openTime());
+            assertEquals(hourOpenTime, marketHistoryRepository.findHourlyCandle(symbolId, hourOpenTime)
+                    .orElseThrow()
+                    .openTime());
+            assertEquals(LocalDateTime.parse("2026-04-17T06:00:00"), rawOpenTime("market_candles_1m"));
+            assertEquals(LocalDateTime.parse("2026-04-17T07:00:00"), rawOpenTime("market_candles_1h"));
+        } finally {
+            TimeZone.setDefault(originalTimeZone);
+        }
+    }
+
+    private LocalDateTime rawOpenTime(String tableName) {
+        Supplier<LocalDateTime> query = switch (tableName) {
+            case "market_candles_1m" -> () -> jdbcTemplate.queryForObject(
+                    "SELECT open_time FROM market_candles_1m",
+                    LocalDateTime.class
+            );
+            case "market_candles_1h" -> () -> jdbcTemplate.queryForObject(
+                    "SELECT open_time FROM market_candles_1h",
+                    LocalDateTime.class
+            );
+            default -> throw new AssertionError("Unsupported market candle table: " + tableName);
+        };
+        LocalDateTime openTime = query.get();
+        if (openTime == null) {
+            throw new AssertionError("open_time was null in " + tableName);
+        }
+        return openTime;
     }
 
     private int count(String tableName) {
@@ -176,26 +233,8 @@ class MarketHistoryPersistenceRepositoryTest {
         return count == null ? 0 : count;
     }
 
-    private void saveHourWithMinutesExcept(Long symbolId, Instant hourOpenTime, int missingMinuteIndex) {
-        for (int minute = 0; minute < 60; minute++) {
-            if (minute == missingMinuteIndex) {
-                continue;
-            }
-            Instant openTime = hourOpenTime.plusSeconds(minute * 60L);
-            marketHistoryRepository.saveMinuteCandle(new MarketHistoryCandle(
-                    symbolId,
-                    openTime,
-                    openTime.plusSeconds(60),
-                    101000 + minute,
-                    101500 + minute,
-                    100500 + minute,
-                    101250 + minute,
-                    10.0,
-                    1012500.0
-            ));
-        }
-
-        marketHistoryRepository.saveHourlyCandle(new HourlyMarketCandle(
+    private static HourlyMarketCandle hourly(Long symbolId, Instant hourOpenTime) {
+        return new HourlyMarketCandle(
                 symbolId,
                 hourOpenTime,
                 hourOpenTime.plusSeconds(3600),
@@ -207,7 +246,7 @@ class MarketHistoryPersistenceRepositoryTest {
                 1012500.0,
                 hourOpenTime,
                 hourOpenTime.plusSeconds(3600)
-        ));
+        );
     }
 
     @TestConfiguration

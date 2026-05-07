@@ -12,26 +12,35 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 public class MarketHistoryRecorder {
     private final MarketHistoryRepository marketHistoryRepository;
+    private final CompletedHourlyCandleBuilder completedHourlyCandleBuilder;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     @Autowired
     public MarketHistoryRecorder(
             MarketHistoryRepository marketHistoryRepository,
+            CompletedHourlyCandleBuilder completedHourlyCandleBuilder,
             AfterCommitEventPublisher afterCommitEventPublisher
     ) {
         this.marketHistoryRepository = marketHistoryRepository;
+        this.completedHourlyCandleBuilder = completedHourlyCandleBuilder;
         this.afterCommitEventPublisher = afterCommitEventPublisher;
     }
 
-    public MarketHistoryRecorder(MarketHistoryRepository marketHistoryRepository) {
-        this(marketHistoryRepository, null);
+    /**
+     * Test convenience constructor. CompletedHourlyCandleBuilder is stateless and has no Spring-managed dependencies.
+     */
+    MarketHistoryRecorder(MarketHistoryRepository marketHistoryRepository) {
+        this(marketHistoryRepository, new CompletedHourlyCandleBuilder(), null);
     }
 
     @Transactional
@@ -151,13 +160,35 @@ public class MarketHistoryRecorder {
                 hourlyOpenTime,
                 hourlyCloseTime
         );
-        if (hourlyCandles.isEmpty()) {
+        Optional<HourlyMarketCandle> completedHourlyCandle =
+                completedHourlyCandleBuilder.build(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
+        if (completedHourlyCandle.isPresent()) {
+            marketHistoryRepository.saveHourlyCandle(completedHourlyCandle.orElseThrow());
             return;
         }
 
-        marketHistoryRepository.saveHourlyCandle(
-                HourlyMarketCandle.rollup(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles)
-        );
+        reportSkippedHourlyRebuild(symbolId, hourlyOpenTime, hourlyCandles);
+    }
+
+    private void reportSkippedHourlyRebuild(
+            long symbolId,
+            Instant hourlyOpenTime,
+            List<MarketHistoryCandle> hourlyCandles
+    ) {
+        if (hourlyCandles.isEmpty()) {
+            log.debug("Skip hourly rebuild because source minute coverage is empty. symbolId={} openTime={}",
+                    symbolId, hourlyOpenTime);
+            return;
+        }
+
+        /*
+         * Persisted hourly candles are authoritative for completed-hour reads.
+         * Partial minute coverage must not repair, overwrite, or delete an existing hourly row.
+         */
+        log.warn(
+                "Incomplete source minute coverage; leaving persisted hourly candle unchanged. "
+                        + "symbolId={} openTime={} sourceCount={}",
+                symbolId, hourlyOpenTime, hourlyCandles.size());
     }
 
     private Instant truncate(Instant instant, ChronoUnit unit) {

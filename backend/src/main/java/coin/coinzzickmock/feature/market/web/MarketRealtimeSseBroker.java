@@ -166,18 +166,7 @@ public class MarketRealtimeSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed(CLIENT_REPLACED_REASON);
-        logLifecycle(symbol, "replace", CLIENT_REPLACED_REASON);
-    }
-
-    private void logLifecycle(String symbol, String action, String reason) {
-        log.info("sse_lifecycle stream={} action={} reason={} symbol={} active_emitters={} total_active_emitters={}",
-                STREAM,
-                action,
-                reason,
-                symbol,
-                subscriptions.subscriberCount(symbol),
-                subscriptions.totalSubscriberCount());
+        recordConnectionClosed("client_replaced");
     }
 
     private void recordConnectionOpened() {

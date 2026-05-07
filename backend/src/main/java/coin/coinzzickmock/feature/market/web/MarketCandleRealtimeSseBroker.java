@@ -411,19 +411,7 @@ public class MarketCandleRealtimeSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed(CLIENT_REPLACED_REASON);
-        logLifecycle(key, "replace", CLIENT_REPLACED_REASON);
-    }
-
-    private void logLifecycle(SubscriptionKey key, String action, String reason) {
-        log.info("sse_lifecycle stream={} action={} reason={} symbol={} interval={} active_emitters={} total_active_emitters={}",
-                STREAM,
-                action,
-                reason,
-                key.symbol(),
-                key.interval().value(),
-                subscriptions.subscriberCount(key),
-                subscriptions.totalSubscriberCount());
+        recordConnectionClosed("client_replaced");
     }
 
     private void recordConnectionOpened() {

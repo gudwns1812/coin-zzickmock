@@ -17,7 +17,7 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.", Level.DEBUG),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.", Level.DEBUG),
     FORBIDDEN(HttpStatus.FORBIDDEN, "요청한 작업을 수행할 권한이 없습니다.", Level.INFO),
-    TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다.", Level.WARN),
+    TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다.", Level.INFO),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다.", Level.DEBUG),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.", Level.ERROR);
 

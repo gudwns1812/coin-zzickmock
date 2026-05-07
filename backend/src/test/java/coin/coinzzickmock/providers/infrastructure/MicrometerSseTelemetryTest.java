@@ -100,14 +100,14 @@ class MicrometerSseTelemetryTest {
         MicrometerSseTelemetry telemetry = new MicrometerSseTelemetry(registry);
 
         telemetry.connectionOpened("market");
-        telemetry.connectionClosed("market", "replaced");
+        telemetry.connectionClosed("market", "client_replaced");
 
         assertThat(registry.counter(
                 "sse.connections.closed.total",
                 "stream",
                 "market",
                 "reason",
-                "replaced"
+                "client_replaced"
         ).count()).isEqualTo(1);
     }
 

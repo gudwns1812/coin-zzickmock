@@ -30,7 +30,7 @@ public class MicrometerSseTelemetry implements SseTelemetry {
             "error",
             "send_failure",
             "executor_rejected",
-            "replaced",
+            "client_replaced",
             "unknown"
     );
     private static final Set<String> RESULTS = Set.of("success", "failure");

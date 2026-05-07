@@ -97,7 +97,7 @@ class TradingExecutionSseBrokerTest {
 
         assertThat(first.events()).isEmpty();
         assertThat(second.events()).hasSize(1);
-        assertThat(telemetry.events()).contains("closed:trading_execution:replaced");
+        assertThat(telemetry.events()).contains("closed:trading_execution:client_replaced");
     }
 
     @Test

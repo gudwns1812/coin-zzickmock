@@ -269,7 +269,7 @@ class MarketRealtimeSseBrokerTest {
         assertThat(first.completed()).isTrue();
         assertThat(first.events()).isEmpty();
         assertThat(second.events()).hasSize(1);
-        assertThat(telemetry.events()).contains("closed:market:replaced");
+        assertThat(telemetry.events()).contains("closed:market:client_replaced");
     }
 
     @Test

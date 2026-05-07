@@ -155,7 +155,7 @@ public class TradingExecutionSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed("replaced");
+        recordConnectionClosed("client_replaced");
     }
 
     private void recordConnectionOpened() {

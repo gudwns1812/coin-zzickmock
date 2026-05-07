@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "tsc --noEmit",
     "test": "node --test \"app/layout.test.ts\" \"lib/*.test.ts\" \"components/futures/*.test.ts\""
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.8.0",
+    "@next/bundle-analyzer": "^15.5.14",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19.1.8",

@@ -95,7 +95,7 @@ class MicrometerSseTelemetryTest {
         ).count()).isEqualTo(1);
     }
     @Test
-    void keepsReplacedCloseReasonInBoundedBucket() {
+    void keepsClientReplacedCloseReasonInBoundedBucket() {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         MicrometerSseTelemetry telemetry = new MicrometerSseTelemetry(registry);
 

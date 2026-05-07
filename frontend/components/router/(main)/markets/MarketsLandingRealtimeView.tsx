@@ -6,6 +6,7 @@ import type {
 } from "@/components/router/(main)/markets/MarketsLanding";
 import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
+import { useSseClientKey } from "@/hooks/useSseClientKey";
 import type { EventSourceReconnectStatus } from "@/hooks/resilientEventSourcePolicy";
 import type { MarketApiResponse } from "@/lib/futures-api";
 import {
@@ -14,6 +15,7 @@ import {
   type MarketSnapshot,
   type MarketSymbol,
 } from "@/lib/markets";
+import { appendSseClientKey } from "@/lib/sse-client-key";
 import {
   startTransition,
   useCallback,
@@ -359,11 +361,16 @@ function MarketLandingStreamSubscription({
   onRecovering,
   onStatusChange,
 }: MarketLandingStreamSubscriptionProps) {
+  const sseClientKey = useSseClientKey();
+  const streamUrl = appendSseClientKey(
+    `/api/futures/markets/${encodeURIComponent(symbol)}/stream`,
+    sseClientKey
+  );
   const { status } = useResilientEventSource({
     onError: onRecovering,
     onMessage,
     onReconnect: onRecovering,
-    url: `/api/futures/markets/${encodeURIComponent(symbol)}/stream`,
+    url: streamUrl,
   });
 
   useEffect(() => {

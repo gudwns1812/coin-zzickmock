@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
+import coin.coinzzickmock.common.web.SseClientKey;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
@@ -102,9 +103,17 @@ public class MarketController {
         return ApiResponse.success(candles.stream().map(MarketCandleResponse::from).toList());
     }
 
+    public SseEmitter stream(String symbol) {
+        return stream(symbol, null);
+    }
+
     @GetMapping(value = "/{symbol}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@PathVariable String symbol) {
-        MarketRealtimeSseBroker.SseSubscriptionPermit permit = marketRealtimeSseBroker.reserve(symbol);
+    public SseEmitter stream(
+            @PathVariable String symbol,
+            @RequestParam(required = false) String clientKey
+    ) {
+        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
+        MarketRealtimeSseBroker.SseSubscriptionPermit permit = marketRealtimeSseBroker.reserve(symbol, resolvedClientKey);
         SseEmitter emitter = createEmitter();
         try {
             MarketSummaryResult currentMarket = getMarketSummaryService.getMarket(new GetMarketQuery(symbol));
@@ -121,12 +130,24 @@ public class MarketController {
         }
     }
 
+    public SseEmitter candleStream(String symbol, String interval) {
+        return candleStream(symbol, interval, null);
+    }
+
     @GetMapping(value = "/{symbol}/candles/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter candleStream(@PathVariable String symbol, @RequestParam String interval) {
+    public SseEmitter candleStream(
+            @PathVariable String symbol,
+            @RequestParam String interval,
+            @RequestParam(required = false) String clientKey
+    ) {
+        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
         MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
         MarketCandleRealtimeSseBroker.SubscriptionKey key =
                 new MarketCandleRealtimeSseBroker.SubscriptionKey(symbol, candleInterval);
-        MarketCandleRealtimeSseBroker.SseSubscriptionPermit permit = marketCandleRealtimeSseBroker.reserve(key);
+        MarketCandleRealtimeSseBroker.SseSubscriptionPermit permit = marketCandleRealtimeSseBroker.reserve(
+                key,
+                resolvedClientKey
+        );
         SseEmitter emitter = createEmitter();
         try {
             if (currentMarketCandleBootstrapper != null) {

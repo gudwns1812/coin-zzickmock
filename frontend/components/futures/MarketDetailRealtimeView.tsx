@@ -11,6 +11,7 @@ import {
 import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
+import { useSseClientKey } from "@/hooks/useSseClientKey";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import type {
@@ -23,6 +24,7 @@ import type {
   MarketApiResponse,
 } from "@/lib/futures-api";
 import { isEditableOpenLimitOrder } from "@/lib/futures-open-order-actions";
+import { appendSseClientKey } from "@/lib/sse-client-key";
 import { formatFundingCountdown } from "@/lib/funding-countdown";
 import {
   formatCompactUsd,
@@ -99,6 +101,20 @@ export default function MarketDetailRealtimeView({
   >([]);
   const lastOrderResumeRefreshAtRef = useRef(0);
 
+  const sseClientKey = useSseClientKey();
+  const marketStreamUrl = useMemo(
+    () =>
+      appendSseClientKey(
+        `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`,
+        sseClientKey
+      ),
+    [initialMarket.symbol, sseClientKey]
+  );
+  const orderStreamUrl = useMemo(
+    () => appendSseClientKey("/api/futures/orders/stream", sseClientKey),
+    [sseClientKey]
+  );
+
   const handleMarketStreamMessage = useCallback((event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data) as MarketApiResponse;
@@ -129,7 +145,7 @@ export default function MarketDetailRealtimeView({
 
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,
-    url: `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`,
+    url: marketStreamUrl,
   });
 
   useEffect(() => {
@@ -187,7 +203,7 @@ export default function MarketDetailRealtimeView({
     enabled: isAuthenticated,
     onMessage: handleOrderStreamMessage,
     onReconnect: refreshOnOrderStreamResume,
-    url: "/api/futures/orders/stream",
+    url: orderStreamUrl,
   });
 
   useEffect(() => {

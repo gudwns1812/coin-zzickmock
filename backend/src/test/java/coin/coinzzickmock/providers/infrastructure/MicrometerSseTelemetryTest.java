@@ -94,4 +94,21 @@ class MicrometerSseTelemetryTest {
                 "failure"
         ).count()).isEqualTo(1);
     }
+    @Test
+    void keepsReplacedCloseReasonInBoundedBucket() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MicrometerSseTelemetry telemetry = new MicrometerSseTelemetry(registry);
+
+        telemetry.connectionOpened("market");
+        telemetry.connectionClosed("market", "replaced");
+
+        assertThat(registry.counter(
+                "sse.connections.closed.total",
+                "stream",
+                "market",
+                "reason",
+                "replaced"
+        ).count()).isEqualTo(1);
+    }
+
 }

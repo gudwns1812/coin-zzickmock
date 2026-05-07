@@ -9,7 +9,7 @@ import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
@@ -50,23 +50,30 @@ public class MarketRealtimeSseBroker {
     }
 
     public SseSubscriptionPermit reserve(String symbol) {
-        var reservation = subscriptions.reserve(symbol);
+        return reserve(subscriptions.reserve(symbol));
+    }
+
+    public SseSubscriptionPermit reserve(String symbol, String clientKey) {
+        return reserve(subscriptions.reserve(symbol, clientKey));
+    }
+
+    private SseSubscriptionPermit reserve(SseSubscriptionRegistry.Reservation<String> reservation) {
         if (reservation.accepted()) {
             return new SseSubscriptionPermit(reservation.permit());
         }
-        if (reservation.rejection() == ReservationRejection.TOTAL_LIMIT) {
-            recordConnectionRejected("total_limit");
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
-        }
-
-        recordConnectionRejected("symbol_limit");
+        reject(reservation.rejection());
         throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
         bindLifecycle(permit, emitter);
-        subscriptions.register(permit.delegate, emitter);
+        var registration = subscriptions.register(permit.delegate, emitter);
+        if (!registration.registered()) {
+            reject(registration.rejection());
+            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+        }
         recordConnectionOpened();
+        completeReplacedEmitter(registration.replacedEmitter());
     }
 
     public void unregister(String symbol, SseEmitter emitter) {
@@ -79,6 +86,12 @@ public class MarketRealtimeSseBroker {
         }
     }
 
+    private void unregister(String symbol, String clientKey, SseEmitter emitter, String reason) {
+        if (subscriptions.unregister(symbol, clientKey, emitter)) {
+            recordConnectionClosed(reason);
+        }
+    }
+
     public void release(SseSubscriptionPermit permit) {
         subscriptions.release(permit.delegate);
     }
@@ -86,8 +99,8 @@ public class MarketRealtimeSseBroker {
     @EventListener
     public void onMarketUpdated(MarketSummaryUpdatedEvent event) {
         String symbol = event.result().symbol();
-        CopyOnWriteArrayList<SseEmitter> symbolEmitters = subscriptions.subscribers(symbol);
-        if (symbolEmitters == null || symbolEmitters.isEmpty()) {
+        List<SseEmitter> symbolEmitters = subscriptions.subscribers(symbol);
+        if (symbolEmitters.isEmpty()) {
             return;
         }
 
@@ -101,14 +114,14 @@ public class MarketRealtimeSseBroker {
     }
 
     private void bindLifecycle(SseSubscriptionPermit permit, SseEmitter emitter) {
-        emitter.onCompletion(() -> unregister(permit.symbol(), emitter, "client_complete"));
+        emitter.onCompletion(() -> unregister(permit.symbol(), permit.clientKey(), emitter, "client_complete"));
         emitter.onTimeout(() -> {
-            unregister(permit.symbol(), emitter, "timeout");
+            unregister(permit.symbol(), permit.clientKey(), emitter, "timeout");
             emitter.complete();
         });
         emitter.onError(error -> {
             log.debug("Market SSE emitter reported an error; closing subscription. symbol={}", permit.symbol(), error);
-            unregister(permit.symbol(), emitter, "error");
+            unregister(permit.symbol(), permit.clientKey(), emitter, "error");
         });
     }
 
@@ -124,9 +137,30 @@ public class MarketRealtimeSseBroker {
         }
     }
 
-    private void sendToSubscribers(String symbol, CopyOnWriteArrayList<SseEmitter> symbolEmitters,
+    private void sendToSubscribers(String symbol, List<SseEmitter> symbolEmitters,
                                    MarketSummaryResponse response) {
         symbolEmitters.forEach(emitter -> send(symbol, emitter, response));
+    }
+
+
+    private void reject(ReservationRejection rejection) {
+        if (rejection == ReservationRejection.TOTAL_LIMIT) {
+            recordConnectionRejected("total_limit");
+            return;
+        }
+        recordConnectionRejected("symbol_limit");
+    }
+
+    private void completeReplacedEmitter(SseEmitter replacedEmitter) {
+        if (replacedEmitter == null) {
+            return;
+        }
+        try {
+            replacedEmitter.complete();
+        } catch (RuntimeException ignored) {
+            // The replaced client may already be closed.
+        }
+        recordConnectionClosed("replaced");
     }
 
     private void recordConnectionOpened() {
@@ -182,6 +216,10 @@ public class MarketRealtimeSseBroker {
 
         public String symbol() {
             return delegate.key();
+        }
+
+        public String clientKey() {
+            return delegate.clientKey();
         }
     }
 }

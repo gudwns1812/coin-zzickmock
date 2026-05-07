@@ -82,6 +82,39 @@ class TradingExecutionSseBrokerTest {
         assertThat(rejectedTelemetry.events()).contains("executor:trading_execution");
     }
 
+
+    @Test
+    void replacesDuplicateClientKeyEvenWhenMemberLimitIsFull() {
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        TradingExecutionSseBroker broker = new TradingExecutionSseBroker(Runnable::run, 1, 1, telemetry);
+        CapturingSseEmitter first = new CapturingSseEmitter();
+        CapturingSseEmitter second = new CapturingSseEmitter();
+
+        broker.register(broker.reserve(1L, "tab-1"), first);
+        broker.register(broker.reserve(1L, "tab-1"), second);
+
+        broker.onTradingExecution(event());
+
+        assertThat(first.events()).isEmpty();
+        assertThat(second.events()).hasSize(1);
+        assertThat(telemetry.events()).contains("closed:trading_execution:replaced");
+    }
+
+    @Test
+    void sendsExecutionEventsToDifferentClientKeysForSameMember() {
+        TradingExecutionSseBroker broker = new TradingExecutionSseBroker(Runnable::run, 2, 2);
+        CapturingSseEmitter first = new CapturingSseEmitter();
+        CapturingSseEmitter second = new CapturingSseEmitter();
+
+        broker.register(broker.reserve(1L, "tab-1"), first);
+        broker.register(broker.reserve(1L, "tab-2"), second);
+
+        broker.onTradingExecution(event());
+
+        assertThat(first.events()).hasSize(1);
+        assertThat(second.events()).hasSize(1);
+    }
+
     private TradingExecutionEvent event() {
         return TradingExecutionEvent.orderFilled(
                 1L,

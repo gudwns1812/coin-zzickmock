@@ -57,14 +57,14 @@ class MarketControllerTest {
                 0.2
         );
         when(service.getMarket(org.mockito.ArgumentMatchers.any())).thenReturn(market);
-        when(broker.reserve("BTCUSDT")).thenReturn(permit);
+        when(broker.reserve(eq("BTCUSDT"), org.mockito.ArgumentMatchers.anyString())).thenReturn(permit);
 
         MarketController controller = new TestableMarketController(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
 
         SseEmitter emitter = controller.stream("BTCUSDT");
 
         assertTrue(((FailingSseEmitter) emitter).completed);
-        verify(broker).reserve("BTCUSDT");
+        verify(broker).reserve(eq("BTCUSDT"), org.mockito.ArgumentMatchers.anyString());
         verify(broker).release(permit);
         verify(broker, never()).register(eq(permit), any(SseEmitter.class));
     }
@@ -84,14 +84,14 @@ class MarketControllerTest {
                 0.2
         );
         when(service.getMarket(org.mockito.ArgumentMatchers.any())).thenReturn(market);
-        when(broker.reserve("BTCUSDT")).thenReturn(permit);
+        when(broker.reserve(eq("BTCUSDT"), org.mockito.ArgumentMatchers.anyString())).thenReturn(permit);
 
         MarketController controller = controller(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
 
         SseEmitter emitter = controller.stream("BTCUSDT");
 
         assertTrue(emitter != null);
-        verify(broker).reserve("BTCUSDT");
+        verify(broker).reserve(eq("BTCUSDT"), org.mockito.ArgumentMatchers.anyString());
         verify(broker).register(eq(permit), any(SseEmitter.class));
     }
 
@@ -107,7 +107,7 @@ class MarketControllerTest {
         );
         MarketCandleRealtimeSseBroker.SseSubscriptionPermit permit =
                 mock(MarketCandleRealtimeSseBroker.SseSubscriptionPermit.class);
-        when(candleBroker.reserve(key)).thenReturn(permit);
+        when(candleBroker.reserve(eq(key), org.mockito.ArgumentMatchers.anyString())).thenReturn(permit);
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RealtimeMarketCandleProjector projector = new RealtimeMarketCandleProjector(store);
         Instant open = Instant.parse("2026-04-30T04:00:00Z");
@@ -137,7 +137,7 @@ class MarketControllerTest {
         SseEmitter emitter = controller.candleStream("BTCUSDT", "1m");
 
         assertTrue(((FailingSseEmitter) emitter).completed);
-        verify(candleBroker).reserve(key);
+        verify(candleBroker).reserve(eq(key), org.mockito.ArgumentMatchers.anyString());
         verify(candleBroker).release(permit);
         verify(candleBroker, never()).register(eq(permit), any(SseEmitter.class));
     }
@@ -155,7 +155,7 @@ class MarketControllerTest {
         );
         MarketCandleRealtimeSseBroker.SseSubscriptionPermit permit =
                 mock(MarketCandleRealtimeSseBroker.SseSubscriptionPermit.class);
-        when(candleBroker.reserve(key)).thenReturn(permit);
+        when(candleBroker.reserve(eq(key), org.mockito.ArgumentMatchers.anyString())).thenReturn(permit);
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RealtimeMarketCandleProjector projector = new RealtimeMarketCandleProjector(store);
         Instant open = Instant.parse("2026-04-30T04:00:00Z");
@@ -189,7 +189,7 @@ class MarketControllerTest {
         controller.candleStream("BTCUSDT", "1m");
 
         org.mockito.InOrder inOrder = inOrder(candleBroker, bootstrapper);
-        inOrder.verify(candleBroker).reserve(key);
+        inOrder.verify(candleBroker).reserve(eq(key), org.mockito.ArgumentMatchers.anyString());
         inOrder.verify(bootstrapper).bootstrapIfNeeded("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
         inOrder.verify(candleBroker).register(eq(permit), any(SseEmitter.class));
         verify(candleBroker, never()).release(permit);
@@ -215,12 +215,12 @@ class MarketControllerTest {
                 MarketCandleInterval.ONE_MINUTE
         );
         CoreException exception = new CoreException(ErrorCode.TOO_MANY_REQUESTS);
-        org.mockito.Mockito.doThrow(exception).when(candleBroker).reserve(key);
+        org.mockito.Mockito.doThrow(exception).when(candleBroker).reserve(eq(key), org.mockito.ArgumentMatchers.anyString());
 
         CoreException thrown = assertThrows(CoreException.class, () -> controller.candleStream("BTCUSDT", "1m"));
 
         assertTrue(thrown.errorCode() == ErrorCode.TOO_MANY_REQUESTS);
-        verify(candleBroker).reserve(key);
+        verify(candleBroker).reserve(eq(key), org.mockito.ArgumentMatchers.anyString());
         verify(candleBroker, never()).register(any(), any());
     }
 
@@ -230,13 +230,13 @@ class MarketControllerTest {
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketController controller = controller(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
         CoreException exception = new CoreException(ErrorCode.TOO_MANY_REQUESTS);
-        org.mockito.Mockito.doThrow(exception).when(broker).reserve("BTCUSDT");
+        org.mockito.Mockito.doThrow(exception).when(broker).reserve(eq("BTCUSDT"), org.mockito.ArgumentMatchers.anyString());
 
         CoreException thrown = assertThrows(CoreException.class, () -> controller.stream("BTCUSDT"));
 
         assertTrue(thrown.errorCode() == ErrorCode.TOO_MANY_REQUESTS);
         verify(service, never()).getMarket(any());
-        verify(broker).reserve("BTCUSDT");
+        verify(broker).reserve(eq("BTCUSDT"), org.mockito.ArgumentMatchers.anyString());
         verify(broker, never()).register(any(), any());
     }
 
@@ -246,13 +246,13 @@ class MarketControllerTest {
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
         MarketController controller = controller(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
-        when(broker.reserve("UNSUPPORTED")).thenReturn(permit);
+        when(broker.reserve(eq("UNSUPPORTED"), org.mockito.ArgumentMatchers.anyString())).thenReturn(permit);
         when(service.getMarket(any())).thenThrow(new CoreException(ErrorCode.MARKET_NOT_FOUND));
 
         CoreException thrown = assertThrows(CoreException.class, () -> controller.stream("UNSUPPORTED"));
 
         assertTrue(thrown.errorCode() == ErrorCode.MARKET_NOT_FOUND);
-        verify(broker).reserve("UNSUPPORTED");
+        verify(broker).reserve(eq("UNSUPPORTED"), org.mockito.ArgumentMatchers.anyString());
         verify(broker).release(permit);
         verify(broker, never()).register(eq(permit), any(SseEmitter.class));
     }

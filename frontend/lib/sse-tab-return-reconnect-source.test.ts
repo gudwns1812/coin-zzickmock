@@ -81,3 +81,30 @@ test("frontend SSE route handlers use the cancellable SSE proxy", () => {
   assert.equal(proxySource.includes("start(controller)"), true);
   assert.equal(proxySource.includes("async cancel()"), true);
 });
+
+test("frontend SSE routes require and forward clientKey", () => {
+  const routeSources = [
+    "app/api/futures/markets/[symbol]/stream/route.ts",
+    "app/api/futures/markets/[symbol]/candles/stream/route.ts",
+    "app/api/futures/orders/stream/route.ts",
+  ].map(readFrontendSource);
+
+  for (const source of routeSources) {
+    assert.equal(source.includes("readRequiredSseClientKey(request.url)"), true);
+    assert.equal(source.includes("Missing SSE client key"), true);
+    assert.equal(source.includes("SSE_CLIENT_KEY_PARAM"), true);
+  }
+});
+
+test("frontend SSE consumers append tab clientKey through the shared helper", () => {
+  const sources = [
+    "components/router/(main)/markets/MarketsLandingRealtimeView.tsx",
+    "components/futures/MarketDetailRealtimeView.tsx",
+    "components/futures/FuturesPriceChart.tsx",
+  ].map(readFrontendSource);
+
+  for (const source of sources) {
+    assert.equal(source.includes("useSseClientKey"), true);
+    assert.equal(source.includes("appendSseClientKey"), true);
+  }
+});

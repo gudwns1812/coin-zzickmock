@@ -74,6 +74,7 @@ Implemented `reason` values:
 - `error`
 - `send_failure`
 - `executor_rejected`
+- `replaced`
 - `unknown`
 
 Executor queue depth is not implemented yet; add a separate bounded queue gauge only if the executor exposes stable queue depth.

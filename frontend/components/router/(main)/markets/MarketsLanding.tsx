@@ -11,6 +11,7 @@ import {
   type MarketSnapshot,
   type MarketSymbol,
 } from "@/lib/markets";
+import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import {
   Trophy,
   TrendingUp,
@@ -88,11 +89,11 @@ export default function MarketsLanding({
           <h1 className="text-4xl-custom font-bold text-main-dark-gray">
             메인 대시보드
           </h1>
-          <p className="mt-3 text-base-custom text-main-dark-gray/60">
+          <p className="mt-3 text-base-custom text-main-dark-gray">
             포트폴리오 및 시장 현황
           </p>
         </div>
-        <p className="text-xs-custom text-main-dark-gray/50">
+        <p className="text-xs-custom text-main-dark-gray">
           Last update: {lastUpdatedLabel}
         </p>
       </section>
@@ -122,7 +123,7 @@ export default function MarketsLanding({
                   className={`rounded-main px-3 py-2 text-xs-custom font-semibold transition-all duration-200 ${
                     isActive
                       ? "bg-main-blue text-white shadow-md"
-                      : "text-main-dark-gray/60 hover:bg-main-blue/10 hover:text-main-blue"
+                      : "text-main-dark-gray hover:bg-main-blue/10 hover:text-main-blue"
                   }`}
                 >
                   {button.label}
@@ -142,7 +143,7 @@ export default function MarketsLanding({
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed">
             <thead className="bg-main-blue/[0.02]">
-              <tr className="text-left text-xs-custom text-main-dark-gray/60">
+              <tr className="text-left text-xs-custom text-main-dark-gray">
                 <th className="px-main py-5 font-medium">코인</th>
                 <th className="px-main py-5 font-medium">가격</th>
                 <th className="px-main py-5 font-medium">24h 변동</th>
@@ -182,7 +183,7 @@ export default function MarketsLanding({
         </div>
 
         {rankingEntries.length === 0 ? (
-          <div className="px-main-2 py-8 text-sm-custom text-main-dark-gray/62">
+          <div className="px-main-2 py-8 text-sm-custom text-main-dark-gray">
             데이터 집계 중
           </div>
         ) : (
@@ -204,7 +205,7 @@ function SummaryMetricCard({ card }: { card: DashboardSummaryCard }) {
           panel: "border-white/50 bg-main-blue/[0.04]",
           icon: "bg-main-blue/15 text-main-blue shadow-sm",
           value: "text-main-dark-gray",
-          support: "text-main-dark-gray/55",
+          support: "text-main-dark-gray",
         }
       : card.tone === "positive"
         ? {
@@ -231,7 +232,7 @@ function SummaryMetricCard({ card }: { card: DashboardSummaryCard }) {
           <SummaryIcon icon={card.icon} />
         </div>
         <div>
-          <p className="text-xs-custom text-main-dark-gray/60">{card.title}</p>
+          <p className="text-xs-custom text-main-dark-gray">{card.title}</p>
           <p className={`mt-3 text-3xl-custom font-bold ${toneClassName.value}`}>
             {card.value}
           </p>
@@ -259,8 +260,8 @@ function MarketTableRow({
   market: MarketSnapshot;
   priceFlash?: PriceFlashRenderState;
 }) {
-  const changeClassName = market.change24h >= 0 ? "text-main-red" : "text-main-blue";
-  const fundingClassName = market.fundingRate >= 0 ? "text-main-red" : "text-main-blue";
+  const changeClassName = getSignedFinancialTextClassName(market.change24h);
+  const fundingClassName = getSignedFinancialTextClassName(market.fundingRate);
   const flashTone = priceFlash?.tone;
   const flashIntensity = priceFlash?.intensity ?? 0;
   const overlayClassName =
@@ -287,7 +288,7 @@ function MarketTableRow({
             <p className="font-semibold text-main-dark-gray">
               {market.symbol.replace("USDT", "")}
             </p>
-            <p className="mt-1 text-xs-custom text-main-dark-gray/55">
+            <p className="mt-1 text-xs-custom text-main-dark-gray">
               {market.assetName}
             </p>
           </div>
@@ -349,7 +350,9 @@ function RankingRow({ entry }: { entry: MarketRankingEntry }) {
       <p className="text-sm-custom font-semibold text-main-dark-gray">
         {formatUsd(entry.walletBalance)}
       </p>
-      <p className="text-sm-custom font-bold text-[#16a34a]">
+      <p
+        className={`text-sm-custom font-bold ${getSignedFinancialTextClassName(entry.profitRate)}`}
+      >
         {formatPercent(entry.profitRate * 100)}
       </p>
     </div>

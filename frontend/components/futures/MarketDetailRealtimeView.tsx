@@ -12,6 +12,7 @@ import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
+import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import type {
   FuturesAccountSummary,
   FuturesOpenOrder,
@@ -496,7 +497,15 @@ function TradingBlotter({
             );
           })}
         </div>
-        <p className="pb-3 text-xs-custom font-semibold text-main-dark-gray/60">
+        <p
+          className={[
+            "pb-3 text-xs-custom font-semibold",
+            getSignedFinancialTextClassName(
+              unrealizedPnl,
+              "text-main-dark-gray/60"
+            ),
+          ].join(" ")}
+        >
           미실현 손익 {formatSignedUsd(unrealizedPnl)}
         </p>
       </div>

@@ -9,6 +9,11 @@ import {
   buildKstMonthCalendar,
   toKstDateKey,
 } from "@/lib/futures-pnl-calendar";
+import {
+  getSignedFinancialBadgeClassName,
+  getSignedFinancialTextClassName,
+  getSignedFinancialTone,
+} from "@/lib/financial-tone";
 import { formatUsd } from "@/lib/markets";
 import { Eye, TrendingDown, TrendingUp } from "lucide-react";
 
@@ -44,8 +49,8 @@ export default async function MyPageAssetsPage() {
             <div className="flex min-w-0 flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 text-sm-custom font-semibold text-main-dark-gray/55">
-                <span>Total balance</span>
-                <Eye size={16} />
+                  <span>Total balance</span>
+                  <Eye size={16} />
                 </div>
                 <div className="mt-4 flex items-end gap-2">
                   <strong className="text-4xl-custom font-bold text-main-dark-gray">
@@ -67,7 +72,7 @@ export default async function MyPageAssetsPage() {
                 />
                 <BalanceMetric
                   label="Unrealized PnL"
-                  tone={unrealizedPnl >= 0 ? "positive" : "negative"}
+                  tone={getSignedFinancialTone(unrealizedPnl)}
                   value={formatSignedUsd(unrealizedPnl)}
                 />
               </div>
@@ -88,7 +93,9 @@ export default async function MyPageAssetsPage() {
               {monthLabel}
             </h2>
           </div>
-          <div className="rounded-main bg-main-light-gray/45 px-main py-2 text-sm-custom font-semibold text-main-dark-gray">
+          <div
+            className={`rounded-main px-main py-2 text-sm-custom font-semibold ${getSignedFinancialBadgeClassName(monthPnl)}`}
+          >
             월간 {formatSignedUsd(monthPnl)}
           </div>
         </div>
@@ -119,26 +126,34 @@ export default async function MyPageAssetsPage() {
                   {day.dayOfMonth}
                 </span>
                 {day.dailyWalletChange > 0 && (
-                  <TrendingUp size={14} className="text-main-red" />
+                  <TrendingUp
+                    size={14}
+                    className={getSignedFinancialTextClassName(
+                      day.dailyWalletChange
+                    )}
+                  />
                 )}
                 {day.dailyWalletChange < 0 && (
-                  <TrendingDown size={14} className="text-main-blue" />
+                  <TrendingDown
+                    size={14}
+                    className={getSignedFinancialTextClassName(
+                      day.dailyWalletChange
+                    )}
+                  />
                 )}
               </div>
               <p
                 className={[
                   "mt-3 text-sm-custom font-bold",
-                  day.dailyWalletChange > 0
-                    ? "text-main-red"
-                    : day.dailyWalletChange < 0
-                      ? "text-main-blue"
-                      : "text-main-dark-gray/35",
+                  getSignedFinancialTextClassName(
+                    day.dailyWalletChange,
+                    "text-main-dark-gray/35"
+                  ),
                 ].join(" ")}
               >
                 {day.dailyWalletChange === 0
                   ? "-"
                   : formatSignedUsd(day.dailyWalletChange)}
-                
               </p>
             </div>
           ))}
@@ -159,9 +174,9 @@ function BalanceMetric({
 }) {
   const toneClassName =
     tone === "positive"
-      ? "text-main-red"
+      ? getSignedFinancialTextClassName(1)
       : tone === "negative"
-        ? "text-main-blue"
+        ? getSignedFinancialTextClassName(-1)
         : "text-main-dark-gray";
 
   return (

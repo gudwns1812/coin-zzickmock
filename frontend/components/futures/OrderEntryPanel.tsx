@@ -7,7 +7,13 @@ import type {
   OrderPreviewRequest,
   OrderPreviewResponse,
 } from "@/lib/futures-api";
-import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
+import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
+import {
+  formatPercent,
+  formatSignedUsd,
+  formatUsd,
+  type MarketSymbol,
+} from "@/lib/markets";
 import {
   calculateMaxOpenOrderQuantity,
   formatFlooredQuantity,
@@ -606,13 +612,25 @@ export default function OrderEntryPanel({
             label="Unrealized PnL"
             value={
               accountSummary
-                ? formatUsd(accountSummary.totalUnrealizedPnl)
+                ? formatSignedUsd(accountSummary.totalUnrealizedPnl)
                 : "-"
+            }
+            valueClassName={
+              accountSummary
+                ? getSignedFinancialTextClassName(
+                    accountSummary.totalUnrealizedPnl
+                  )
+                : undefined
             }
           />
           <AccountLine
             label="ROI"
             value={accountSummary ? formatPercent(accountSummary.roi * 100) : "-"}
+            valueClassName={
+              accountSummary
+                ? getSignedFinancialTextClassName(accountSummary.roi)
+                : undefined
+            }
           />
         </div>
       </div>
@@ -1045,11 +1063,21 @@ function SummaryLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AccountLine({ label, value }: { label: string; value: string }) {
+function AccountLine({
+  label,
+  value,
+  valueClassName = "text-main-dark-gray",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 text-xs-custom">
       <span className="text-main-dark-gray/55">{label}</span>
-      <span className="text-right font-semibold text-main-dark-gray">{value}</span>
+      <span className={`text-right font-semibold ${valueClassName}`}>
+        {value}
+      </span>
     </div>
   );
 }

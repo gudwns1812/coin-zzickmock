@@ -96,7 +96,15 @@ test("frontend SSE routes require and forward clientKey", () => {
   }
 });
 
-test("frontend SSE consumers append tab clientKey through the shared helper", () => {
+test("useResilientEventSource appends tab clientKey at the shared hook boundary", () => {
+  const source = readFrontendSource("hooks/useResilientEventSource.ts");
+
+  assert.equal(source.includes("useSseClientKey"), true);
+  assert.equal(source.includes("appendSseClientKey"), true);
+  assert.equal(source.includes("eventSourceFactory(nextUrl)"), true);
+});
+
+test("frontend SSE consumers keep plain stream URLs and rely on the hook boundary", () => {
   const sources = [
     "components/router/(main)/markets/MarketsLandingRealtimeView.tsx",
     "components/futures/MarketDetailRealtimeView.tsx",
@@ -104,7 +112,10 @@ test("frontend SSE consumers append tab clientKey through the shared helper", ()
   ].map(readFrontendSource);
 
   for (const source of sources) {
-    assert.equal(source.includes("useSseClientKey"), true);
-    assert.equal(source.includes("appendSseClientKey"), true);
+    assert.equal(source.includes("useSseClientKey"), false);
+    assert.equal(source.includes("appendSseClientKey"), false);
   }
+
+  const chartSource = readFrontendSource("components/futures/FuturesPriceChart.tsx");
+  assert.equal(chartSource.includes("new URLSearchParams({ interval })"), true);
 });

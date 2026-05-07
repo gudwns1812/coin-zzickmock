@@ -2,10 +2,8 @@
 
 import type { FuturesOpenOrder, FuturesPosition } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
-import { appendSseClientKey } from "@/lib/sse-client-key";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
-import { useSseClientKey } from "@/hooks/useSseClientKey";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
@@ -265,10 +263,9 @@ export default function FuturesPriceChart({
     staleTime: 15_000,
   });
 
-  const sseClientKey = useSseClientKey();
   const candleStreamUrl = useMemo(
-    () => buildCandleStreamUrl(symbol, selectedInterval, sseClientKey),
-    [selectedInterval, sseClientKey, symbol]
+    () => buildCandleStreamUrl(symbol, selectedInterval),
+    [selectedInterval, symbol]
   );
 
   const candles = useMemo(() => {
@@ -1305,15 +1302,11 @@ function buildCandleRequestUrl(
 
 function buildCandleStreamUrl(
   symbol: MarketSymbol,
-  interval: FuturesCandleInterval,
-  clientKey: string | null
-): string | null {
+  interval: FuturesCandleInterval
+): string {
   const params = new URLSearchParams({ interval });
 
-  return appendSseClientKey(
-    `/api/futures/markets/${encodeURIComponent(symbol)}/candles/stream?${params.toString()}`,
-    clientKey
-  );
+  return `/api/futures/markets/${encodeURIComponent(symbol)}/candles/stream?${params.toString()}`;
 }
 
 function isCandleResponse(value: unknown): value is CandleResponse {

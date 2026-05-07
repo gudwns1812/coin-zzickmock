@@ -9,7 +9,9 @@ import {
   type EventSourceReconnectReason,
   type EventSourceReconnectStatus,
 } from "@/hooks/resilientEventSourcePolicy";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useSseClientKey } from "@/hooks/useSseClientKey";
+import { appendSseClientKey } from "@/lib/sse-client-key";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type EventSourceFactory = (url: string) => EventSource;
 
@@ -59,6 +61,11 @@ export function useResilientEventSource({
   reconnectOnOnline = true,
   reconnectOnVisible = true,
 }: UseResilientEventSourceOptions) {
+  const sseClientKey = useSseClientKey();
+  const eventSourceUrl = useMemo(
+    () => (url ? appendSseClientKey(url, sseClientKey) : null),
+    [sseClientKey, url]
+  );
   const callbacksRef = useRef<EventSourceCallbacks>({
     onError,
     onMessage,
@@ -69,10 +76,10 @@ export function useResilientEventSource({
   const generationRef = useRef(0);
   const reconnectTimerRef = useRef<number | null>(null);
   const streamRef = useRef<EventSource | null>(null);
-  const urlRef = useRef(url);
+  const urlRef = useRef(eventSourceUrl);
   const enabledRef = useRef(enabled);
   const initialStatus: EventSourceReconnectStatus =
-    enabled && url ? "connecting" : "idle";
+    enabled && eventSourceUrl ? "connecting" : "idle";
   const statusRef = useRef<EventSourceReconnectStatus>(initialStatus);
   const hiddenAtRef = useRef<number | null>(null);
   const [status, setStatus] =
@@ -93,9 +100,9 @@ export function useResilientEventSource({
   }, [onError, onMessage, onOpen, onReconnect]);
 
   useEffect(() => {
-    urlRef.current = url;
+    urlRef.current = eventSourceUrl;
     enabledRef.current = enabled;
-  }, [enabled, url]);
+  }, [enabled, eventSourceUrl]);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current === null) {
@@ -206,7 +213,7 @@ export function useResilientEventSource({
   );
 
   useEffect(() => {
-    if (!enabled || !url) {
+    if (!enabled || !eventSourceUrl) {
       clearReconnectTimer();
       closeCurrentStream();
       updateStatus("idle");
@@ -226,7 +233,7 @@ export function useResilientEventSource({
     enabled,
     openStream,
     updateStatus,
-    url,
+    eventSourceUrl,
   ]);
 
   useEffect(() => {

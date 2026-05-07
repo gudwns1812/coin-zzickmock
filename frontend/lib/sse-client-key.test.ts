@@ -42,8 +42,25 @@ test("tab SSE client key creates and stores a tab-scoped value", () => {
   assert.equal(storage.value(), clientKey);
 });
 
-test("tab SSE client key falls back when storage is unavailable", () => {
-  const clientKey = getOrCreateTabSseClientKey(null);
+test("tab SSE client key falls back to a stable in-memory value when storage is unavailable", () => {
+  const firstClientKey = getOrCreateTabSseClientKey(null);
+  const secondClientKey = getOrCreateTabSseClientKey(null);
+
+  assert.equal(firstClientKey.startsWith("tab:"), true);
+  assert.equal(secondClientKey, firstClientKey);
+});
+
+test("tab SSE client key falls back to memory when sessionStorage access throws", () => {
+  const storage = {
+    getItem() {
+      throw new Error("storage unavailable");
+    },
+    setItem() {
+      throw new Error("storage unavailable");
+    },
+  };
+
+  const clientKey = getOrCreateTabSseClientKey(storage);
 
   assert.equal(clientKey.startsWith("tab:"), true);
 });
@@ -78,4 +95,13 @@ test("readRequiredSseClientKey trims and requires the query param", () => {
 test("normalizeSseClientKey treats blank values as missing", () => {
   assert.equal(normalizeSseClientKey("  "), null);
   assert.equal(normalizeSseClientKey(" tab-1 "), "tab-1");
+});
+
+
+test("tab SSE client key utility does not use localStorage", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const source = readFileSync(fileURLToPath(moduleUrl), "utf8");
+
+  assert.equal(source.includes("localStorage"), false);
 });

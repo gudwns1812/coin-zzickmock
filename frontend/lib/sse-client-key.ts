@@ -3,6 +3,8 @@ export const SSE_CLIENT_KEY_PARAM = "clientKey";
 const TAB_CLIENT_KEY_STORAGE_KEY = "coin-zzickmock:sse-tab-client-key";
 const CLIENT_KEY_PREFIX = "tab:";
 
+let inMemoryTabClientKey: string | null = null;
+
 type ClientKeyStorage = Pick<Storage, "getItem" | "setItem">;
 
 function createRandomId() {
@@ -27,11 +29,19 @@ function getSessionStorage(): ClientKeyStorage | null {
   return window.sessionStorage;
 }
 
+function getOrCreateInMemoryTabClientKey() {
+  if (!inMemoryTabClientKey) {
+    inMemoryTabClientKey = createTabClientKey();
+  }
+
+  return inMemoryTabClientKey;
+}
+
 export function getOrCreateTabSseClientKey(
   storage: ClientKeyStorage | null = getSessionStorage()
 ) {
   if (!storage) {
-    return createTabClientKey();
+    return getOrCreateInMemoryTabClientKey();
   }
 
   try {
@@ -44,7 +54,7 @@ export function getOrCreateTabSseClientKey(
     storage.setItem(TAB_CLIENT_KEY_STORAGE_KEY, next);
     return next;
   } catch {
-    return createTabClientKey();
+    return getOrCreateInMemoryTabClientKey();
   }
 }
 

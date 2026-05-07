@@ -11,7 +11,6 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 @Entity
@@ -104,6 +103,7 @@ public class MarketCandle1hEntity extends AuditableEntity {
     }
 
     private static Instant jpaInstant(LocalDateTime dateTime) {
-        return dateTime.atZone(ZoneId.systemDefault()).toInstant();
+        // V13 and the MySQL connection/session configuration store candle DATETIME values as UTC wall time.
+        return dateTime.toInstant(ZoneOffset.UTC);
     }
 }

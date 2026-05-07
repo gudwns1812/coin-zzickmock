@@ -16,7 +16,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ## Status
 
 - 상태: 구현 반영됨
-- 마지막 스키마 동기화: 2026-05-04
+- 마지막 스키마 동기화: 2026-05-07
 - 기준 소스: Flyway migration + JPA entity + Spring Boot datasource 설정
 
 ## Source Of Truth
@@ -428,7 +428,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 시간 기준:
   `open_time`, `close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
-  현재는 전용 JPA entity가 없고 `feature.market`의 향후 시계열 영속성 기준 테이블로 예약되어 있다.
+  [MarketCandle1mEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1mEntity.java),
+  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
 - 관련 migration 또는 schema 파일:
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
@@ -440,7 +441,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ### `market_candles_1h`
 
 - 목적:
-  1분봉 원본에서 만들어진 1시간봉 롤업 데이터를 저장해 차트 조회 비용을 줄인다.
+  1분봉 원본에서 만들어진 REST-visible completed 1시간봉 롤업 데이터를 저장해 차트 조회 비용을 줄인다.
+  이 테이블의 row는 해당 hour의 60개 연속 `market_candles_1m` row가 저장 또는 재빌드 시점에 확인된 경우에만 남는다.
+  partial 후보 row는 저장하지 않는다.
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
@@ -448,14 +451,40 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 시간 기준:
   `open_time`, `close_time`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
-  현재는 전용 JPA entity가 없고 `feature.market`의 향후 롤업 영속성 기준 테이블로 예약되어 있다.
+  [MarketCandle1hEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1hEntity.java),
+  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
 - 관련 migration 또는 schema 파일:
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
   [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
 - 인덱스:
   `uk_market_candles_1h_symbol_open_time`로 심볼별 시각 중복을 막고,
-  `idx_market_candles_1h_open_time_symbol`로 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
+  `idx_market_candles_1h_open_time_symbol`로 completed hourly 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
+
+
+### `market_history_repair_events`
+
+- 목적:
+  realtime 1분봉 저장 또는 1시간봉 롤업 저장이 짧은 Spring Retry 이후에도 실패했을 때, Redis List wakeup과 무관하게 복구할 작업의 source of truth를 보존한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `symbol`, `candle_interval`, `open_time`, `close_time`, `status`, `attempt_count`, `last_error`, `created_at`, `updated_at`
+- 시간 기준:
+  `open_time`, `close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
+- 상태:
+  `QUEUED`, `PROCESSING`, `WAITING_FOR_MINUTES`, `SUCCEEDED`, `FAILED`
+- 관련 엔티티/모듈:
+  [MarketHistoryRepairEventEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairEventEntity.java),
+  [MarketHistoryRepairPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairPersistenceRepository.java),
+  [MarketHistoryRepairQueueAdapter](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/queue/MarketHistoryRepairQueueAdapter.java)
+- 관련 migration 또는 schema 파일:
+  [V26__add_market_history_repair_events.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V26__add_market_history_repair_events.sql)
+- 인덱스:
+  `uk_market_history_repair_events_identity`로 같은 `symbol + candle_interval + open_time` 복구 작업을 하나로 합치고,
+  `idx_market_history_repair_events_status_updated`로 상태 기반 운영 조회를 지원한다.
+- Redis wakeup:
+  Redis List는 repair event id만 담는 wakeup queue이며, durable 상태와 idempotency는 이 테이블이 소유한다.
 
 ## Relationships
 
@@ -481,6 +510,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   동일 심볼에서 같은 시작 시각의 1분봉은 하나만 존재한다.
 - `market_candles_1h(symbol_id, open_time)`:
   동일 심볼에서 같은 시작 시각의 1시간봉은 하나만 존재한다.
+- `market_history_repair_events(symbol, candle_interval, open_time)`:
+  같은 심볼/봉 간격/시작 시각의 복구 작업은 하나의 durable event로 합쳐진다.
 - `member_daily_activity.member_id -> member_credentials.id`:
   DAU raw 활동 row는 회원 자격 증명에 속한다. 탈퇴는 soft delete라 이 row를 즉시 삭제하지 않으며, 실제 회원 row를 물리 삭제하는 별도 purge가 생길 때만 FK cascade 대상이 된다.
 - `daily_active_user_summary.activity_date`:
@@ -488,6 +519,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 ## Change Log
 
+- 2026-05-07:
+  `V26__add_market_history_repair_events.sql`로 realtime market history persistence 실패를 durable repair event와 Redis List wakeup으로 복구하는 테이블을 추가했다.
 - 2026-04-16:
   MySQL 운영 DB + H2 테스트 DB 기준을 확정했다.
 - 2026-04-16:
@@ -532,7 +565,6 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V19__add_member_daily_activity.sql`로 DB 기반 DAU 수집용 `member_daily_activity`와 식별자 없는 장기 집계용 `daily_active_user_summary`를 추가했다.
 - 2026-05-03:
   `V20__add_member_withdrawn_at.sql`로 `member_credentials.withdrawn_at` nullable soft-delete column과 보조 index를 추가했다. 기존 row는 `withdrawn_at IS NULL` active member로 해석하며, `account` unique 제약은 유지한다.
-
 ## Update Rule
 
 아래 상황에서는 이 문서를 같이 갱신한다.

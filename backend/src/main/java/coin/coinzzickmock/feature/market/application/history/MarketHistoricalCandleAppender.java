@@ -70,6 +70,13 @@ public class MarketHistoricalCandleAppender {
         if (interval == MarketCandleInterval.ONE_HOUR) {
             return MarketTime.truncate(clock.instant(), ChronoUnit.HOURS);
         }
+        if (interval == MarketCandleInterval.FOUR_HOURS
+                || interval == MarketCandleInterval.TWELVE_HOURS
+                || interval == MarketCandleInterval.ONE_DAY
+                || interval == MarketCandleInterval.ONE_WEEK
+                || interval == MarketCandleInterval.ONE_MONTH) {
+            return MarketTime.bucketStart(clock.instant(), interval);
+        }
         return clock.instant();
     }
 

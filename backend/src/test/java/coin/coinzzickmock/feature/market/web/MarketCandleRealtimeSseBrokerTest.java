@@ -280,7 +280,7 @@ class MarketCandleRealtimeSseBrokerTest {
     }
 
     @Test
-    void includesOneHourOnlyWhenCompletedHourIsVisible() {
+    void includesHourlyDerivedIntervalsOnlyWhenSpecificDerivedBucketIsVisible() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RecordingMarketHistoryRepository repository = new RecordingMarketHistoryRepository();
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
@@ -290,8 +290,12 @@ class MarketCandleRealtimeSseBrokerTest {
                 NoopSseTelemetry.INSTANCE
         );
         CapturingSseEmitter oneHourEmitter = new CapturingSseEmitter();
+        CapturingSseEmitter fourHourEmitter = new CapturingSseEmitter();
+        CapturingSseEmitter oneDayEmitter = new CapturingSseEmitter();
         broker.register("BTCUSDT", MarketCandleInterval.ONE_HOUR, oneHourEmitter);
-        Instant openTime = Instant.parse("2026-04-30T04:59:00Z");
+        broker.register("BTCUSDT", MarketCandleInterval.FOUR_HOURS, fourHourEmitter);
+        broker.register("BTCUSDT", MarketCandleInterval.ONE_DAY, oneDayEmitter);
+        Instant openTime = Instant.parse("2026-04-30T07:59:00Z");
 
         broker.onHistoryFinalized(new MarketHistoryFinalizedEvent(
                 "BTCUSDT",
@@ -299,6 +303,9 @@ class MarketCandleRealtimeSseBrokerTest {
                 openTime.plusSeconds(60)
         ));
         repository.completedHourlyCandles.add(hourly(Instant.parse("2026-04-30T04:00:00Z")));
+        repository.completedHourlyCandles.add(hourly(Instant.parse("2026-04-30T05:00:00Z")));
+        repository.completedHourlyCandles.add(hourly(Instant.parse("2026-04-30T06:00:00Z")));
+        repository.completedHourlyCandles.add(hourly(Instant.parse("2026-04-30T07:00:00Z")));
         broker.onHistoryFinalized(new MarketHistoryFinalizedEvent(
                 "BTCUSDT",
                 openTime,
@@ -307,6 +314,20 @@ class MarketCandleRealtimeSseBrokerTest {
 
         assertThat(oneHourEmitter.events()).singleElement()
                 .isInstanceOf(MarketCandleHistoryFinalizedResponse.class);
+        assertThat(fourHourEmitter.events()).singleElement()
+                .isInstanceOf(MarketCandleHistoryFinalizedResponse.class);
+        assertThat(oneDayEmitter.events()).isEmpty();
+        MarketCandleHistoryFinalizedResponse response =
+                (MarketCandleHistoryFinalizedResponse) fourHourEmitter.events().get(0);
+        // Four raw 1h candles make one derived 4h bucket visible for this subscriber.
+        assertThat(response.affectedIntervals()).containsExactlyInAnyOrder(
+                "1m",
+                "3m",
+                "5m",
+                "15m",
+                "1h",
+                "4h"
+        );
     }
 
     private RealtimeMarketCandleUpdate candle(Instant open) {

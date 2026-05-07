@@ -17,6 +17,8 @@ public interface MarketHistoryRepository {
 
     Map<String, Long> findSymbolIdsBySymbols(List<String> symbols);
 
+    Optional<String> findSymbolById(long symbolId);
+
     List<StartupBackfillCursor> findStartupBackfillCursors();
 
     Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId);
@@ -48,4 +50,5 @@ public interface MarketHistoryRepository {
     void saveMinuteCandle(MarketHistoryCandle candle);
 
     void saveHourlyCandle(HourlyMarketCandle candle);
+
 }

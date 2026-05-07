@@ -2,9 +2,11 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -110,17 +112,19 @@ class MarketHistoryRecorderTransactionTest {
     }
 
     @Test
-    void rebuildsEachAffectedHourlyCandleOnce() {
+    void keepsExistingHourlyBucketsWhenRebuildCoverageIsIncomplete() {
         Instant nextHourOpenTime = OPEN_TIME.plus(1, ChronoUnit.HOURS);
+        repository.saveHourlyCandle(hourly(OPEN_TIME));
+        repository.saveHourlyCandle(hourly(nextHourOpenTime));
 
         recorder.recordHistoricalMinuteCandles(1L, List.of(
                 minuteCandle(),
                 minuteCandle(nextHourOpenTime)
         ));
 
-        assertThat(repository.savedHourlyCandles())
-                .extracting(HourlyMarketCandle::openTime)
-                .containsExactly(OPEN_TIME, nextHourOpenTime);
+        assertThat(repository.findHourlyCandle(1L, OPEN_TIME)).isPresent();
+        assertThat(repository.findHourlyCandle(1L, nextHourOpenTime)).isPresent();
+        assertThat(repository.savedHourlyCandles()).hasSize(2);
     }
 
     @Test
@@ -174,6 +178,22 @@ class MarketHistoryRecorderTransactionTest {
         );
     }
 
+    private static HourlyMarketCandle hourly(Instant openTime) {
+        return new HourlyMarketCandle(
+                1L,
+                openTime,
+                openTime.plus(1, ChronoUnit.HOURS),
+                101000.0,
+                101500.0,
+                100500.0,
+                101250.0,
+                10.0,
+                1012500.0,
+                openTime,
+                openTime.plus(1, ChronoUnit.HOURS)
+        );
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableTransactionManagement
     static class TransactionTestConfiguration {
@@ -191,6 +211,11 @@ class MarketHistoryRecorderTransactionTest {
         }
 
         @Bean
+        CompletedHourlyCandleBuilder completedHourlyCandleBuilder() {
+            return new CompletedHourlyCandleBuilder();
+        }
+
+        @Bean
         RecordingMarketHistoryRepository marketHistoryRepository() {
             return new RecordingMarketHistoryRepository();
         }
@@ -203,6 +228,11 @@ class MarketHistoryRecorderTransactionTest {
         @Bean
         AfterCommitEventPublisher afterCommitEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
             return new AfterCommitEventPublisher(applicationEventPublisher);
+        }
+
+        @Bean
+        MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder() {
+            return mock(MarketHistoryRepairRequestRecorder.class);
         }
     }
 
@@ -303,7 +333,10 @@ class MarketHistoryRecorderTransactionTest {
 
         @Override
         public Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime) {
-            return Optional.empty();
+            return savedHourlyCandles.stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .filter(candle -> candle.openTime().equals(openTime))
+                    .findFirst();
         }
 
         @Override

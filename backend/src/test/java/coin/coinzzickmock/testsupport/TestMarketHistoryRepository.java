@@ -15,6 +15,11 @@ public abstract class TestMarketHistoryRepository implements MarketHistoryReposi
     }
 
     @Override
+    public Optional<String> findSymbolById(long symbolId) {
+        return Optional.empty();
+    }
+
+    @Override
     public List<StartupBackfillCursor> findStartupBackfillCursors() {
         return List.of();
     }
@@ -87,4 +92,5 @@ public abstract class TestMarketHistoryRepository implements MarketHistoryReposi
     public void saveHourlyCandle(HourlyMarketCandle candle) {
         throw new UnsupportedOperationException("saveHourlyCandle is not implemented for this test fake");
     }
+
 }

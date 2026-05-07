@@ -1,8 +1,11 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -42,7 +45,7 @@ class MarketHistoryStartupBackfillTest {
         MarketHistoryStartupBackfill marketHistoryStartupBackfill =
                 new MarketHistoryStartupBackfill(
                         marketHistoryRepository,
-                        new MarketHistoryRecorder(marketHistoryRepository)
+                        recorder(marketHistoryRepository)
                 );
 
         marketHistoryStartupBackfill.backfillMissingMinuteHistory(
@@ -52,8 +55,7 @@ class MarketHistoryStartupBackfillTest {
 
         assertEquals(1, marketDataGateway.minuteHistoryCalls());
         assertEquals(3, marketHistoryRepository.minuteCandleCount());
-        assertEquals(1, marketHistoryRepository.hourlyCandleCount());
-        assertEquals(101900, marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z").closePrice(), 0.0001);
+        assertEquals(0, marketHistoryRepository.hourlyCandleCount());
     }
 
     @Test
@@ -68,7 +70,7 @@ class MarketHistoryStartupBackfillTest {
         MarketHistoryStartupBackfill marketHistoryStartupBackfill =
                 new MarketHistoryStartupBackfill(
                         marketHistoryRepository,
-                        new MarketHistoryRecorder(marketHistoryRepository)
+                        recorder(marketHistoryRepository)
                 );
 
         marketHistoryStartupBackfill.backfillMissingMinuteHistory(
@@ -116,7 +118,7 @@ class MarketHistoryStartupBackfillTest {
         MarketHistoryStartupBackfill marketHistoryStartupBackfill =
                 new MarketHistoryStartupBackfill(
                         marketHistoryRepository,
-                        new MarketHistoryRecorder(marketHistoryRepository)
+                        recorder(marketHistoryRepository)
                 );
 
         marketHistoryStartupBackfill.backfillMissingMinuteHistory(
@@ -126,7 +128,7 @@ class MarketHistoryStartupBackfillTest {
 
         assertEquals(1, marketDataGateway.minuteHistoryCalls());
         assertEquals(4, marketHistoryRepository.minuteCandleCount());
-        assertEquals(101900, marketHistoryRepository.hourlyCandle(1L, "2026-04-17T06:00:00Z").closePrice(), 0.0001);
+        assertEquals(0, marketHistoryRepository.hourlyCandleCount());
     }
 
     private static MarketSnapshot snapshot(
@@ -159,6 +161,15 @@ class MarketHistoryStartupBackfillTest {
                 closePrice,
                 volume,
                 quoteVolume
+        );
+    }
+
+    private static MarketHistoryRecorder recorder(MarketHistoryRepository repository) {
+        return new MarketHistoryRecorder(
+                repository,
+                new CompletedHourlyCandleBuilder(),
+                mock(AfterCommitEventPublisher.class),
+                mock(MarketHistoryRepairRequestRecorder.class)
         );
     }
 
@@ -301,10 +312,6 @@ class MarketHistoryStartupBackfillTest {
         @Override
         public void saveHourlyCandle(HourlyMarketCandle candle) {
             hourlyCandles.put(key(candle.symbolId(), candle.openTime()), candle);
-        }
-
-        private HourlyMarketCandle hourlyCandle(long symbolId, String openTime) {
-            return hourlyCandles.get(key(symbolId, Instant.parse(openTime)));
         }
 
         private int minuteCandleCount() {

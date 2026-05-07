@@ -155,6 +155,8 @@
 - 운영 자격증명은 코드, 샘플 파일, 문서 예시에 넣지 않는다.
 - 설정값이 바뀌면 적용 대상 환경과 주입 위치를 릴리즈 기록에 남긴다.
 - 운영 프로필은 `backend/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
+- 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며
+  `application-prod.yml`, `docker-compose.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.
 
 ### Production Docker Host
 

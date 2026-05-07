@@ -28,6 +28,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.security:spring-security-crypto'
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework:spring-aspects'
     implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.1'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
     implementation 'org.flywaydb:flyway-core'
@@ -52,6 +54,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    if (System.getProperty('coin.redis.integration') != null) {
+        systemProperty 'coin.redis.integration', System.getProperty('coin.redis.integration')
+    }
 }
 
 def architectureRootPackage = 'coin.coinzzickmock'

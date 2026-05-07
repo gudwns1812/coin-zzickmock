@@ -36,6 +36,32 @@ class SseSubscriptionRegistryTest {
     }
 
     @Test
+    void rejectsDistinctClientKeyWhenTotalLimitIsFull() {
+        SseSubscriptionRegistry<String> registry = new SseSubscriptionRegistry<>(2, 1);
+
+        registry.register(registry.reserve("BTCUSDT", "tab-1").permit(), new SseEmitter(0L));
+
+        SseSubscriptionRegistry.Reservation<String> reservation = registry.reserve("ETHUSDT", "tab-2");
+
+        assertThat(reservation.accepted()).isFalse();
+        assertThat(reservation.rejection()).isEqualTo(SseSubscriptionRegistry.ReservationRejection.TOTAL_LIMIT);
+    }
+
+    @Test
+    void keepsDifferentClientKeysUnderSameKeyWhenLimitsAllow() {
+        SseSubscriptionRegistry<String> registry = new SseSubscriptionRegistry<>(2, 2);
+        SseEmitter first = new SseEmitter(0L);
+        SseEmitter second = new SseEmitter(0L);
+
+        registry.register(registry.reserve("BTCUSDT", "tab-1").permit(), first);
+        registry.register(registry.reserve("BTCUSDT", "tab-2").permit(), second);
+
+        assertThat(registry.subscribers("BTCUSDT")).containsExactlyInAnyOrder(first, second);
+        assertThat(registry.subscriberCount("BTCUSDT")).isEqualTo(2);
+        assertThat(registry.totalSubscriberCount()).isEqualTo(2);
+    }
+
+    @Test
     void oldEmitterCannotUnregisterReplacement() {
         SseSubscriptionRegistry<String> registry = new SseSubscriptionRegistry<>(1, 1);
         SseEmitter first = new SseEmitter(0L);
@@ -46,6 +72,36 @@ class SseSubscriptionRegistryTest {
 
         assertThat(registry.unregister("BTCUSDT", "tab-1", first)).isFalse();
         assertThat(registry.subscribers("BTCUSDT")).containsExactly(second);
+    }
+
+    @Test
+    void unregisterCurrentEmitterReleasesPermitAndRemovesOnlyCurrentClientKey() {
+        SseSubscriptionRegistry<String> registry = new SseSubscriptionRegistry<>(2, 2);
+        SseEmitter first = new SseEmitter(0L);
+        SseEmitter second = new SseEmitter(0L);
+
+        registry.register(registry.reserve("BTCUSDT", "tab-1").permit(), first);
+        registry.register(registry.reserve("BTCUSDT", "tab-2").permit(), second);
+
+        assertThat(registry.unregister("BTCUSDT", "tab-1", first)).isTrue();
+
+        assertThat(registry.subscribers("BTCUSDT")).containsExactly(second);
+        assertThat(registry.subscriberCount("BTCUSDT")).isEqualTo(1);
+        assertThat(registry.totalSubscriberCount()).isEqualTo(1);
+    }
+
+    @Test
+    void subscribersReturnsSnapshot() {
+        SseSubscriptionRegistry<String> registry = new SseSubscriptionRegistry<>(2, 2);
+        SseEmitter first = new SseEmitter(0L);
+        SseEmitter second = new SseEmitter(0L);
+        registry.register(registry.reserve("BTCUSDT", "tab-1").permit(), first);
+
+        var snapshot = registry.subscribers("BTCUSDT");
+        registry.register(registry.reserve("BTCUSDT", "tab-2").permit(), second);
+
+        assertThat(snapshot).containsExactly(first);
+        assertThat(registry.subscribers("BTCUSDT")).containsExactlyInAnyOrder(first, second);
     }
 
     @Test

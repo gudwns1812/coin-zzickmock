@@ -139,7 +139,7 @@ public class MarketCandleRealtimeSseBroker {
                 activeKeys.add(key);
             }
             recordConnectionOpened();
-            logLifecycle(key, "register", "accepted");
+            logLifecycle(key, "register", null);
             completeReplacedEmitter(key, registration.replacedEmitter());
         } catch (RuntimeException exception) {
             discardRegisteredSubscription(key, emitter);
@@ -167,7 +167,7 @@ public class MarketCandleRealtimeSseBroker {
         if (subscriptions.unregister(key, emitter)) {
             cleanupActiveKey(key);
             recordConnectionClosed(reason);
-            logLifecycle(key, "unregister", reason);
+            logLifecycle(key, lifecycleAction(reason), reason);
         }
     }
 
@@ -175,7 +175,7 @@ public class MarketCandleRealtimeSseBroker {
         if (subscriptions.unregister(key, clientKey, emitter)) {
             cleanupActiveKey(key);
             recordConnectionClosed(reason);
-            logLifecycle(key, "unregister", reason);
+            logLifecycle(key, lifecycleAction(reason), reason);
         }
     }
 
@@ -412,6 +412,27 @@ public class MarketCandleRealtimeSseBroker {
             // The replaced client may already be closed.
         }
         recordConnectionClosed("client_replaced");
+        logLifecycle(key, "replace", "client_replaced");
+    }
+
+    private void logLifecycle(SubscriptionKey key, String action, String reason) {
+        log.info(
+                "SSE lifecycle stream={} keyType=symbol_interval symbol={} interval={} action={} reason={} activeKeyEmitters={} activeTotalEmitters={}",
+                STREAM,
+                key.symbol(),
+                key.interval().value(),
+                action,
+                reason,
+                subscriptions.subscriberCount(key),
+                subscriptions.totalSubscriberCount()
+        );
+    }
+
+    private String lifecycleAction(String reason) {
+        if ("client_complete".equals(reason)) {
+            return "complete";
+        }
+        return reason;
     }
 
     private void recordConnectionOpened() {

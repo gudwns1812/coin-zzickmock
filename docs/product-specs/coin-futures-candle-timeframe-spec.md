@@ -71,8 +71,11 @@
 - `market_candles_1m`에 저장되는 원본 분봉은 프론트엔드의 live price 합성 결과가 아니라, 백엔드 수집 경로의 거래소 1분봉 데이터를 기준으로 한다.
 - 매초 market refresh 경로는 실시간 가격 캐시, SSE, 주문 체결, 청산 판단을 위한 ticker snapshot 갱신만 담당한다.
 - 직전 완료 1분봉 저장은 매 분 `1`초에 발행되는 `MarketMinuteClosedEvent` 경로에서 서버가 거래소 candle을 수집해 처리한다.
-- 거래소 candle이 아직 비어 있으면 해당 심볼/분봉을 pending retry로 등록하고, 별도 5초 재처리 경로가 다시 수집을 시도한다.
-- retry 또는 최초 저장 경로에서 닫힌 1분봉이 실제로 저장되면, 커밋 이후 `historyFinalized` candle SSE 메시지를 발행해 프론트엔드가 관련 REST history query를 즉시 무효화할 수 있어야 한다.
+- 거래소 candle 수집 또는 저장이 일시 실패하면 우선 Spring Retry 기반의 짧은 즉시 재시도를 수행한다.
+- 즉시 재시도를 모두 소진하면 `market_history_repair_events`에 durable repair event를 남기고, 커밋 이후 Redis List에 event id를 LPUSH해 repair worker를 깨운다.
+- Redis List는 wakeup 신호만 담당하며, repair 대상의 권위 있는 상태와 중복 방지는 DB repair event의 `(symbol, interval, open_time)` identity와 상태 전이로 판단한다.
+- 현재 1차 구현은 Redis LPUSH 자체가 재시도를 모두 소진한 경우 별도 DB rescan/sweeper로 복구하지 않는다. 운영에서 이 손실 경로를 닫아야 하면 sweeper 또는 outbox를 별도 릴리즈 범위로 추가한다.
+- Spring Retry 성공 경로, repair worker 경로, 또는 최초 저장 경로에서 닫힌 1분봉이 실제로 저장되면, 커밋 이후 `historyFinalized` candle SSE 메시지를 발행해 프론트엔드가 관련 REST history query를 즉시 무효화할 수 있어야 한다.
 - 이미 처리한 같은 심볼/분봉을 idempotent하게 다시 만난 경우에는 retry 상태를 해소할 수 있지만, 새로 저장된 history처럼 `historyFinalized` 메시지를 다시 발행하지 않는다.
 - 저장 시 `volume`, `quote_volume`은 거래소 candle 응답 값을 함께 반영한다.
 - 프론트엔드는 아직 닫히지 않은 live candle을 market-summary 최신가로 직접 합성하지 않는다.

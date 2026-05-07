@@ -35,6 +35,12 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<String> findSymbolById(long symbolId) {
+        return marketSymbolEntityRepository.findById(symbolId).map(MarketSymbolEntity::symbol);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<StartupBackfillCursor> findStartupBackfillCursors() {
         return marketSymbolEntityRepository.findAllByOrderByIdAsc().stream()
                 .map(entity -> new StartupBackfillCursor(

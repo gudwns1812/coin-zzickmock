@@ -8,6 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
+import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
@@ -209,89 +211,6 @@ class MarketRealtimeFeedTest {
     }
 
     @Test
-    void retriesClosedMinuteHistoryWhenProviderHasNoCandleYet() {
-        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
-                snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
-        ));
-        InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
-        TestMarketRuntime runtime = newRuntime(
-                marketDataGateway,
-                marketHistoryRepository,
-                new RecordingApplicationEventPublisher()
-        );
-
-        runtime.feed().refreshSupportedMarkets();
-        runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
-                Instant.parse("2026-04-17T06:00:00Z"),
-                Instant.parse("2026-04-17T06:01:00Z")
-        ));
-
-        assertEquals(0, marketHistoryRepository.minuteCandleCount());
-        assertEquals(1, marketDataGateway.minuteHistoryCalls());
-        assertEquals(1, runtime.retryRegistry().pendingRetries().size());
-
-        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
-                minuteCandle("2026-04-17T06:00:00Z", 101000, 102500, 100500, 102000, 12.5, 1_275_000)
-        ));
-        runtime.retryProcessor().retryPending();
-
-        MarketHistoryCandle firstMinute = marketHistoryRepository.minuteCandle(1L, "2026-04-17T06:00:00Z");
-
-        assertEquals(1, marketHistoryRepository.minuteCandleCount());
-        assertEquals(2, marketDataGateway.minuteHistoryCalls());
-        assertEquals(12.5, firstMinute.volume(), 0.0001);
-        assertEquals(0, runtime.retryRegistry().pendingRetries().size());
-    }
-
-    @Test
-    void keepsRetryPendingWhenProviderCandleCannotBeMatchedToPersistedSymbol() {
-        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
-                snapshot("XRPUSDT", 1.2, 1.19, 1.18, 0.0001, 3.2)
-        ));
-        marketDataGateway.replaceMinuteCandles("XRPUSDT", List.of(
-                minuteCandle("2026-04-17T06:00:00Z", 1.1, 1.3, 1.0, 1.2, 500, 600)
-        ));
-        InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
-        TestMarketRuntime runtime = newRuntime(
-                marketDataGateway,
-                marketHistoryRepository,
-                new RecordingApplicationEventPublisher()
-        );
-
-        runtime.feed().refreshSupportedMarkets();
-        runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
-                Instant.parse("2026-04-17T06:00:00Z"),
-                Instant.parse("2026-04-17T06:01:00Z")
-        ));
-
-        assertEquals(0, marketHistoryRepository.minuteCandleCount());
-        assertEquals(1, runtime.retryRegistry().pendingRetries().size());
-    }
-
-    @Test
-    void keepsRetryPendingWhenPersistenceFailsAfterProviderReturnsCandle() {
-        FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of(
-                snapshot("BTCUSDT", 101000, 100950, 100900, 0.0001, 3.2)
-        ));
-        marketDataGateway.replaceMinuteCandles("BTCUSDT", List.of(
-                minuteCandle("2026-04-17T06:00:00Z", 101000, 102500, 100500, 102000, 12.5, 1_275_000)
-        ));
-        TestMarketRuntime runtime = newRuntime(
-                marketDataGateway,
-                new FailingSaveMarketHistoryRepository(),
-                new RecordingApplicationEventPublisher()
-        );
-
-        runtime.feed().refreshSupportedMarkets();
-        runtime.listener().onMinuteClosed(new MarketMinuteClosedEvent(
-                Instant.parse("2026-04-17T06:00:00Z"),
-                Instant.parse("2026-04-17T06:01:00Z")
-        ));
-
-        assertEquals(1, runtime.retryRegistry().pendingRetries().size());
-    }
-
-    @Test
     void skipsPublishAndPersistWhenRefreshReturnsNoMarkets() {
         FakeMarketDataGateway marketDataGateway = new FakeMarketDataGateway(List.of());
         InMemoryMarketHistoryRepository marketHistoryRepository = new InMemoryMarketHistoryRepository();
@@ -392,9 +311,13 @@ class MarketRealtimeFeedTest {
     ) {
         MarketHistoryRecorder marketHistoryRecorder = new MarketHistoryRecorder(marketHistoryRepository);
         MarketSnapshotStore marketSnapshotStore = newSnapshotStore();
+        MarketClosedMinuteCandlePersistence persistence = new MarketClosedMinuteCandlePersistence(
+                marketDataGateway,
+                marketHistoryRecorder,
+                mock(MarketHistoryRepairRequestRecorder.class)
+        );
         MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator =
-                new MarketHistoryPersistenceCoordinator(marketDataGateway, marketHistoryRecorder);
-        MarketHistoryRetryRegistry marketHistoryRetryRegistry = new MarketHistoryRetryRegistry();
+                new MarketHistoryPersistenceCoordinator(persistence);
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new MarketSupportedMarketRefresher(
                         new FakeProviders(marketDataGateway),
@@ -406,21 +329,14 @@ class MarketRealtimeFeedTest {
         );
         MarketMinuteCandleHistoryListener listener = new MarketMinuteCandleHistoryListener(
                 marketSnapshotStore,
-                marketHistoryPersistenceCoordinator,
-                marketHistoryRetryRegistry
-        );
-        MarketHistoryRetryProcessor retryProcessor = new MarketHistoryRetryProcessor(
-                marketHistoryRetryRegistry,
                 marketHistoryPersistenceCoordinator
         );
-        return new TestMarketRuntime(feed, listener, retryProcessor, marketHistoryRetryRegistry);
+        return new TestMarketRuntime(feed, listener);
     }
 
     private record TestMarketRuntime(
             MarketRealtimeFeed feed,
-            MarketMinuteCandleHistoryListener listener,
-            MarketHistoryRetryProcessor retryProcessor,
-            MarketHistoryRetryRegistry retryRegistry
+            MarketMinuteCandleHistoryListener listener
     ) {
     }
 

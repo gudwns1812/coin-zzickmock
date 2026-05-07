@@ -17,6 +17,8 @@ public interface MarketHistoryRepository {
 
     Map<String, Long> findSymbolIdsBySymbols(List<String> symbols);
 
+    Optional<String> findSymbolById(long symbolId);
+
     List<StartupBackfillCursor> findStartupBackfillCursors();
 
     Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId);

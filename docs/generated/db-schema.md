@@ -461,6 +461,31 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `uk_market_candles_1h_symbol_open_time`로 심볼별 시각 중복을 막고,
   `idx_market_candles_1h_open_time_symbol`로 completed hourly 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
 
+
+### `market_history_repair_events`
+
+- 목적:
+  realtime 1분봉 저장 또는 1시간봉 롤업 저장이 짧은 Spring Retry 이후에도 실패했을 때, Redis List wakeup과 무관하게 복구할 작업의 source of truth를 보존한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `symbol`, `candle_interval`, `open_time`, `close_time`, `status`, `attempt_count`, `last_error`, `created_at`, `updated_at`
+- 시간 기준:
+  `open_time`, `close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
+- 상태:
+  `QUEUED`, `PROCESSING`, `WAITING_FOR_MINUTES`, `SUCCEEDED`, `FAILED`
+- 관련 엔티티/모듈:
+  [MarketHistoryRepairEventEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairEventEntity.java),
+  [MarketHistoryRepairPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairPersistenceRepository.java),
+  [MarketHistoryRepairQueueAdapter](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/queue/MarketHistoryRepairQueueAdapter.java)
+- 관련 migration 또는 schema 파일:
+  [V26__add_market_history_repair_events.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V26__add_market_history_repair_events.sql)
+- 인덱스:
+  `uk_market_history_repair_events_identity`로 같은 `symbol + candle_interval + open_time` 복구 작업을 하나로 합치고,
+  `idx_market_history_repair_events_status_updated`로 상태 기반 운영 조회를 지원한다.
+- Redis wakeup:
+  Redis List는 repair event id만 담는 wakeup queue이며, durable 상태와 idempotency는 이 테이블이 소유한다.
+
 ## Relationships
 
 - `trading_accounts.member_id -> member_credentials.id`:
@@ -485,6 +510,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   동일 심볼에서 같은 시작 시각의 1분봉은 하나만 존재한다.
 - `market_candles_1h(symbol_id, open_time)`:
   동일 심볼에서 같은 시작 시각의 1시간봉은 하나만 존재한다.
+- `market_history_repair_events(symbol, candle_interval, open_time)`:
+  같은 심볼/봉 간격/시작 시각의 복구 작업은 하나의 durable event로 합쳐진다.
 - `member_daily_activity.member_id -> member_credentials.id`:
   DAU raw 활동 row는 회원 자격 증명에 속한다. 탈퇴는 soft delete라 이 row를 즉시 삭제하지 않으며, 실제 회원 row를 물리 삭제하는 별도 purge가 생길 때만 FK cascade 대상이 된다.
 - `daily_active_user_summary.activity_date`:
@@ -492,6 +519,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 ## Change Log
 
+- 2026-05-07:
+  `V26__add_market_history_repair_events.sql`로 realtime market history persistence 실패를 durable repair event와 Redis List wakeup으로 복구하는 테이블을 추가했다.
 - 2026-04-16:
   MySQL 운영 DB + H2 테스트 DB 기준을 확정했다.
 - 2026-04-16:

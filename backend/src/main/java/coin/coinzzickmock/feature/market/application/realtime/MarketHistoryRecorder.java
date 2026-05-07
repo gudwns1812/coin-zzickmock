@@ -1,8 +1,8 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
-import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -14,39 +14,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class MarketHistoryRecorder {
     private final MarketHistoryRepository marketHistoryRepository;
     private final CompletedHourlyCandleBuilder completedHourlyCandleBuilder;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder;
-
-    @Autowired
-    public MarketHistoryRecorder(
-            MarketHistoryRepository marketHistoryRepository,
-            CompletedHourlyCandleBuilder completedHourlyCandleBuilder,
-            AfterCommitEventPublisher afterCommitEventPublisher,
-            @Nullable MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder
-    ) {
-        this.marketHistoryRepository = marketHistoryRepository;
-        this.completedHourlyCandleBuilder = completedHourlyCandleBuilder;
-        this.afterCommitEventPublisher = afterCommitEventPublisher;
-        this.marketHistoryRepairRequestRecorder = marketHistoryRepairRequestRecorder;
-    }
-
-    /**
-     * Test convenience constructor. CompletedHourlyCandleBuilder is stateless and has no Spring-managed dependencies.
-     */
-    MarketHistoryRecorder(MarketHistoryRepository marketHistoryRepository) {
-        this(marketHistoryRepository, new CompletedHourlyCandleBuilder(), null, null);
-    }
 
     @Transactional
     public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(
@@ -119,9 +99,6 @@ public class MarketHistoryRecorder {
             Instant openTime,
             Instant closeTime
     ) {
-        if (afterCommitEventPublisher == null) {
-            return;
-        }
         saveResults.forEach((symbol, wasSaved) -> {
             if (Boolean.TRUE.equals(wasSaved)) {
                 afterCommitEventPublisher.publish(new MarketHistoryFinalizedEvent(symbol, openTime, closeTime));
@@ -159,28 +136,30 @@ public class MarketHistoryRecorder {
     }
 
     private void rebuildHourlyCandle(long symbolId, Instant hourlyOpenTime) {
-        Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
-        List<MarketHistoryCandle> hourlyCandles = marketHistoryRepository.findMinuteCandles(
-                symbolId,
-                hourlyOpenTime,
-                hourlyCloseTime
-        );
-        Optional<HourlyMarketCandle> completedHourlyCandle =
-                completedHourlyCandleBuilder.build(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
-        if (completedHourlyCandle.isPresent()) {
+        HourlyCandleRebuild rebuild = loadCompletedHourlyCandle(symbolId, hourlyOpenTime);
+        if (rebuild.completedCandle().isPresent()) {
             try {
-                marketHistoryRepository.saveHourlyCandle(completedHourlyCandle.orElseThrow());
+                marketHistoryRepository.saveHourlyCandle(rebuild.completedCandle().orElseThrow());
             } catch (RuntimeException exception) {
-                recordHourlyRepairRequest(symbolId, hourlyOpenTime, hourlyCloseTime, exception);
+                recordHourlyRepairRequest(symbolId, hourlyOpenTime, rebuild.closeTime(), exception);
             }
             return;
         }
 
-        reportSkippedHourlyRebuild(symbolId, hourlyOpenTime, hourlyCandles);
+        reportSkippedHourlyRebuild(symbolId, hourlyOpenTime, rebuild.sourceCandles());
     }
 
     @Transactional
     public boolean rebuildCompletedHourlyCandle(long symbolId, Instant hourlyOpenTime) {
+        HourlyCandleRebuild rebuild = loadCompletedHourlyCandle(symbolId, hourlyOpenTime);
+        if (rebuild.completedCandle().isEmpty()) {
+            return false;
+        }
+        marketHistoryRepository.saveHourlyCandle(rebuild.completedCandle().orElseThrow());
+        return true;
+    }
+
+    private HourlyCandleRebuild loadCompletedHourlyCandle(long symbolId, Instant hourlyOpenTime) {
         Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
         List<MarketHistoryCandle> hourlyCandles = marketHistoryRepository.findMinuteCandles(
                 symbolId,
@@ -189,11 +168,7 @@ public class MarketHistoryRecorder {
         );
         Optional<HourlyMarketCandle> completedHourlyCandle =
                 completedHourlyCandleBuilder.build(symbolId, hourlyOpenTime, hourlyCloseTime, hourlyCandles);
-        if (completedHourlyCandle.isEmpty()) {
-            return false;
-        }
-        marketHistoryRepository.saveHourlyCandle(completedHourlyCandle.orElseThrow());
-        return true;
+        return new HourlyCandleRebuild(hourlyCloseTime, hourlyCandles, completedHourlyCandle);
     }
 
     private void recordHourlyRepairRequest(
@@ -202,9 +177,6 @@ public class MarketHistoryRecorder {
             Instant hourlyCloseTime,
             RuntimeException exception
     ) {
-        if (marketHistoryRepairRequestRecorder == null) {
-            throw exception;
-        }
         String symbol = marketHistoryRepository.findSymbolById(symbolId).orElse(null);
         if (symbol == null) {
             throw exception;
@@ -223,7 +195,7 @@ public class MarketHistoryRecorder {
             List<MarketHistoryCandle> hourlyCandles
     ) {
         if (hourlyCandles.isEmpty()) {
-            log.debug("Skip hourly rebuild because source minute coverage is empty. symbolId={} openTime={}",
+            log.warn("Skip hourly rebuild because source minute coverage is empty. symbolId={} openTime={}",
                     symbolId, hourlyOpenTime);
             return;
         }
@@ -240,5 +212,12 @@ public class MarketHistoryRecorder {
 
     private Instant truncate(Instant instant, ChronoUnit unit) {
         return MarketTime.truncate(instant, unit);
+    }
+
+    private record HourlyCandleRebuild(
+            Instant closeTime,
+            List<MarketHistoryCandle> sourceCandles,
+            Optional<HourlyMarketCandle> completedCandle
+    ) {
     }
 }

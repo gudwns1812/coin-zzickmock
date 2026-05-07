@@ -3,12 +3,11 @@ package coin.coinzzickmock.feature.market.infrastructure.persistence;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairStatus;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MarketHistoryRepairEventEntityRepository extends JpaRepository<MarketHistoryRepairEventEntity, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -73,16 +72,18 @@ public interface MarketHistoryRepairEventEntityRepository extends JpaRepository<
             @Param("updatedAt") LocalDateTime updatedAt
     );
 
-    Optional<MarketHistoryRepairEventEntity> findBySymbolAndIntervalAndOpenTime(
-            String symbol,
-            MarketCandleInterval interval,
-            LocalDateTime openTime
-    );
-
-    List<MarketHistoryRepairEventEntity> findBySymbolAndIntervalAndOpenTimeAndStatus(
-            String symbol,
-            MarketCandleInterval interval,
-            LocalDateTime openTime,
-            MarketHistoryRepairStatus status
+    @Query("""
+            SELECT event
+            FROM MarketHistoryRepairEventEntity event
+            WHERE event.symbol = :symbol
+              AND event.interval = :interval
+              AND event.openTime = :openTime
+              AND event.status = :status
+            """)
+    List<MarketHistoryRepairEventEntity> findByRepairIdentityAndStatus(
+            @Param("symbol") String symbol,
+            @Param("interval") MarketCandleInterval interval,
+            @Param("openTime") LocalDateTime openTime,
+            @Param("status") MarketHistoryRepairStatus status
     );
 }

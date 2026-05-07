@@ -2,9 +2,11 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -226,6 +228,11 @@ class MarketHistoryRecorderTransactionTest {
         @Bean
         AfterCommitEventPublisher afterCommitEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
             return new AfterCommitEventPublisher(applicationEventPublisher);
+        }
+
+        @Bean
+        MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder() {
+            return mock(MarketHistoryRepairRequestRecorder.class);
         }
     }
 

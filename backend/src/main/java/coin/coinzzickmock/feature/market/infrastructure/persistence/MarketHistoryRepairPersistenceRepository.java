@@ -5,12 +5,15 @@ import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairE
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairStatus;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
+import java.sql.PreparedStatement;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,43 +34,11 @@ public class MarketHistoryRepairPersistenceRepository implements MarketHistoryRe
     ) {
         LocalDateTime now = databaseDateTime(Instant.now());
         LocalDateTime databaseOpenTime = databaseDateTime(openTime);
-        jdbcTemplate.update(
-                """
-                        INSERT INTO market_history_repair_events (
-                            symbol, candle_interval, open_time, close_time, status,
-                            attempt_count, last_error, created_at, updated_at
-                        )
-                        VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE
-                            close_time = VALUES(close_time),
-                            status = CASE
-                                WHEN status IN ('PROCESSING', 'SUCCEEDED') THEN status
-                                ELSE VALUES(status)
-                            END,
-                            last_error = VALUES(last_error),
-                            updated_at = VALUES(updated_at)
-                        """,
-                symbol,
-                interval.name(),
-                databaseOpenTime,
-                databaseDateTime(closeTime),
-                MarketHistoryRepairStatus.QUEUED.name(),
-                truncate(reason),
-                now,
-                now
-        );
-        Long eventId = jdbcTemplate.queryForObject(
-                """
-                        SELECT id
-                        FROM market_history_repair_events
-                        WHERE symbol = ? AND candle_interval = ? AND open_time = ?
-                        """,
-                Long.class,
-                symbol,
-                interval.name(),
-                databaseOpenTime
-        );
-        return toEvent(marketHistoryRepairEventEntityRepository.findById(eventId).orElseThrow());
+        LocalDateTime databaseCloseTime = databaseDateTime(closeTime);
+        Long eventId = upsertRepairEvent(symbol, interval, databaseOpenTime, databaseCloseTime, reason, now);
+        return marketHistoryRepairEventEntityRepository.findById(eventId)
+                .map(this::toEvent)
+                .orElseThrow();
     }
 
     @Override
@@ -132,45 +103,17 @@ public class MarketHistoryRepairPersistenceRepository implements MarketHistoryRe
     @Override
     @Transactional
     public List<Long> queueWaitingHourlyRepairEvents(String symbol, Instant hourlyOpenTime) {
-        LocalDateTime databaseOpenTime = databaseDateTime(hourlyOpenTime);
-        List<Long> eventIds = jdbcTemplate.queryForList(
-                """
-                        SELECT id
-                        FROM market_history_repair_events
-                        WHERE symbol = ?
-                          AND candle_interval = ?
-                          AND open_time = ?
-                          AND status = ?
-                        """,
-                Long.class,
-                symbol,
-                MarketCandleInterval.ONE_HOUR.name(),
-                databaseOpenTime,
-                MarketHistoryRepairStatus.WAITING_FOR_MINUTES.name()
-        );
-        if (eventIds.isEmpty()) {
-            return List.of();
-        }
-        jdbcTemplate.update(
-                """
-                        UPDATE market_history_repair_events
-                        SET status = ?,
-                            last_error = ?,
-                            updated_at = ?
-                        WHERE symbol = ?
-                          AND candle_interval = ?
-                          AND open_time = ?
-                          AND status = ?
-                        """,
-                MarketHistoryRepairStatus.QUEUED.name(),
-                "minute repair completed",
-                databaseDateTime(Instant.now()),
-                symbol,
-                MarketCandleInterval.ONE_HOUR.name(),
-                databaseOpenTime,
-                MarketHistoryRepairStatus.WAITING_FOR_MINUTES.name()
-        );
-        return eventIds;
+        List<MarketHistoryRepairEventEntity> events =
+                marketHistoryRepairEventEntityRepository.findByRepairIdentityAndStatus(
+                        symbol,
+                        MarketCandleInterval.ONE_HOUR,
+                        databaseDateTime(hourlyOpenTime),
+                        MarketHistoryRepairStatus.WAITING_FOR_MINUTES
+                );
+        events.forEach(event -> event.queue("minute repair completed"));
+        return events.stream()
+                .map(MarketHistoryRepairEventEntity::getId)
+                .toList();
     }
 
     private String truncate(String value) {
@@ -178,6 +121,66 @@ public class MarketHistoryRepairPersistenceRepository implements MarketHistoryRe
             return value;
         }
         return value.substring(0, 1024);
+    }
+
+    private Long upsertRepairEvent(
+            String symbol,
+            MarketCandleInterval interval,
+            LocalDateTime databaseOpenTime,
+            LocalDateTime databaseCloseTime,
+            String reason,
+            LocalDateTime now
+    ) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement(
+                    """
+                            INSERT INTO market_history_repair_events (
+                                symbol, candle_interval, open_time, close_time, status,
+                                attempt_count, last_error, created_at, updated_at
+                            )
+                            VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE
+                                id = LAST_INSERT_ID(id),
+                                close_time = VALUES(close_time),
+                                status = CASE
+                                    WHEN status IN ('PROCESSING', 'SUCCEEDED') THEN status
+                                    ELSE VALUES(status)
+                                END,
+                                last_error = VALUES(last_error),
+                                updated_at = VALUES(updated_at)
+                            """,
+                    new String[]{"id"}
+            );
+            statement.setString(1, symbol);
+            statement.setString(2, interval.name());
+            statement.setObject(3, databaseOpenTime);
+            statement.setObject(4, databaseCloseTime);
+            statement.setString(5, MarketHistoryRepairStatus.QUEUED.name());
+            statement.setString(6, truncate(reason));
+            statement.setObject(7, now);
+            statement.setObject(8, now);
+            return statement;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        if (key != null) {
+            return key.longValue();
+        }
+        return findRepairEventId(symbol, interval, databaseOpenTime);
+    }
+
+    private Long findRepairEventId(String symbol, MarketCandleInterval interval, LocalDateTime databaseOpenTime) {
+        return jdbcTemplate.queryForObject(
+                """
+                        SELECT id
+                        FROM market_history_repair_events
+                        WHERE symbol = ? AND candle_interval = ? AND open_time = ?
+                        """,
+                Long.class,
+                symbol,
+                interval.name(),
+                databaseOpenTime
+        );
     }
 
     private MarketHistoryRepairEvent toEvent(MarketHistoryRepairEventEntity entity) {

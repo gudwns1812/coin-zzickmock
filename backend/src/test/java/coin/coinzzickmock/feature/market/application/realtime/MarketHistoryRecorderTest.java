@@ -1,7 +1,11 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -17,7 +21,7 @@ class MarketHistoryRecorderTest {
     @Test
     void savesHourlyCandleWhenRebuiltHourHasCompleteMinuteCoverage() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        MarketHistoryRecorder recorder = new MarketHistoryRecorder(repository);
+        MarketHistoryRecorder recorder = recorder(repository);
         Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
 
         recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, -1));
@@ -28,7 +32,7 @@ class MarketHistoryRecorderTest {
     @Test
     void keepsExistingHourlyCandleWhenRebuiltHourIsIncomplete() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        MarketHistoryRecorder recorder = new MarketHistoryRecorder(repository);
+        MarketHistoryRecorder recorder = recorder(repository);
         Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
         HourlyMarketCandle original = hourly(1L, hourOpenTime);
         repository.saveHourlyCandle(original);
@@ -41,12 +45,21 @@ class MarketHistoryRecorderTest {
     @Test
     void doesNotSaveHourlyCandleWhenRebuiltHourIsIncomplete() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        MarketHistoryRecorder recorder = new MarketHistoryRecorder(repository);
+        MarketHistoryRecorder recorder = recorder(repository);
         Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
 
         recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, 30));
 
         assertThat(repository.hourlyCandles).isEmpty();
+    }
+
+    private static MarketHistoryRecorder recorder(MarketHistoryRepository repository) {
+        return new MarketHistoryRecorder(
+                repository,
+                new CompletedHourlyCandleBuilder(),
+                mock(AfterCommitEventPublisher.class),
+                mock(MarketHistoryRepairRequestRecorder.class)
+        );
     }
 
     private static List<MarketMinuteCandleSnapshot> minuteSnapshots(Instant hourOpenTime, int missingMinuteIndex) {

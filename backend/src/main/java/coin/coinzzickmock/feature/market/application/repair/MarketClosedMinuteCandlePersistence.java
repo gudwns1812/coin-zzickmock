@@ -25,8 +25,8 @@ public class MarketClosedMinuteCandlePersistence {
 
     @Retryable(
             retryFor = MarketHistoryPersistenceAttemptException.class,
-            maxAttemptsExpression = "${coin.market.history-repair.persistence-retry.max-attempts:3}",
-            backoff = @Backoff(delayExpression = "${coin.market.history-repair.persistence-retry.delay-ms:100}")
+            maxAttemptsExpression = "${coin.market.history-repair.persistence-retry.max-attempts:5}",
+            backoff = @Backoff(delayExpression = "${coin.market.history-repair.persistence-retry.delay-ms:1000}")
     )
     public MarketHistoryPersistenceResult persist(String symbol, Instant openTime, Instant closeTime) {
         List<MarketMinuteCandleSnapshot> minuteCandles = loadClosedMinuteCandles(symbol, openTime, closeTime);
@@ -68,7 +68,8 @@ public class MarketClosedMinuteCandlePersistence {
             Instant closeTime
     ) {
         try {
-            List<MarketMinuteCandleSnapshot> minuteCandles = marketDataGateway.loadMinuteCandles(symbol, openTime, closeTime);
+            List<MarketMinuteCandleSnapshot> minuteCandles = marketDataGateway.loadMinuteCandles(symbol, openTime,
+                    closeTime);
             return minuteCandles == null ? List.of() : minuteCandles;
         } catch (Exception exception) {
             log.warn("Failed to load closed market minute candle history. symbol={} openTime={} closeTime={}",
@@ -93,7 +94,8 @@ public class MarketClosedMinuteCandlePersistence {
         } catch (RuntimeException exception) {
             log.warn("Failed to persist closed market minute candle history. symbol={} openTime={} closeTime={}",
                     symbol, openTime, closeTime, exception);
-            throw new MarketHistoryPersistenceAttemptException("closed minute candle history persist failed", exception);
+            throw new MarketHistoryPersistenceAttemptException("closed minute candle history persist failed",
+                    exception);
         }
     }
 }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
@@ -309,7 +310,12 @@ class MarketRealtimeFeedTest {
             InMemoryMarketHistoryRepository marketHistoryRepository,
             ApplicationEventPublisher applicationEventPublisher
     ) {
-        MarketHistoryRecorder marketHistoryRecorder = new MarketHistoryRecorder(marketHistoryRepository);
+        MarketHistoryRecorder marketHistoryRecorder = new MarketHistoryRecorder(
+                marketHistoryRepository,
+                new CompletedHourlyCandleBuilder(),
+                mock(AfterCommitEventPublisher.class),
+                mock(MarketHistoryRepairRequestRecorder.class)
+        );
         MarketSnapshotStore marketSnapshotStore = newSnapshotStore();
         MarketClosedMinuteCandlePersistence persistence = new MarketClosedMinuteCandlePersistence(
                 marketDataGateway,

@@ -15,8 +15,8 @@ public class MarketHistoryRepairQueuePublisher {
 
     @Retryable(
             retryFor = RuntimeException.class,
-            maxAttemptsExpression = "${coin.market.history-repair.enqueue-retry.max-attempts:3}",
-            backoff = @Backoff(delayExpression = "${coin.market.history-repair.enqueue-retry.delay-ms:100}")
+            maxAttemptsExpression = "${coin.market.history-repair.enqueue-retry.max-attempts:5}",
+            backoff = @Backoff(delayExpression = "${coin.market.history-repair.enqueue-retry.delay-ms:1000}")
     )
     public void enqueue(long eventId) {
         marketHistoryRepairQueue.push(eventId);
@@ -24,6 +24,7 @@ public class MarketHistoryRepairQueuePublisher {
 
     @Recover
     void recover(RuntimeException exception, long eventId) {
-        log.warn("Failed to enqueue market history repair event after retry exhaustion. eventId={}", eventId, exception);
+        log.warn("Failed to enqueue market history repair event after retry exhaustion. eventId={}", eventId,
+                exception);
     }
 }

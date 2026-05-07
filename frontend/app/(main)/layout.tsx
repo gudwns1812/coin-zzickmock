@@ -9,12 +9,12 @@ export default async function MainLayout({
   return (
     <div className="w-screen h-screen relative flex flex-col overflow-x-scroll bg-white">
       <Header />
-      <div
+      <main
         id="main-layout"
         className="flex-1 overflow-y-scroll pt-[78px] flex flex-col justify-between bg-white"
       >
         <div className="grow shrink-0 min-w-[1000px]">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

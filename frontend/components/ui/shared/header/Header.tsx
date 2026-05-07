@@ -26,7 +26,6 @@ const Header = async () => {
         <Link
           href="/markets"
           className="flex shrink-0 items-center gap-2.5"
-          aria-label="코인 찍먹 홈"
         >
           <img
             src="/favicon.ico"
@@ -37,7 +36,7 @@ const Header = async () => {
             <span className="text-lg font-bold text-main-dark-gray">
               코인 찍먹
             </span>
-            <span className="text-xs font-medium text-sub">
+            <span className="text-xs font-medium text-main-dark-gray">
               쉽고 가볍게, 코인 투자
             </span>
           </span>

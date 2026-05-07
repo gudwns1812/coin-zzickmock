@@ -74,7 +74,8 @@ public class TradingExecutionSseBroker {
             throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         }
         recordConnectionOpened();
-        completeReplacedEmitter(registration.replacedEmitter());
+        logLifecycle(permit.memberId(), "register", null);
+        completeReplacedEmitter(permit.memberId(), registration.replacedEmitter());
     }
 
     public void unregister(Long memberId, SseEmitter emitter) {
@@ -84,12 +85,14 @@ public class TradingExecutionSseBroker {
     private void unregister(Long memberId, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(memberId, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(memberId, lifecycleAction(reason), reason);
         }
     }
 
     private void unregister(Long memberId, String clientKey, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(memberId, clientKey, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(memberId, lifecycleAction(reason), reason);
         }
     }
 
@@ -146,7 +149,7 @@ public class TradingExecutionSseBroker {
         recordConnectionRejected("member_limit");
     }
 
-    private void completeReplacedEmitter(SseEmitter replacedEmitter) {
+    private void completeReplacedEmitter(Long memberId, SseEmitter replacedEmitter) {
         if (replacedEmitter == null) {
             return;
         }
@@ -155,7 +158,31 @@ public class TradingExecutionSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed("replaced");
+        recordConnectionClosed("client_replaced");
+        logLifecycle(memberId, "replace", "client_replaced");
+    }
+
+    private void logLifecycle(Long memberId, String action, String reason) {
+        log.info(
+                "SSE lifecycle stream={} keyType=member memberFingerprint={} action={} reason={} activeKeyEmitters={} activeTotalEmitters={}",
+                STREAM,
+                memberFingerprint(memberId),
+                action,
+                reason,
+                subscriptions.subscriberCount(memberId),
+                subscriptions.totalSubscriberCount()
+        );
+    }
+
+    private String memberFingerprint(Long memberId) {
+        return Integer.toHexString(Long.hashCode(memberId));
+    }
+
+    private String lifecycleAction(String reason) {
+        if ("client_complete".equals(reason)) {
+            return "complete";
+        }
+        return reason;
     }
 
     private void recordConnectionOpened() {

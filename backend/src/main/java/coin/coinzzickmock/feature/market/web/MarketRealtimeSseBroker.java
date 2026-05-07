@@ -73,7 +73,8 @@ public class MarketRealtimeSseBroker {
             throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
         }
         recordConnectionOpened();
-        completeReplacedEmitter(registration.replacedEmitter());
+        logLifecycle(permit.symbol(), "register", null);
+        completeReplacedEmitter(permit.symbol(), registration.replacedEmitter());
     }
 
     public void unregister(String symbol, SseEmitter emitter) {
@@ -83,12 +84,14 @@ public class MarketRealtimeSseBroker {
     private void unregister(String symbol, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(symbol, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(symbol, lifecycleAction(reason), reason);
         }
     }
 
     private void unregister(String symbol, String clientKey, SseEmitter emitter, String reason) {
         if (subscriptions.unregister(symbol, clientKey, emitter)) {
             recordConnectionClosed(reason);
+            logLifecycle(symbol, lifecycleAction(reason), reason);
         }
     }
 
@@ -151,7 +154,7 @@ public class MarketRealtimeSseBroker {
         recordConnectionRejected("symbol_limit");
     }
 
-    private void completeReplacedEmitter(SseEmitter replacedEmitter) {
+    private void completeReplacedEmitter(String symbol, SseEmitter replacedEmitter) {
         if (replacedEmitter == null) {
             return;
         }
@@ -160,7 +163,27 @@ public class MarketRealtimeSseBroker {
         } catch (RuntimeException ignored) {
             // The replaced client may already be closed.
         }
-        recordConnectionClosed("replaced");
+        recordConnectionClosed("client_replaced");
+        logLifecycle(symbol, "replace", "client_replaced");
+    }
+
+    private void logLifecycle(String symbol, String action, String reason) {
+        log.info(
+                "SSE lifecycle stream={} keyType=symbol symbol={} action={} reason={} activeKeyEmitters={} activeTotalEmitters={}",
+                STREAM,
+                symbol,
+                action,
+                reason,
+                subscriptions.subscriberCount(symbol),
+                subscriptions.totalSubscriberCount()
+        );
+    }
+
+    private String lifecycleAction(String reason) {
+        if ("client_complete".equals(reason)) {
+            return "complete";
+        }
+        return reason;
     }
 
     private void recordConnectionOpened() {

@@ -144,7 +144,7 @@ class MarketCandleRealtimeSseBrokerTest {
         assertThat(first.completed()).isTrue();
         assertThat(first.sendAttempts()).isEqualTo(0);
         assertThat(second.events()).hasSize(1);
-        assertThat(telemetry.events()).contains("closed:market_candle:replaced");
+        assertThat(telemetry.events()).contains("closed:market_candle:client_replaced");
     }
 
     @Test

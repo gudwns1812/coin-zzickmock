@@ -99,6 +99,12 @@ export default function MarketDetailRealtimeView({
   >([]);
   const lastOrderResumeRefreshAtRef = useRef(0);
 
+  const marketStreamUrl = useMemo(
+    () => `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`,
+    [initialMarket.symbol]
+  );
+  const orderStreamUrl = "/api/futures/orders/stream";
+
   const handleMarketStreamMessage = useCallback((event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data) as MarketApiResponse;
@@ -129,7 +135,7 @@ export default function MarketDetailRealtimeView({
 
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,
-    url: `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`,
+    url: marketStreamUrl,
   });
 
   useEffect(() => {
@@ -187,7 +193,7 @@ export default function MarketDetailRealtimeView({
     enabled: isAuthenticated,
     onMessage: handleOrderStreamMessage,
     onReconnect: refreshOnOrderStreamResume,
-    url: "/api/futures/orders/stream",
+    url: orderStreamUrl,
   });
 
   useEffect(() => {

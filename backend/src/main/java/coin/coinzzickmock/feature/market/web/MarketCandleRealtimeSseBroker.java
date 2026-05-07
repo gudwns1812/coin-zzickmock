@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +37,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 public class MarketCandleRealtimeSseBroker {
     private static final String STREAM = "market_candle";
+    private static final String CLIENT_REPLACED_REASON = "client_replaced";
     private static final List<MarketCandleInterval> COMPLETED_HOURLY_INTERVALS = List.of(
             MarketCandleInterval.ONE_HOUR,
             MarketCandleInterval.FOUR_HOURS,
@@ -111,44 +111,52 @@ public class MarketCandleRealtimeSseBroker {
     }
 
     public SseSubscriptionPermit reserve(SubscriptionKey key) {
-        var reservation = subscriptions.reserve(key);
+        return reserve(subscriptions.reserve(key));
+    }
+
+    public SseSubscriptionPermit reserve(SubscriptionKey key, String clientKey) {
+        return reserve(subscriptions.reserve(key, clientKey));
+    }
+
+    private SseSubscriptionPermit reserve(SseSubscriptionRegistry.Reservation<SubscriptionKey> reservation) {
         if (reservation.accepted()) {
             return new SseSubscriptionPermit(reservation.permit());
         }
-        if (reservation.rejection() == ReservationRejection.TOTAL_LIMIT) {
-            recordConnectionRejected("total_limit");
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
-        }
-
-        recordConnectionRejected("key_limit");
+        reject(reservation.rejection());
         throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
         SubscriptionKey key = permit.key();
-        boolean registered = false;
         try {
+            bindLifecycle(permit, emitter);
+            var registration = subscriptions.register(permit.delegate, emitter);
+            if (!registration.registered()) {
+                reject(registration.rejection());
+                throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+            }
             synchronized (activeKeys) {
-                subscriptions.register(permit.delegate, emitter);
                 activeKeys.add(key);
-                registered = true;
             }
-            bindLifecycle(key, emitter);
+            recordConnectionOpened();
+            logLifecycle(key, "register", null);
+            completeReplacedEmitter(key, registration.replacedEmitter());
         } catch (RuntimeException exception) {
-            if (registered) {
-                discardRegisteredSubscription(key, emitter);
-            } else {
-                release(permit);
-                cleanupActiveKey(key);
-            }
+            discardRegisteredSubscription(key, emitter);
+            release(permit);
+            cleanupActiveKey(key);
             throw exception;
         }
-        recordConnectionOpened();
     }
 
     public void register(String symbol, MarketCandleInterval interval, SseEmitter emitter) {
         SubscriptionKey key = new SubscriptionKey(symbol, interval);
         register(reserve(key), emitter);
+    }
+
+    public void register(String symbol, MarketCandleInterval interval, String clientKey, SseEmitter emitter) {
+        SubscriptionKey key = new SubscriptionKey(symbol, interval);
+        register(reserve(key, clientKey), emitter);
     }
 
     public void unregister(SubscriptionKey key, SseEmitter emitter) {
@@ -159,11 +167,22 @@ public class MarketCandleRealtimeSseBroker {
         if (subscriptions.unregister(key, emitter)) {
             cleanupActiveKey(key);
             recordConnectionClosed(reason);
+            logLifecycle(key, lifecycleAction(reason), reason);
+        }
+    }
+
+    private void unregister(SubscriptionKey key, String clientKey, SseEmitter emitter, String reason) {
+        if (subscriptions.unregister(key, clientKey, emitter)) {
+            cleanupActiveKey(key);
+            recordConnectionClosed(reason);
+            logLifecycle(key, lifecycleAction(reason), reason);
         }
     }
 
     public void release(SseSubscriptionPermit permit) {
-        subscriptions.release(permit.delegate);
+        if (subscriptions.release(permit.delegate)) {
+            logLifecycle(permit.key(), "release", "before_register");
+        }
     }
 
     @EventListener
@@ -193,8 +212,8 @@ public class MarketCandleRealtimeSseBroker {
     }
 
     private void fanOutLatest(SubscriptionKey key) {
-        CopyOnWriteArrayList<SseEmitter> keyEmitters = subscriptions.subscribers(key);
-        if (keyEmitters == null || keyEmitters.isEmpty()) {
+        List<SseEmitter> keyEmitters = subscriptions.subscribers(key);
+        if (keyEmitters.isEmpty()) {
             return;
         }
         realtimeMarketCandleProjector.latest(key.symbol(), key.interval())
@@ -203,8 +222,8 @@ public class MarketCandleRealtimeSseBroker {
     }
 
     private void fanOut(SubscriptionKey key, Object response) {
-        CopyOnWriteArrayList<SseEmitter> keyEmitters = subscriptions.subscribers(key);
-        if (keyEmitters == null || keyEmitters.isEmpty()) {
+        List<SseEmitter> keyEmitters = subscriptions.subscribers(key);
+        if (keyEmitters.isEmpty()) {
             return;
         }
         executeFanOut(key, keyEmitters, response);
@@ -212,7 +231,7 @@ public class MarketCandleRealtimeSseBroker {
 
     private void executeFanOut(
             SubscriptionKey key,
-            CopyOnWriteArrayList<SseEmitter> keyEmitters,
+            List<SseEmitter> keyEmitters,
             Object response
     ) {
         try {
@@ -224,16 +243,17 @@ public class MarketCandleRealtimeSseBroker {
         }
     }
 
-    private void bindLifecycle(SubscriptionKey key, SseEmitter emitter) {
-        emitter.onCompletion(() -> unregister(key, emitter, "client_complete"));
+    private void bindLifecycle(SseSubscriptionPermit permit, SseEmitter emitter) {
+        SubscriptionKey key = permit.key();
+        emitter.onCompletion(() -> unregister(key, permit.clientKey(), emitter, "client_complete"));
         emitter.onTimeout(() -> {
-            unregister(key, emitter, "timeout");
+            unregister(key, permit.clientKey(), emitter, "timeout");
             emitter.complete();
         });
         emitter.onError(error -> {
             log.debug("Market candle SSE emitter reported an error; closing subscription. stream={} symbol={} interval={}",
                     STREAM, key.symbol(), key.interval().value(), error);
-            unregister(key, emitter, "error");
+            unregister(key, permit.clientKey(), emitter, "error");
         });
     }
 
@@ -271,8 +291,8 @@ public class MarketCandleRealtimeSseBroker {
     }
 
     private boolean isSubscriptionEmpty(SubscriptionKey key) {
-        CopyOnWriteArrayList<SseEmitter> keyEmitters = subscriptions.subscribers(key);
-        return keyEmitters == null || keyEmitters.isEmpty();
+        List<SseEmitter> keyEmitters = subscriptions.subscribers(key);
+        return keyEmitters.isEmpty();
     }
 
     private List<String> affectedIntervals(MarketHistoryFinalizedEvent event) {
@@ -373,6 +393,48 @@ public class MarketCandleRealtimeSseBroker {
     private record BucketRange(Instant openTime, Instant closeTime, int expectedHourlyCandles) {
     }
 
+
+    private void reject(ReservationRejection rejection) {
+        if (rejection == ReservationRejection.TOTAL_LIMIT) {
+            recordConnectionRejected("total_limit");
+            return;
+        }
+        recordConnectionRejected("key_limit");
+    }
+
+    private void completeReplacedEmitter(SubscriptionKey key, SseEmitter replacedEmitter) {
+        if (replacedEmitter == null) {
+            return;
+        }
+        try {
+            replacedEmitter.complete();
+        } catch (RuntimeException ignored) {
+            // The replaced client may already be closed.
+        }
+        recordConnectionClosed("client_replaced");
+        logLifecycle(key, "replace", "client_replaced");
+    }
+
+    private void logLifecycle(SubscriptionKey key, String action, String reason) {
+        log.info(
+                "SSE lifecycle stream={} keyType=symbol_interval symbol={} interval={} action={} reason={} activeKeyEmitters={} activeTotalEmitters={}",
+                STREAM,
+                key.symbol(),
+                key.interval().value(),
+                action,
+                reason,
+                subscriptions.subscriberCount(key),
+                subscriptions.totalSubscriberCount()
+        );
+    }
+
+    private String lifecycleAction(String reason) {
+        if ("client_complete".equals(reason)) {
+            return "complete";
+        }
+        return reason;
+    }
+
     private void recordConnectionOpened() {
         try {
             sseTelemetry.connectionOpened(STREAM);
@@ -429,6 +491,10 @@ public class MarketCandleRealtimeSseBroker {
 
         private SubscriptionKey key() {
             return delegate.key();
+        }
+
+        private String clientKey() {
+            return delegate.clientKey();
         }
     }
 }

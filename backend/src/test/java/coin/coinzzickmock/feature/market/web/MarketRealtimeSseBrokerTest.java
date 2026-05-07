@@ -250,6 +250,45 @@ class MarketRealtimeSseBrokerTest {
         );
     }
 
+
+    @Test
+    void replacesDuplicateClientKeyEvenWhenSymbolLimitIsFull() {
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 1, 1, telemetry);
+        CallbackCapturingSseEmitter first = new CallbackCapturingSseEmitter();
+        CapturingSseEmitter second = new CapturingSseEmitter();
+
+        broker.register(broker.reserve("BTCUSDT", "tab-1"), first);
+        broker.register(broker.reserve("BTCUSDT", "tab-1"), second);
+        first.fireCompletion();
+
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("BTCUSDT", "Bitcoin Perpetual", 74000, 74010, 74005, 0.0001, 0.2)
+        ));
+
+        assertThat(first.completed()).isTrue();
+        assertThat(first.events()).isEmpty();
+        assertThat(second.events()).hasSize(1);
+        assertThat(telemetry.events()).contains("closed:market:client_replaced");
+    }
+
+    @Test
+    void sendsSameSymbolUpdatesToDifferentClientKeys() {
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 2, 2);
+        CapturingSseEmitter first = new CapturingSseEmitter();
+        CapturingSseEmitter second = new CapturingSseEmitter();
+
+        broker.register(broker.reserve("BTCUSDT", "tab-1"), first);
+        broker.register(broker.reserve("BTCUSDT", "tab-2"), second);
+
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("BTCUSDT", "Bitcoin Perpetual", 74000, 74010, 74005, 0.0001, 0.2)
+        ));
+
+        assertThat(first.events()).hasSize(1);
+        assertThat(second.events()).hasSize(1);
+    }
+
     private static Executor directExecutor() {
         return Runnable::run;
     }

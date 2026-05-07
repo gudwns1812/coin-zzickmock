@@ -119,6 +119,56 @@ class MarketCandleRealtimeSseBrokerTest {
         assertThat(replacementEmitter.events()).hasSize(1);
     }
 
+
+    @Test
+    void replacesDuplicateClientKeyEvenWhenCandleKeyLimitIsFull() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
+                Runnable::run,
+                new RealtimeMarketCandleProjector(store),
+                null,
+                1,
+                1,
+                telemetry
+        );
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        FailingSseEmitter first = new FailingSseEmitter();
+        CapturingSseEmitter second = new CapturingSseEmitter();
+        store.acceptCandle(candle(Instant.parse("2026-04-30T04:00:00Z")));
+
+        broker.register(broker.reserve(key, "tab-1"), first);
+        broker.register(broker.reserve(key, "tab-1"), second);
+        broker.onCandleUpdated(new MarketCandleUpdatedEvent("BTCUSDT"));
+
+        assertThat(first.completed()).isTrue();
+        assertThat(first.sendAttempts()).isEqualTo(0);
+        assertThat(second.events()).hasSize(1);
+        assertThat(telemetry.events()).contains("closed:market_candle:client_replaced");
+    }
+
+    @Test
+    void sendsCandleUpdatesToDifferentClientKeysForSameKey() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
+                Runnable::run,
+                new RealtimeMarketCandleProjector(store),
+                2,
+                2
+        );
+        MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+        CapturingSseEmitter first = new CapturingSseEmitter();
+        CapturingSseEmitter second = new CapturingSseEmitter();
+        store.acceptCandle(candle(Instant.parse("2026-04-30T04:00:00Z")));
+
+        broker.register(broker.reserve(key, "tab-1"), first);
+        broker.register(broker.reserve(key, "tab-2"), second);
+        broker.onCandleUpdated(new MarketCandleUpdatedEvent("BTCUSDT"));
+
+        assertThat(first.events()).hasSize(1);
+        assertThat(second.events()).hasSize(1);
+    }
+
     @Test
     void deliversProjectedCandleToMatchingIntervalSubscribers() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();

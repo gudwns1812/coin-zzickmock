@@ -359,11 +359,12 @@ function MarketLandingStreamSubscription({
   onRecovering,
   onStatusChange,
 }: MarketLandingStreamSubscriptionProps) {
+  const streamUrl = `/api/futures/markets/${encodeURIComponent(symbol)}/stream`;
   const { status } = useResilientEventSource({
     onError: onRecovering,
     onMessage,
     onReconnect: onRecovering,
-    url: `/api/futures/markets/${encodeURIComponent(symbol)}/stream`,
+    url: streamUrl,
   });
 
   useEffect(() => {

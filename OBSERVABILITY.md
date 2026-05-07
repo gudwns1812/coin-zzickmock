@@ -372,7 +372,7 @@ Grafana에 추가할 지표:
 
 - `sse.connections.current` with `stream=market|market_candle|trading_execution`
 - `sse.connections.opened.total` with `stream`
-- `sse.connections.closed.total` with `stream`, `reason`
+- `sse.connections.closed.total` with `stream`, `reason=client_complete|timeout|error|send_failure|client_replaced`
 - `sse.connections.rejected.total` with `stream`, `reason=total_limit|symbol_limit|member_limit`
 - `sse.send.total` with `stream`, `result`
 - `sse.send.duration` with `stream`, `result`

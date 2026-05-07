@@ -77,6 +77,45 @@ test("frontend SSE route handlers use the cancellable SSE proxy", () => {
   const proxySource = readFrontendSource("lib/sse-proxy.ts");
 
   assert.equal(proxySource.includes("new AbortController()"), true);
-  assert.equal(proxySource.includes("upstreamReader?.cancel()"), true);
+  assert.equal(proxySource.includes("reader?.cancel()"), true);
+  assert.equal(proxySource.includes("start(controller)"), true);
   assert.equal(proxySource.includes("async cancel()"), true);
+});
+
+test("frontend SSE routes require and forward clientKey", () => {
+  const routeSources = [
+    "app/api/futures/markets/[symbol]/stream/route.ts",
+    "app/api/futures/markets/[symbol]/candles/stream/route.ts",
+    "app/api/futures/orders/stream/route.ts",
+  ].map(readFrontendSource);
+
+  for (const source of routeSources) {
+    assert.equal(source.includes("readRequiredSseClientKey(request.url)"), true);
+    assert.equal(source.includes("Missing SSE client key"), true);
+    assert.equal(source.includes("SSE_CLIENT_KEY_PARAM"), true);
+  }
+});
+
+test("useResilientEventSource appends tab clientKey at the shared hook boundary", () => {
+  const source = readFrontendSource("hooks/useResilientEventSource.ts");
+
+  assert.equal(source.includes("useSseClientKey"), true);
+  assert.equal(source.includes("appendSseClientKey"), true);
+  assert.equal(source.includes("eventSourceFactory(nextUrl)"), true);
+});
+
+test("frontend SSE consumers keep plain stream URLs and rely on the hook boundary", () => {
+  const sources = [
+    "components/router/(main)/markets/MarketsLandingRealtimeView.tsx",
+    "components/futures/MarketDetailRealtimeView.tsx",
+    "components/futures/FuturesPriceChart.tsx",
+  ].map(readFrontendSource);
+
+  for (const source of sources) {
+    assert.equal(source.includes("useSseClientKey"), false);
+    assert.equal(source.includes("appendSseClientKey"), false);
+  }
+
+  const chartSource = readFrontendSource("components/futures/FuturesPriceChart.tsx");
+  assert.equal(chartSource.includes("new URLSearchParams({ interval })"), true);
 });

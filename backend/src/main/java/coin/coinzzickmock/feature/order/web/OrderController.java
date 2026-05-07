@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
+import coin.coinzzickmock.common.web.SseClientKey;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
@@ -77,10 +78,15 @@ public class OrderController {
         return ApiResponse.success(orders.stream().map(OrderHistoryResponse::from).toList());
     }
 
-    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
+        return stream(null);
+    }
+
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream(@RequestParam(required = false) String clientKey) {
         Long memberId = providers.auth().currentActor().memberId();
-        TradingExecutionSseBroker.SseSubscriptionPermit permit = tradingExecutionSseBroker.reserve(memberId);
+        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
+        TradingExecutionSseBroker.SseSubscriptionPermit permit = tradingExecutionSseBroker.reserve(memberId, resolvedClientKey);
         SseEmitter emitter = createEmitter();
         try {
             tradingExecutionSseBroker.register(permit, emitter);

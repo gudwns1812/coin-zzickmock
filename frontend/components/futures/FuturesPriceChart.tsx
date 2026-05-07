@@ -263,6 +263,11 @@ export default function FuturesPriceChart({
     staleTime: 15_000,
   });
 
+  const candleStreamUrl = useMemo(
+    () => buildCandleStreamUrl(symbol, selectedInterval),
+    [selectedInterval, symbol]
+  );
+
   const candles = useMemo(() => {
     const merged = [...(historyQuery.data?.pages ?? [])].reverse().flat();
     const uniqueByOpenTime = new Map<string, CandleResponse>();
@@ -640,7 +645,7 @@ export default function FuturesPriceChart({
     enabled: isIntervalPreferenceHydrated,
     onMessage: handleCandleStreamMessage,
     onReconnect: invalidateCurrentCandleQueries,
-    url: buildCandleStreamUrl(symbol, selectedInterval),
+    url: candleStreamUrl,
   });
 
   useEffect(() => {

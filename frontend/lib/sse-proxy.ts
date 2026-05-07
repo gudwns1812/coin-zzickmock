@@ -5,6 +5,7 @@ const SSE_RESPONSE_HEADERS = {
 
 type ProxySseStreamOptions = {
   failureMessage: string;
+  fetcher?: (input: string, init?: RequestInit) => Promise<Response>;
   request: Request;
   upstreamHeaders: Headers;
   upstreamUrl: string;
@@ -26,13 +27,17 @@ export function createSseUpstreamHeaders(request: Request) {
 
 export async function proxySseStream({
   failureMessage,
+  fetcher = fetch,
   request,
   upstreamHeaders,
   upstreamUrl,
 }: ProxySseStreamOptions) {
   const upstreamAbortController = new AbortController();
   let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let downstreamController: ReadableStreamDefaultController<Uint8Array> | null =
+    null;
   let isClosed = false;
+  let isDownstreamClosed = false;
 
   const closeProxy = () => {
     if (isClosed) {
@@ -44,15 +49,36 @@ export async function proxySseStream({
   };
 
   const abortUpstream = () => {
-    upstreamReader?.cancel().catch(() => undefined);
+    const reader = upstreamReader;
+    upstreamReader = null;
 
     if (!upstreamAbortController.signal.aborted) {
       upstreamAbortController.abort();
+    }
+
+    reader?.cancel().catch(() => undefined);
+  };
+
+  const closeDownstream = () => {
+    if (isDownstreamClosed) {
+      return;
+    }
+
+    isDownstreamClosed = true;
+    const controller = downstreamController;
+    downstreamController = null;
+
+    try {
+      controller?.close();
+    } catch {
+      // The browser may have already closed the response body.
     }
   };
 
   function handleRequestAbort() {
     abortUpstream();
+    closeDownstream();
+    closeProxy();
   }
 
   if (request.signal.aborted) {
@@ -64,7 +90,7 @@ export async function proxySseStream({
   }
 
   try {
-    const upstreamResponse = await fetch(upstreamUrl, {
+    const upstreamResponse = await fetcher(upstreamUrl, {
       headers: upstreamHeaders,
       cache: "no-store",
       signal: upstreamAbortController.signal,
@@ -79,14 +105,16 @@ export async function proxySseStream({
 
     upstreamReader = upstreamResponse.body.getReader();
 
-    const stream = new ReadableStream<Uint8Array>({
-      async pull(controller) {
-        try {
+    const pumpUpstream = async (
+      controller: ReadableStreamDefaultController<Uint8Array>
+    ) => {
+      try {
+        while (!isDownstreamClosed) {
           const reader = upstreamReader;
 
           if (!reader) {
             closeProxy();
-            controller.close();
+            closeDownstream();
             return;
           }
 
@@ -95,35 +123,41 @@ export async function proxySseStream({
           if (done) {
             upstreamReader = null;
             closeProxy();
-            controller.close();
+            closeDownstream();
             return;
           }
 
-          controller.enqueue(value);
-        } catch (error) {
-          upstreamReader = null;
-          closeProxy();
-
-          if (
-            request.signal.aborted ||
-            upstreamAbortController.signal.aborted
-          ) {
-            controller.close();
-            return;
+          if (!isDownstreamClosed) {
+            controller.enqueue(value);
           }
-
-          controller.error(error);
         }
+      } catch (error) {
+        upstreamReader = null;
+        closeProxy();
+
+        if (
+          request.signal.aborted ||
+          upstreamAbortController.signal.aborted ||
+          isDownstreamClosed
+        ) {
+          closeDownstream();
+          return;
+        }
+
+        isDownstreamClosed = true;
+        downstreamController = null;
+        controller.error(error);
+      }
+    };
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        downstreamController = controller;
+        void pumpUpstream(controller);
       },
       async cancel() {
-        const reader = upstreamReader;
-        upstreamReader = null;
-
-        try {
-          await reader?.cancel();
-        } catch {
-          // The downstream connection is already gone; the abort below closes upstream.
-        }
+        isDownstreamClosed = true;
+        downstreamController = null;
 
         abortUpstream();
         closeProxy();

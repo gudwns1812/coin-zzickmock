@@ -4,27 +4,27 @@ This file is generated for a live OMX team worker run and is disposable.
 
 ## Worker Identity
 - Team: execute-and-verify-th-57a64e39
-- Worker: worker-3
+- Worker: worker-4
 - Role: executor
 - Leader cwd: /Users/hj.park/projects/coin-zzickmock
-- Worktree root: /Users/hj.park/projects/coin-zzickmock/.omx/team/execute-and-verify-th-57a64e39/worktrees/worker-3
+- Worktree root: /Users/hj.park/projects/coin-zzickmock/.omx/team/execute-and-verify-th-57a64e39/worktrees/worker-4
 - Team state root: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state
-- Inbox path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-3/inbox.md
-- Mailbox path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/mailbox/worker-3.json
+- Inbox path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-4/inbox.md
+- Mailbox path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/mailbox/worker-4.json
 - Leader mailbox path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/mailbox/leader-fixed.json
 - Task directory: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/tasks
-- Worker status path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-3/status.json
-- Worker identity path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-3/identity.json
+- Worker status path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-4/status.json
+- Worker identity path: /Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-4/identity.json
 
 ## Protocol
-1. Read your inbox at `/Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-3/inbox.md`.
+1. Read your inbox at `/Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/workers/worker-4/inbox.md`.
 2. Load the worker skill from the first existing path:
    - `${CODEX_HOME:-~/.codex}/skills/worker/SKILL.md`
    - `/Users/hj.park/projects/coin-zzickmock/.codex/skills/worker/SKILL.md`
    - `/Users/hj.park/projects/coin-zzickmock/skills/worker/SKILL.md`
 3. Send startup ACK before task work:
 
-   `omx team api send-message --input "{"team_name":"execute-and-verify-th-57a64e39","from_worker":"worker-3","to_worker":"leader-fixed","body":"ACK: worker-3 initialized"}" --json`
+   `omx team api send-message --input "{"team_name":"execute-and-verify-th-57a64e39","from_worker":"worker-4","to_worker":"leader-fixed","body":"ACK: worker-4 initialized"}" --json`
 
 4. Resolve canonical team state root in this order: `OMX_TEAM_STATE_ROOT` env -> worker identity `team_state_root` -> config/manifest `team_state_root` -> local cwd fallback.
 5. Read task files from `/Users/hj.park/.omx-runs/run-20260507165425-4f82/.omx/state/team/execute-and-verify-th-57a64e39/tasks/task-<id>.json` using bare `task_id` values in APIs.
@@ -33,13 +33,13 @@ This file is generated for a live OMX team worker run and is disposable.
    - `omx team api transition-task-status --json`
    - `omx team api release-task-claim --json` only for rollback to pending
 7. Use mailbox delivery flow:
-   - `omx team api mailbox-list --input "{"team_name":"execute-and-verify-th-57a64e39","worker":"worker-3"}" --json`
-   - `omx team api mailbox-mark-delivered --input "{"team_name":"execute-and-verify-th-57a64e39","worker":"worker-3","message_id":"<MESSAGE_ID>"}" --json`
+   - `omx team api mailbox-list --input "{"team_name":"execute-and-verify-th-57a64e39","worker":"worker-4"}" --json`
+   - `omx team api mailbox-mark-delivered --input "{"team_name":"execute-and-verify-th-57a64e39","worker":"worker-4","message_id":"<MESSAGE_ID>"}" --json`
 8. Preserve leader steering via inbox/mailbox nudges; task payload stays in inbox/task JSON, not this file.
 9. Do not pass `workingDirectory` to legacy team_* MCP tools; use `omx team api` CLI interop.
 
 ## Message Protocol
-- Always include `from_worker: "worker-3"`
+- Always include `from_worker: "worker-4"`
 - Send leader messages to `to_worker: "leader-fixed"`
 
 ## Scope Rules

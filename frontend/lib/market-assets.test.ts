@@ -9,15 +9,15 @@ const { formatMarketRank, getMarketLogoPath, getMarketRankIconPath } =
   marketsModule;
 
 test("maps supported futures symbols to bundled logo images", () => {
-  assert.equal(getMarketLogoPath("BTCUSDT"), "/images/logo/bitcoin.png");
-  assert.equal(getMarketLogoPath("ETHUSDT"), "/images/logo/ethereum.png");
+  assert.equal(getMarketLogoPath("BTCUSDT"), "/images/logo/bitcoin.webp");
+  assert.equal(getMarketLogoPath("ETHUSDT"), "/images/logo/ethereum.webp");
 });
 
 test("maps leaderboard rank icons to bundled images", () => {
-  assert.equal(getMarketRankIconPath(1), "/images/leaderboard/first.png");
-  assert.equal(getMarketRankIconPath(2), "/images/leaderboard/second.png");
-  assert.equal(getMarketRankIconPath(3), "/images/leaderboard/third.png");
-  assert.equal(getMarketRankIconPath(4), "/images/leaderboard/4th.png");
+  assert.equal(getMarketRankIconPath(1), "/images/leaderboard/first.webp");
+  assert.equal(getMarketRankIconPath(2), "/images/leaderboard/second.webp");
+  assert.equal(getMarketRankIconPath(3), "/images/leaderboard/third.webp");
+  assert.equal(getMarketRankIconPath(4), "/images/leaderboard/4th.webp");
   assert.equal(getMarketRankIconPath(5), null);
 });
 

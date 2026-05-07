@@ -1,6 +1,6 @@
 import type { ShopItem } from "@/lib/futures-api";
 
-const COFFEE_SHOP_ITEM_IMAGE_PATH = "/images/IceAmericano.png";
+const COFFEE_SHOP_ITEM_IMAGE_PATH = "/images/IceAmericano.webp";
 export const ACCOUNT_REFILL_ITEM_TYPE = "ACCOUNT_REFILL_COUNT";
 
 export function normalizeVoucherPhoneNumber(value: string): string {

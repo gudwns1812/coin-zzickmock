@@ -35,10 +35,10 @@ export type MarketRankingMemberRank = {
 };
 
 const MARKET_RANK_ICON_PATHS: Record<number, string> = {
-  1: "/images/leaderboard/first.png",
-  2: "/images/leaderboard/second.png",
-  3: "/images/leaderboard/third.png",
-  4: "/images/leaderboard/4th.png",
+  1: "/images/leaderboard/first.webp",
+  2: "/images/leaderboard/second.webp",
+  3: "/images/leaderboard/third.webp",
+  4: "/images/leaderboard/4th.webp",
 };
 
 export const MARKET_SNAPSHOTS: Record<MarketSymbol, MarketSnapshot> = {
@@ -117,10 +117,10 @@ export const MARKET_SNAPSHOT_LIST = SUPPORTED_MARKET_SYMBOLS.map(
 
 export function getMarketLogoPath(symbol: MarketSymbol) {
   if (symbol === "ETHUSDT") {
-    return "/images/logo/ethereum.png";
+    return "/images/logo/ethereum.webp";
   }
 
-  return "/images/logo/bitcoin.png";
+  return "/images/logo/bitcoin.webp";
 }
 
 export function getMarketRankIconPath(rank: number) {

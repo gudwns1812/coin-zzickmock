@@ -63,6 +63,6 @@ test("maps coffee shop items to the bundled coffee image", () => {
       code: "voucher.coffee",
       name: "커피 교환권",
     }),
-    "/images/IceAmericano.png"
+    "/images/IceAmericano.webp"
   );
 });

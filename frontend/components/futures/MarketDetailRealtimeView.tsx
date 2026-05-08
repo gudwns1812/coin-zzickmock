@@ -73,9 +73,14 @@ type ClientApiResponse<T> = {
 };
 
 const ORDER_STREAM_RESUME_REFRESH_THROTTLE_MS = 2_000;
+const EXECUTION_EVENT_VISIBLE_MS = 6_000;
 
 type QuickLimitPriceSelection = {
   price: number;
+};
+
+type DisplayedExecutionEvent = FuturesTradingExecutionEvent & {
+  displayId: string;
 };
 
 export default function MarketDetailRealtimeView({
@@ -100,11 +105,13 @@ export default function MarketDetailRealtimeView({
   );
   const [activeTab, setActiveTab] = useState<TradingTab>("POSITIONS");
   const [executionEvents, setExecutionEvents] = useState<
-    FuturesTradingExecutionEvent[]
+    DisplayedExecutionEvent[]
   >([]);
   const [quickLimitPriceSelection, setQuickLimitPriceSelection] =
     useState<QuickLimitPriceSelection | null>(null);
   const lastOrderResumeRefreshAtRef = useRef(0);
+  const executionEventSequenceRef = useRef(0);
+  const executionEventDismissTimersRef = useRef(new Map<string, number>());
 
   const marketStreamUrl = useMemo(
     () => `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`,
@@ -192,7 +199,24 @@ export default function MarketDetailRealtimeView({
           return;
         }
 
-        setExecutionEvents((current) => [data, ...current].slice(0, 4));
+        const displayId = [
+          data.type,
+          data.orderId ?? "position",
+          Date.now(),
+          executionEventSequenceRef.current,
+        ].join("-");
+        executionEventSequenceRef.current += 1;
+
+        setExecutionEvents((current) =>
+          [{ ...data, displayId }, ...current].slice(0, 4)
+        );
+        const dismissTimer = window.setTimeout(() => {
+          setExecutionEvents((current) =>
+            current.filter((event) => event.displayId !== displayId)
+          );
+          executionEventDismissTimersRef.current.delete(displayId);
+        }, EXECUTION_EVENT_VISIBLE_MS);
+        executionEventDismissTimersRef.current.set(displayId, dismissTimer);
         setActiveTab(data.type === "ORDER_FILLED" ? "ORDER_HISTORY" : "POSITIONS");
         router.refresh();
       } catch {
@@ -201,6 +225,15 @@ export default function MarketDetailRealtimeView({
     },
     [initialMarket.symbol, router]
   );
+
+  useEffect(() => {
+    const dismissTimers = executionEventDismissTimersRef.current;
+
+    return () => {
+      dismissTimers.forEach((timer) => window.clearTimeout(timer));
+      dismissTimers.clear();
+    };
+  }, []);
 
   useResilientEventSource({
     enabled: isAuthenticated,
@@ -428,7 +461,7 @@ function SymbolSelector({ activeSymbol }: { activeSymbol: MarketSnapshot["symbol
 function ExecutionEventPanel({
   events,
 }: {
-  events: FuturesTradingExecutionEvent[];
+  events: DisplayedExecutionEvent[];
 }) {
   if (events.length === 0) {
     return null;
@@ -437,7 +470,7 @@ function ExecutionEventPanel({
   return (
     <section>
       <div className="flex flex-col gap-3">
-        {events.map((event, index) => {
+        {events.map((event) => {
           const liquidation = event.type === "POSITION_LIQUIDATED";
           return (
             <div
@@ -447,7 +480,7 @@ function ExecutionEventPanel({
                   ? "border-rose-100 bg-rose-50 text-rose-700"
                   : "border-emerald-100 bg-emerald-50 text-emerald-700",
               ].join(" ")}
-              key={`${event.type}-${event.orderId ?? "position"}-${index}`}
+              key={event.displayId}
             >
               <div className="min-w-0">
                 <p className="text-sm-custom font-bold">{event.message}</p>
@@ -939,7 +972,7 @@ function OrderHistoryTable({ orders }: { orders: FuturesOrderHistory[] }) {
   }
 
   return (
-    <ScrollableTableFrame>
+    <ScrollableTableFrame isVerticallyBounded>
       <table className="w-full min-w-[1040px] text-left text-sm-custom">
         <thead className="text-xs-custom text-main-dark-gray/50">
           <tr className="border-b border-main-light-gray">
@@ -973,12 +1006,10 @@ function OrderHistoryTable({ orders }: { orders: FuturesOrderHistory[] }) {
                 <td
                   className={[
                     "py-3 font-semibold",
-                    order.positionSide === "LONG"
-                      ? "text-emerald-600"
-                      : "text-rose-600",
+                    getOrderDirectionTone(order),
                   ].join(" ")}
                 >
-                  {order.positionSide}
+                  {formatOrderDirection(order)}
                 </td>
                 <td className="py-3 font-semibold text-main-dark-gray">
                   {order.symbol}
@@ -1062,7 +1093,7 @@ function OpenOrdersTable({ orders }: { orders: FuturesOpenOrder[] }) {
                     getOrderDirectionTone(order),
                   ].join(" ")}
                 >
-                  {order.positionSide}
+                  {formatOrderDirection(order)}
                 </td>
                 <td className="py-3 font-semibold text-main-dark-gray">
                   {order.symbol}
@@ -1124,11 +1155,20 @@ function compareOpenOrdersForDisplay(
 
 function ScrollableTableFrame({
   children,
+  isVerticallyBounded = false,
 }: {
   children: ReactNode;
+  isVerticallyBounded?: boolean;
 }) {
   return (
-    <div className="futures-table-scroll">
+    <div
+      className={[
+        "futures-table-scroll",
+        isVerticallyBounded ? "futures-table-scroll--bounded-y" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {children}
     </div>
   );
@@ -1234,6 +1274,15 @@ function formatOrderPurpose(
   }
 
   return order.orderPurpose === "CLOSE_POSITION" ? "Close" : "Open";
+}
+
+function formatOrderDirection(
+  order: Pick<FuturesOpenOrder, "orderPurpose" | "positionSide">
+): string {
+  const intent = order.orderPurpose === "CLOSE_POSITION" ? "Close" : "Open";
+  const side = order.positionSide === "LONG" ? "Long" : "Short";
+
+  return `${intent} ${side}`;
 }
 
 function formatOrderQuantity(

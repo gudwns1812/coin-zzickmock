@@ -10,6 +10,7 @@ import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceCha
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -31,7 +32,9 @@ public class FilledOpenOrderApplier {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
 
-        int effectiveLeverage = existing == null ? order.leverage() : existing.leverage();
+        int effectiveLeverage = existing == null
+                ? symbolMarginLeverage(order).orElse(order.leverage())
+                : existing.leverage();
         double initialMargin = order.reservedInitialMargin(effectiveLeverage);
         TradingAccount updatedAccount = reserveAccountMargin(order.memberId(), order.estimatedFee(), initialMargin);
         afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
@@ -71,6 +74,15 @@ public class FilledOpenOrderApplier {
                 account,
                 account.reserveForFilledOrder(estimatedFee, initialMargin)
         ));
+    }
+
+    private Optional<Integer> symbolMarginLeverage(FilledOpenOrder order) {
+        return positionRepository.findOpenPositions(order.memberId())
+                .stream()
+                .filter(position -> position.symbol().equalsIgnoreCase(order.symbol()))
+                .filter(position -> position.marginMode().equalsIgnoreCase(order.marginMode()))
+                .map(PositionSnapshot::leverage)
+                .findFirst();
     }
 
     private TradingAccount validateAccountMutation(AccountMutationResult mutationResult) {

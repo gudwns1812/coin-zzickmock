@@ -43,6 +43,7 @@ type Side = "LONG" | "SHORT";
 type OrderType = "MARKET" | "LIMIT";
 type MarginMode = "ISOLATED" | "CROSS";
 type TicketMode = "OPEN" | "CLOSE";
+type QuantityInputMode = "QUANTITY" | "PERCENT";
 
 type ClientApiResponse<T> = {
   success: boolean;
@@ -68,6 +69,19 @@ const MAX_LEVERAGE = 50;
 const DEFAULT_MARGIN_MODE: MarginMode = "CROSS";
 const DEFAULT_LEVERAGE = 10;
 const NO_CLOSE_POSITION_MESSAGE = "종료할 포지션이 없습니다.";
+const TICKET_PREFERENCE_STORAGE_KEY_PREFIX = "futures-order-ticket";
+
+type TicketPreference = {
+  positionSide: Side;
+  marginMode: MarginMode;
+  leverage: number;
+};
+
+const DEFAULT_TICKET_PREFERENCE: TicketPreference = {
+  positionSide: "LONG",
+  marginMode: DEFAULT_MARGIN_MODE,
+  leverage: DEFAULT_LEVERAGE,
+};
 
 export default function OrderEntryPanel({
   symbol,
@@ -78,12 +92,18 @@ export default function OrderEntryPanel({
   quickLimitPriceSelection = null,
 }: Props) {
   const router = useRouter();
-  const [positionSide, setPositionSide] = useState<Side>("LONG");
+  const [ticketPreference, setTicketPreference] = useState<TicketPreference>(
+    DEFAULT_TICKET_PREFERENCE
+  );
+  const [ticketPreferenceSymbol, setTicketPreferenceSymbol] = useState(symbol);
+  const [hasLoadedTicketPreference, setHasLoadedTicketPreference] =
+    useState(false);
+  const { positionSide, marginMode, leverage } = ticketPreference;
   const [ticketMode, setTicketMode] = useState<TicketMode>("OPEN");
   const [orderType, setOrderType] = useState<OrderType>("LIMIT");
-  const [marginMode, setMarginMode] = useState<MarginMode>(DEFAULT_MARGIN_MODE);
-  const [leverage, setLeverage] = useState(DEFAULT_LEVERAGE);
   const [quantity, setQuantity] = useState("0.01");
+  const [quantityInputMode, setQuantityInputMode] =
+    useState<QuantityInputMode>("QUANTITY");
   const [limitPrice, setLimitPrice] = useState(() =>
     formatLimitPriceInput(currentPrice)
   );
@@ -107,6 +127,25 @@ export default function OrderEntryPanel({
   }, [currentPrice, symbol]);
 
   useEffect(() => {
+    setTicketPreferenceSymbol(symbol);
+    setTicketPreference(readTicketPreference(symbol));
+    setHasLoadedTicketPreference(true);
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!hasLoadedTicketPreference || ticketPreferenceSymbol !== symbol) {
+      return;
+    }
+
+    writeTicketPreference(symbol, ticketPreference);
+  }, [
+    hasLoadedTicketPreference,
+    symbol,
+    ticketPreference,
+    ticketPreferenceSymbol,
+  ]);
+
+  useEffect(() => {
     if (!quickLimitPriceSelection) {
       return;
     }
@@ -117,30 +156,8 @@ export default function OrderEntryPanel({
     setInlineErrorMessage(null);
   }, [quickLimitPriceSelection]);
 
-  const orderPayload = useMemo(
-    () =>
-      buildOrderPayload({
-        symbol,
-        positionSide,
-        orderType,
-        marginMode,
-        leverage,
-        quantity,
-        limitPrice,
-      }),
-    [leverage, limitPrice, marginMode, orderType, positionSide, quantity, symbol]
-  );
-  const hasValidOrder = orderPayload !== null;
-  const parsedQuantity = Number.parseFloat(quantity);
   const effectivePrice =
     orderType === "LIMIT" ? Number.parseFloat(limitPrice) : currentPrice;
-  const orderNotional =
-    Number.isFinite(parsedQuantity) && Number.isFinite(effectivePrice)
-      ? parsedQuantity * effectivePrice
-      : 0;
-  const costEstimate =
-    preview?.estimatedInitialMargin ??
-    (leverage > 0 ? orderNotional / leverage : 0);
   const baseAsset = symbol.replace("USDT", "");
   const availableBalance = accountSummary?.available ?? 0;
   const selectedSidePosition = useMemo(
@@ -159,10 +176,48 @@ export default function OrderEntryPanel({
   const maxCloseQuantity = matchingPosition?.quantity ?? 0;
   const quantityControlMax =
     ticketMode === "CLOSE" ? maxCloseQuantity : maxOpenQuantity;
+  const parsedQuantity = resolveQuantityInput({
+    mode: quantityInputMode,
+    quantity,
+    quantityControlMax,
+  });
   const quantityPercent =
-    quantityControlMax > 0 && Number.isFinite(parsedQuantity)
-      ? clamp(Math.round((parsedQuantity / quantityControlMax) * 100), 0, 100)
+    quantityInputMode === "PERCENT"
+      ? clamp(Math.round(parsePercentInput(quantity)), 0, 100)
+      : quantityControlMax > 0 && Number.isFinite(parsedQuantity)
+        ? clamp(Math.round((parsedQuantity / quantityControlMax) * 100), 0, 100)
+        : 0;
+  const orderPayload = useMemo(
+    () =>
+      buildOrderPayload({
+        symbol,
+        positionSide,
+        orderType,
+        marginMode,
+        leverage,
+        quantity: parsedQuantity,
+        limitPrice,
+      }),
+    [
+      leverage,
+      limitPrice,
+      marginMode,
+      orderType,
+      parsedQuantity,
+      positionSide,
+      symbol,
+    ]
+  );
+  const hasValidOrder = orderPayload !== null;
+  const orderNotional =
+    Number.isFinite(parsedQuantity) && Number.isFinite(effectivePrice)
+      ? parsedQuantity * effectivePrice
       : 0;
+  const costEstimate = leverage > 0 ? orderNotional / leverage : 0;
+  const valueSummaryLabel =
+    quantityInputMode === "PERCENT" ? "Position value" : "Futures value";
+  const formattedOrderNotional = formatUsd(orderNotional);
+  const formattedCostEstimate = formatUsd(costEstimate);
   const closePositionLabel = matchingPosition
     ? `${formatQuantityInput(matchingPosition.quantity)} ${baseAsset}`
     : "-";
@@ -172,13 +227,13 @@ export default function OrderEntryPanel({
 
   useEffect(() => {
     if (selectedSidePosition) {
-      setMarginMode(selectedSidePosition.marginMode);
-      setLeverage(selectedSidePosition.leverage);
+      setTicketPreference((current) => ({
+        ...current,
+        marginMode: selectedSidePosition.marginMode,
+        leverage: selectedSidePosition.leverage,
+      }));
       return;
     }
-
-    setMarginMode(DEFAULT_MARGIN_MODE);
-    setLeverage(DEFAULT_LEVERAGE);
   }, [selectedSidePosition]);
 
   useEffect(() => {
@@ -233,7 +288,7 @@ export default function OrderEntryPanel({
       orderType,
       marginMode: nextSidePosition?.marginMode ?? marginMode,
       leverage: nextSidePosition?.leverage ?? leverage,
-      quantity,
+      quantity: parsedQuantity,
       limitPrice,
     });
 
@@ -243,7 +298,12 @@ export default function OrderEntryPanel({
     }
 
     setInlineErrorMessage(null);
-    setPositionSide(nextSide);
+    setTicketPreference((current) => ({
+      ...current,
+      positionSide: nextSide,
+      marginMode: nextSidePosition?.marginMode ?? current.marginMode,
+      leverage: nextSidePosition?.leverage ?? current.leverage,
+    }));
 
     if (ticketMode === "CLOSE") {
       const closePosition = findMatchingPosition(
@@ -340,9 +400,14 @@ export default function OrderEntryPanel({
 
   async function handleApplyLeverage(nextLeverage: number) {
     const safeLeverage = clampLeverage(nextLeverage);
+    const leverageTargetPosition =
+      selectedSidePosition ?? findPositionForSymbol(positions, symbol);
 
-    if (!selectedSidePosition) {
-      setLeverage(safeLeverage);
+    if (!leverageTargetPosition) {
+      setTicketPreference((current) => ({
+        ...current,
+        leverage: safeLeverage,
+      }));
       setIsLeverageModalOpen(false);
       setInlineErrorMessage(null);
       return;
@@ -359,8 +424,8 @@ export default function OrderEntryPanel({
         },
         body: JSON.stringify({
           symbol,
-          positionSide,
-          marginMode: selectedSidePosition.marginMode,
+          positionSide: leverageTargetPosition.positionSide,
+          marginMode: leverageTargetPosition.marginMode,
           leverage: safeLeverage,
         }),
       });
@@ -371,11 +436,15 @@ export default function OrderEntryPanel({
         throw new Error(result?.message ?? "레버리지 변경에 실패했습니다.");
       }
 
-      setMarginMode(result.data.marginMode);
-      setLeverage(result.data.leverage);
+      const updatedPosition = result.data;
+      setTicketPreference((current) => ({
+        ...current,
+        marginMode: updatedPosition.marginMode,
+        leverage: updatedPosition.leverage,
+      }));
       setIsLeverageModalOpen(false);
       toast.success(
-        `${symbol} ${positionSide} 레버리지를 ${result.data.leverage}x로 적용했습니다.`
+        `${symbol} 레버리지를 ${updatedPosition.leverage}x로 적용했습니다.`
       );
       router.refresh();
     } catch (error) {
@@ -396,7 +465,10 @@ export default function OrderEntryPanel({
           name="marginMode"
           value={marginMode}
           onChange={(value) => {
-            setMarginMode(value as MarginMode);
+            setTicketPreference((current) => ({
+              ...current,
+              marginMode: value as MarginMode,
+            }));
             setInlineErrorMessage(null);
           }}
           options={[
@@ -453,8 +525,11 @@ export default function OrderEntryPanel({
 
       <div className="flex items-center justify-between text-xs-custom text-main-dark-gray/60">
         <span>{isCloseMode ? "Position" : "Available"}</span>
-        <span className="font-semibold text-main-dark-gray">
+        <span className="text-right font-semibold text-main-dark-gray">
           {isCloseMode ? closePositionLabel : formatUsd(availableBalance)}
+          <span className="ml-2 text-main-dark-gray/45">
+            Max {formatQuantityInput(quantityControlMax)} {baseAsset}
+          </span>
         </span>
       </div>
 
@@ -487,11 +562,24 @@ export default function OrderEntryPanel({
           min="0.001"
           name="quantity"
           onChange={(event) => {
-            setQuantity(event.target.value);
+            setQuantity(sanitizeQuantityInput(event.target.value));
+            setQuantityInputMode("QUANTITY");
+            setInlineErrorMessage(null);
+          }}
+          onKeyDown={(event) => {
+            if (!isAllowedQuantityInputKey(event.key, event.metaKey, event.ctrlKey)) {
+              event.preventDefault();
+            }
+          }}
+          onPaste={(event) => {
+            event.preventDefault();
+            setQuantity(sanitizeQuantityInput(event.clipboardData.getData("text")));
+            setQuantityInputMode("QUANTITY");
             setInlineErrorMessage(null);
           }}
           step="0.001"
-          type="number"
+          type="text"
+          inputMode="decimal"
           value={quantity}
         />
         <span className="text-xs-custom font-semibold text-main-dark-gray/50">
@@ -507,14 +595,14 @@ export default function OrderEntryPanel({
         name="quantityPercent"
         onChange={(event) => {
           const nextPercent = Number.parseInt(event.target.value, 10);
-          const nextQuantity = (quantityControlMax * nextPercent) / 100;
-          setQuantity(formatQuantityInput(nextQuantity));
+          setQuantity(formatPercentInput(nextPercent));
+          setQuantityInputMode("PERCENT");
           setInlineErrorMessage(null);
         }}
         onInput={(event) => {
           const nextPercent = Number.parseInt(event.currentTarget.value, 10);
-          const nextQuantity = (quantityControlMax * nextPercent) / 100;
-          setQuantity(formatQuantityInput(nextQuantity));
+          setQuantity(formatPercentInput(nextPercent));
+          setQuantityInputMode("PERCENT");
           setInlineErrorMessage(null);
         }}
         step="1"
@@ -527,26 +615,19 @@ export default function OrderEntryPanel({
         <span>100%</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs-custom">
-        <SummaryLine
-          label={isCloseMode ? "Close value" : "Cost"}
-          value={formatUsd(isCloseMode ? orderNotional : costEstimate)}
+      <div className="grid gap-1 text-xs-custom">
+        <ValuePairSummaryLine
+          label={valueSummaryLabel}
+          longValue={formattedOrderNotional}
+          shortValue={formattedOrderNotional}
         />
-        <SummaryLine
-          label={
-            isCloseMode ? "Held size" : isPreviewPending ? "Risk" : "Liq. price"
-          }
-          value={
-            isCloseMode
-              ? closePositionLabel
-              : isPreviewPending
-              ? "계산 중"
-              : formatLiquidationPrice(
-                  preview?.estimatedLiquidationPrice,
-                  preview?.estimatedLiquidationPriceType
-                )
-          }
-        />
+        {isCloseMode ? null : (
+          <ValuePairSummaryLine
+            label="Cost"
+            longValue={formattedCostEstimate}
+            shortValue={formattedCostEstimate}
+          />
+        )}
       </div>
 
       {inlineErrorMessage ? (
@@ -557,36 +638,69 @@ export default function OrderEntryPanel({
 
       <div className="grid grid-cols-2 gap-2">
         {isAuthenticated ? (
-          <>
-            <button
-              className={[
-                "rounded-main bg-emerald-500 px-3 py-3 text-sm-custom font-bold",
-                "text-white transition-colors hover:bg-emerald-600",
-                "disabled:cursor-not-allowed disabled:opacity-55",
-              ].join(" ")}
-              disabled={!hasValidOrder || isSubmitPending}
-              onClick={() => handleSubmit("LONG")}
-              type="button"
-            >
-              {isSubmitPending && positionSide === "LONG"
-                ? "Sending..."
-                : longButtonLabel}
-            </button>
-            <button
-              className={[
-                "rounded-main bg-main-red px-3 py-3 text-sm-custom font-bold",
-                "text-white transition-colors hover:bg-main-red/90",
-                "disabled:cursor-not-allowed disabled:opacity-55",
-              ].join(" ")}
-              disabled={!hasValidOrder || isSubmitPending}
-              onClick={() => handleSubmit("SHORT")}
-              type="button"
-            >
-              {isSubmitPending && positionSide === "SHORT"
-                ? "Sending..."
-                : shortButtonLabel}
-            </button>
-          </>
+          isCloseMode ? (
+            <>
+              <button
+                className={[
+                  "rounded-main bg-emerald-500 px-3 py-3 text-sm-custom font-bold",
+                  "text-white transition-colors hover:bg-emerald-600",
+                  "disabled:cursor-not-allowed disabled:opacity-55",
+                ].join(" ")}
+                disabled={!hasValidOrder || isSubmitPending}
+                onClick={() => handleSubmit("SHORT")}
+                type="button"
+              >
+                {isSubmitPending && positionSide === "SHORT"
+                  ? "Sending..."
+                  : shortButtonLabel}
+              </button>
+              <button
+                className={[
+                  "rounded-main bg-main-red px-3 py-3 text-sm-custom font-bold",
+                  "text-white transition-colors hover:bg-main-red/90",
+                  "disabled:cursor-not-allowed disabled:opacity-55",
+                ].join(" ")}
+                disabled={!hasValidOrder || isSubmitPending}
+                onClick={() => handleSubmit("LONG")}
+                type="button"
+              >
+                {isSubmitPending && positionSide === "LONG"
+                  ? "Sending..."
+                  : longButtonLabel}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className={[
+                  "rounded-main bg-emerald-500 px-3 py-3 text-sm-custom font-bold",
+                  "text-white transition-colors hover:bg-emerald-600",
+                  "disabled:cursor-not-allowed disabled:opacity-55",
+                ].join(" ")}
+                disabled={!hasValidOrder || isSubmitPending}
+                onClick={() => handleSubmit("LONG")}
+                type="button"
+              >
+                {isSubmitPending && positionSide === "LONG"
+                  ? "Sending..."
+                  : longButtonLabel}
+              </button>
+              <button
+                className={[
+                  "rounded-main bg-main-red px-3 py-3 text-sm-custom font-bold",
+                  "text-white transition-colors hover:bg-main-red/90",
+                  "disabled:cursor-not-allowed disabled:opacity-55",
+                ].join(" ")}
+                disabled={!hasValidOrder || isSubmitPending}
+                onClick={() => handleSubmit("SHORT")}
+                type="button"
+              >
+                {isSubmitPending && positionSide === "SHORT"
+                  ? "Sending..."
+                  : shortButtonLabel}
+              </button>
+            </>
+          )
         ) : (
           <>
             <Link
@@ -694,13 +808,12 @@ function buildOrderPayload({
   orderType: OrderType;
   marginMode: MarginMode;
   leverage: number;
-  quantity: string;
+  quantity: number;
   limitPrice: string;
 }): OrderPreviewRequest | null {
-  const parsedQuantity = Number.parseFloat(quantity);
   const parsedLimitPrice = Number.parseFloat(limitPrice);
 
-  if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
     return null;
   }
 
@@ -720,9 +833,34 @@ function buildOrderPayload({
     orderType,
     marginMode,
     leverage,
-    quantity: parsedQuantity,
+    quantity,
     limitPrice: orderType === "LIMIT" ? parsedLimitPrice : null,
   };
+}
+
+function resolveQuantityInput({
+  mode,
+  quantity,
+  quantityControlMax,
+}: {
+  mode: QuantityInputMode;
+  quantity: string;
+  quantityControlMax: number;
+}): number {
+  if (mode === "PERCENT") {
+    const percent = parsePercentInput(quantity);
+    if (
+      !Number.isFinite(percent) ||
+      !Number.isFinite(quantityControlMax) ||
+      quantityControlMax <= 0
+    ) {
+      return 0;
+    }
+    return (quantityControlMax * clamp(percent, 0, 100)) / 100;
+  }
+
+  const parsedQuantity = Number.parseFloat(quantity);
+  return Number.isFinite(parsedQuantity) ? parsedQuantity : 0;
 }
 
 function toClosePositionRequest(payload: OrderPreviewRequest) {
@@ -763,6 +901,73 @@ function findPositionForSide(
         position.symbol === symbol && position.positionSide === positionSide
     ) ?? null
   );
+}
+
+function findPositionForSymbol(
+  positions: FuturesPosition[],
+  symbol: MarketSymbol
+): FuturesPosition | null {
+  return (
+    positions.find((position) => position.symbol === symbol) ?? null
+  );
+}
+
+function readTicketPreference(symbol: MarketSymbol): TicketPreference {
+  if (typeof window === "undefined") {
+    return DEFAULT_TICKET_PREFERENCE;
+  }
+
+  try {
+    const rawPreference = window.localStorage.getItem(
+      getTicketPreferenceStorageKey(symbol)
+    );
+
+    if (!rawPreference) {
+      return DEFAULT_TICKET_PREFERENCE;
+    }
+
+    const parsedPreference = JSON.parse(rawPreference) as Partial<
+      Record<keyof TicketPreference, unknown>
+    >;
+
+    return {
+      positionSide: parseSide(parsedPreference.positionSide),
+      marginMode: parseMarginMode(parsedPreference.marginMode),
+      leverage: clampLeverage(Number(parsedPreference.leverage)),
+    };
+  } catch {
+    return DEFAULT_TICKET_PREFERENCE;
+  }
+}
+
+function writeTicketPreference(
+  symbol: MarketSymbol,
+  preference: TicketPreference
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      getTicketPreferenceStorageKey(symbol),
+      JSON.stringify(preference)
+    );
+  } catch {
+    // Ignoring storage failures keeps the ticket usable in restricted browsers.
+  }
+}
+
+function getTicketPreferenceStorageKey(symbol: MarketSymbol): string {
+  return `${TICKET_PREFERENCE_STORAGE_KEY_PREFIX}:${symbol}`;
+}
+
+function parseSide(value: unknown): Side {
+  return value === "SHORT" ? "SHORT" : "LONG";
+}
+
+function parseMarginMode(value: unknown): MarginMode {
+  return value === "ISOLATED" ? "ISOLATED" : DEFAULT_MARGIN_MODE;
 }
 
 async function readJson<T>(response: Response): Promise<T | null> {
@@ -1091,11 +1296,23 @@ function TicketField({
   );
 }
 
-function SummaryLine({ label, value }: { label: string; value: string }) {
+function ValuePairSummaryLine({
+  label,
+  longValue,
+  shortValue,
+}: {
+  label: string;
+  longValue: string;
+  shortValue: string;
+}) {
   return (
-    <div className="rounded-main bg-main-light-gray/35 px-3 py-2">
-      <p className="text-main-dark-gray/50">{label}</p>
-      <p className="mt-1 font-bold text-main-dark-gray">{value}</p>
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-main-dark-gray/55">{label}</span>
+      <span className="text-right font-bold text-main-dark-gray">
+        <span className="text-emerald-500">{longValue}</span>
+        <span className="px-1 text-main-dark-gray/45">/</span>
+        <span className="text-main-red">{shortValue}</span>
+      </span>
     </div>
   );
 }
@@ -1133,4 +1350,60 @@ function clamp(value: number, min: number, max: number): number {
 
 function formatQuantityInput(value: number): string {
   return formatFlooredQuantity(value);
+}
+
+function sanitizeQuantityInput(value: string): string {
+  let hasDecimalPoint = false;
+
+  return Array.from(value)
+    .filter((character) => {
+      if (character >= "0" && character <= "9") {
+        return true;
+      }
+
+      if (character === "." && !hasDecimalPoint) {
+        hasDecimalPoint = true;
+        return true;
+      }
+
+      return false;
+    })
+    .join("");
+}
+
+function isAllowedQuantityInputKey(
+  key: string,
+  metaKey: boolean,
+  ctrlKey: boolean
+): boolean {
+  if (metaKey || ctrlKey) {
+    return true;
+  }
+
+  return (
+    (key >= "0" && key <= "9") ||
+    key === "." ||
+    key === "Backspace" ||
+    key === "Delete" ||
+    key === "ArrowLeft" ||
+    key === "ArrowRight" ||
+    key === "ArrowUp" ||
+    key === "ArrowDown" ||
+    key === "Home" ||
+    key === "End" ||
+    key === "Tab"
+  );
+}
+
+function parsePercentInput(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatPercentInput(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "0%";
+  }
+
+  return `${clamp(Math.round(value), 0, 100)}%`;
 }

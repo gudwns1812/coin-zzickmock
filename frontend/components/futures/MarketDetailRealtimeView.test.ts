@@ -10,6 +10,10 @@ const detailPageSource = readFileSync(
   path.join(__dirname, "../../app/(main)/markets/[symbol]/page.tsx"),
   "utf8"
 );
+const globalsSource = readFileSync(
+  path.join(__dirname, "../../app/globals.css"),
+  "utf8"
+);
 
 test("symbol selector renders supported BTCUSDT and ETHUSDT markets", () => {
   assert.equal(source.includes("SUPPORTED_MARKET_SYMBOLS.map"), true);
@@ -111,6 +115,29 @@ test("Open Orders table uses stable display sorting and fixed action layout", ()
   assert.equal(source.includes("min-w-[1120px] table-fixed"), true);
   assert.equal(source.includes("flex min-w-[190px] justify-start gap-2"), true);
   assert.equal(source.includes("{formatOrderPurpose(order)} · {order.orderType}"), true);
+});
+
+test("order tables show explicit open close direction labels", () => {
+  assert.equal(source.includes("function formatOrderDirection"), true);
+  assert.equal(source.includes('return `${intent} ${side}`'), true);
+  assert.equal(source.includes("{formatOrderDirection(order)}"), true);
+  assert.equal(source.includes('order.positionSide === "LONG" ? "Long" : "Short"'), true);
+});
+
+test("order history uses a bounded vertical scroll frame", () => {
+  assert.equal(source.includes("<ScrollableTableFrame isVerticallyBounded>"), true);
+  assert.equal(source.includes("isVerticallyBounded ? \"futures-table-scroll--bounded-y\""), true);
+  assert.equal(source.includes(".filter(Boolean)"), true);
+  assert.equal(globalsSource.includes(".futures-table-scroll--bounded-y"), true);
+  assert.equal(globalsSource.includes("max-height: 560px"), true);
+  assert.equal(globalsSource.includes("overflow-y: auto"), true);
+});
+
+test("execution event alerts auto dismiss after a short lifetime", () => {
+  assert.equal(source.includes("EXECUTION_EVENT_VISIBLE_MS = 6_000"), true);
+  assert.equal(source.includes("window.setTimeout"), true);
+  assert.equal(source.includes("current.filter((event) => event.displayId !== displayId)"), true);
+  assert.equal(source.includes("window.clearTimeout(timer)"), true);
 });
 
 test("market detail renders quick limit selector between chart and order panel", () => {

@@ -77,7 +77,6 @@ import {
 } from "./futuresChartIntervalPreference";
 import {
   getFuturesChartRenderMode,
-  getFuturesChartStatus,
 } from "./futuresChartRenderMode";
 import {
   getOrderPriceLineColor,
@@ -832,12 +831,6 @@ export default function FuturesPriceChart({
     selectedConfig,
   ]);
 
-  const activeChartStatus = getFuturesChartStatus({
-    hasNextPage,
-    historyStatus,
-    renderMode: chartRenderMode,
-  });
-
   return (
     <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
       <div className="flex items-start justify-between gap-main">
@@ -979,14 +972,6 @@ export default function FuturesPriceChart({
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-semibold text-main-dark-gray shadow-sm ring-1 ring-main-light-gray/70">
-                  {activeChartStatus}
-                </span>
-                {isFetchingNextPage && (
-                  <span className="rounded-full bg-main-dark-gray px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-                    과거 데이터 로딩 중
-                  </span>
-                )}
                 <button
                   className={[
                     "pointer-events-auto rounded-main border px-3 py-2 text-xs-custom font-semibold transition-colors",
@@ -1002,6 +987,11 @@ export default function FuturesPriceChart({
                 >
                   최신 보기
                 </button>
+                {isFetchingNextPage && (
+                  <span className="rounded-full bg-main-dark-gray px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+                    과거 데이터 로딩 중
+                  </span>
+                )}
               </div>
             </div>
           </div>

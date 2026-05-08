@@ -207,6 +207,45 @@ class MarketOrderExecutionServiceTest {
     }
 
     @Test
+    void pendingOpenFillUsesSymbolMarginLeverageWhenOnlyOppositeSidePositionExists() {
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        CapturingEventPublisher eventPublisher = new CapturingEventPublisher();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, new FuturesOrder(
+                "stale-leverage-open",
+                "BTCUSDT",
+                "LONG",
+                "LIMIT",
+                "ISOLATED",
+                50,
+                1,
+                99.0,
+                FuturesOrder.STATUS_PENDING,
+                "MAKER",
+                0,
+                99
+        ));
+
+        service(orderRepository, positionRepository, accountRepository, eventPublisher)
+                .onMarketUpdated(marketEvent(101, 98, 98));
+
+        PositionSnapshot position = positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow();
+        assertEquals(10, position.leverage());
+        assertEquals(99990.08515, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+    }
+
+    @Test
     void orderFilledEventPublishesOnlyAfterTransactionCommit() {
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();

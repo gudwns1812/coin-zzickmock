@@ -285,15 +285,19 @@ public class CreateOrderService {
                 command.symbol(),
                 command.positionSide()
         );
-        if (existing.isEmpty()) {
-            return;
+        if (existing.isPresent()) {
+            PositionSnapshot position = existing.orElseThrow();
+            if (!position.marginMode().equalsIgnoreCase(command.marginMode())) {
+                throw new CoreException(ErrorCode.INVALID_REQUEST);
+            }
         }
 
-        PositionSnapshot position = existing.orElseThrow();
-        if (!position.marginMode().equalsIgnoreCase(command.marginMode())) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        if (position.leverage() != command.leverage()) {
+        Optional<PositionSnapshot> symbolMarginPosition = positionRepository.findOpenPositions(command.memberId())
+                .stream()
+                .filter(candidate -> candidate.symbol().equalsIgnoreCase(command.symbol()))
+                .filter(candidate -> candidate.marginMode().equalsIgnoreCase(command.marginMode()))
+                .findFirst();
+        if (symbolMarginPosition.map(PositionSnapshot::leverage).orElse(command.leverage()) != command.leverage()) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }

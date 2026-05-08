@@ -209,9 +209,15 @@ body {
     -ms-overflow-style: auto;
 }
 
+.futures-table-scroll--bounded-y {
+    max-height: 560px;
+    overflow-y: auto;
+}
+
 .futures-table-scroll::-webkit-scrollbar {
     display: block;
     height: 12px;
+    width: 12px;
 }
 
 .futures-table-scroll::-webkit-scrollbar-track {

@@ -49,6 +49,130 @@ class UpdatePositionLeverageServiceTest {
     }
 
     @Test
+    void crossLeverageUpdateAppliesToBothSymbolSides() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "CROSS",
+                10,
+                2,
+                100,
+                100
+        ));
+
+        PositionSnapshotResult result = service(positionRepository, orderRepository, accountRepository)
+                .update(1L, "BTCUSDT", "LONG", "CROSS", 20);
+
+        assertEquals(20, result.leverage());
+        assertEquals(20, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "CROSS")
+                .orElseThrow()
+                .leverage());
+        assertEquals(20, positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "CROSS")
+                .orElseThrow()
+                .leverage());
+        assertEquals(100015, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+    }
+
+    @Test
+    void isolatedLeverageUpdateAppliesToBothSymbolSides() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                2,
+                100,
+                100
+        ));
+
+        service(positionRepository, orderRepository, accountRepository)
+                .update(1L, "BTCUSDT", "LONG", "ISOLATED", 20);
+
+        assertEquals(20, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow()
+                .leverage());
+        assertEquals(20, positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "ISOLATED")
+                .orElseThrow()
+                .leverage());
+        assertEquals(100015, accountRepository.findByMemberId(1L).orElseThrow().availableMargin(), 0.0001);
+    }
+
+    @Test
+    void crossLeverageUpdateRejectsPendingOpenOrdersForEitherSide() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "CROSS",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.place(
+                "pending-short-open",
+                "BTCUSDT",
+                "SHORT",
+                "LIMIT",
+                "CROSS",
+                10,
+                1,
+                101.0,
+                false,
+                "MAKER",
+                0,
+                101
+        ));
+
+        CoreException thrown = assertThrows(CoreException.class, () ->
+                service(positionRepository, orderRepository, accountRepository)
+                        .update(1L, "BTCUSDT", "LONG", "CROSS", 20));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+        assertEquals(10, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "CROSS")
+                .orElseThrow()
+                .leverage());
+        assertEquals(10, positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "CROSS")
+                .orElseThrow()
+                .leverage());
+    }
+
+    @Test
     void rejectsLeverageUpdateWhenPendingOpenOrderExistsForSameSide() {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
@@ -82,6 +206,57 @@ class UpdatePositionLeverageServiceTest {
                         .update(1L, "BTCUSDT", "LONG", "ISOLATED", 20));
 
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
+
+    @Test
+    void isolatedLeverageUpdateRejectsPendingOpenOrdersForEitherSide() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository(100000);
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                1,
+                100,
+                100
+        ));
+        orderRepository.save(1L, FuturesOrder.place(
+                "pending-short-open",
+                "BTCUSDT",
+                "SHORT",
+                "LIMIT",
+                "ISOLATED",
+                10,
+                1,
+                101.0,
+                false,
+                "MAKER",
+                0,
+                101
+        ));
+
+        CoreException thrown = assertThrows(CoreException.class, () ->
+                service(positionRepository, orderRepository, accountRepository)
+                        .update(1L, "BTCUSDT", "LONG", "ISOLATED", 20));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+        assertEquals(10, positionRepository.findOpenPosition(1L, "BTCUSDT", "LONG", "ISOLATED")
+                .orElseThrow()
+                .leverage());
+        assertEquals(10, positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "ISOLATED")
+                .orElseThrow()
+                .leverage());
     }
 
     @Test

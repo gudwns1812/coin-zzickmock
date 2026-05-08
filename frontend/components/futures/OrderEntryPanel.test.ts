@@ -46,22 +46,31 @@ test("open order max quantity uses fee-aware floored helper while close mode rem
   assert.equal(source.includes("toFixed(3)"), false);
 });
 
-test("order ticket removes redundant compact side control and keeps action buttons as side selectors", () => {
-  assert.equal(source.includes("function SideToggle"), false);
-  assert.equal(source.includes('aria-label="Position side"'), false);
+test("order ticket exposes current side so leverage edits target the intended position", () => {
+  assert.equal(source.includes("function SideToggle"), true);
+  assert.equal(source.includes('aria-label="Position side"'), true);
   assert.equal(source.includes('onClick={() => handleSubmit("LONG")}'), true);
   assert.equal(source.includes('onClick={() => handleSubmit("SHORT")}'), true);
-  assert.equal(source.includes("function selectOrderSide"), false);
   assert.equal(source.includes("onMouseEnter={() => setPositionSide"), false);
   assert.equal(source.includes("onFocus={() => setPositionSide"), false);
-  assert.equal(source.includes("setPositionSide(nextSide)"), true);
+  assert.equal(source.includes("positionSide: side"), true);
+  assert.equal(source.includes("positionSide: nextSide"), true);
 });
 
-test("order ticket defaults to cross margin and 10x leverage without a selected-side position", () => {
+test("order ticket defaults to cross margin and 10x leverage without a stored preference", () => {
   assert.equal(source.includes("DEFAULT_MARGIN_MODE: MarginMode = \"CROSS\""), true);
   assert.equal(source.includes("const DEFAULT_LEVERAGE = 10"), true);
-  assert.equal(source.includes("setMarginMode(DEFAULT_MARGIN_MODE)"), true);
-  assert.equal(source.includes("setLeverage(DEFAULT_LEVERAGE)"), true);
+  assert.equal(source.includes("DEFAULT_TICKET_PREFERENCE"), true);
+  assert.equal(source.includes("readTicketPreference(symbol)"), true);
+});
+
+test("order ticket persists symbol-scoped margin leverage and side preference", () => {
+  assert.equal(source.includes("futures-order-ticket"), true);
+  assert.equal(source.includes("window.localStorage.getItem"), true);
+  assert.equal(source.includes("window.localStorage.setItem"), true);
+  assert.equal(source.includes("getTicketPreferenceStorageKey(symbol)"), true);
+  assert.equal(source.includes("ticketPreferenceSymbol !== symbol"), true);
+  assert.equal(source.includes("writeTicketPreference(symbol, ticketPreference)"), true);
 });
 
 test("existing selected-side position locks margin mode and drives leverage", () => {
@@ -75,6 +84,13 @@ test("leverage modal applies existing-position leverage through the position end
   assert.equal(source.includes('/proxy-futures/positions/leverage'), true);
   assert.equal(source.includes("onApply={handleApplyLeverage}"), true);
   assert.equal(source.includes("draftLeverage"), true);
+});
+
+test("leverage can target an existing symbol position even when current side is empty", () => {
+  assert.equal(source.includes("findPositionForSymbol(positions, symbol)"), true);
+  assert.equal(source.includes("leverageTargetPosition.positionSide"), true);
+  assert.equal(source.includes("leverageTargetPosition.marginMode"), true);
+  assert.equal(source.includes("positionSide: updatedPosition.positionSide"), false);
 });
 
 test("order help tooltip explains margin leverage and order concepts", () => {

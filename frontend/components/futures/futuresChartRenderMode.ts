@@ -42,7 +42,7 @@ export function getFuturesChartStatus({
   renderMode,
 }: StatusInput): string {
   if (renderMode === "candles") {
-    return hasNextPage ? "과거 로드 가능" : "전체 히스토리 로드";
+    return hasNextPage ? "차트 준비됨" : "전체 히스토리";
   }
 
   if (renderMode === "loading-empty") {

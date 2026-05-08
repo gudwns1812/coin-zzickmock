@@ -83,3 +83,13 @@ test("futures chart status labels loading-empty as loading, not live shell", () 
     "실시간 라인 셸"
   );
 });
+
+test("futures chart status does not expose past-load feature copy", () => {
+  const status = getFuturesChartStatus({
+    hasNextPage: true,
+    historyStatus: "ready",
+    renderMode: "candles",
+  });
+
+  assert.equal(status.includes("과거 로드"), false);
+});

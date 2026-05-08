@@ -524,6 +524,41 @@ class CreateOrderServiceTest {
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
     }
 
+    @Test
+    void createRejectsDifferentLeverageWhenOppositeSidePositionExistsForSameSymbolMarginMode() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "SHORT",
+                "ISOLATED",
+                10,
+                0.1,
+                100000,
+                100000
+        ));
+        CreateOrderService service = service(
+                realtimePriceReader(),
+                new InMemoryOrderRepository(),
+                new InMemoryAccountRepository(),
+                positionRepository,
+                event -> {
+                }
+        );
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.execute(new CreateOrderCommand(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "MARKET",
+                "ISOLATED",
+                20,
+                0.1,
+                null
+        )));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
+
     private static CreateOrderService service(
             RealtimeMarketPriceReader realtimeMarketPriceReader,
             OrderRepository orderRepository,

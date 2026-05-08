@@ -34,6 +34,13 @@ test("chart header avoids instructional helper copy", () => {
   assert.equal(source.includes("최신 이동은 버튼으로만 수행합니다"), false);
 });
 
+test("chart toolbar uses latest view without past-load status copy", () => {
+  assert.equal(source.includes("최신 보기"), true);
+  assert.equal(source.includes("activeChartStatus"), false);
+  assert.equal(source.includes("getFuturesChartStatus"), false);
+  assert.equal(source.includes("과거 로드 가능"), false);
+});
+
 test("chart loading-empty mode does not render live points", () => {
   assert.equal(source.includes("chartRenderMode === \"live-fallback\""), true);
   assert.equal(source.includes("liveSeries.setData(livePoints);"), true);

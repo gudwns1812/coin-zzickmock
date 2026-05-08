@@ -7,6 +7,7 @@ import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
@@ -14,19 +15,49 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class MarketHistoryRecorder {
     private final MarketHistoryRepository marketHistoryRepository;
     private final CompletedHourlyCandleBuilder completedHourlyCandleBuilder;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder;
+    private final Clock clock;
+
+    @Autowired
+    public MarketHistoryRecorder(
+            MarketHistoryRepository marketHistoryRepository,
+            CompletedHourlyCandleBuilder completedHourlyCandleBuilder,
+            AfterCommitEventPublisher afterCommitEventPublisher,
+            MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder
+    ) {
+        this(
+                marketHistoryRepository,
+                completedHourlyCandleBuilder,
+                afterCommitEventPublisher,
+                marketHistoryRepairRequestRecorder,
+                Clock.systemUTC()
+        );
+    }
+
+    MarketHistoryRecorder(
+            MarketHistoryRepository marketHistoryRepository,
+            CompletedHourlyCandleBuilder completedHourlyCandleBuilder,
+            AfterCommitEventPublisher afterCommitEventPublisher,
+            MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder,
+            Clock clock
+    ) {
+        this.marketHistoryRepository = marketHistoryRepository;
+        this.completedHourlyCandleBuilder = completedHourlyCandleBuilder;
+        this.afterCommitEventPublisher = afterCommitEventPublisher;
+        this.marketHistoryRepairRequestRecorder = marketHistoryRepairRequestRecorder;
+        this.clock = clock;
+    }
 
     @Transactional
     public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(
@@ -136,6 +167,10 @@ public class MarketHistoryRecorder {
     }
 
     private void rebuildHourlyCandle(long symbolId, Instant hourlyOpenTime) {
+        if (isOpenHour(hourlyOpenTime)) {
+            return;
+        }
+
         HourlyCandleRebuild rebuild = loadCompletedHourlyCandle(symbolId, hourlyOpenTime);
         if (rebuild.completedCandle().isPresent()) {
             try {
@@ -147,6 +182,11 @@ public class MarketHistoryRecorder {
         }
 
         reportSkippedHourlyRebuild(symbolId, hourlyOpenTime, rebuild.sourceCandles());
+    }
+
+    private boolean isOpenHour(Instant hourlyOpenTime) {
+        Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
+        return hourlyCloseTime.isAfter(Instant.now(clock));
     }
 
     @Transactional

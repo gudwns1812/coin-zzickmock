@@ -9,7 +9,9 @@ import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairR
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +20,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class MarketHistoryRecorderTest {
+    private static final Instant CLOSED_HOUR_NOW = Instant.parse("2026-04-17T08:00:00Z");
+
     @Test
     void savesHourlyCandleWhenRebuiltHourHasCompleteMinuteCoverage() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
@@ -53,12 +57,32 @@ class MarketHistoryRecorderTest {
         assertThat(repository.hourlyCandles).isEmpty();
     }
 
+    @Test
+    void skipsHourlyRebuildWhenAffectedHourIsStillOpen() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        MarketHistoryRecorder recorder = recorder(
+                repository,
+                Instant.parse("2026-04-17T06:15:01Z")
+        );
+
+        recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, 30));
+
+        assertThat(repository.hourlyCandles).isEmpty();
+        assertThat(repository.findMinuteCandlesCalls).isZero();
+    }
+
     private static MarketHistoryRecorder recorder(MarketHistoryRepository repository) {
+        return recorder(repository, CLOSED_HOUR_NOW);
+    }
+
+    private static MarketHistoryRecorder recorder(MarketHistoryRepository repository, Instant now) {
         return new MarketHistoryRecorder(
                 repository,
                 new CompletedHourlyCandleBuilder(),
                 mock(AfterCommitEventPublisher.class),
-                mock(MarketHistoryRepairRequestRecorder.class)
+                mock(MarketHistoryRepairRequestRecorder.class),
+                Clock.fixed(now, ZoneOffset.UTC)
         );
     }
 
@@ -106,9 +130,11 @@ class MarketHistoryRecorderTest {
     private static class InMemoryMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final Map<String, MarketHistoryCandle> minuteCandles = new LinkedHashMap<>();
         private final Map<String, HourlyMarketCandle> hourlyCandles = new LinkedHashMap<>();
+        private int findMinuteCandlesCalls;
 
         @Override
         public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
+            findMinuteCandlesCalls++;
             return minuteCandles.values().stream()
                     .filter(candle -> candle.symbolId() == symbolId)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))

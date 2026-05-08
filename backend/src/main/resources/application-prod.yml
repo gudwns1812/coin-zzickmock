@@ -29,7 +29,7 @@ spring:
       port: ${REDIS_PORT:6379}
       database: ${REDIS_DATABASE:0}
       password: ${REDIS_PASSWORD:}
-      timeout: ${REDIS_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:5s}
   lifecycle:
     timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT:30s}
 

@@ -234,6 +234,34 @@ class AuthControllerTest {
     }
 
     @Test
+    void meReadsAuthenticatedUserWithoutRefreshingCookie() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "test@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(get("/api/futures/auth/me").cookie(accessTokenCookie(loginResult)))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Set-Cookie"))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.account").value("test"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"))
+                .andExpect(jsonPath("$.data.admin").value(true));
+    }
+
+    @Test
+    void meRejectsAnonymousRequest() throws Exception {
+        mockMvc.perform(get("/api/futures/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void withdrawnMemberCannotLoginAgain() throws Exception {
         mockMvc.perform(post("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -366,6 +394,56 @@ class AuthControllerTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/futures/auth/refresh").cookie(staleAccessToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void meRejectsStaleWithdrawnMemberToken() throws Exception {
+        mockMvc.perform(post("/api/futures/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "me-withdraw-user",
+                                  "password": "withdraw@1234",
+                                  "name": "me-withdraw-user",
+                                  "nickname": "me-withdraw-user",
+                                  "phoneNumber": "010-7777-8888",
+                                  "email": "me-withdraw-user@coinzzickmock.dev",
+                                  "fgOffset": "unused",
+                                  "address": {
+                                    "zipcode": "06236",
+                                    "address": "서울 강남구 논현로 507",
+                                    "addressDetail": "7층"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "me-withdraw-user",
+                                  "password": "withdraw@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie staleAccessToken = accessTokenCookie(loginResult);
+        Long memberId = memberId(loginResult);
+
+        mockMvc.perform(delete("/api/futures/auth/withdraw")
+                        .cookie(staleAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memberId": %d
+                                }
+                                """.formatted(memberId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/futures/auth/me").cookie(staleAccessToken))
                 .andExpect(status().isUnauthorized());
     }
 

@@ -561,7 +561,7 @@ export async function getAdminShopItems(): Promise<AdminShopItemsResult> {
 }
 
 export async function getAuthUser(): Promise<AuthUser | null> {
-  const response = await readApiResult<AuthUser>("/api/futures/auth/refresh");
+  const response = await readApiResult<AuthUser>("/api/futures/auth/me");
   return response.ok ? response.data : null;
 }
 

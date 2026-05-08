@@ -80,6 +80,13 @@ public class AuthController {
                 .body(ApiResponse.success(null));
     }
 
+    @GetMapping("/me")
+    public ApiResponse<AuthUserResponse> me() {
+        Actor actor = providers.auth().currentActor();
+        MemberProfileResult memberProfile = getMemberProfileService.get(actor.memberId());
+        return ApiResponse.success(AuthUserResponse.from(memberProfile));
+    }
+
     @GetMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthUserResponse>> refresh() {
         Actor actor = providers.auth().currentActor();

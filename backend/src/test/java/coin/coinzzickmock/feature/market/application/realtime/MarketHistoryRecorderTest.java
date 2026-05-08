@@ -11,7 +11,7 @@ import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,13 +20,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class MarketHistoryRecorderTest {
-    private static final Instant CLOSED_HOUR_NOW = Instant.parse("2026-04-17T08:00:00Z");
-
     @Test
     void savesHourlyCandleWhenRebuiltHourHasCompleteMinuteCoverage() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         MarketHistoryRecorder recorder = recorder(repository);
-        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        Instant hourOpenTime = closedHourOpenTime();
 
         recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, -1));
 
@@ -37,7 +35,7 @@ class MarketHistoryRecorderTest {
     void keepsExistingHourlyCandleWhenRebuiltHourIsIncomplete() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         MarketHistoryRecorder recorder = recorder(repository);
-        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        Instant hourOpenTime = closedHourOpenTime();
         HourlyMarketCandle original = hourly(1L, hourOpenTime);
         repository.saveHourlyCandle(original);
 
@@ -50,7 +48,7 @@ class MarketHistoryRecorderTest {
     void doesNotSaveHourlyCandleWhenRebuiltHourIsIncomplete() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         MarketHistoryRecorder recorder = recorder(repository);
-        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        Instant hourOpenTime = closedHourOpenTime();
 
         recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, 30));
 
@@ -60,11 +58,8 @@ class MarketHistoryRecorderTest {
     @Test
     void skipsHourlyRebuildWhenAffectedHourIsStillOpen() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
-        MarketHistoryRecorder recorder = recorder(
-                repository,
-                Instant.parse("2026-04-17T06:15:01Z")
-        );
+        Instant hourOpenTime = openHourOpenTime();
+        MarketHistoryRecorder recorder = recorder(repository);
 
         recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, 30));
 
@@ -73,17 +68,22 @@ class MarketHistoryRecorderTest {
     }
 
     private static MarketHistoryRecorder recorder(MarketHistoryRepository repository) {
-        return recorder(repository, CLOSED_HOUR_NOW);
-    }
-
-    private static MarketHistoryRecorder recorder(MarketHistoryRepository repository, Instant now) {
         return new MarketHistoryRecorder(
                 repository,
                 new CompletedHourlyCandleBuilder(),
                 mock(AfterCommitEventPublisher.class),
-                mock(MarketHistoryRepairRequestRecorder.class),
-                Clock.fixed(now, ZoneOffset.UTC)
+                mock(MarketHistoryRepairRequestRecorder.class)
         );
+    }
+
+    private static Instant closedHourOpenTime() {
+        return Instant.now(Clock.systemUTC())
+                .minus(2, ChronoUnit.HOURS)
+                .truncatedTo(ChronoUnit.HOURS);
+    }
+
+    private static Instant openHourOpenTime() {
+        return Instant.now(Clock.systemUTC()).truncatedTo(ChronoUnit.HOURS);
     }
 
     private static List<MarketMinuteCandleSnapshot> minuteSnapshots(Instant hourOpenTime, int missingMinuteIndex) {

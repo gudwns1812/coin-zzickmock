@@ -15,49 +15,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class MarketHistoryRecorder {
     private final MarketHistoryRepository marketHistoryRepository;
     private final CompletedHourlyCandleBuilder completedHourlyCandleBuilder;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder;
-    private final Clock clock;
-
-    @Autowired
-    public MarketHistoryRecorder(
-            MarketHistoryRepository marketHistoryRepository,
-            CompletedHourlyCandleBuilder completedHourlyCandleBuilder,
-            AfterCommitEventPublisher afterCommitEventPublisher,
-            MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder
-    ) {
-        this(
-                marketHistoryRepository,
-                completedHourlyCandleBuilder,
-                afterCommitEventPublisher,
-                marketHistoryRepairRequestRecorder,
-                Clock.systemUTC()
-        );
-    }
-
-    MarketHistoryRecorder(
-            MarketHistoryRepository marketHistoryRepository,
-            CompletedHourlyCandleBuilder completedHourlyCandleBuilder,
-            AfterCommitEventPublisher afterCommitEventPublisher,
-            MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder,
-            Clock clock
-    ) {
-        this.marketHistoryRepository = marketHistoryRepository;
-        this.completedHourlyCandleBuilder = completedHourlyCandleBuilder;
-        this.afterCommitEventPublisher = afterCommitEventPublisher;
-        this.marketHistoryRepairRequestRecorder = marketHistoryRepairRequestRecorder;
-        this.clock = clock;
-    }
+    private final Clock clock = Clock.systemUTC();
 
     @Transactional
     public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(

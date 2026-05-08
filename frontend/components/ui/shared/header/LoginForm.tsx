@@ -46,6 +46,21 @@ const LoginForm = () => {
     }
   };
 
+  const handleLoginInputKeyDown = (
+    e: React.KeyboardEvent<HTMLFormElement>
+  ) => {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (!(e.target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    e.preventDefault();
+    e.currentTarget.requestSubmit();
+  };
+
   if (pathname === "/") {
     return null;
   }
@@ -70,6 +85,7 @@ const LoginForm = () => {
       >
         <form
           className="w-[300px] bg-white rounded-main shadow-color p-main-2 flex flex-col gap-main items-center"
+          onKeyDown={handleLoginInputKeyDown}
           onSubmit={handleSubmit}
         >
           <Input

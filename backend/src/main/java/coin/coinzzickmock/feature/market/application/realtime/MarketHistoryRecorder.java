@@ -7,6 +7,7 @@ import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
@@ -27,6 +28,7 @@ public class MarketHistoryRecorder {
     private final CompletedHourlyCandleBuilder completedHourlyCandleBuilder;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder;
+    private final Clock clock = Clock.systemUTC();
 
     @Transactional
     public Map<String, Boolean> recordHistoricalMinuteCandlesBySymbol(
@@ -136,6 +138,10 @@ public class MarketHistoryRecorder {
     }
 
     private void rebuildHourlyCandle(long symbolId, Instant hourlyOpenTime) {
+        if (isOpenHour(hourlyOpenTime)) {
+            return;
+        }
+
         HourlyCandleRebuild rebuild = loadCompletedHourlyCandle(symbolId, hourlyOpenTime);
         if (rebuild.completedCandle().isPresent()) {
             try {
@@ -147,6 +153,11 @@ public class MarketHistoryRecorder {
         }
 
         reportSkippedHourlyRebuild(symbolId, hourlyOpenTime, rebuild.sourceCandles());
+    }
+
+    private boolean isOpenHour(Instant hourlyOpenTime) {
+        Instant hourlyCloseTime = hourlyOpenTime.plus(1, ChronoUnit.HOURS);
+        return hourlyCloseTime.isAfter(Instant.now(clock));
     }
 
     @Transactional

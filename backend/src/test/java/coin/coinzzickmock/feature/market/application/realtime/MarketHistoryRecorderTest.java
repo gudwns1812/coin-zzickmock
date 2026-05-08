@@ -9,7 +9,9 @@ import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairR
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,7 +24,7 @@ class MarketHistoryRecorderTest {
     void savesHourlyCandleWhenRebuiltHourHasCompleteMinuteCoverage() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         MarketHistoryRecorder recorder = recorder(repository);
-        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        Instant hourOpenTime = closedHourOpenTime();
 
         recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, -1));
 
@@ -33,7 +35,7 @@ class MarketHistoryRecorderTest {
     void keepsExistingHourlyCandleWhenRebuiltHourIsIncomplete() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         MarketHistoryRecorder recorder = recorder(repository);
-        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        Instant hourOpenTime = closedHourOpenTime();
         HourlyMarketCandle original = hourly(1L, hourOpenTime);
         repository.saveHourlyCandle(original);
 
@@ -46,11 +48,23 @@ class MarketHistoryRecorderTest {
     void doesNotSaveHourlyCandleWhenRebuiltHourIsIncomplete() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
         MarketHistoryRecorder recorder = recorder(repository);
-        Instant hourOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        Instant hourOpenTime = closedHourOpenTime();
 
         recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, 30));
 
         assertThat(repository.hourlyCandles).isEmpty();
+    }
+
+    @Test
+    void skipsHourlyRebuildWhenAffectedHourIsStillOpen() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        Instant hourOpenTime = openHourOpenTime();
+        MarketHistoryRecorder recorder = recorder(repository);
+
+        recorder.recordHistoricalMinuteCandles(1L, minuteSnapshots(hourOpenTime, 30));
+
+        assertThat(repository.hourlyCandles).isEmpty();
+        assertThat(repository.findMinuteCandlesCalls).isZero();
     }
 
     private static MarketHistoryRecorder recorder(MarketHistoryRepository repository) {
@@ -60,6 +74,16 @@ class MarketHistoryRecorderTest {
                 mock(AfterCommitEventPublisher.class),
                 mock(MarketHistoryRepairRequestRecorder.class)
         );
+    }
+
+    private static Instant closedHourOpenTime() {
+        return Instant.now(Clock.systemUTC())
+                .minus(2, ChronoUnit.HOURS)
+                .truncatedTo(ChronoUnit.HOURS);
+    }
+
+    private static Instant openHourOpenTime() {
+        return Instant.now(Clock.systemUTC()).truncatedTo(ChronoUnit.HOURS);
     }
 
     private static List<MarketMinuteCandleSnapshot> minuteSnapshots(Instant hourOpenTime, int missingMinuteIndex) {
@@ -106,9 +130,11 @@ class MarketHistoryRecorderTest {
     private static class InMemoryMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final Map<String, MarketHistoryCandle> minuteCandles = new LinkedHashMap<>();
         private final Map<String, HourlyMarketCandle> hourlyCandles = new LinkedHashMap<>();
+        private int findMinuteCandlesCalls;
 
         @Override
         public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
+            findMinuteCandlesCalls++;
             return minuteCandles.values().stream()
                     .filter(candle -> candle.symbolId() == symbolId)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))

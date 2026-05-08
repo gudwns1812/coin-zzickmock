@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
+import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
@@ -32,7 +33,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
         classes = {CoinZzickmockApplication.class, MarketRealtimeFeedPersistenceTest.MarketRealtimeFeedTestConfiguration.class},
         properties = {
                 "spring.main.allow-bean-definition-overriding=true",
-                "spring.task.scheduling.enabled=false"
+                "spring.task.scheduling.enabled=false",
+                "coin.market.closed-minute-persistence-delay-ms=0"
         }
 )
 @ActiveProfiles("test")
@@ -42,6 +44,9 @@ class MarketRealtimeFeedPersistenceTest {
 
     @Autowired
     private MarketMinuteCandleHistoryListener marketMinuteCandleHistoryListener;
+
+    @Autowired
+    private MarketSnapshotStore marketSnapshotStore;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -62,7 +67,10 @@ class MarketRealtimeFeedPersistenceTest {
 
     @Test
     void persistsMinuteHistoryWithoutPublishingPartialHourlyRowWhenMinuteClosedEventArrives() {
-        marketRealtimeFeed.refreshSupportedMarkets();
+        marketSnapshotStore.putSupportedMarkets(List.of(
+                marketSummary("BTCUSDT"),
+                marketSummary("ETHUSDT")
+        ));
         marketMinuteCandleHistoryListener.onMinuteClosed(new MarketMinuteClosedEvent(
                 Instant.parse("2026-04-17T06:00:00Z"),
                 Instant.parse("2026-04-17T06:01:00Z")
@@ -95,6 +103,10 @@ class MarketRealtimeFeedPersistenceTest {
             double change24h
     ) {
         return new MarketSnapshot(symbol, symbol + " Perpetual", lastPrice, markPrice, indexPrice, fundingRate, change24h);
+    }
+
+    private static MarketSummaryResult marketSummary(String symbol) {
+        return new MarketSummaryResult(symbol, symbol + " Perpetual", 0.0, 0.0, 0.0, 0.0, 0.0);
     }
 
     @TestConfiguration

@@ -467,12 +467,12 @@ export default function OrderEntryPanel({
           disabled={orderType === "MARKET"}
           min="0"
           name="limitPrice"
+          step="any"
           onChange={(event) => {
             setLimitPrice(event.target.value);
             setIsLimitPriceDirty(true);
             setInlineErrorMessage(null);
           }}
-          step="0.1"
           type="number"
           value={limitPrice}
         />
@@ -674,7 +674,10 @@ function formatLimitPriceInput(price: number) {
     return "";
   }
 
-  return price.toFixed(1);
+  return price
+    .toFixed(4)
+    .replace(/(\.\d*?)0+$/, "$1")
+    .replace(/\.$/, ".0");
 }
 
 function buildOrderPayload({

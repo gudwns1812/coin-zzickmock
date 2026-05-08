@@ -26,12 +26,17 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
+type QuickLimitPriceSelection = {
+  price: number;
+};
+
 type Props = {
   symbol: MarketSymbol;
   currentPrice: number;
   isAuthenticated: boolean;
   accountSummary: FuturesAccountSummary | null;
   positions?: FuturesPosition[];
+  quickLimitPriceSelection?: QuickLimitPriceSelection | null;
 };
 
 type Side = "LONG" | "SHORT";
@@ -70,6 +75,7 @@ export default function OrderEntryPanel({
   isAuthenticated,
   accountSummary,
   positions = [],
+  quickLimitPriceSelection = null,
 }: Props) {
   const router = useRouter();
   const [positionSide, setPositionSide] = useState<Side>("LONG");
@@ -78,7 +84,9 @@ export default function OrderEntryPanel({
   const [marginMode, setMarginMode] = useState<MarginMode>(DEFAULT_MARGIN_MODE);
   const [leverage, setLeverage] = useState(DEFAULT_LEVERAGE);
   const [quantity, setQuantity] = useState("0.01");
-  const [limitPrice, setLimitPrice] = useState(currentPrice.toFixed(1));
+  const [limitPrice, setLimitPrice] = useState(() =>
+    formatLimitPriceInput(currentPrice)
+  );
   const [isLimitPriceDirty, setIsLimitPriceDirty] = useState(false);
   const priceSnapshotSymbolRef = useRef(symbol);
   const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
@@ -93,10 +101,21 @@ export default function OrderEntryPanel({
   useEffect(() => {
     if (priceSnapshotSymbolRef.current !== symbol) {
       priceSnapshotSymbolRef.current = symbol;
-      setLimitPrice(currentPrice.toFixed(1));
+      setLimitPrice(formatLimitPriceInput(currentPrice));
       setIsLimitPriceDirty(false);
     }
   }, [currentPrice, symbol]);
+
+  useEffect(() => {
+    if (!quickLimitPriceSelection) {
+      return;
+    }
+
+    setOrderType("LIMIT");
+    setLimitPrice(formatLimitPriceInput(quickLimitPriceSelection.price));
+    setIsLimitPriceDirty(true);
+    setInlineErrorMessage(null);
+  }, [quickLimitPriceSelection]);
 
   const orderPayload = useMemo(
     () =>
@@ -374,6 +393,7 @@ export default function OrderEntryPanel({
         <SelectControl
           disabled={isMarginModeLocked}
           label="마진"
+          name="marginMode"
           value={marginMode}
           onChange={(value) => {
             setMarginMode(value as MarginMode);
@@ -446,6 +466,7 @@ export default function OrderEntryPanel({
           ].join(" ")}
           disabled={orderType === "MARKET"}
           min="0"
+          name="limitPrice"
           onChange={(event) => {
             setLimitPrice(event.target.value);
             setIsLimitPriceDirty(true);
@@ -464,6 +485,7 @@ export default function OrderEntryPanel({
         <input
           className="w-full bg-transparent text-sm-custom font-semibold text-main-dark-gray outline-none"
           min="0.001"
+          name="quantity"
           onChange={(event) => {
             setQuantity(event.target.value);
             setInlineErrorMessage(null);
@@ -482,6 +504,7 @@ export default function OrderEntryPanel({
         className="h-1.5 w-full cursor-pointer accent-main-blue"
         max="100"
         min="0"
+        name="quantityPercent"
         onChange={(event) => {
           const nextPercent = Number.parseInt(event.target.value, 10);
           const nextQuantity = (quantityControlMax * nextPercent) / 100;
@@ -646,6 +669,14 @@ export default function OrderEntryPanel({
   );
 }
 
+function formatLimitPriceInput(price: number) {
+  if (!Number.isFinite(price) || price <= 0) {
+    return "";
+  }
+
+  return price.toFixed(1);
+}
+
 function buildOrderPayload({
   symbol,
   positionSide,
@@ -753,12 +784,14 @@ function isPositionNotFound(payload: ApiErrorPayload | null): boolean {
 function SelectControl({
   disabled = false,
   label,
+  name,
   options,
   value,
   onChange,
 }: {
   disabled?: boolean;
   label: string;
+  name: string;
   options: Array<{ label: string; value: string }>;
   value: string;
   onChange: (value: string) => void;
@@ -771,6 +804,7 @@ function SelectControl({
       <select
         className="mt-1 w-full bg-transparent text-xs-custom font-bold text-main-dark-gray outline-none disabled:text-main-dark-gray/45"
         disabled={disabled}
+        name={name}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >

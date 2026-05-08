@@ -215,6 +215,13 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 차트 내부 indicator row에서 `EMA`, `SMA`, `Bollinger Bands`를 켜고 끌 수 있고, 기본값은 모두 꺼진 상태
 - 보조지표 선은 차트 본문을 가리는 긴 이름 라벨 대신 가격축의 현재 값을 우선 보여준다
 
+### 차트-주문 사이 빠른 지정가 선택 패널
+
+- 차트 영역과 우측 주문 패널 사이에는 order-book inspired compact 가격 선택 패널을 둘 수 있다. 이 패널은 실제 호가창이 아니라 빠른 Limit 가격 입력 shortcut이다.
+- 가격 행은 현재 선택 심볼의 최신 체결가 주변 가격과 mark/index reference처럼 이미 보유한 market snapshot 데이터만 사용한다. 실제 bid/ask quantity, total, depth 또는 유동성 막대는 표시하지 않는다.
+- 가격 행을 클릭하면 주문 패널의 가격 입력에 해당 가격 snapshot을 한 번 채우고 주문 타입을 `LIMIT`으로 준비한다. 이후 최신가나 패널 가격 갱신이 사용자가 입력 중인 값을 자동으로 덮어쓰지 않는다.
+- 이 패널은 주문 생성, 체결, maker/taker, 수수료, pending fill 정책을 바꾸지 않는다.
+
 ### 우측 주문 패널
 
 - `Open Long` / `Open Short` 및 `Close Long` / `Close Short` 액션 버튼으로 방향 선택

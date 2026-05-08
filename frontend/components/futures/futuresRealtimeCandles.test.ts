@@ -67,3 +67,23 @@ test("backend realtime candle is sorted with older history", () => {
     ["2026-04-24T02:11:00.000Z", "2026-04-24T02:12:00.000Z"]
   );
 });
+
+test("provisional SSE candle remains visible when REST history lacks the just-closed bucket", () => {
+  const merged = mergeCandlesWithRealtimeCandle([baseCandle], {
+    closePrice: 106,
+    closeTime: "2026-04-24T02:14:00.000Z",
+    highPrice: 108,
+    lowPrice: 100,
+    openPrice: 103,
+    openTime: "2026-04-24T02:13:00.000Z",
+    volume: 18,
+  });
+
+  assert.equal(merged.length, 2);
+  assert.deepEqual(
+    merged.map((candle) => candle.openTime),
+    ["2026-04-24T02:12:00.000Z", "2026-04-24T02:13:00.000Z"]
+  );
+  assert.equal(merged[1].closePrice, 106);
+  assert.equal(merged[1].volume, 18);
+});

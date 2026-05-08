@@ -324,6 +324,13 @@ class MarketRealtimeFeedTest {
         );
         MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator =
                 new MarketHistoryPersistenceCoordinator(persistence);
+        DelayedClosedMinuteCandlePersistenceScheduler delayedPersistenceScheduler =
+                new DelayedClosedMinuteCandlePersistenceScheduler(
+                        mock(org.springframework.scheduling.TaskScheduler.class),
+                        marketHistoryPersistenceCoordinator,
+                        0,
+                        java.time.Clock.systemUTC()
+                );
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new MarketSupportedMarketRefresher(
                         new FakeProviders(marketDataGateway),
@@ -335,7 +342,7 @@ class MarketRealtimeFeedTest {
         );
         MarketMinuteCandleHistoryListener listener = new MarketMinuteCandleHistoryListener(
                 marketSnapshotStore,
-                marketHistoryPersistenceCoordinator
+                delayedPersistenceScheduler
         );
         return new TestMarketRuntime(feed, listener);
     }

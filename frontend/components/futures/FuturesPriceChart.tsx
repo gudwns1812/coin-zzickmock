@@ -149,7 +149,7 @@ const CHART_COLORS = {
 } as const;
 
 const LOAD_MORE_THRESHOLD = 25;
-const CLOSED_CANDLE_REFETCH_DELAY_MS = 2_500;
+const CLOSED_CANDLE_REFETCH_DELAY_MS = 4_000;
 const CHART_HEIGHT = 620;
 const MAIN_PANE_INITIAL_HEIGHT = 455;
 const VOLUME_PANE_INITIAL_HEIGHT = CHART_HEIGHT - MAIN_PANE_INITIAL_HEIGHT;
@@ -622,9 +622,6 @@ export default function FuturesPriceChart({
         setRealtimeCandle(data);
         onLatestCandleClosePriceChange?.(data.closePrice, Date.now());
 
-        if (previousOpenTime && previousOpenTime !== data.openTime) {
-          invalidateCurrentCandleQueries();
-        }
         if (!previousOpenTime || previousOpenTime !== data.openTime) {
           scheduleClosedCandleFinalizationRefetch();
         }
@@ -633,7 +630,6 @@ export default function FuturesPriceChart({
       }
     },
     [
-      invalidateCurrentCandleQueries,
       onLatestCandleClosePriceChange,
       scheduleClosedCandleFinalizationRefetch,
       selectedInterval,

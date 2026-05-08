@@ -62,6 +62,36 @@ class MarketHistoryPersistenceCoordinatorTest {
     }
 
     @Test
+    void retriesAfterFailedPersistenceAttempt() {
+        MarketClosedMinuteCandlePersistence persistence = Mockito.mock(MarketClosedMinuteCandlePersistence.class);
+        when(persistence.persist("BTCUSDT", OPEN_TIME, CLOSE_TIME))
+                .thenReturn(
+                        result(MarketHistoryPersistenceStatus.FAILED),
+                        result(MarketHistoryPersistenceStatus.PERSISTED)
+                );
+        MarketHistoryPersistenceCoordinator coordinator = new MarketHistoryPersistenceCoordinator(persistence);
+
+        List<MarketHistoryPersistenceResult> firstResults = coordinator.persistClosedMinuteCandles(
+                List.of("BTCUSDT"),
+                OPEN_TIME,
+                CLOSE_TIME
+        );
+        List<MarketHistoryPersistenceResult> secondResults = coordinator.persistClosedMinuteCandles(
+                List.of("BTCUSDT"),
+                OPEN_TIME,
+                CLOSE_TIME
+        );
+
+        assertThat(firstResults).singleElement()
+                .extracting(MarketHistoryPersistenceResult::status)
+                .isEqualTo(MarketHistoryPersistenceStatus.FAILED);
+        assertThat(secondResults).singleElement()
+                .extracting(MarketHistoryPersistenceResult::status)
+                .isEqualTo(MarketHistoryPersistenceStatus.PERSISTED);
+        verify(persistence, Mockito.times(2)).persist("BTCUSDT", OPEN_TIME, CLOSE_TIME);
+    }
+
+    @Test
     void ignoresBlankDuplicateSymbols() {
         MarketClosedMinuteCandlePersistence persistence = Mockito.mock(MarketClosedMinuteCandlePersistence.class);
         when(persistence.persist("BTCUSDT", OPEN_TIME, CLOSE_TIME))

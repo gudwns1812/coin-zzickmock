@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MarketMinuteCandleHistoryListener {
     private final MarketSnapshotStore marketSnapshotStore;
-    private final MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator;
+    private final DelayedClosedMinuteCandlePersistenceScheduler delayedClosedMinuteCandlePersistenceScheduler;
 
     @EventListener
     public void onMinuteClosed(MarketMinuteClosedEvent event) {
@@ -21,7 +21,7 @@ public class MarketMinuteCandleHistoryListener {
         List<String> symbols = marketSnapshotStore.getSupportedMarkets().stream()
                 .map(MarketSummaryResult::symbol)
                 .toList();
-        marketHistoryPersistenceCoordinator.persistClosedMinuteCandles(
+        delayedClosedMinuteCandlePersistenceScheduler.scheduleClosedMinutePersistence(
                 symbols,
                 event.openTime(),
                 event.closeTime()

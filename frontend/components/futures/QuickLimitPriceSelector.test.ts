@@ -54,6 +54,6 @@ test("quick limit price rows are buttons with accessible labels and matching pri
   );
   assert.equal(source.includes("Select latest price"), true);
   assert.equal(source.includes("Select ${formatUsd(row.price)} as limit price"), true);
-  assert.equal(source.includes("text-base-custom font-black tabular-nums"), true);
+  assert.equal(source.includes("text-left text-base-custom font-black tabular-nums"), true);
   assert.equal(source.includes('type="button"'), true);
 });

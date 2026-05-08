@@ -130,6 +130,13 @@ test("market detail renders quick limit selector between chart and order panel",
   );
 });
 
+test("market detail keeps quick limit narrow so chart gets the extra width", () => {
+  assert.equal(
+    source.includes("grid-cols-[minmax(0,1fr)_180px_360px]"),
+    true
+  );
+});
+
 test("market detail wires quick limit price locally without global UI state", () => {
   assert.equal(source.includes("useState<QuickLimitPriceSelection | null>"), true);
   assert.equal(source.includes("handleQuickLimitPriceSelect"), true);

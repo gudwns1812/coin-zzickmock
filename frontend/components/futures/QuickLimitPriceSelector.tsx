@@ -224,7 +224,7 @@ function PriceButton({
     <button
       aria-label={`Select ${formatUsd(row.price)} as limit price`}
       className={[
-        "rounded-main px-2.5 py-1.5 text-right text-base-custom font-black tabular-nums",
+        "rounded-main px-2.5 py-1.5 text-left text-base-custom font-black tabular-nums",
         "transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-main-blue/50",
         isUpper
           ? "bg-rose-50/55 text-rose-600 hover:bg-rose-100/75"

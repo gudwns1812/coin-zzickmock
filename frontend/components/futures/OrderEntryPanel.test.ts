@@ -92,3 +92,38 @@ test("order preview labels estimated and unavailable liquidation prices", () => 
   assert.equal(source.includes("(Est.)"), true);
   assert.equal(source.includes("현재 다른 심볼 가격을 고정한 추정값"), true);
 });
+
+test("quick limit price selection controls the ticket price and switches back to Limit", () => {
+  assert.equal(
+    source.includes(
+      "quickLimitPriceSelection?: QuickLimitPriceSelection | null"
+    ),
+    true
+  );
+  assert.equal(source.includes("setOrderType(\"LIMIT\")"), true);
+  assert.equal(
+    source.includes(
+      "setLimitPrice(formatLimitPriceInput(quickLimitPriceSelection.price))"
+    ),
+    true
+  );
+  assert.equal(source.includes("setIsLimitPriceDirty(true)"), true);
+  assert.equal(source.includes("setInlineErrorMessage(null)"), true);
+});
+
+test("quick limit price formatting preserves sub-0.1 symbol units", () => {
+  assert.equal(source.includes(".toFixed(4)"), true);
+  assert.equal(source.includes('.replace(/(\\.\\d*?)0+$/, "$1")'), true);
+  assert.equal(source.includes('step="any"'), true);
+});
+
+test("order ticket still builds payload through existing limit and market branches", () => {
+  assert.equal(
+    source.includes(
+      "limitPrice: orderType === \"LIMIT\" ? parsedLimitPrice : null"
+    ),
+    true
+  );
+  assert.equal(source.includes("/proxy-futures/orders"), true);
+  assert.equal(source.includes("/proxy-futures/positions/close"), true);
+});

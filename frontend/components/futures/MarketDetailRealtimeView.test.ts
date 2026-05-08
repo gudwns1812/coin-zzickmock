@@ -112,3 +112,35 @@ test("Open Orders table uses stable display sorting and fixed action layout", ()
   assert.equal(source.includes("flex min-w-[190px] justify-start gap-2"), true);
   assert.equal(source.includes("{formatOrderPurpose(order)} · {order.orderType}"), true);
 });
+
+test("market detail renders quick limit selector between chart and order panel", () => {
+  assert.equal(source.includes("import QuickLimitPriceSelector"), true);
+  assert.equal(source.includes("<FuturesPriceChart"), true);
+  assert.equal(source.includes("<QuickLimitPriceSelector"), true);
+  assert.equal(source.includes("<OrderEntryPanel"), true);
+  assert.equal(
+    source.indexOf("<FuturesPriceChart") <
+      source.indexOf("<QuickLimitPriceSelector"),
+    true
+  );
+  assert.equal(
+    source.indexOf("<QuickLimitPriceSelector") <
+      source.indexOf("<OrderEntryPanel"),
+    true
+  );
+});
+
+test("market detail keeps quick limit narrow so chart gets the extra width", () => {
+  assert.equal(
+    source.includes("grid-cols-[minmax(0,1fr)_180px_360px]"),
+    true
+  );
+});
+
+test("market detail wires quick limit price locally without global UI state", () => {
+  assert.equal(source.includes("useState<QuickLimitPriceSelection | null>"), true);
+  assert.equal(source.includes("handleQuickLimitPriceSelect"), true);
+  assert.equal(source.includes("quickLimitPriceSelection={quickLimitPriceSelection}"), true);
+  assert.equal(source.includes("useOrderBook"), false);
+  assert.equal(source.includes("zustand"), false);
+});

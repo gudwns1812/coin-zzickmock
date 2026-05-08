@@ -9,6 +9,7 @@ import {
   getAccumulatedClosedQuantity,
 } from "@/components/futures/livePositionDisplay";
 import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
+import QuickLimitPriceSelector from "@/components/futures/QuickLimitPriceSelector";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
@@ -73,6 +74,10 @@ type ClientApiResponse<T> = {
 
 const ORDER_STREAM_RESUME_REFRESH_THROTTLE_MS = 2_000;
 
+type QuickLimitPriceSelection = {
+  price: number;
+};
+
 export default function MarketDetailRealtimeView({
   initialMarket,
   isAuthenticated,
@@ -97,6 +102,8 @@ export default function MarketDetailRealtimeView({
   const [executionEvents, setExecutionEvents] = useState<
     FuturesTradingExecutionEvent[]
   >([]);
+  const [quickLimitPriceSelection, setQuickLimitPriceSelection] =
+    useState<QuickLimitPriceSelection | null>(null);
   const lastOrderResumeRefreshAtRef = useRef(0);
 
   const marketStreamUrl = useMemo(
@@ -148,6 +155,12 @@ export default function MarketDetailRealtimeView({
     },
     []
   );
+
+  const handleQuickLimitPriceSelect = useCallback((price: number) => {
+    setQuickLimitPriceSelection({
+      price,
+    });
+  }, []);
 
   const refreshOnOrderStreamResume = useCallback(
     (reason: EventSourceReconnectReason) => {
@@ -242,7 +255,7 @@ export default function MarketDetailRealtimeView({
 
   return (
     <div className="flex w-full flex-col gap-main-2 px-main-2 pb-24">
-      <section className="grid w-full grid-cols-[minmax(0,1fr)_360px] gap-main-2 pt-4">
+      <section className="grid w-full grid-cols-[minmax(0,1fr)_180px_360px] gap-main-2 pt-4">
         <div className="flex min-w-0 flex-col gap-main-2">
           <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
             <div className="flex items-start justify-between gap-main">
@@ -330,6 +343,15 @@ export default function MarketDetailRealtimeView({
           />
         </div>
 
+        <QuickLimitPriceSelector
+          change24h={market.change24h}
+          indexPrice={market.indexPrice}
+          lastPrice={market.lastPrice}
+          markPrice={market.markPrice}
+          onSelectPrice={handleQuickLimitPriceSelect}
+          symbol={market.symbol}
+        />
+
         <aside
           className={[
             "sticky top-4 h-fit rounded-main border border-main-light-gray",
@@ -362,6 +384,7 @@ export default function MarketDetailRealtimeView({
             currentPrice={market.lastPrice}
             isAuthenticated={isAuthenticated}
             positions={displayedPositions}
+            quickLimitPriceSelection={quickLimitPriceSelection}
             symbol={market.symbol}
           />
         </aside>

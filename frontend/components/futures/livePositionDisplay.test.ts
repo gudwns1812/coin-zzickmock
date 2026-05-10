@@ -8,6 +8,7 @@ const helperModule: typeof import("./livePositionDisplay") = await import(
 const {
   calculateRoe,
   calculateUnrealizedPnl,
+  deriveLiveAccountSummaryDisplay,
   deriveLivePositionDisplay,
   getAccumulatedClosedQuantity,
 } = helperModule;
@@ -89,4 +90,45 @@ test("Close amount uses accumulated closed quantity only", () => {
     }),
     0.4
   );
+});
+
+test("account summary display uses live position PnL and margin for USDT balance and ROI", () => {
+  const result = deriveLiveAccountSummaryDisplay(
+    {
+      memberId: 1,
+      account: "tester@example.com",
+      memberName: "Tester",
+      nickname: "tester",
+      usdtBalance: 1000,
+      walletBalance: 1000,
+      available: 800,
+      totalUnrealizedPnl: 0,
+      roi: 0,
+      rewardPoint: 0,
+    },
+    [
+      {
+        ...basePosition,
+        unrealizedPnl: 30,
+        margin: 20,
+      },
+      {
+        ...basePosition,
+        symbol: "ETHUSDT",
+        positionSide: "SHORT",
+        unrealizedPnl: -10,
+        margin: 30,
+      },
+    ]
+  );
+
+  assert.equal(result?.usdtBalance, 1020);
+  assert.equal(result?.walletBalance, 1000);
+  assert.equal(result?.available, 800);
+  assert.equal(result?.totalUnrealizedPnl, 20);
+  assert.equal(result?.roi, 0.4);
+});
+
+test("account summary display returns null when account is unavailable", () => {
+  assert.equal(deriveLiveAccountSummaryDisplay(null, [basePosition]), null);
 });

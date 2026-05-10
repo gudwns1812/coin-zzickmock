@@ -18,6 +18,7 @@ import {
   calculateMaxOpenOrderQuantity,
   formatFlooredQuantity,
 } from "@/lib/order-entry-quantity";
+import { deriveLiveAccountSummaryDisplay } from "@/components/futures/livePositionDisplay";
 import Modal from "@/components/ui/Modal";
 import { CircleHelp } from "lucide-react";
 import Link from "next/link";
@@ -159,7 +160,11 @@ export default function OrderEntryPanel({
   const effectivePrice =
     orderType === "LIMIT" ? Number.parseFloat(limitPrice) : currentPrice;
   const baseAsset = symbol.replace("USDT", "");
-  const availableBalance = accountSummary?.available ?? 0;
+  const liveAccountSummary = useMemo(
+    () => deriveLiveAccountSummaryDisplay(accountSummary, positions),
+    [accountSummary, positions]
+  );
+  const availableBalance = liveAccountSummary?.available ?? 0;
   const selectedSidePosition = useMemo(
     () => findPositionForSide(positions, symbol, positionSide),
     [positionSide, positions, symbol]
@@ -735,37 +740,45 @@ export default function OrderEntryPanel({
         <div className="mt-3 grid gap-2">
           <AccountLine
             label="USDT balance"
-            value={accountSummary ? formatUsd(accountSummary.usdtBalance) : "-"}
+            value={
+              liveAccountSummary ? formatUsd(liveAccountSummary.usdtBalance) : "-"
+            }
           />
           <AccountLine
             label="Wallet balance"
-            value={accountSummary ? formatUsd(accountSummary.walletBalance) : "-"}
+            value={
+              liveAccountSummary ? formatUsd(liveAccountSummary.walletBalance) : "-"
+            }
           />
           <AccountLine
             label="Available"
-            value={accountSummary ? formatUsd(accountSummary.available) : "-"}
+            value={
+              liveAccountSummary ? formatUsd(liveAccountSummary.available) : "-"
+            }
           />
           <AccountLine
             label="Unrealized PnL"
             value={
-              accountSummary
-                ? formatSignedUsd(accountSummary.totalUnrealizedPnl)
+              liveAccountSummary
+                ? formatSignedUsd(liveAccountSummary.totalUnrealizedPnl)
                 : "-"
             }
             valueClassName={
-              accountSummary
+              liveAccountSummary
                 ? getSignedFinancialTextClassName(
-                    accountSummary.totalUnrealizedPnl
+                    liveAccountSummary.totalUnrealizedPnl
                   )
                 : undefined
             }
           />
           <AccountLine
             label="ROI"
-            value={accountSummary ? formatPercent(accountSummary.roi * 100) : "-"}
+            value={
+              liveAccountSummary ? formatPercent(liveAccountSummary.roi * 100) : "-"
+            }
             valueClassName={
-              accountSummary
-                ? getSignedFinancialTextClassName(accountSummary.roi)
+              liveAccountSummary
+                ? getSignedFinancialTextClassName(liveAccountSummary.roi)
                 : undefined
             }
           />

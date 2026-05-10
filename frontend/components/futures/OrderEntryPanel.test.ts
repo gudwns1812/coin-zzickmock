@@ -140,3 +140,10 @@ test("order ticket still builds payload through existing limit and market branch
   assert.equal(source.includes("/proxy-futures/orders"), true);
   assert.equal(source.includes("/proxy-futures/positions/close"), true);
 });
+
+test("order account summary uses displayed positions for live mark-to-market values", () => {
+  assert.equal(source.includes("deriveLiveAccountSummaryDisplay"), true);
+  assert.equal(source.includes("liveAccountSummary"), true);
+  assert.equal(source.includes("accountSummary.totalUnrealizedPnl"), false);
+  assert.equal(source.includes("accountSummary.roi"), false);
+});

@@ -1,4 +1,4 @@
-import type { FuturesPosition } from "@/lib/futures-api";
+import type { FuturesAccountSummary, FuturesPosition } from "@/lib/futures-api";
 import type { MarketSnapshot } from "@/lib/markets";
 
 export function deriveLivePositionDisplay(
@@ -66,6 +66,31 @@ export function calculateRoe(unrealizedPnl: number, margin: number): number {
   }
 
   return unrealizedPnl / margin;
+}
+
+export function deriveLiveAccountSummaryDisplay(
+  accountSummary: FuturesAccountSummary | null,
+  positions: FuturesPosition[]
+): FuturesAccountSummary | null {
+  if (!accountSummary) {
+    return null;
+  }
+
+  const totalUnrealizedPnl = positions.reduce(
+    (sum, position) => sum + position.unrealizedPnl,
+    0
+  );
+  const totalInitialMargin = positions.reduce(
+    (sum, position) => sum + position.margin,
+    0
+  );
+
+  return {
+    ...accountSummary,
+    usdtBalance: accountSummary.walletBalance + totalUnrealizedPnl,
+    totalUnrealizedPnl,
+    roi: calculateRoe(totalUnrealizedPnl, totalInitialMargin),
+  };
 }
 
 export function getAccumulatedClosedQuantity(position: FuturesPosition): number {

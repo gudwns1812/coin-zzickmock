@@ -3,7 +3,6 @@
 import type { FuturesOpenOrder, FuturesPosition } from "@/lib/futures-api";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
 import Modal from "@/components/ui/Modal";
-import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
@@ -71,13 +70,16 @@ import {
   type FuturesCandleInterval,
 } from "./futuresChartViewport";
 import {
-  DEFAULT_FUTURES_CHART_INTERVAL,
   readStoredFuturesChartInterval,
   writeStoredFuturesChartInterval,
 } from "./futuresChartIntervalPreference";
 import {
   getFuturesChartRenderMode,
 } from "./futuresChartRenderMode";
+import type {
+  MarketStreamCandle,
+  MarketStreamHistoryFinalized,
+} from "./marketStreamEnvelope";
 import {
   getOrderPriceLineColor,
   getOrderPriceLineTitle,
@@ -91,6 +93,10 @@ type Props = {
   change24h: number;
   positions: FuturesPosition[];
   openOrders: FuturesOpenOrder[];
+  selectedInterval: FuturesCandleInterval;
+  onSelectedIntervalChange: (interval: FuturesCandleInterval) => void;
+  marketStreamCandle: (MarketStreamCandle & { interval: FuturesCandleInterval; serverTime: string }) | null;
+  marketStreamHistoryFinalized: (MarketStreamHistoryFinalized & { interval: FuturesCandleInterval; serverTime: string }) | null;
   onLatestCandleClosePriceChange?: (closePrice: number, receivedAt: number) => void;
 };
 
@@ -167,6 +173,10 @@ export default function FuturesPriceChart({
   change24h,
   positions,
   openOrders,
+  selectedInterval,
+  onSelectedIntervalChange,
+  marketStreamCandle,
+  marketStreamHistoryFinalized,
   onLatestCandleClosePriceChange,
 }: Props) {
   const queryClient = useQueryClient();
@@ -181,8 +191,6 @@ export default function FuturesPriceChart({
   const appliedInitialViewportKeyRef = useRef<string | null>(null);
   const realtimeCandleOpenTimeRef = useRef<string | null>(null);
   const closedCandleRefetchTimeoutRef = useRef<number | null>(null);
-  const [selectedInterval, setSelectedInterval] =
-    useState<FuturesCandleInterval>(DEFAULT_FUTURES_CHART_INTERVAL);
   const [isIntervalPreferenceHydrated, setIsIntervalPreferenceHydrated] =
     useState(false);
   const [hoveredOhlc, setHoveredOhlc] = useState<OhlcSnapshot | null>(null);
@@ -212,10 +220,10 @@ export default function FuturesPriceChart({
     const storedInterval = readStoredFuturesChartInterval();
 
     if (storedInterval && storedInterval !== selectedInterval) {
-      setSelectedInterval(storedInterval);
+      onSelectedIntervalChange(storedInterval);
     }
     setIsIntervalPreferenceHydrated(true);
-  }, []);
+  }, [onSelectedIntervalChange, selectedInterval]);
 
   const historyQuery = useInfiniteQuery<CandleResponse[], Error>({
     queryKey: [
@@ -262,10 +270,6 @@ export default function FuturesPriceChart({
     staleTime: 15_000,
   });
 
-  const candleStreamUrl = useMemo(
-    () => buildCandleStreamUrl(symbol, selectedInterval),
-    [selectedInterval, symbol]
-  );
 
   const candles = useMemo(() => {
     const merged = [...(historyQuery.data?.pages ?? [])].reverse().flat();
@@ -596,52 +600,48 @@ export default function FuturesPriceChart({
     }, CLOSED_CANDLE_REFETCH_DELAY_MS);
   }, [invalidateCurrentCandleQueries]);
 
-  const handleCandleStreamMessage = useCallback(
-    (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data) as unknown;
+  useEffect(() => {
+    if (!marketStreamHistoryFinalized) {
+      return;
+    }
 
-        if (isHistoryFinalizedResponse(data)) {
-          if (
-            data.symbol === symbol &&
-            data.affectedIntervals.includes(selectedInterval)
-          ) {
-            clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);
-            invalidateCurrentCandleQueries();
-          }
-          return;
-        }
+    if (
+      marketStreamHistoryFinalized.symbol === symbol &&
+      marketStreamHistoryFinalized.affectedIntervals.includes(selectedInterval)
+    ) {
+      clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);
+      invalidateCurrentCandleQueries();
+    }
+  }, [
+    invalidateCurrentCandleQueries,
+    marketStreamHistoryFinalized,
+    selectedInterval,
+    symbol,
+  ]);
 
-        if (!isCandleResponse(data)) {
-          return;
-        }
+  useEffect(() => {
+    if (
+      !marketStreamCandle ||
+      marketStreamCandle.interval !== selectedInterval ||
+      !isCandleResponse(marketStreamCandle)
+    ) {
+      return;
+    }
 
-        const previousOpenTime = realtimeCandleOpenTimeRef.current;
-        realtimeCandleOpenTimeRef.current = data.openTime;
-        setRealtimeCandle(data);
-        onLatestCandleClosePriceChange?.(data.closePrice, Date.now());
+    const previousOpenTime = realtimeCandleOpenTimeRef.current;
+    realtimeCandleOpenTimeRef.current = marketStreamCandle.openTime;
+    setRealtimeCandle(marketStreamCandle);
+    onLatestCandleClosePriceChange?.(marketStreamCandle.closePrice, Date.now());
 
-        if (!previousOpenTime || previousOpenTime !== data.openTime) {
-          scheduleClosedCandleFinalizationRefetch();
-        }
-      } catch {
-        // Keep the current chart data when the stream sends malformed data.
-      }
-    },
-    [
-      onLatestCandleClosePriceChange,
-      scheduleClosedCandleFinalizationRefetch,
-      selectedInterval,
-      symbol,
-    ]
-  );
-
-  useResilientEventSource({
-    enabled: isIntervalPreferenceHydrated,
-    onMessage: handleCandleStreamMessage,
-    onReconnect: invalidateCurrentCandleQueries,
-    url: candleStreamUrl,
-  });
+    if (!previousOpenTime || previousOpenTime !== marketStreamCandle.openTime) {
+      scheduleClosedCandleFinalizationRefetch();
+    }
+  }, [
+    marketStreamCandle,
+    onLatestCandleClosePriceChange,
+    scheduleClosedCandleFinalizationRefetch,
+    selectedInterval,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -854,7 +854,7 @@ export default function FuturesPriceChart({
               ].join(" ")}
               key={option.value}
               onClick={() => {
-                setSelectedInterval(option.value);
+                onSelectedIntervalChange(option.value);
                 writeStoredFuturesChartInterval(option.value);
               }}
               type="button"
@@ -1286,15 +1286,6 @@ function buildCandleRequestUrl(
   return `/proxy-futures/markets/${symbol}/candles?${params.toString()}`;
 }
 
-function buildCandleStreamUrl(
-  symbol: MarketSymbol,
-  interval: FuturesCandleInterval
-): string {
-  const params = new URLSearchParams({ interval });
-
-  return `/api/futures/markets/${encodeURIComponent(symbol)}/candles/stream?${params.toString()}`;
-}
-
 function isCandleResponse(value: unknown): value is CandleResponse {
   if (!value || typeof value !== "object") {
     return false;
@@ -1310,32 +1301,6 @@ function isCandleResponse(value: unknown): value is CandleResponse {
     Number.isFinite(candidate.lowPrice) &&
     Number.isFinite(candidate.closePrice) &&
     Number.isFinite(candidate.volume)
-  );
-}
-
-function isHistoryFinalizedResponse(
-  value: unknown
-): value is HistoryFinalizedResponse {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<HistoryFinalizedResponse>;
-
-  return (
-    candidate.type === "historyFinalized" &&
-    typeof candidate.symbol === "string" &&
-    typeof candidate.openTime === "string" &&
-    typeof candidate.closeTime === "string" &&
-    Array.isArray(candidate.affectedIntervals) &&
-    candidate.affectedIntervals.every(isFuturesCandleInterval)
-  );
-}
-
-function isFuturesCandleInterval(value: unknown): value is FuturesCandleInterval {
-  return (
-    typeof value === "string" &&
-    INTERVAL_OPTIONS.some((option) => option.value === value)
   );
 }
 

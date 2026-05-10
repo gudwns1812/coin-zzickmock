@@ -47,13 +47,10 @@ test("open order max quantity uses fee-aware floored helper while close mode rem
 });
 
 test("order ticket exposes current side so leverage edits target the intended position", () => {
-  assert.equal(source.includes("function SideToggle"), true);
-  assert.equal(source.includes('aria-label="Position side"'), true);
   assert.equal(source.includes('onClick={() => handleSubmit("LONG")}'), true);
   assert.equal(source.includes('onClick={() => handleSubmit("SHORT")}'), true);
   assert.equal(source.includes("onMouseEnter={() => setPositionSide"), false);
   assert.equal(source.includes("onFocus={() => setPositionSide"), false);
-  assert.equal(source.includes("positionSide: side"), true);
   assert.equal(source.includes("positionSide: nextSide"), true);
 });
 

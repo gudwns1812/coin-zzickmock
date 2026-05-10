@@ -37,9 +37,6 @@ public class MarketController {
     private final GetMarketCandlesService getMarketCandlesService;
     private final MarketRealtimeSseBroker marketRealtimeSseBroker;
     private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker;
-    private final MarketStreamBroker marketStreamBroker;
-    private final OpenPositionSymbolsReader openPositionSymbolsReader;
-    private final Providers providers;
     private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
     private final CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper;
     private final MarketStreamBroker marketStreamBroker;
@@ -53,9 +50,6 @@ public class MarketController {
             GetMarketCandlesService getMarketCandlesService,
             MarketRealtimeSseBroker marketRealtimeSseBroker,
             MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
-            MarketStreamBroker marketStreamBroker,
-            OpenPositionSymbolsReader openPositionSymbolsReader,
-            Providers providers,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper,
             MarketStreamBroker marketStreamBroker,
@@ -67,9 +61,6 @@ public class MarketController {
         this.getMarketCandlesService = getMarketCandlesService;
         this.marketRealtimeSseBroker = marketRealtimeSseBroker;
         this.marketCandleRealtimeSseBroker = marketCandleRealtimeSseBroker;
-        this.marketStreamBroker = marketStreamBroker;
-        this.openPositionSymbolsReader = openPositionSymbolsReader;
-        this.providers = providers;
         this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
         this.currentMarketCandleBootstrapper = currentMarketCandleBootstrapper;
         this.marketStreamBroker = marketStreamBroker;
@@ -91,34 +82,6 @@ public class MarketController {
                 getMarketCandlesService,
                 marketRealtimeSseBroker,
                 marketCandleRealtimeSseBroker,
-                null,
-                null,
-                null,
-                realtimeMarketCandleProjector,
-                null,
-                streamTimeoutMs
-        );
-    }
-
-    MarketController(
-            GetMarketSummaryService getMarketSummaryService,
-            GetMarketCandlesService getMarketCandlesService,
-            MarketRealtimeSseBroker marketRealtimeSseBroker,
-            MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
-            MarketStreamBroker marketStreamBroker,
-            OpenPositionSymbolsReader openPositionSymbolsReader,
-            Providers providers,
-            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
-            long streamTimeoutMs
-    ) {
-        this(
-                getMarketSummaryService,
-                getMarketCandlesService,
-                marketRealtimeSseBroker,
-                marketCandleRealtimeSseBroker,
-                marketStreamBroker,
-                openPositionSymbolsReader,
-                providers,
                 realtimeMarketCandleProjector,
                 null,
                 null,
@@ -179,34 +142,23 @@ public class MarketController {
         return ApiResponse.success(candles.stream().map(MarketCandleResponse::from).toList());
     }
 
+
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter unifiedStream(
             @RequestParam String symbol,
             @RequestParam String interval,
             @RequestParam(required = false) String clientKey
     ) {
-        Long memberId = providers.auth().currentActor().memberId();
-        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
-        MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
-        CandleSubscription candleSubscription = new CandleSubscription(symbol, candleInterval);
-        LinkedHashSet<String> summarySymbols = new LinkedHashSet<>();
-        summarySymbols.add(symbol);
-        summarySymbols.addAll(openPositionSymbolsReader.openSymbols(memberId));
-        SseEmitter emitter = createEmitter();
-        if (currentMarketCandleBootstrapper != null) {
-            currentMarketCandleBootstrapper.bootstrapIfNeeded(symbol, candleInterval);
+        if (marketStreamBroker == null || openPositionSymbolsReader == null || providers == null) {
+            throw new IllegalStateException("Unified market stream dependencies are not configured");
         }
 
-        boolean opened = marketStreamBroker.openStream(
-                new MarketStreamSessionKey(memberId, resolvedClientKey),
-                emitter,
-                symbol,
-                summarySymbols,
-                candleSubscription,
-                () -> summarySymbols.stream()
-                        .map(summarySymbol -> getMarketSummaryService.getMarket(new GetMarketQuery(summarySymbol)))
-                        .toList()
-        );
+        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
+        Long memberId = providers.auth().currentActor().memberId();
+        MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
+        Set<String> openSymbols = new LinkedHashSet<>(openPositionSymbolsReader.openSymbols(memberId));
+        SseEmitter emitter = createEmitter();
+        marketStreamBroker.openSession(memberId, resolvedClientKey, symbol, openSymbols, candleInterval, emitter);
         return emitter;
     }
 

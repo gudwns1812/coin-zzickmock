@@ -110,6 +110,6 @@ test("live position display can re-mark non-selected positions from matching sum
   assert.equal(detailSource.includes("displayedPositions"), true);
   assert.equal(displaySource.includes("markPrice") || detailSource.includes("markPrice"), true);
   assert.equal(displaySource.includes("unrealizedPnl") || detailSource.includes("unrealizedPnl"), true);
-  assert.equal(displaySource.includes("roe") || detailSource.includes("roe"), true);
-  assert.equal(detailSource.includes("position.symbol"), true);
+  assert.equal(displaySource.includes("roi") || detailSource.includes("roi"), true);
+  assert.equal(detailSource.includes("deriveLivePositionDisplayFromSnapshots"), true);
 });

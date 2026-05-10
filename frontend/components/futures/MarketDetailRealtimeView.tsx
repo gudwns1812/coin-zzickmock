@@ -5,10 +5,16 @@ import EditOrderButton from "@/components/futures/EditOrderButton";
 import ClosePositionButton from "@/components/futures/ClosePositionButton";
 import FuturesPriceChart from "@/components/futures/FuturesPriceChart";
 import {
-  deriveLivePositionDisplay,
+  deriveLivePositionDisplayFromSnapshots,
   getAccumulatedClosedQuantity,
 } from "@/components/futures/livePositionDisplay";
 import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
+import type { FuturesCandleInterval } from "@/components/futures/futuresChartViewport";
+import {
+  parseMarketStreamEnvelope,
+  type MarketStreamCandle,
+  type MarketStreamHistoryFinalized,
+} from "@/components/futures/marketStreamEnvelope";
 import QuickLimitPriceSelector from "@/components/futures/QuickLimitPriceSelector";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
@@ -28,6 +34,7 @@ import { formatFundingCountdown } from "@/lib/funding-countdown";
 import {
   formatCompactUsd,
   SUPPORTED_MARKET_SYMBOLS,
+  isSupportedMarketSymbol,
   formatPercent,
   formatRatioPercent,
   formatSignedUsd,
@@ -109,20 +116,61 @@ export default function MarketDetailRealtimeView({
   >([]);
   const [quickLimitPriceSelection, setQuickLimitPriceSelection] =
     useState<QuickLimitPriceSelection | null>(null);
+  const [selectedInterval, setSelectedInterval] =
+    useState<FuturesCandleInterval>("1m");
+  const [marketSnapshotsBySymbol, setMarketSnapshotsBySymbol] = useState(() =>
+    new Map<string, Pick<MarketSnapshot, "symbol" | "markPrice">>([
+      [initialMarket.symbol, initialMarket],
+    ])
+  );
+  const [marketStreamCandle, setMarketStreamCandle] = useState<
+    (MarketStreamCandle & { interval: FuturesCandleInterval; serverTime: string }) | null
+  >(null);
+  const [marketStreamHistoryFinalized, setMarketStreamHistoryFinalized] = useState<
+    (MarketStreamHistoryFinalized & { interval: FuturesCandleInterval; serverTime: string }) | null
+  >(null);
   const lastOrderResumeRefreshAtRef = useRef(0);
   const executionEventSequenceRef = useRef(0);
   const executionEventDismissTimersRef = useRef(new Map<string, number>());
 
-  const marketStreamUrl = useMemo(
-    () => `/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream`,
-    [initialMarket.symbol]
-  );
+  const marketStreamUrl = useMemo(() => {
+    // clientKey is appended by useResilientEventSource at the shared hook boundary.
+    const params = new URLSearchParams({
+      symbol: initialMarket.symbol,
+      interval: selectedInterval,
+    });
+
+    return `/api/futures/markets/stream?${params.toString()}`;
+  }, [initialMarket.symbol, selectedInterval]);
   const orderStreamUrl = "/api/futures/orders/stream";
 
   const handleMarketStreamMessage = useCallback((event: MessageEvent) => {
-    try {
-      const data = JSON.parse(event.data) as MarketApiResponse;
-      const receivedAt = Date.now();
+    const envelope = parseMarketStreamEnvelope(event.data);
+
+    if (!envelope) {
+      return;
+    }
+
+    const receivedAt = Date.now();
+
+    if (envelope.kind === "MARKET_SUMMARY") {
+      const data = envelope.data as MarketApiResponse;
+
+      if (isSupportedMarketSymbol(envelope.symbol)) {
+        const supportedSymbol = envelope.symbol;
+        setMarketSnapshotsBySymbol((current) => {
+          const next = new Map(current);
+          next.set(supportedSymbol, {
+            symbol: supportedSymbol,
+            markPrice: data.markPrice,
+          });
+          return next;
+        });
+      }
+
+      if (envelope.symbol !== initialMarket.symbol) {
+        return;
+      }
 
       setMarket((current) => ({
         ...current,
@@ -142,10 +190,31 @@ export default function MarketDetailRealtimeView({
       }));
       setMarketUpdatedAt(receivedAt);
       setFundingCountdownNow(receivedAt);
-    } catch {
-      // Keep the last known snapshot when the stream sends malformed data.
+      return;
     }
-  }, []);
+
+    if (envelope.kind === "MARKET_CANDLE") {
+      if (envelope.symbol === initialMarket.symbol) {
+        setMarketStreamCandle({
+          ...envelope.data,
+          interval: envelope.interval,
+          serverTime: envelope.serverTime,
+        });
+      }
+      return;
+    }
+
+    if (
+      envelope.kind === "MARKET_HISTORY_FINALIZED" &&
+      envelope.symbol === initialMarket.symbol
+    ) {
+      setMarketStreamHistoryFinalized({
+        ...envelope.data,
+        interval: envelope.interval,
+        serverTime: envelope.serverTime,
+      });
+    }
+  }, [initialMarket.symbol]);
 
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,
@@ -154,7 +223,10 @@ export default function MarketDetailRealtimeView({
 
   useEffect(() => {
     setLatestCandleClosePrice(null);
-  }, [initialMarket.symbol]);
+    setMarketStreamCandle(null);
+    setMarketStreamHistoryFinalized(null);
+    setMarketSnapshotsBySymbol(new Map([[initialMarket.symbol, initialMarket]]));
+  }, [initialMarket]);
 
   const handleLatestCandleClosePriceChange = useCallback(
     (closePrice: number) => {
@@ -259,16 +331,16 @@ export default function MarketDetailRealtimeView({
   const displayedPositions = useMemo(
     () =>
       positions.map((position) =>
-        deriveLivePositionDisplay(position, market)
+        deriveLivePositionDisplayFromSnapshots(position, marketSnapshotsBySymbol)
       ),
-    [market, positions]
+    [marketSnapshotsBySymbol, positions]
   );
   const displayedChartPositions = useMemo(
     () =>
       chartPositions.map((position) =>
-        deriveLivePositionDisplay(position, market)
+        deriveLivePositionDisplayFromSnapshots(position, marketSnapshotsBySymbol)
       ),
-    [chartPositions, market]
+    [chartPositions, marketSnapshotsBySymbol]
   );
   const unrealizedPnl = useMemo(
     () =>
@@ -357,9 +429,13 @@ export default function MarketDetailRealtimeView({
             change24h={market.change24h}
             currentPrice={market.lastPrice}
             currentPriceUpdatedAt={marketUpdatedAt}
+            marketStreamCandle={marketStreamCandle}
+            marketStreamHistoryFinalized={marketStreamHistoryFinalized}
             onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}
+            onSelectedIntervalChange={setSelectedInterval}
             openOrders={chartOpenOrders}
             positions={displayedChartPositions}
+            selectedInterval={selectedInterval}
             symbol={market.symbol}
           />
 

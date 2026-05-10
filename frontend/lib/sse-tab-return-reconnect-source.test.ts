@@ -116,6 +116,7 @@ test("frontend SSE consumers keep plain stream URLs and rely on the hook boundar
     assert.equal(source.includes("appendSseClientKey"), false);
   }
 
-  const chartSource = readFrontendSource("components/futures/FuturesPriceChart.tsx");
-  assert.equal(chartSource.includes("new URLSearchParams({ interval })"), true);
+  const detailSource = readFrontendSource("components/futures/MarketDetailRealtimeView.tsx");
+  assert.equal(detailSource.includes("new URLSearchParams({"), true);
+  assert.equal(detailSource.includes("interval: selectedInterval"), true);
 });

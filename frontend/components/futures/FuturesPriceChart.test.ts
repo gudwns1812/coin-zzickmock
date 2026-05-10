@@ -51,8 +51,9 @@ test("chart loading-empty mode does not render live points", () => {
   );
 });
 
-test("chart consumes backend candle stream instead of synthesizing candles from market price", () => {
-  assert.equal(source.includes("/candles/stream?"), true);
+test("chart consumes parent unified candle events instead of opening its own backend candle stream", () => {
+  assert.equal(source.includes("/candles/stream?"), false);
+  assert.equal(source.includes("marketStreamCandle"), true);
   assert.equal(source.includes("mergeCandlesWithRealtimeCandle"), true);
   assert.equal(source.includes("mergeCandlesWithLivePrice"), false);
   assert.equal(source.includes("getLiveCandleBucket"), false);
@@ -64,7 +65,7 @@ test("chart reports realtime candle close price to the trading header", () => {
     true
   );
   assert.equal(
-    source.includes("onLatestCandleClosePriceChange?.(data.closePrice, Date.now())"),
+    source.includes("onLatestCandleClosePriceChange?.(marketStreamCandle.closePrice, Date.now())"),
     true
   );
 });
@@ -75,11 +76,11 @@ test("chart refetches closed candle history after the realtime bucket has settle
   assert.equal(source.includes("window.setTimeout"), true);
   assert.equal(source.includes("window.clearTimeout"), true);
   assert.equal(
-    source.includes("if (!previousOpenTime || previousOpenTime !== data.openTime)"),
+    source.includes("if (!previousOpenTime || previousOpenTime !== marketStreamCandle.openTime)"),
     true
   );
   assert.equal(
-    source.includes("if (previousOpenTime && previousOpenTime !== data.openTime)"),
+    source.includes("if (previousOpenTime && previousOpenTime !== marketStreamCandle.openTime)"),
     false
   );
 });
@@ -90,15 +91,15 @@ test("chart does not immediately invalidate REST history on realtime bucket chan
     false
   );
   assert.equal(
-    source.includes("onLatestCandleClosePriceChange?.(data.closePrice, Date.now())"),
+    source.includes("onLatestCandleClosePriceChange?.(marketStreamCandle.closePrice, Date.now())"),
     true
   );
 });
 
 test("chart invalidates history from backend finalization notifications", () => {
   assert.equal(source.includes("type: \"historyFinalized\""), true);
-  assert.equal(source.includes("isHistoryFinalizedResponse"), true);
-  assert.equal(source.includes("data.affectedIntervals.includes(selectedInterval)"), true);
-  assert.equal(source.includes("data.symbol === symbol"), true);
+  assert.equal(source.includes("marketStreamHistoryFinalized"), true);
+  assert.equal(source.includes("marketStreamHistoryFinalized.affectedIntervals.includes(selectedInterval)"), true);
+  assert.equal(source.includes("marketStreamHistoryFinalized.symbol === symbol"), true);
   assert.equal(source.includes("clearClosedCandleRefetchTimeout(closedCandleRefetchTimeoutRef);"), true);
 });

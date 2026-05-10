@@ -15,6 +15,7 @@ import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.LinkedHashSet;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -30,6 +31,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 public class MarketStreamBroker {
     private static final String STREAM = "market_stream";
+    private static final MarketStreamEventType MARKET_SUMMARY = MarketStreamEventType.MARKET_SUMMARY;
+    private static final MarketStreamEventType MARKET_CANDLE = MarketStreamEventType.MARKET_CANDLE;
+    private static final MarketStreamEventType MARKET_HISTORY_FINALIZED = MarketStreamEventType.MARKET_HISTORY_FINALIZED;
 
     private final MarketStreamRegistry registry;
     private final Executor sseEventExecutor;
@@ -96,73 +100,71 @@ public class MarketStreamBroker {
     }
 
     public void addOpenPositionReason(Long memberId, String symbol) {
-        registry.sessionsForMember(memberId).forEach(session ->
-                registry.addSummaryReason(session.key(), symbol, SummarySubscriptionReason.OPEN_POSITION));
+        registry.sessionKeysForMember(memberId).forEach(sessionKey ->
+                registry.addSummaryReason(sessionKey, symbol, SummarySubscriptionReason.OPEN_POSITION));
     }
 
     public void removeOpenPositionReason(Long memberId, String symbol) {
-        registry.sessionsForMember(memberId).forEach(session ->
-                registry.removeSummaryReason(session.key(), symbol, SummarySubscriptionReason.OPEN_POSITION));
+        registry.sessionKeysForMember(memberId).forEach(sessionKey ->
+                registry.removeSummaryReason(sessionKey, symbol, SummarySubscriptionReason.OPEN_POSITION));
     }
 
     @EventListener
     public void onMarketUpdated(MarketSummaryUpdatedEvent event) {
-        List<MarketStreamSession> sessions = registry.sessionsForSummary(event.result().symbol());
-        if (sessions.isEmpty()) {
+        List<MarketStreamSubscriber> subscribers = registry.sessionsForSummary(event.result().symbol());
+        if (subscribers.isEmpty()) {
             return;
         }
         MarketStreamEventResponse response = MarketStreamEventResponse.summary(
-                event.result().symbol(),
+                event.result(),
                 MarketStreamEventSource.LIVE,
-                MarketSummaryResponse.from(event.result())
+                Instant.now()
         );
-        executeFanOut(event.result().symbol(), null, sessions, response);
+        executeFanOut(event.result().symbol(), null, subscribers, response);
     }
 
     @EventListener
     public void onCandleUpdated(MarketCandleUpdatedEvent event) {
-        registry.sessionsForCandleSymbol(event.symbol())
-                .forEach(session -> fanOutCandleUpdate(event.symbol(), session.candleSubscription().interval()));
+        registry.candleSubscriptionsForSymbol(event.symbol())
+                .forEach(subscription -> fanOutCandleUpdate(event.symbol(), subscription.interval()));
     }
 
     @EventListener
     public void onHistoryFinalized(MarketHistoryFinalizedEvent event) {
-        List<MarketStreamSession> sessions = registry.sessionsForCandleSymbol(event.symbol());
-        if (sessions.isEmpty()) {
-            return;
-        }
-        sessions.stream()
-                .forEach(session -> {
-                    CandleSubscription subscription = session.candleSubscription();
-                    MarketStreamEventResponse response = MarketStreamEventResponse.historyFinalized(
+        registry.candleSubscriptionsForSymbol(event.symbol()).forEach(subscription -> {
+            List<MarketStreamSubscriber> subscribers = registry.sessionsForCandle(subscription);
+            if (subscribers.isEmpty()) {
+                return;
+            }
+            MarketStreamEventResponse response = MarketStreamEventResponse.historyFinalized(
+                    subscription,
+                    MarketCandleHistoryFinalizedResponse.of(
                             event.symbol(),
-                            subscription.interval().value(),
-                            MarketStreamEventSource.LIVE,
-                            MarketCandleHistoryFinalizedResponse.of(
-                                    event.symbol(),
-                                    event.openTime(),
-                                    event.closeTime(),
-                                    List.of(subscription.interval().value())
-                            )
-                    );
-                    executeFanOut(event.symbol(), subscription.interval(), List.of(session), response);
-                });
+                            event.openTime(),
+                            event.closeTime(),
+                            List.of(subscription.interval().value())
+                    ),
+                    Instant.now()
+            );
+            executeFanOut(event.symbol(), subscription.interval(), subscribers, response);
+        });
     }
 
     public void fanOutCandleUpdate(String symbol, MarketCandleInterval interval) {
         CandleSubscription subscription = new CandleSubscription(symbol, interval);
-        List<MarketStreamSession> sessions = registry.sessionsForCandle(subscription);
-        if (sessions.isEmpty()) {
+        List<MarketStreamSubscriber> subscribers = registry.sessionsForCandle(subscription);
+        if (subscribers.isEmpty()) {
             return;
         }
         realtimeMarketCandleProjector.latest(symbol, interval)
                 .map(candle -> MarketStreamEventResponse.candle(
                         symbol,
-                        interval.value(),
+                        subscription,
+                        candle,
                         MarketStreamEventSource.LIVE,
-                        MarketCandleResponse.from(candle)
+                        Instant.now()
                 ))
-                .ifPresent(response -> executeFanOut(symbol, interval, sessions, response));
+                .ifPresent(response -> executeFanOut(symbol, interval, subscribers, response));
     }
 
     private void sendInitialSnapshots(
@@ -180,19 +182,19 @@ public class MarketStreamBroker {
                     activeSymbol,
                     interval,
                     emitter,
-                    MarketStreamEventResponse.summary(symbol, MarketStreamEventSource.INITIAL_SNAPSHOT, MarketSummaryResponse.from(result))
+                    MarketStreamEventResponse.summary(result, MarketStreamEventSource.INITIAL_SNAPSHOT, Instant.now())
             );
         }
         if (currentMarketCandleBootstrapper != null) {
             currentMarketCandleBootstrapper.bootstrapIfNeeded(activeSymbol, interval);
         }
         realtimeMarketCandleProjector.latest(activeSymbol, interval)
-                .map(MarketCandleResponse::from)
                 .map(candle -> MarketStreamEventResponse.candle(
                         activeSymbol,
-                        interval.value(),
+                        new CandleSubscription(activeSymbol, interval),
+                        candle,
                         MarketStreamEventSource.INITIAL_SNAPSHOT,
-                        candle
+                        Instant.now()
                 ))
                 .ifPresent(response -> sendOrThrow(activeSymbol, interval, emitter, response));
     }
@@ -200,11 +202,11 @@ public class MarketStreamBroker {
     private void executeFanOut(
             String symbol,
             MarketCandleInterval interval,
-            List<MarketStreamSession> sessions,
+            List<MarketStreamSubscriber> subscribers,
             MarketStreamEventResponse response
     ) {
         try {
-            sseEventExecutor.execute(() -> sessions.forEach(session -> send(session, response)));
+            sseEventExecutor.execute(() -> subscribers.forEach(subscriber -> send(subscriber, response)));
         } catch (RejectedExecutionException exception) {
             log.debug("Unified market SSE executor rejected fan-out. symbol={} interval={}",
                     symbol, interval == null ? null : interval.value(), exception);
@@ -224,15 +226,15 @@ public class MarketStreamBroker {
         });
     }
 
-    private void send(MarketStreamSession session, MarketStreamEventResponse response) {
+    private void send(MarketStreamSubscriber subscriber, MarketStreamEventResponse response) {
         long startedAt = System.nanoTime();
         try {
-            session.emitter().send(response);
+            subscriber.emitter().send(response);
             recordSend("success", startedAt);
         } catch (IOException | IllegalStateException exception) {
             log.debug("Unified market SSE send failed; closing session. symbol={} reason=send_failure", response.symbol(), exception);
             recordSend("failure", startedAt);
-            release(session.key(), "send_failure");
+            release(subscriber.sessionKey(), "send_failure");
         }
     }
 
@@ -254,8 +256,8 @@ public class MarketStreamBroker {
     }
 
     private void release(MarketStreamSessionKey sessionKey, String reason) {
-        SseEmitter removed = registry.releaseSession(sessionKey, reason);
-        if (removed != null) {
+        boolean removed = registry.releaseSession(sessionKey, reason);
+        if (removed) {
             recordConnectionClosed(reason);
             logLifecycle("*", null, lifecycleAction(reason), reason);
         }
@@ -285,7 +287,7 @@ public class MarketStreamBroker {
                 interval == null ? null : interval.value(),
                 action,
                 reason,
-                registry.sessionCount()
+                registry.activeSessionCount()
         );
     }
 

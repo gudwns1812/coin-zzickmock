@@ -90,6 +90,29 @@ public class MarketController {
                 streamTimeoutMs
         );
     }
+    MarketController(
+            GetMarketSummaryService getMarketSummaryService,
+            GetMarketCandlesService getMarketCandlesService,
+            MarketRealtimeSseBroker marketRealtimeSseBroker,
+            MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
+            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
+            CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper,
+            long streamTimeoutMs
+    ) {
+        this(
+                getMarketSummaryService,
+                getMarketCandlesService,
+                marketRealtimeSseBroker,
+                marketCandleRealtimeSseBroker,
+                realtimeMarketCandleProjector,
+                currentMarketCandleBootstrapper,
+                null,
+                null,
+                null,
+                streamTimeoutMs
+        );
+    }
+
 
     @GetMapping
     public ApiResponse<List<MarketSummaryResponse>> list() {
@@ -133,7 +156,7 @@ public class MarketController {
         String resolvedClientKey = SseClientKey.resolve(clientKey).value();
         Long memberId = providers.auth().currentActor().memberId();
         MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
-        Set<String> openSymbols = new LinkedHashSet<>(openPositionSymbolsReader.readOpenSymbols(memberId));
+        Set<String> openSymbols = new LinkedHashSet<>(openPositionSymbolsReader.openSymbols(memberId));
         SseEmitter emitter = createEmitter();
         marketStreamBroker.openSession(memberId, resolvedClientKey, symbol, openSymbols, candleInterval, emitter);
         return emitter;

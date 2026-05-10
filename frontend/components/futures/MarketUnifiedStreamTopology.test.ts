@@ -35,7 +35,7 @@ function collectSourceFiles(relativeDirectory: string): string[] {
       return collectSourceFiles(relativePath);
     }
 
-    return /\.(ts|tsx)$/.test(entry) ? [relativePath] : [];
+    return /\.(ts|tsx)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry) ? [relativePath] : [];
   });
 }
 

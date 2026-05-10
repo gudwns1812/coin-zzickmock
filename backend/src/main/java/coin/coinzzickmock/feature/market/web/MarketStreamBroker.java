@@ -121,17 +121,17 @@ public class MarketStreamBroker {
 
     @EventListener
     public void onCandleUpdated(MarketCandleUpdatedEvent event) {
-        registry.sessionsForMemberSnapshot().forEach(session -> {});
+        registry.sessionsForCandleSymbol(event.symbol())
+                .forEach(session -> fanOutCandleUpdate(event.symbol(), session.candleSubscription().interval()));
     }
 
     @EventListener
     public void onHistoryFinalized(MarketHistoryFinalizedEvent event) {
-        List<MarketStreamSession> sessions = registry.sessionsForSummary(event.symbol());
+        List<MarketStreamSession> sessions = registry.sessionsForCandleSymbol(event.symbol());
         if (sessions.isEmpty()) {
             return;
         }
         sessions.stream()
-                .filter(session -> session.candleSubscription().symbol().equals(event.symbol()))
                 .forEach(session -> {
                     CandleSubscription subscription = session.candleSubscription();
                     MarketStreamEventResponse response = MarketStreamEventResponse.historyFinalized(

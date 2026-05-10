@@ -110,6 +110,14 @@ public class MarketStreamRegistry {
         return sessionsFor(memberIndex.getOrDefault(memberId, Set.of()));
     }
 
+    public synchronized List<MarketStreamSession> sessionsForCandleSymbol(String symbol) {
+        String normalizedSymbol = normalize(symbol);
+        return sessions.values()
+                .stream()
+                .filter(session -> session.candleSubscription().symbol().equals(normalizedSymbol))
+                .toList();
+    }
+
     public synchronized int sessionCount() {
         return sessions.size();
     }

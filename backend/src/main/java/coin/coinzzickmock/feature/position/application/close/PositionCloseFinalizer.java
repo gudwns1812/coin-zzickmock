@@ -7,6 +7,7 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
+import coin.coinzzickmock.feature.position.application.event.PositionFullyClosedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
@@ -52,6 +53,7 @@ public class PositionCloseFinalizer {
             mutationResult = positionRepository.deleteWithVersion(memberId, position);
             validateGuardedMutation(mutationResult);
             positionHistoryRepository.save(memberId, toHistory(position, closeOutcome, closeReason));
+            afterCommitEventPublisher.publish(new PositionFullyClosedEvent(memberId, position.symbol()));
         } else {
             mutationResult = positionRepository.updateWithVersion(memberId, position, closeOutcome.remainingPosition());
             validateGuardedMutation(mutationResult);

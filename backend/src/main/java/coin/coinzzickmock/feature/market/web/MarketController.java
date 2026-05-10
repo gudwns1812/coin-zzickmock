@@ -11,9 +11,13 @@ import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesSer
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.feature.position.application.query.OpenPositionSymbolsReader;
+import coin.coinzzickmock.providers.Providers;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +39,9 @@ public class MarketController {
     private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker;
     private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
     private final CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper;
+    private final MarketStreamBroker marketStreamBroker;
+    private final OpenPositionSymbolsReader openPositionSymbolsReader;
+    private final Providers providers;
     private final long streamTimeoutMs;
 
     @Autowired
@@ -45,6 +52,9 @@ public class MarketController {
             MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper,
+            MarketStreamBroker marketStreamBroker,
+            OpenPositionSymbolsReader openPositionSymbolsReader,
+            Providers providers,
             @Value("${coin.market.sse.timeout-ms:300000}") long streamTimeoutMs
     ) {
         this.getMarketSummaryService = getMarketSummaryService;
@@ -53,6 +63,9 @@ public class MarketController {
         this.marketCandleRealtimeSseBroker = marketCandleRealtimeSseBroker;
         this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
         this.currentMarketCandleBootstrapper = currentMarketCandleBootstrapper;
+        this.marketStreamBroker = marketStreamBroker;
+        this.openPositionSymbolsReader = openPositionSymbolsReader;
+        this.providers = providers;
         this.streamTimeoutMs = streamTimeoutMs;
     }
 
@@ -70,6 +83,9 @@ public class MarketController {
                 marketRealtimeSseBroker,
                 marketCandleRealtimeSseBroker,
                 realtimeMarketCandleProjector,
+                null,
+                null,
+                null,
                 null,
                 streamTimeoutMs
         );
@@ -101,6 +117,26 @@ public class MarketController {
                 new GetMarketCandlesQuery(symbol, interval, limit, before)
         );
         return ApiResponse.success(candles.stream().map(MarketCandleResponse::from).toList());
+    }
+
+
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter unifiedStream(
+            @RequestParam String symbol,
+            @RequestParam String interval,
+            @RequestParam(required = false) String clientKey
+    ) {
+        if (marketStreamBroker == null || openPositionSymbolsReader == null || providers == null) {
+            throw new IllegalStateException("Unified market stream dependencies are not configured");
+        }
+
+        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
+        Long memberId = providers.auth().currentActor().memberId();
+        MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
+        Set<String> openSymbols = new LinkedHashSet<>(openPositionSymbolsReader.readOpenSymbols(memberId));
+        SseEmitter emitter = createEmitter();
+        marketStreamBroker.openSession(memberId, resolvedClientKey, symbol, openSymbols, candleInterval, emitter);
+        return emitter;
     }
 
     public SseEmitter stream(String symbol) {

@@ -59,10 +59,39 @@ export type MarketStreamEnvelope =
   | MarketCandleEnvelope
   | MarketHistoryFinalizedEnvelope;
 
+export type PublicMarketCandleStreamEvent =
+  | MarketStreamCandle
+  | MarketStreamHistoryFinalized;
+
 export function parseMarketStreamEnvelope(raw: string): MarketStreamEnvelope | null {
   try {
     const value = JSON.parse(raw) as unknown;
     return isMarketStreamEnvelope(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parsePublicMarketSummaryEvent(raw: string): MarketApiResponse | null {
+  try {
+    const value = JSON.parse(raw) as unknown;
+    return isMarketSummary(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parsePublicMarketCandleEvent(
+  raw: string
+): PublicMarketCandleStreamEvent | null {
+  try {
+    const value = JSON.parse(raw) as unknown;
+
+    if (isMarketCandle(value)) {
+      return value;
+    }
+
+    return isHistoryFinalized(value) ? value : null;
   } catch {
     return null;
   }

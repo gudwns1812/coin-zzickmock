@@ -189,7 +189,9 @@ public class MarketStreamRegistry {
     }
 
     private void addIndexes(MarketStreamSession session) {
-        memberIndex.computeIfAbsent(session.memberId(), ignored -> new LinkedHashSet<>()).add(session.key());
+        if (session.memberId() != null) {
+            memberIndex.computeIfAbsent(session.memberId(), ignored -> new LinkedHashSet<>()).add(session.key());
+        }
         for (String symbol : session.summarySymbols()) {
             summaryIndex.computeIfAbsent(symbol, ignored -> new LinkedHashSet<>()).add(session.key());
         }
@@ -197,7 +199,9 @@ public class MarketStreamRegistry {
     }
 
     private void removeIndexes(MarketStreamSession session) {
-        removeFromIndex(memberIndex, session.memberId(), session.key());
+        if (session.memberId() != null) {
+            removeFromIndex(memberIndex, session.memberId(), session.key());
+        }
         for (String symbol : session.summarySymbols()) {
             removeFromIndex(summaryIndex, symbol, session.key());
         }

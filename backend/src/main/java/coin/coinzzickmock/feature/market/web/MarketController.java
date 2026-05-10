@@ -1,6 +1,8 @@
 package coin.coinzzickmock.feature.market.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.web.SseClientKey;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
@@ -13,6 +15,7 @@ import coin.coinzzickmock.feature.market.application.service.GetMarketSummarySer
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.position.application.query.OpenPositionSymbolsReader;
 import coin.coinzzickmock.providers.Providers;
+import coin.coinzzickmock.providers.auth.Actor;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -154,12 +157,50 @@ public class MarketController {
         }
 
         String resolvedClientKey = SseClientKey.resolve(clientKey).value();
-        Long memberId = providers.auth().currentActor().memberId();
+        Actor actor = providers.auth().currentActorOptional().orElse(null);
+        Long memberId = actor == null ? null : actor.memberId();
         MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
-        Set<String> openSymbols = new LinkedHashSet<>(openPositionSymbolsReader.openSymbols(memberId));
+        Set<String> openSymbols = memberId == null
+                ? Set.of()
+                : new LinkedHashSet<>(openPositionSymbolsReader.openSymbols(memberId));
         SseEmitter emitter = createEmitter();
         marketStreamBroker.openSession(memberId, resolvedClientKey, symbol, openSymbols, candleInterval, emitter);
         return emitter;
+    }
+
+
+    @GetMapping(value = "/summary/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter summaryStream(
+            @RequestParam String symbols,
+            @RequestParam(required = false) String clientKey
+    ) {
+        Set<String> resolvedSymbols = parseSummarySymbols(symbols);
+        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
+        MarketRealtimeSseBroker.SseSubscriptionPermit permit = marketRealtimeSseBroker.reserve(
+                resolvedSymbols,
+                resolvedClientKey
+        );
+        SseEmitter emitter = createEmitter();
+        try {
+            boolean initialSendSucceeded = true;
+            for (String symbol : resolvedSymbols) {
+                MarketSummaryResult currentMarket = getMarketSummaryService.getMarket(new GetMarketQuery(symbol));
+                if (!sendEvent(emitter, currentMarket)) {
+                    initialSendSucceeded = false;
+                    break;
+                }
+            }
+
+            if (initialSendSucceeded) {
+                marketRealtimeSseBroker.register(permit, emitter);
+            } else {
+                marketRealtimeSseBroker.release(permit);
+            }
+            return emitter;
+        } catch (RuntimeException exception) {
+            marketRealtimeSseBroker.release(permit);
+            throw exception;
+        }
     }
 
     public SseEmitter stream(String symbol) {
@@ -225,6 +266,22 @@ public class MarketController {
             marketCandleRealtimeSseBroker.release(permit);
             throw exception;
         }
+    }
+
+
+    private Set<String> parseSummarySymbols(String rawSymbols) {
+        if (rawSymbols == null || rawSymbols.isBlank()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        Set<String> symbols = new LinkedHashSet<>();
+        for (String rawSymbol : rawSymbols.split(",")) {
+            String symbol = rawSymbol.trim();
+            if (symbol.isBlank()) {
+                throw new CoreException(ErrorCode.INVALID_REQUEST);
+            }
+            symbols.add(symbol);
+        }
+        return symbols;
     }
 
     private MarketSummaryResponse toResponse(MarketSummaryResult result) {

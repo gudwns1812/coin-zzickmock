@@ -72,6 +72,70 @@ class MicrometerSseTelemetryTest {
     }
 
     @Test
+    void knownStreamsDoNotCreateUnknownActiveConnectionGauges() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MicrometerSseTelemetry telemetry = new MicrometerSseTelemetry(registry);
+
+        assertThat(registry.get("sse.connections.current")
+                .tag("stream", "market")
+                .gauge()
+                .value()).isZero();
+        assertThat(registry.get("sse.connections.current")
+                .tag("stream", "market_candle")
+                .gauge()
+                .value()).isZero();
+        assertThat(registry.get("sse.connections.current")
+                .tag("stream", "trading_execution")
+                .gauge()
+                .value()).isZero();
+
+        telemetry.connectionOpened("market");
+        telemetry.connectionOpened("market_candle");
+        telemetry.connectionOpened("trading_execution");
+
+        assertThat(registry.get("sse.connections.current")
+                .tag("stream", "market")
+                .gauge()
+                .value()).isEqualTo(1);
+        assertThat(registry.get("sse.connections.current")
+                .tag("stream", "market_candle")
+                .gauge()
+                .value()).isEqualTo(1);
+        assertThat(registry.get("sse.connections.current")
+                .tag("stream", "trading_execution")
+                .gauge()
+                .value()).isEqualTo(1);
+        assertThat(registry.find("sse.connections.current")
+                .tag("stream", "unknown")
+                .gauge()).isNull();
+    }
+
+    @Test
+    void unknownConnectionLifecycleDoesNotCreateUnknownActiveConnectionGauge() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MicrometerSseTelemetry telemetry = new MicrometerSseTelemetry(registry);
+
+        telemetry.connectionOpened("market/BTCUSDT?memberId=1");
+        telemetry.connectionClosed("market/BTCUSDT?memberId=1", "memberId=1");
+
+        assertThat(registry.find("sse.connections.current")
+                .tag("stream", "unknown")
+                .gauge()).isNull();
+        assertThat(registry.counter(
+                "sse.connections.opened.total",
+                "stream",
+                "unknown"
+        ).count()).isEqualTo(1);
+        assertThat(registry.counter(
+                "sse.connections.closed.total",
+                "stream",
+                "unknown",
+                "reason",
+                "unknown"
+        ).count()).isEqualTo(1);
+    }
+
+    @Test
     void mapsUnknownValuesToBoundedBuckets() {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         MicrometerSseTelemetry telemetry = new MicrometerSseTelemetry(registry);

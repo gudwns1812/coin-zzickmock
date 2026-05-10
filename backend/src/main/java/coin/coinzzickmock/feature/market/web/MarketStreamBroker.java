@@ -30,7 +30,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Slf4j
 @Component
 public class MarketStreamBroker {
-    private static final String STREAM = "market_stream";
+    private static final String STREAM = "market";
     private static final MarketStreamEventType MARKET_SUMMARY = MarketStreamEventType.MARKET_SUMMARY;
     private static final MarketStreamEventType MARKET_CANDLE = MarketStreamEventType.MARKET_CANDLE;
     private static final MarketStreamEventType MARKET_HISTORY_FINALIZED = MarketStreamEventType.MARKET_HISTORY_FINALIZED;

@@ -58,6 +58,10 @@ tests add them.
 - `sse.send.duration` with `stream`, `result`
 - `sse.executor.rejected.total` with `stream`
 
+`sse.connections.current` exposes only implemented stream labels. Unknown or malformed stream names may still be
+sanitized to `stream="unknown"` on diagnostic counters/timers, but they must not create an active-connection gauge
+series because `sum by (stream) (sse_connections_current)` is an operator-facing current-state panel.
+
 Implemented `stream` values:
 
 - `market`

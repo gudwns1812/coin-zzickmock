@@ -63,6 +63,10 @@ class MarketUnifiedStreamTopologyContractTest {
         assertTrue(broker.contains("onError"), "broker must wire error lifecycle callback");
         assertTrue(broker.contains("releaseSession"), "broker must release registry sessions on lifecycle/send failure");
         assertTrue(broker.contains("SseTelemetry"), "broker must preserve SSE telemetry boundary");
+        assertTrue(broker.contains("private static final String STREAM = \"market\""),
+                "unified market stream must emit the documented market telemetry stream label");
+        assertFalse(broker.contains("market_stream"),
+                "undocumented stream labels are normalized to unknown in Micrometer telemetry");
         assertTrue(broker.contains("MARKET_SUMMARY"), "unified envelopes must include market summary type");
         assertTrue(broker.contains("MARKET_CANDLE"), "unified envelopes must include market candle type");
         assertTrue(broker.contains("MARKET_HISTORY_FINALIZED"), "unified envelopes must include history finalized type");
@@ -80,7 +84,12 @@ class MarketUnifiedStreamTopologyContractTest {
                 "controller must ask a narrow application-facing reader for open position symbols");
         assertFalse(controller.contains("PositionRepository"), "market web must not depend on position repositories");
         assertFalse(controller.contains("PositionJpa"), "market web must not depend on position persistence internals");
-        assertTrue(controller.contains("currentActor"), "unified endpoint must resolve the authenticated actor");
+        assertTrue(controller.contains("currentActorOptional"),
+                "unified endpoint must allow anonymous market viewers and enrich authenticated sessions only when present");
+        assertFalse(controller.contains("currentActor().memberId()"),
+                "unified endpoint must not require authentication for public market/candle data");
+        assertTrue(controller.contains("Set.of()"),
+                "anonymous unified sessions must omit only open-position summary symbols");
         assertTrue(controller.contains("clientKey"), "unified endpoint must be scoped by clientKey");
         assertTrue(controller.contains("interval"), "unified endpoint must register active candle interval");
     }

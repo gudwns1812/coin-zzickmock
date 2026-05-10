@@ -90,6 +90,51 @@ class MarketRealtimeSseBrokerTest {
     }
 
     @Test
+    void oneClientKeyCanReceiveMultipleSymbolUpdatesThroughOneEmitter() {
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 10, 20);
+        CapturingSseEmitter emitter = new CapturingSseEmitter();
+
+        broker.register(broker.reserve(java.util.Set.of("BTCUSDT", "ETHUSDT"), "tab-1"), emitter);
+
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("BTCUSDT", "Bitcoin Perpetual", 74000, 74010, 74005, 0.0001, 0.2)
+        ));
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("ETHUSDT", "Ethereum Perpetual", 3200, 3201, 3199, 0.0001, 0.3)
+        ));
+
+        assertThat(emitter.events()).hasSize(2);
+        assertThat(broker.subscriberCount("BTCUSDT")).isEqualTo(1);
+        assertThat(broker.subscriberCount("ETHUSDT")).isEqualTo(1);
+        assertThat(broker.totalSubscriberCount()).isEqualTo(1);
+    }
+
+    @Test
+    void replacingClientKeyAcrossSymbolsKeepsOneCurrentEmitterAndIgnoresStaleCallbacks() {
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 10, 20, telemetry);
+        CallbackCapturingSseEmitter first = new CallbackCapturingSseEmitter();
+        CapturingSseEmitter second = new CapturingSseEmitter();
+
+        broker.register(broker.reserve(java.util.Set.of("BTCUSDT"), "tab-1"), first);
+        broker.register(broker.reserve(java.util.Set.of("BTCUSDT", "ETHUSDT"), "tab-1"), second);
+        first.fireCompletion();
+
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("BTCUSDT", "Bitcoin Perpetual", 74000, 74010, 74005, 0.0001, 0.2)
+        ));
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("ETHUSDT", "Ethereum Perpetual", 3200, 3201, 3199, 0.0001, 0.3)
+        ));
+
+        assertThat(first.completed()).isTrue();
+        assertThat(first.events()).isEmpty();
+        assertThat(second.events()).hasSize(2);
+        assertThat(broker.totalSubscriberCount()).isEqualTo(1);
+        assertThat(telemetry.events()).contains("closed:market:client_replaced");
+    }
+
+    @Test
     void doesNotDeliverEventAfterEmitterIsUnregistered() {
         MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 10, 20);
         CapturingSseEmitter emitter = new CapturingSseEmitter();

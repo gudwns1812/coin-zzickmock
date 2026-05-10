@@ -11,13 +11,16 @@ function readFrontendSource(relativePath: string) {
   return readFileSync(path.join(frontendRoot, relativePath), "utf8");
 }
 
-test("markets landing isolates per-symbol SSE hooks in a child subscription", () => {
+test("markets landing opens one summary SSE through a child subscription", () => {
   const source = readFrontendSource(
     "components/router/(main)/markets/MarketsLandingRealtimeView.tsx"
   );
 
   assert.equal(source.includes("MarketLandingStreamSubscription"), true);
   assert.equal(source.includes("useResilientEventSource({"), true);
+  assert.equal(source.includes("/api/futures/markets/summary/stream"), true);
+  assert.equal(source.includes("/api/futures/markets/${encodeURIComponent(symbol)}/stream"), false);
+  assert.equal(source.includes("initialMarkets.map((market) => ("), false);
   assert.equal(source.includes("const streams = initialMarkets.map"), false);
   assert.equal(source.includes("new EventSource("), false);
 });
@@ -65,6 +68,7 @@ test("candle stream invalidates futures candle queries by prefix", () => {
 test("frontend SSE route handlers use the cancellable SSE proxy", () => {
   const routeSources = [
     "app/api/futures/markets/[symbol]/stream/route.ts",
+    "app/api/futures/markets/summary/stream/route.ts",
     "app/api/futures/markets/[symbol]/candles/stream/route.ts",
     "app/api/futures/orders/stream/route.ts",
   ].map(readFrontendSource);
@@ -85,6 +89,7 @@ test("frontend SSE route handlers use the cancellable SSE proxy", () => {
 test("frontend SSE routes require and forward clientKey", () => {
   const routeSources = [
     "app/api/futures/markets/[symbol]/stream/route.ts",
+    "app/api/futures/markets/summary/stream/route.ts",
     "app/api/futures/markets/[symbol]/candles/stream/route.ts",
     "app/api/futures/orders/stream/route.ts",
   ].map(readFrontendSource);

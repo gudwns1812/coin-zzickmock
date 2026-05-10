@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
 import coin.coinzzickmock.feature.market.application.realtime.CurrentMarketCandleBootstrapper;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdate;
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -93,6 +95,68 @@ class MarketControllerTest {
         assertTrue(emitter != null);
         verify(broker).reserve(eq("BTCUSDT"), org.mockito.ArgumentMatchers.anyString());
         verify(broker).register(eq(permit), any(SseEmitter.class));
+    }
+
+    @Test
+    void registersOneSummaryEmitterForMultipleSymbols() {
+        GetMarketSummaryService service = mock(GetMarketSummaryService.class);
+        MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
+        MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
+        when(broker.reserve(eq(Set.of("BTCUSDT", "ETHUSDT")), eq("tab-1"))).thenReturn(permit);
+        when(service.getMarket(any())).thenAnswer(invocation -> {
+            GetMarketQuery query = invocation.getArgument(0);
+            return new MarketSummaryResult(
+                    query.symbol(),
+                    query.symbol() + " Perpetual",
+                    74000,
+                    74010,
+                    74005,
+                    0.0001,
+                    0.2
+            );
+        });
+        MarketController controller = controller(service, mock(GetMarketCandlesService.class), broker, SSE_TIMEOUT_MS);
+
+        SseEmitter emitter = controller.summaryStream("BTCUSDT,ETHUSDT", "tab-1");
+
+        assertTrue(emitter != null);
+        verify(broker).reserve(eq(Set.of("BTCUSDT", "ETHUSDT")), eq("tab-1"));
+        verify(service).getMarket(argThat(query -> query.symbol().equals("BTCUSDT")));
+        verify(service).getMarket(argThat(query -> query.symbol().equals("ETHUSDT")));
+        verify(broker).register(eq(permit), any(SseEmitter.class));
+    }
+
+    @Test
+    void releasesSummaryPermitWhenMultiSymbolInitialSendFails() {
+        GetMarketSummaryService service = mock(GetMarketSummaryService.class);
+        MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
+        MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
+        when(broker.reserve(eq(Set.of("BTCUSDT", "ETHUSDT")), eq("tab-1"))).thenReturn(permit);
+        when(service.getMarket(any())).thenAnswer(invocation -> {
+            GetMarketQuery query = invocation.getArgument(0);
+            return new MarketSummaryResult(
+                    query.symbol(),
+                    query.symbol() + " Perpetual",
+                    74000,
+                    74010,
+                    74005,
+                    0.0001,
+                    0.2
+            );
+        });
+        MarketController controller = new TestableMarketController(
+                service,
+                mock(GetMarketCandlesService.class),
+                broker,
+                SSE_TIMEOUT_MS
+        );
+
+        SseEmitter emitter = controller.summaryStream("BTCUSDT,ETHUSDT", "tab-1");
+
+        assertTrue(((FailingSseEmitter) emitter).completed);
+        verify(broker).reserve(eq(Set.of("BTCUSDT", "ETHUSDT")), eq("tab-1"));
+        verify(broker).release(permit);
+        verify(broker, never()).register(eq(permit), any(SseEmitter.class));
     }
 
     @Test

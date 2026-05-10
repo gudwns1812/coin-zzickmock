@@ -40,7 +40,6 @@ type MarketSnapshotMap = Record<MarketSymbol, MarketSnapshot>;
 type PriceFlashMetadataMap = Partial<Record<MarketSymbol, PriceFlashMetadata>>;
 type PriceFlashRenderMap = Partial<Record<MarketSymbol, PriceFlashRenderState>>;
 type RecoveredSymbolMap = Partial<Record<MarketSymbol, true>>;
-type StreamStatusMap = Partial<Record<MarketSymbol, EventSourceReconnectStatus>>;
 
 const FLASH_PEAK_WINDOW_MS = 110;
 const FLASH_DECAY_WINDOW_MS = 520;
@@ -143,8 +142,8 @@ export default function MarketsLandingRealtimeView({
     useState<PriceFlashRenderMap>({});
   const [recoveredStreamSymbols, setRecoveredStreamSymbols] =
     useState<RecoveredSymbolMap>({});
-  const [streamStatusBySymbol, setStreamStatusBySymbol] =
-    useState<StreamStatusMap>({});
+  const [streamStatus, setStreamStatus] =
+    useState<EventSourceReconnectStatus>("idle");
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
   const marketMapRef = useRef(marketMap);
   const flashMetadataRef = useRef<PriceFlashMetadataMap>({});
@@ -160,7 +159,7 @@ export default function MarketsLandingRealtimeView({
     flashMetadataRef.current = {};
     setPriceFlashBySymbol({});
     setRecoveredStreamSymbols({});
-    setStreamStatusBySymbol({});
+    setStreamStatus("idle");
   }, [initialMarkets]);
 
   const clearFlashState = useCallback(() => {
@@ -220,16 +219,6 @@ export default function MarketsLandingRealtimeView({
       clearFlashState();
     };
   }, [clearFlashState]);
-
-  const handleStreamStatusChange = useCallback(
-    (symbol: MarketSymbol, status: EventSourceReconnectStatus) => {
-      setStreamStatusBySymbol((current) => ({
-        ...current,
-        [symbol]: status,
-      }));
-    },
-    []
-  );
 
   const handleStreamRecovering = useCallback(() => {
     clearFlashState();
@@ -307,22 +296,16 @@ export default function MarketsLandingRealtimeView({
     isMarketDataDegraded &&
     initialMarkets.some((market) => !recoveredStreamSymbols[market.symbol]);
   const isStreamRecovering =
-    isInitialFallbackRecovering ||
-    Object.values(streamStatusBySymbol).some((status) =>
-      isRecoveringStatus(status)
-    );
+    isInitialFallbackRecovering || isRecoveringStatus(streamStatus);
 
   return (
     <>
-      {initialMarkets.map((market) => (
-        <MarketLandingStreamSubscription
-          key={market.symbol}
-          symbol={market.symbol}
-          onMessage={handleMarketMessage}
-          onRecovering={handleStreamRecovering}
-          onStatusChange={handleStreamStatusChange}
-        />
-      ))}
+      <MarketLandingStreamSubscription
+        symbols={initialMarkets.map((market) => market.symbol)}
+        onMessage={handleMarketMessage}
+        onRecovering={handleStreamRecovering}
+        onStatusChange={setStreamStatus}
+      />
       <MarketsLanding
         isMarketDataDegraded={isStreamRecovering}
         markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
@@ -344,22 +327,21 @@ export default function MarketsLandingRealtimeView({
 }
 
 type MarketLandingStreamSubscriptionProps = {
-  symbol: MarketSymbol;
+  symbols: MarketSymbol[];
   onMessage: (event: MessageEvent) => void;
   onRecovering: () => void;
-  onStatusChange: (
-    symbol: MarketSymbol,
-    status: EventSourceReconnectStatus
-  ) => void;
+  onStatusChange: (status: EventSourceReconnectStatus) => void;
 };
 
 function MarketLandingStreamSubscription({
-  symbol,
+  symbols,
   onMessage,
   onRecovering,
   onStatusChange,
 }: MarketLandingStreamSubscriptionProps) {
-  const streamUrl = `/api/futures/markets/${encodeURIComponent(symbol)}/stream`;
+  const streamUrl = `/api/futures/markets/summary/stream?symbols=${symbols
+    .map((symbol) => encodeURIComponent(symbol))
+    .join(",")}`;
   const { status } = useResilientEventSource({
     onError: onRecovering,
     onMessage,
@@ -368,8 +350,8 @@ function MarketLandingStreamSubscription({
   });
 
   useEffect(() => {
-    onStatusChange(symbol, status);
-  }, [onStatusChange, status, symbol]);
+    onStatusChange(status);
+  }, [onStatusChange, status]);
 
   return null;
 }

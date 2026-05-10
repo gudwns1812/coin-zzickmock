@@ -138,26 +138,17 @@ export default function MarketDetailRealtimeView({
     const params = new URLSearchParams({
       symbol: initialMarket.symbol,
       interval: selectedInterval,
+      viewer: isAuthenticated ? "authenticated" : "anonymous",
     });
 
     return `/api/futures/markets/stream?${params.toString()}`;
-  }, [initialMarket.symbol, selectedInterval]);
+  }, [initialMarket.symbol, isAuthenticated, selectedInterval]);
   const orderStreamUrl = "/api/futures/orders/stream";
 
-  const handleMarketStreamMessage = useCallback((event: MessageEvent) => {
-    const envelope = parseMarketStreamEnvelope(event.data);
-
-    if (!envelope) {
-      return;
-    }
-
-    const receivedAt = Date.now();
-
-    if (envelope.kind === "MARKET_SUMMARY") {
-      const data = envelope.data as MarketApiResponse;
-
-      if (isSupportedMarketSymbol(envelope.symbol)) {
-        const supportedSymbol = envelope.symbol;
+  const applyMarketSummary = useCallback(
+    (symbol: string, data: MarketApiResponse, receivedAt: number) => {
+      if (isSupportedMarketSymbol(symbol)) {
+        const supportedSymbol = symbol;
         setMarketSnapshotsBySymbol((current) => {
           const next = new Map(current);
           next.set(supportedSymbol, {
@@ -168,7 +159,7 @@ export default function MarketDetailRealtimeView({
         });
       }
 
-      if (envelope.symbol !== initialMarket.symbol) {
+      if (symbol !== initialMarket.symbol) {
         return;
       }
 
@@ -190,6 +181,21 @@ export default function MarketDetailRealtimeView({
       }));
       setMarketUpdatedAt(receivedAt);
       setFundingCountdownNow(receivedAt);
+    },
+    [initialMarket.symbol]
+  );
+
+  const handleMarketStreamMessage = useCallback((event: MessageEvent) => {
+    const envelope = parseMarketStreamEnvelope(event.data);
+
+    if (!envelope) {
+      return;
+    }
+
+    const receivedAt = Date.now();
+
+    if (envelope.kind === "MARKET_SUMMARY") {
+      applyMarketSummary(envelope.symbol, envelope.data as MarketApiResponse, receivedAt);
       return;
     }
 
@@ -214,7 +220,7 @@ export default function MarketDetailRealtimeView({
         serverTime: envelope.serverTime,
       });
     }
-  }, [initialMarket.symbol]);
+  }, [applyMarketSummary, initialMarket.symbol]);
 
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,

@@ -39,7 +39,7 @@ function collectSourceFiles(relativeDirectory: string): string[] {
   });
 }
 
-test("market detail opens one unified market SSE and keeps order execution SSE separate", () => {
+test("market detail opens public-compatible unified market SSE and keeps order execution SSE separate", () => {
   const source = read("components/futures/MarketDetailRealtimeView.tsx");
 
   assert.equal(source.includes("/api/futures/markets/stream"), true);
@@ -51,6 +51,18 @@ test("market detail opens one unified market SSE and keeps order execution SSE s
   assert.equal(source.includes("MARKET_SUMMARY"), true);
   assert.equal(source.includes("MARKET_CANDLE"), true);
   assert.equal(source.includes("MARKET_HISTORY_FINALIZED"), true);
+  assert.match(
+    source,
+    /useResilientEventSource\(\{\s*onMessage: handleMarketStreamMessage,\s*url: marketStreamUrl,/,
+    "unified market stream must open for both anonymous and authenticated users"
+  );
+  assert.equal(source.includes("handlePublicMarketSummaryMessage"), false);
+  assert.equal(source.includes("handlePublicMarketCandleMessage"), false);
+  assert.match(
+    source,
+    /useResilientEventSource\(\{\s*enabled: isAuthenticated,\s*onMessage: handleOrderStreamMessage,[\s\S]*?url: orderStreamUrl,/,
+    "order execution stream must remain gated by authentication"
+  );
 });
 
 test("futures price chart consumes parent unified candle events instead of opening its own SSE", () => {
@@ -74,6 +86,22 @@ test("unified market stream proxy route validates query and forwards to backend 
   assert.equal(source.includes("proxySseStream"), true);
   assert.equal(source.includes("/api/futures/markets/stream"), true);
   assert.equal(source.includes("response.json()"), false);
+});
+
+test("market landing summary stream proxy forwards multi-symbol SSE without interval", () => {
+  const source = read("app/api/futures/markets/summary/stream/route.ts");
+  const landingSource = read("components/router/(main)/markets/MarketsLandingRealtimeView.tsx");
+
+  assert.equal(source.includes("clientKey"), true);
+  assert.equal(source.includes("symbols"), true);
+  assert.equal(source.includes("interval"), false);
+  assert.equal(source.includes("400"), true);
+  assert.equal(source.includes("createSseUpstreamHeaders"), true);
+  assert.equal(source.includes("proxySseStream"), true);
+  assert.equal(source.includes("/api/futures/markets/summary/stream"), true);
+  assert.equal(source.includes("response.json()"), false);
+  assert.equal(landingSource.includes("/api/futures/markets/summary/stream"), true);
+  assert.equal(landingSource.includes("initialMarkets.map((market) => ("), false);
 });
 
 test("frontend has a parser/upsert boundary for unified market envelopes", () => {
@@ -100,6 +128,8 @@ test("frontend has a parser/upsert boundary for unified market envelopes", () =>
   assert.equal(combined.includes("openTime"), true);
   assert.equal(combined.includes("symbol"), true);
   assert.equal(combined.includes("interval"), true);
+  assert.equal(combined.includes("parsePublicMarketSummaryEvent"), true);
+  assert.equal(combined.includes("parsePublicMarketCandleEvent"), true);
 });
 
 test("live position display can re-mark non-selected positions from matching summary snapshots", () => {

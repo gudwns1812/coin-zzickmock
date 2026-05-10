@@ -40,19 +40,25 @@ public class MicrometerSseTelemetry implements SseTelemetry {
 
     public MicrometerSseTelemetry(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
+        STREAMS.forEach(this::activeConnections);
     }
 
     @Override
     public void connectionOpened(String stream) {
         String safeStream = stream(stream);
-        activeConnections(safeStream).incrementAndGet();
+        if (isKnownStream(safeStream)) {
+            activeConnections(safeStream).incrementAndGet();
+        }
         meterRegistry.counter(CONNECTIONS_OPENED_TOTAL, streamTags(safeStream)).increment();
     }
 
     @Override
     public void connectionClosed(String stream, String reason) {
         String safeStream = stream(stream);
-        activeConnections(safeStream).updateAndGet(current -> Math.max(0, current - 1));
+        AtomicInteger currentConnections = activeConnections.get(safeStream);
+        if (currentConnections != null) {
+            currentConnections.updateAndGet(current -> Math.max(0, current - 1));
+        }
         meterRegistry.counter(CONNECTIONS_CLOSED_TOTAL, reasonTags(safeStream, reason(reason))).increment();
     }
 
@@ -101,10 +107,14 @@ public class MicrometerSseTelemetry implements SseTelemetry {
     }
 
     private String stream(String stream) {
-        if (STREAMS.contains(stream)) {
+        if (isKnownStream(stream)) {
             return stream;
         }
         return "unknown";
+    }
+
+    private boolean isKnownStream(String stream) {
+        return STREAMS.contains(stream);
     }
 
     private String reason(String reason) {

@@ -1,7 +1,5 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import java.time.Instant;
 
 public record MarketStreamEventResponse(
@@ -14,52 +12,38 @@ public record MarketStreamEventResponse(
         Object data
 ) {
     public static MarketStreamEventResponse summary(
-            MarketSummaryResult result,
+            String symbol,
             MarketStreamEventSource source,
-            Instant serverTime
+            Object data
     ) {
-        return new MarketStreamEventResponse(
-                MarketStreamEventType.MARKET_SUMMARY,
-                MarketStreamEventType.MARKET_SUMMARY,
-                result.symbol(),
-                null,
-                serverTime,
-                source,
-                MarketSummaryResponse.from(result)
-        );
+        return of(MarketStreamEventType.MARKET_SUMMARY, symbol, null, source, data);
     }
 
     public static MarketStreamEventResponse candle(
             String symbol,
-            CandleSubscription subscription,
-            MarketCandleResult result,
+            String interval,
             MarketStreamEventSource source,
-            Instant serverTime
+            Object data
     ) {
-        return new MarketStreamEventResponse(
-                MarketStreamEventType.MARKET_CANDLE,
-                MarketStreamEventType.MARKET_CANDLE,
-                symbol,
-                subscription.interval().value(),
-                serverTime,
-                source,
-                MarketCandleResponse.from(result)
-        );
+        return of(MarketStreamEventType.MARKET_CANDLE, symbol, interval, source, data);
     }
 
     public static MarketStreamEventResponse historyFinalized(
-            CandleSubscription subscription,
-            MarketCandleHistoryFinalizedResponse response,
-            Instant serverTime
+            String symbol,
+            String interval,
+            MarketStreamEventSource source,
+            Object data
     ) {
-        return new MarketStreamEventResponse(
-                MarketStreamEventType.MARKET_HISTORY_FINALIZED,
-                MarketStreamEventType.MARKET_HISTORY_FINALIZED,
-                subscription.symbol(),
-                subscription.interval().value(),
-                serverTime,
-                MarketStreamEventSource.LIVE,
-                response
-        );
+        return of(MarketStreamEventType.MARKET_HISTORY_FINALIZED, symbol, interval, source, data);
+    }
+
+    private static MarketStreamEventResponse of(
+            MarketStreamEventType type,
+            String symbol,
+            String interval,
+            MarketStreamEventSource source,
+            Object data
+    ) {
+        return new MarketStreamEventResponse(type, type, symbol, interval, Instant.now(), source, data);
     }
 }

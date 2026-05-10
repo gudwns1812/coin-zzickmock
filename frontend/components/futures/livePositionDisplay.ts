@@ -32,6 +32,19 @@ export function deriveLivePositionsDisplay(
   return positions.map((position) => deriveLivePositionDisplay(position, market));
 }
 
+export function deriveLivePositionDisplayFromSnapshots(
+  position: FuturesPosition,
+  marketsBySymbol: ReadonlyMap<string, Pick<MarketSnapshot, "symbol" | "markPrice">>
+): FuturesPosition {
+  const market = marketsBySymbol.get(position.symbol);
+
+  if (!market) {
+    return position;
+  }
+
+  return deriveLivePositionDisplay(position, market);
+}
+
 export function calculateUnrealizedPnl(
   positionSide: FuturesPosition["positionSide"],
   entryPrice: number,

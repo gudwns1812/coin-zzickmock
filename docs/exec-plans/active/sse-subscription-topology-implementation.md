@@ -22,7 +22,7 @@
 - [ ] 테스트
 - [ ] Docker backend rebuild 검증
 - [ ] Browser actual-data runtime 검증
-- [ ] review 스킬 기반 검토 확인
+- [x] review 스킬 기반 검토 확인 (worker-3 read-only audit: 2026-05-10T19:10+09:00)
 - [ ] 작업 종료 처리(완료 판단 및 completed 이동)
 
 ## 문서 원문 대조표
@@ -234,7 +234,7 @@
 - [ ] Browser Network/EventSource 관찰에서 detail page market stream은 하나이고 order stream은 별도임을 확인했다.
 - [ ] BTC active + ETH open position fixture 또는 실제 계정 상태에서 ETH position card의 mark price/PnL/ROE가 ETH live summary 수신 후 갱신됨을 확인했다.
 - [ ] Console error와 failed network request가 없다. 있다면 원인을 기록하고 수정했거나, product acceptance와 무관한 known external issue로 명시했다.
-- [ ] 구현 결과와 검증 증거를 계획 문서에 업데이트했다.
+- [x] 구현 결과와 검증 증거를 계획 문서에 업데이트했다. (worker-3 audit notes below; implementation still absent in this worktree)
 
 위 항목 중 하나라도 미충족이면 종료하지 않고 수정/재검증한다. Docker 또는 브라우저 검증이 환경 문제로 불가능하면, 실패 이유·대체 검증·남은 위험을 명시하고 완료가 아니라 blocked/partial로 보고한다.
 
@@ -249,7 +249,40 @@
 
 ## 결과 및 회고
 
-- 구현 전 계획 단계이므로 아직 없음. 구현 후 검증 로그와 남은 위험을 이 섹션에 갱신한다.
+### 2026-05-10 worker-3 review/documentation audit
+
+#### Prompt-to-artifact completion audit
+
+| 요구사항 / 산출물 | 실제 증거 | 판정 | 비고 |
+| --- | --- | --- | --- |
+| 권위 문서 확인 | leader worktree의 `.omx/context/sse-subscription-topology-20260510T100011Z.md`, `.omx/plans/prd-sse-subscription-topology.md`, `.omx/plans/test-spec-sse-subscription-topology.md`를 읽고, 이 active exec plan을 대조했다. worker worktree에는 `.omx/context`/`.omx/plans` 파일이 checkout되어 있지 않아 leader 경로를 source of truth로 사용했다. | PASS | team task instructions의 named input을 확인했다. |
+| 기존 raw SSE endpoint 보존 여부 | `backend/src/main/java/.../MarketController.java`는 여전히 `GET /api/futures/markets/{symbol}/stream` 및 `/{symbol}/candles/stream`만 제공하고 raw response를 `MarketSummaryResponse`/`MarketCandleResponse`로 전송한다. | PASS(현상 보존) | unified endpoint는 아직 없다. |
+| unified backend registry/broker/endpoint 구현 여부 | `rg "MarketStream(SessionKey|Registry|Broker|EventResponse|EventType)|/markets/stream|MARKET_SUMMARY|MARKET_CANDLE" backend/src frontend` 결과 구현 파일/route가 발견되지 않았다. | FAIL / 미구현 | `backend/src/main/java/.../feature/market/web/MarketStream*.java` 및 `frontend/app/api/futures/markets/stream/route.ts`가 필요하다. |
+| position business events/open-position reader | `PositionOpenedEvent`, `PositionFullyClosedEvent`, `OpenPositionSymbolsReader`가 source tree에서 발견되지 않았다. | FAIL / 미구현 | event naming은 PRD의 business-semantic rule을 따라야 한다. |
+| frontend unified proxy/parser/detail integration | `MarketDetailRealtimeView.tsx`는 raw `/{symbol}/stream`을 사용하고 `FuturesPriceChart.tsx`는 별도 `/{symbol}/candles/stream` EventSource를 연다. positions는 `deriveLivePositionDisplay(position, market)`로 selected market snapshot만 사용한다. | FAIL / 미구현 | non-selected symbol live mark/PnL/ROE acceptance를 충족하지 못한다. |
+| `SseEmitter` boundary | `rg "SseEmitter" backend/src/main/java backend/src/test/java` 결과 main imports는 `common/web` 및 `feature/*/web`에 한정되어 application/domain import는 발견되지 않았다. | PASS(현재 경계) | unified 구현 때도 유지해야 한다. |
+| no new dependency | worker-3 변경 전후 package/gradle dependency diff 없음. | PASS | 이번 review patch는 문서만 수정한다. |
+| delegation compliance | Subagents spawned: 2 (`019e1158-bff2-7373-8789-daf11300ed58` Review probe, `019e1158-c0e8-7631-a34b-d59a6f76cbbf` Test probe). Review probe hit quota before result; Test probe reported terminal completion but changed no files. Findings integrated here by local audit rather than trusting proxy completion. | PARTIAL | lifecycle state was already marked completed by the Test probe; this section preserves the missing evidence in the plan. |
+
+#### Verification evidence collected by worker-3
+
+- PASS: `cd backend && ./gradlew test --tests '*Sse*' --console=plain` — `BUILD SUCCESSFUL in 18s`, 5 tasks executed. This covers current raw market/order SSE tests, not the missing unified stream contract.
+- PASS: `cd backend && ./gradlew architectureLint --console=plain` — `architecture_lint_summary status=passed violations=0 advisories=0`, `BUILD SUCCESSFUL in 1s`.
+- FAIL: `npm test --workspace frontend -- --test-name-pattern=sse` — 166 pass / 1 fail. Failure was `components/futures/OrderEntryPanel.test.ts:49` (`order ticket exposes current side so leverage edits target the intended position`, expected `true` got `false`), outside the SSE topology but it makes the frontend targeted command non-green in this worktree.
+- PASS: root `npm ci` — installed 244 packages and made the workspace dependency tree available for static checks; npm audit reported 3 vulnerabilities (2 moderate, 1 high), not changed by this task.
+- PASS after `npm ci`: `npm run lint --workspace frontend` — `tsc --noEmit` exited 0. Before reinstall, the same command failed because `@next/bundle-analyzer` was missing from local `node_modules` despite being present in `frontend/package.json` and `package-lock.json`.
+- PASS: `cd backend && ./gradlew check --console=plain` — `BUILD SUCCESSFUL in 40s`, 6 actionable tasks with test execution.
+- PASS: `npm run build --workspace frontend` — Next.js production build compiled and generated 18 static pages successfully. Build output still lists only raw SSE proxy API routes (`/api/futures/markets/[symbol]/stream`, `/api/futures/markets/[symbol]/candles/stream`, `/api/futures/orders/stream`), confirming the unified proxy route is absent.
+- FAIL: `npm test --workspace frontend` full suite — 166 pass / 1 fail at `components/futures/OrderEntryPanel.test.ts:49` (`order ticket exposes current side so leverage edits target the intended position`, expected `true` got `false`). Same failing assertion appeared in the targeted command above.
+- NOT RUN by worker-3: Docker `NGINX_PORT=18080 docker compose up --build -d mysql redis backend nginx`, health curl, and Browser actual-data smoke. These remain required for feature completion.
+
+#### Review findings / risks to fix before feature completion
+
+1. Current codebase is still the pre-unified topology: raw summary and candle streams are separate and frontend detail opens market/order streams plus chart candle stream. Acceptance criterion “exactly one market SSE for detail market summary + active candle” is not met.
+2. No backend source-of-truth session model exists yet for `(memberId, clientKey)` with `ACTIVE_SYMBOL`/`OPEN_POSITION` summary reasons and a separate `CandleSubscription`. Implement registry tests before broker/controller changes.
+3. No business event bridge exists for position open/full close. Add after-commit `PositionOpenedEvent` / `PositionFullyClosedEvent` and ensure partial close never removes `OPEN_POSITION`.
+4. Frontend must add a unified envelope parser/upsert path keyed by `symbol` and `(symbol, interval, openTime)` before it can safely tolerate initial/live ordering races.
+5. The active plan should not move the overall Done Definition checkboxes to complete until Docker rebuild and Browser actual-data smoke evidence are recorded.
 
 ## Worker-2 test/verification evidence (2026-05-10)
 

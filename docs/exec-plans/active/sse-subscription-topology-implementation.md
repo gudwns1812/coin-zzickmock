@@ -251,6 +251,37 @@
 
 - 구현 전 계획 단계이므로 아직 없음. 구현 후 검증 로그와 남은 위험을 이 섹션에 갱신한다.
 
+## Worker-2 test/verification evidence (2026-05-10)
+
+Scope: Task 2 test guardrails for the SSE subscription topology. The current worker-2 worktree does not yet contain the unified SSE implementation, so the new tests are intentionally red and document the missing implementation surface.
+
+Added regression/contract tests:
+
+- `backend/src/test/java/coin/coinzzickmock/feature/market/web/MarketUnifiedStreamTopologyContractTest.java`
+  - locks the required unified registry API (`registerSession`, `releaseSession`, summary reason mutation, candle replacement, fan-out snapshots);
+  - asserts registry stays source/index-only and does not own emitter lifecycle/send failure;
+  - asserts broker owns summary/candle/history fan-out, lifecycle cleanup, envelope source/type metadata, and telemetry;
+  - asserts controller uses authenticated unified `/api/futures/markets/stream` with `OpenPositionSymbolsReader`;
+  - asserts `PositionOpenedEvent` / `PositionFullyClosedEvent` business events and `SseEmitter` boundary/raw route compatibility.
+- `frontend/components/futures/MarketUnifiedStreamTopology.test.ts`
+  - locks one unified market SSE in detail plus separate order stream;
+  - locks removal of detail candle SSE from `FuturesPriceChart`;
+  - locks `/api/futures/markets/stream` proxy validation/forwarding and no `response.json()` SSE anti-pattern;
+  - locks parser/upsert metadata (`serverTime`, `source`, `INITIAL_SNAPSHOT`, `LIVE`, natural keys);
+  - locks non-selected position re-marking from matching market summary snapshots.
+
+Executed verification:
+
+- FAIL (expected until implementation lands): `cd backend && ./gradlew test --tests '*MarketUnifiedStreamTopologyContractTest' --console=plain`
+  - 5 tests executed, 4 failed. Missing current implementation artifacts include `MarketStreamRegistry`, `MarketStreamBroker`, unified controller wiring, and `PositionOpenedEvent` / `PositionFullyClosedEvent`.
+- FAIL (expected until implementation lands): `cd frontend && node --test components/futures/MarketUnifiedStreamTopology.test.ts`
+  - 5 tests executed, 5 failed. Missing current implementation artifacts include unified detail stream URL, chart parent-candle integration, `/api/futures/markets/stream` route, parser/upsert module, and non-selected position snapshot map.
+
+Delegation evidence: attempted required native subagent probe `019e1158-901e-72c2-97f2-8d471a3e1c9f` (`Test probe: identify existing coverage and missing regression checks`, model `gpt-5.4-mini`), but it errored with quota/usage-limit before reporting. Findings integrated from local inspection instead: existing raw SSE coverage lives in `MarketRealtimeSseBrokerTest`, `MarketCandleRealtimeSseBrokerTest`, `MarketControllerTest`, `FuturesPriceChart.test.ts`, `MarketDetailRealtimeView.test.ts`, and `sse-proxy.test.ts`; missing checks are covered by the two new topology contract test files above.
+
+Current blocker: full verification and Docker/browser runtime smoke cannot be claimed from this worktree until the unified SSE implementation is integrated and the new red tests pass.
+
+
 ## 네이밍 점검
 
 `docs/design-docs/backend-design/10-technical-naming-rules.md` 기준으로 신규 클래스 이름에는 불필요한 기술명을 넣지 않는다. 계획 초안의 `MarketStreamSseBroker`는 기술명을 드러내므로 `MarketStreamBroker`로 보정한다. `SseEmitter`처럼 framework/protocol type 자체를 언급해야 하는 문맥은 경계 설명에만 남기고, 신규 역할 클래스명은 `MarketStreamRegistry`, `MarketStreamSession`, `CandleSubscription`, `PositionOpenedEvent`, `PositionFullyClosedEvent`처럼 역할/도메인 의미를 우선한다. 기존 코드에 이미 있는 `SseSubscriptionRegistry`, `MarketRealtimeSseBroker`, `MarketCandleRealtimeSseBroker`는 compatibility 유지 대상의 현재 이름으로만 참조한다.

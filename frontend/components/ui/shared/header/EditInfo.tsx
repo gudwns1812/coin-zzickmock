@@ -32,7 +32,6 @@ const EditInfo = ({ token }: { token: JwtToken }) => {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(info);
     // 유저데이터 수정 로직
   };
 

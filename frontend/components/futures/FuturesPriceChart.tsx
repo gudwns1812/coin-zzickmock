@@ -254,14 +254,6 @@ export default function FuturesPriceChart({
         throw new Error(payload.message ?? "차트 데이터를 불러오지 못했습니다.");
       }
 
-      console.log("[FuturesPriceChart] fetched candles", {
-        before: typeof pageParam === "string" ? pageParam : null,
-        count: payload.data.length,
-        interval: selectedInterval,
-        limit: selectedConfig.limit,
-        symbol,
-      });
-
       return payload.data;
     },
     getNextPageParam: (lastPage) =>

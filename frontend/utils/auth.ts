@@ -29,7 +29,6 @@ export async function getJwtToken() {
       nickname: decoded.nickname ?? decoded.memberName ?? decoded.account ?? legacyAccount,
     } as JwtToken;
   } catch (err) {
-    console.error("유효하지 않은 토큰입니당:", err);
     cookieStore.set({
       name: "accessToken",
       value: "",

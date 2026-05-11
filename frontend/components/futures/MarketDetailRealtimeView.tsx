@@ -194,13 +194,11 @@ export default function MarketDetailRealtimeView({
     const receivedAt = Date.now();
 
     if (envelope.kind === "MARKET_SUMMARY") {
-      console.log(`[SSE:MARKET_SUMMARY] ${envelope.symbol}`, envelope.data);
       applyMarketSummary(envelope.symbol, envelope.data as MarketApiResponse, receivedAt);
       return;
     }
 
     if (envelope.kind === "MARKET_CANDLE") {
-      console.log(`[SSE:MARKET_CANDLE] ${envelope.symbol} ${envelope.interval}`, envelope.data);
       if (envelope.symbol === initialMarket.symbol) {
         setMarketStreamCandle({
           ...envelope.data,
@@ -226,9 +224,6 @@ export default function MarketDetailRealtimeView({
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,
     url: marketStreamUrl,
-    onOpen: () => console.log(`[SSE:MARKET] Connected to ${marketStreamUrl}`),
-    onError: (e) => console.error(`[SSE:MARKET] Error on ${marketStreamUrl}`, e),
-    onReconnect: (reason) => console.log(`[SSE:MARKET] Reconnecting due to ${reason}`),
   });
 
   useEffect(() => {

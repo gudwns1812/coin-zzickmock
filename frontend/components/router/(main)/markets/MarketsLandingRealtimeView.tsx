@@ -228,7 +228,6 @@ export default function MarketsLandingRealtimeView({
     (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as MarketApiResponse;
-        console.log(`[SSE:MARKET_SUMMARY] ${data.symbol}`, data);
 
         if (!isSupportedMarketSymbol(data.symbol)) {
           return;
@@ -345,13 +344,11 @@ function MarketLandingStreamSubscription({
     .join(",")}`;
   const { status } = useResilientEventSource({
     onError: (e) => {
-      console.error(`[SSE:MARKET_SUMMARY] Error on ${streamUrl}`, e);
       onRecovering();
     },
     onMessage,
     onReconnect: onRecovering,
     url: streamUrl,
-    onOpen: () => console.log(`[SSE:MARKET_SUMMARY] Connected to ${streamUrl}`),
   });
 
   useEffect(() => {

@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.web;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.web.SseClientKey;
+import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
@@ -22,7 +23,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -40,12 +40,12 @@ public class MarketRealtimeSseBroker {
     private final Map<String, Integer> pendingSubscriberCountsBySymbol = new LinkedHashMap<>();
     private final int maxSubscribersPerSymbol;
     private final Semaphore totalSubscriberLimit;
-    private final Executor sseEventExecutor;
+    private final SseDeliveryExecutor sseEventExecutor;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
     public MarketRealtimeSseBroker(
-            @Qualifier("marketRealtimeSseEventExecutor") Executor sseEventExecutor,
+            SseDeliveryExecutor sseEventExecutor,
             @Value("${coin.market.sse.max-subscribers-per-symbol:50}") int maxSubscribersPerSymbol,
             @Value("${coin.market.sse.max-total-subscribers:100}") int maxSubscribersTotal,
             SseTelemetry sseTelemetry
@@ -61,7 +61,16 @@ public class MarketRealtimeSseBroker {
             int maxSubscribersPerSymbol,
             int maxSubscribersTotal
     ) {
-        this(sseEventExecutor, maxSubscribersPerSymbol, maxSubscribersTotal, NoopSseTelemetry.INSTANCE);
+        this(new SseDeliveryExecutor(sseEventExecutor), maxSubscribersPerSymbol, maxSubscribersTotal, NoopSseTelemetry.INSTANCE);
+    }
+
+    MarketRealtimeSseBroker(
+            Executor sseEventExecutor,
+            int maxSubscribersPerSymbol,
+            int maxSubscribersTotal,
+            SseTelemetry sseTelemetry
+    ) {
+        this(new SseDeliveryExecutor(sseEventExecutor), maxSubscribersPerSymbol, maxSubscribersTotal, sseTelemetry);
     }
 
     public SseSubscriptionPermit reserve(String symbol) {

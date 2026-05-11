@@ -13,9 +13,6 @@ import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesSer
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
-import coin.coinzzickmock.feature.position.application.query.OpenPositionSymbolsReader;
-import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.auth.Actor;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -42,9 +39,7 @@ public class MarketController {
     private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker;
     private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
     private final CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper;
-    private final MarketStreamBroker marketStreamBroker;
-    private final OpenPositionSymbolsReader openPositionSymbolsReader;
-    private final Providers providers;
+    private final UnifiedMarketStreamOpener unifiedMarketStreamOpener;
     private final long streamTimeoutMs;
 
     @Autowired
@@ -55,9 +50,7 @@ public class MarketController {
             MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper,
-            MarketStreamBroker marketStreamBroker,
-            OpenPositionSymbolsReader openPositionSymbolsReader,
-            Providers providers,
+            UnifiedMarketStreamOpener unifiedMarketStreamOpener,
             @Value("${coin.market.sse.timeout-ms:300000}") long streamTimeoutMs
     ) {
         this.getMarketSummaryService = getMarketSummaryService;
@@ -66,9 +59,7 @@ public class MarketController {
         this.marketCandleRealtimeSseBroker = marketCandleRealtimeSseBroker;
         this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
         this.currentMarketCandleBootstrapper = currentMarketCandleBootstrapper;
-        this.marketStreamBroker = marketStreamBroker;
-        this.openPositionSymbolsReader = openPositionSymbolsReader;
-        this.providers = providers;
+        this.unifiedMarketStreamOpener = unifiedMarketStreamOpener;
         this.streamTimeoutMs = streamTimeoutMs;
     }
 
@@ -86,8 +77,6 @@ public class MarketController {
                 marketRealtimeSseBroker,
                 marketCandleRealtimeSseBroker,
                 realtimeMarketCandleProjector,
-                null,
-                null,
                 null,
                 null,
                 streamTimeoutMs
@@ -109,8 +98,6 @@ public class MarketController {
                 marketCandleRealtimeSseBroker,
                 realtimeMarketCandleProjector,
                 currentMarketCandleBootstrapper,
-                null,
-                null,
                 null,
                 streamTimeoutMs
         );
@@ -152,19 +139,11 @@ public class MarketController {
             @RequestParam String interval,
             @RequestParam(required = false) String clientKey
     ) {
-        if (marketStreamBroker == null || openPositionSymbolsReader == null || providers == null) {
+        if (unifiedMarketStreamOpener == null) {
             throw new IllegalStateException("Unified market stream dependencies are not configured");
         }
-
-        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
-        Actor actor = providers.auth().currentActorOptional().orElse(null);
-        Long memberId = actor == null ? null : actor.memberId();
-        MarketCandleInterval candleInterval = MarketCandleInterval.from(interval);
-        Set<String> openSymbols = memberId == null
-                ? Set.of()
-                : new LinkedHashSet<>(openPositionSymbolsReader.openSymbols(memberId));
         SseEmitter emitter = createEmitter();
-        marketStreamBroker.openSession(memberId, resolvedClientKey, symbol, openSymbols, candleInterval, emitter);
+        unifiedMarketStreamOpener.open(symbol, interval, clientKey, emitter);
         return emitter;
     }
 

@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
@@ -14,7 +15,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -28,12 +28,12 @@ public class TradingExecutionSseBroker {
     private static final String CLIENT_REPLACED_REASON = "client_replaced";
 
     private final SseSubscriptionRegistry<Long> subscriptions;
-    private final Executor sseEventExecutor;
+    private final SseDeliveryExecutor sseEventExecutor;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
     public TradingExecutionSseBroker(
-            @Qualifier("marketRealtimeSseEventExecutor") Executor sseEventExecutor,
+            SseDeliveryExecutor sseEventExecutor,
             @Value("${coin.trading.sse.max-subscribers-per-member:10}") int maxSubscribersPerMember,
             @Value("${coin.trading.sse.max-total-subscribers:100}") int maxSubscribersTotal,
             SseTelemetry sseTelemetry
@@ -48,7 +48,16 @@ public class TradingExecutionSseBroker {
             int maxSubscribersPerMember,
             int maxSubscribersTotal
     ) {
-        this(sseEventExecutor, maxSubscribersPerMember, maxSubscribersTotal, NoopSseTelemetry.INSTANCE);
+        this(new SseDeliveryExecutor(sseEventExecutor), maxSubscribersPerMember, maxSubscribersTotal, NoopSseTelemetry.INSTANCE);
+    }
+
+    TradingExecutionSseBroker(
+            Executor sseEventExecutor,
+            int maxSubscribersPerMember,
+            int maxSubscribersTotal,
+            SseTelemetry sseTelemetry
+    ) {
+        this(new SseDeliveryExecutor(sseEventExecutor), maxSubscribersPerMember, maxSubscribersTotal, sseTelemetry);
     }
 
     public SseSubscriptionPermit reserve(Long memberId) {

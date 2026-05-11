@@ -77,21 +77,51 @@ class MarketUnifiedStreamTopologyContractTest {
     @Test
     void controllerAddsAuthenticatedUnifiedEndpointWithoutCouplingToPositionInternals() throws IOException {
         String controller = readRequired(MARKET_WEB.resolve("MarketController.java"));
+        String opener = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamOpener.java"));
 
         assertTrue(controller.contains("/stream"), "controller must expose unified /api/futures/markets/stream");
-        assertTrue(controller.contains("MarketStreamBroker"), "controller must delegate unified stream lifecycle to broker");
-        assertTrue(controller.contains("OpenPositionSymbolsReader"),
-                "controller must ask a narrow application-facing reader for open position symbols");
+        assertTrue(controller.contains("UnifiedMarketStreamOpener"),
+                "controller must delegate unified stream opening to a web-level opener");
+        assertFalse(controller.contains("MarketStreamBroker marketStreamBroker"),
+                "controller must not directly own the unified market stream broker field");
+        assertTrue(opener.contains("MarketStreamBroker"), "opener must delegate unified stream lifecycle to broker");
+        assertTrue(opener.contains("OpenPositionSymbolsReader"),
+                "opener must ask a narrow application-facing reader for open position symbols");
         assertFalse(controller.contains("PositionRepository"), "market web must not depend on position repositories");
         assertFalse(controller.contains("PositionJpa"), "market web must not depend on position persistence internals");
-        assertTrue(controller.contains("currentActorOptional"),
+        assertTrue(opener.contains("currentActorOptional"),
                 "unified endpoint must allow anonymous market viewers and enrich authenticated sessions only when present");
-        assertFalse(controller.contains("currentActor().memberId()"),
+        assertFalse(opener.contains("currentActor().memberId()"),
                 "unified endpoint must not require authentication for public market/candle data");
-        assertTrue(controller.contains("Set.of()"),
+        assertTrue(opener.contains("Set.of()"),
                 "anonymous unified sessions must omit only open-position summary symbols");
         assertTrue(controller.contains("clientKey"), "unified endpoint must be scoped by clientKey");
-        assertTrue(controller.contains("interval"), "unified endpoint must register active candle interval");
+        assertTrue(opener.contains("interval"), "unified endpoint must register active candle interval");
+    }
+
+    @Test
+    void sseDeliveryExecutorHidesQualifiedExecutorFromFeatureBrokers() throws IOException {
+        String deliveryConfiguration = readRequired(MAIN.resolve(
+                "coin/coinzzickmock/common/web/SseDeliveryConfiguration.java"));
+        String deliveryExecutor = readRequired(MAIN.resolve(
+                "coin/coinzzickmock/common/web/SseDeliveryExecutor.java"));
+        List<String> brokerSources = List.of(
+                readRequired(MARKET_WEB.resolve("MarketStreamBroker.java")),
+                readRequired(MARKET_WEB.resolve("MarketRealtimeSseBroker.java")),
+                readRequired(MARKET_WEB.resolve("MarketCandleRealtimeSseBroker.java")),
+                readRequired(MAIN.resolve("coin/coinzzickmock/feature/order/web/TradingExecutionSseBroker.java"))
+        );
+
+        assertTrue(deliveryConfiguration.contains("sseDeliveryTaskExecutor"),
+                "backing SSE executor bean name must be delivery-neutral");
+        assertTrue(deliveryExecutor.contains("@Qualifier(\"sseDeliveryTaskExecutor\")"),
+                "qualifier must be isolated to common-web delivery wiring");
+        for (String broker : brokerSources) {
+            assertTrue(broker.contains("SseDeliveryExecutor"),
+                    "feature SSE brokers must depend on the typed delivery executor");
+            assertFalse(broker.contains("@Qualifier(\"marketRealtimeSseEventExecutor\")"),
+                    "feature SSE brokers must not inject raw named executors");
+        }
     }
 
     @Test

@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.web;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
@@ -27,7 +28,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -49,14 +49,14 @@ public class MarketCandleRealtimeSseBroker {
 
     private final SseSubscriptionRegistry<SubscriptionKey> subscriptions;
     private final Set<SubscriptionKey> activeKeys = java.util.concurrent.ConcurrentHashMap.newKeySet();
-    private final Executor sseEventExecutor;
+    private final SseDeliveryExecutor sseEventExecutor;
     private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
     private final MarketHistoryRepository marketHistoryRepository;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
     public MarketCandleRealtimeSseBroker(
-            @Qualifier("marketRealtimeSseEventExecutor") Executor sseEventExecutor,
+            SseDeliveryExecutor sseEventExecutor,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             MarketHistoryRepository marketHistoryRepository,
             @Value("${coin.market.sse.max-subscribers-per-symbol:50}") int maxSubscribersPerKey,
@@ -74,7 +74,7 @@ public class MarketCandleRealtimeSseBroker {
             Executor sseEventExecutor,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector
     ) {
-        this(sseEventExecutor, realtimeMarketCandleProjector, null, 50, 100, NoopSseTelemetry.INSTANCE);
+        this(new SseDeliveryExecutor(sseEventExecutor), realtimeMarketCandleProjector, null, 50, 100, NoopSseTelemetry.INSTANCE);
     }
 
     MarketCandleRealtimeSseBroker(
@@ -82,7 +82,7 @@ public class MarketCandleRealtimeSseBroker {
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             SseTelemetry sseTelemetry
     ) {
-        this(sseEventExecutor, realtimeMarketCandleProjector, null, 50, 100, sseTelemetry);
+        this(new SseDeliveryExecutor(sseEventExecutor), realtimeMarketCandleProjector, null, 50, 100, sseTelemetry);
     }
 
     MarketCandleRealtimeSseBroker(
@@ -92,7 +92,7 @@ public class MarketCandleRealtimeSseBroker {
             int maxSubscribersTotal
     ) {
         this(
-                sseEventExecutor,
+                new SseDeliveryExecutor(sseEventExecutor),
                 realtimeMarketCandleProjector,
                 null,
                 maxSubscribersPerKey,
@@ -105,9 +105,27 @@ public class MarketCandleRealtimeSseBroker {
             Executor sseEventExecutor,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             MarketHistoryRepository marketHistoryRepository,
+            int maxSubscribersPerKey,
+            int maxSubscribersTotal,
             SseTelemetry sseTelemetry
     ) {
-        this(sseEventExecutor, realtimeMarketCandleProjector, marketHistoryRepository, 50, 100, sseTelemetry);
+        this(
+                new SseDeliveryExecutor(sseEventExecutor),
+                realtimeMarketCandleProjector,
+                marketHistoryRepository,
+                maxSubscribersPerKey,
+                maxSubscribersTotal,
+                sseTelemetry
+        );
+    }
+
+    MarketCandleRealtimeSseBroker(
+            Executor sseEventExecutor,
+            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
+            MarketHistoryRepository marketHistoryRepository,
+            SseTelemetry sseTelemetry
+    ) {
+        this(new SseDeliveryExecutor(sseEventExecutor), realtimeMarketCandleProjector, marketHistoryRepository, 50, 100, sseTelemetry);
     }
 
     public SseSubscriptionPermit reserve(SubscriptionKey key) {

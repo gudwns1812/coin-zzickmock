@@ -10,6 +10,7 @@ import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
@@ -22,7 +23,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -36,7 +36,7 @@ public class MarketStreamBroker {
     private static final MarketStreamEventType MARKET_HISTORY_FINALIZED = MarketStreamEventType.MARKET_HISTORY_FINALIZED;
 
     private final MarketStreamRegistry registry;
-    private final Executor sseEventExecutor;
+    private final SseDeliveryExecutor sseEventExecutor;
     private final GetMarketSummaryService getMarketSummaryService;
     private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
     private final CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper;
@@ -45,7 +45,7 @@ public class MarketStreamBroker {
     @Autowired
     public MarketStreamBroker(
             MarketStreamRegistry registry,
-            @Qualifier("marketRealtimeSseEventExecutor") Executor sseEventExecutor,
+            SseDeliveryExecutor sseEventExecutor,
             GetMarketSummaryService getMarketSummaryService,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector,
             CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper,
@@ -65,7 +65,7 @@ public class MarketStreamBroker {
             GetMarketSummaryService getMarketSummaryService,
             RealtimeMarketCandleProjector realtimeMarketCandleProjector
     ) {
-        this(registry, sseEventExecutor, getMarketSummaryService, realtimeMarketCandleProjector, null, NoopSseTelemetry.INSTANCE);
+        this(registry, new SseDeliveryExecutor(sseEventExecutor), getMarketSummaryService, realtimeMarketCandleProjector, null, NoopSseTelemetry.INSTANCE);
     }
 
     public void openSession(

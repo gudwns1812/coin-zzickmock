@@ -48,6 +48,9 @@ test("market detail opens public-compatible unified market SSE and keeps order e
   assert.equal(source.includes("/api/futures/orders/stream"), true);
   assert.equal(source.includes("useResilientEventSource"), true);
   assert.equal(source.includes("clientKey"), true);
+  assert.equal(source.includes("viewer:"), false);
+  assert.equal(source.includes("symbols:"), false);
+  assert.equal(source.includes("isAuthenticated, selectedInterval"), false);
   assert.equal(source.includes("MARKET_SUMMARY"), true);
   assert.equal(source.includes("MARKET_CANDLE"), true);
   assert.equal(source.includes("MARKET_HISTORY_FINALIZED"), true);
@@ -81,6 +84,8 @@ test("unified market stream proxy route validates query and forwards to backend 
   assert.equal(source.includes("clientKey"), true);
   assert.equal(source.includes("symbol"), true);
   assert.equal(source.includes("interval"), true);
+  assert.equal(source.includes("viewer"), false);
+  assert.equal(source.includes("symbols"), false);
   assert.equal(source.includes("400"), true);
   assert.equal(source.includes("createSseUpstreamHeaders"), true);
   assert.equal(source.includes("proxySseStream"), true);

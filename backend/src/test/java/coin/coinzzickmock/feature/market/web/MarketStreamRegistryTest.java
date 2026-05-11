@@ -32,4 +32,19 @@ class MarketStreamRegistryTest {
         assertTrue(registry.releaseSession(key, secondEmitter, "client_complete"));
         assertEquals(0, registry.candleSubscriberCount(ethCandle));
     }
+
+    @Test
+    void activeSymbolAndOpenPositionSymbolAreDeduplicatedButReasonsStayIndependent() {
+        MarketStreamRegistry registry = new MarketStreamRegistry();
+        MarketStreamSessionKey key = new MarketStreamSessionKey(1L, "tab:demo");
+        CandleSubscription btcCandle = new CandleSubscription("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
+
+        registry.registerSession(key, new SseEmitter(), "BTCUSDT", Set.of("BTCUSDT"), btcCandle);
+
+        assertEquals(1, registry.summarySubscriberCount("BTCUSDT"));
+        assertTrue(registry.removeSummaryReason(key, "BTCUSDT", SummarySubscriptionReason.OPEN_POSITION));
+        assertEquals(1, registry.summarySubscriberCount("BTCUSDT"));
+        assertTrue(registry.removeSummaryReason(key, "BTCUSDT", SummarySubscriptionReason.ACTIVE_SYMBOL));
+        assertEquals(0, registry.summarySubscriberCount("BTCUSDT"));
+    }
 }

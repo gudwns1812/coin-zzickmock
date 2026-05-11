@@ -138,11 +138,10 @@ export default function MarketDetailRealtimeView({
     const params = new URLSearchParams({
       symbol: initialMarket.symbol,
       interval: selectedInterval,
-      viewer: isAuthenticated ? "authenticated" : "anonymous",
     });
 
     return `/api/futures/markets/stream?${params.toString()}`;
-  }, [initialMarket.symbol, isAuthenticated, selectedInterval]);
+  }, [initialMarket.symbol, selectedInterval]);
   const orderStreamUrl = "/api/futures/orders/stream";
 
   const applyMarketSummary = useCallback(

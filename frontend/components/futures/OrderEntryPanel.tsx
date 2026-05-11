@@ -124,8 +124,13 @@ export default function OrderEntryPanel({
       priceSnapshotSymbolRef.current = symbol;
       setLimitPrice(formatLimitPriceInput(currentPrice));
       setIsLimitPriceDirty(false);
+      return;
     }
-  }, [currentPrice, symbol]);
+
+    if (!isLimitPriceDirty) {
+      setLimitPrice(formatLimitPriceInput(currentPrice));
+    }
+  }, [currentPrice, isLimitPriceDirty, symbol]);
 
   useEffect(() => {
     setTicketPreferenceSymbol(symbol);

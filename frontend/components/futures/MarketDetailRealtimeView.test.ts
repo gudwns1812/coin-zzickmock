@@ -49,10 +49,13 @@ test("order entry panel receives displayed positions for close orders", () => {
   assert.equal(source.includes("positions={displayedPositions}"), true);
 });
 
-test("top latest trade price displays the realtime candle close when available", () => {
+test("latest trade price is shared by stat chart quick limit and order ticket", () => {
   assert.equal(source.includes("latestCandleClosePrice"), true);
-  assert.equal(source.includes("formatUsd(latestCandleClosePrice ?? market.lastPrice)"), true);
+  assert.equal(source.includes("const displayedLatestPrice = latestCandleClosePrice ?? market.lastPrice"), true);
+  assert.equal(source.includes("value={formatUsd(displayedLatestPrice)}"), true);
   assert.equal(source.includes("onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}"), true);
+  assert.equal(source.includes("lastPrice={displayedLatestPrice}"), true);
+  assert.equal(source.includes("currentPrice={displayedLatestPrice}"), true);
 });
 
 test("Close amount displays accumulated closed quantity, not closeable quantity", () => {

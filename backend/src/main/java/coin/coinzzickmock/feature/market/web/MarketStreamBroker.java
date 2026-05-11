@@ -92,7 +92,7 @@ public class MarketStreamBroker {
             sendInitialSnapshots(emitter, activeSymbol, openPositionSymbols, interval);
             logLifecycle(activeSymbol, interval, "register", null);
         } catch (RuntimeException exception) {
-            registry.releaseSession(sessionKey, "initial_send_failure");
+            registry.releaseSession(sessionKey, emitter, "initial_send_failure");
             completeEmitter(emitter);
             recordConnectionClosed("initial_send_failure");
             throw exception;
@@ -215,14 +215,14 @@ public class MarketStreamBroker {
     }
 
     private void bindLifecycle(MarketStreamSessionKey sessionKey, SseEmitter emitter) {
-        emitter.onCompletion(() -> release(sessionKey, "client_complete"));
+        emitter.onCompletion(() -> release(sessionKey, emitter, "client_complete"));
         emitter.onTimeout(() -> {
-            release(sessionKey, "timeout");
+            release(sessionKey, emitter, "timeout");
             completeEmitter(emitter);
         });
         emitter.onError(error -> {
             log.debug("Unified market SSE emitter reported an error; closing session.", error);
-            release(sessionKey, "error");
+            release(sessionKey, emitter, "error");
         });
     }
 
@@ -234,7 +234,7 @@ public class MarketStreamBroker {
         } catch (IOException | IllegalStateException exception) {
             log.debug("Unified market SSE send failed; closing session. symbol={} reason=send_failure", response.symbol(), exception);
             recordSend("failure", startedAt);
-            release(subscriber.sessionKey(), "send_failure");
+            release(subscriber.sessionKey(), subscriber.emitter(), "send_failure");
         }
     }
 
@@ -255,8 +255,8 @@ public class MarketStreamBroker {
         }
     }
 
-    private void release(MarketStreamSessionKey sessionKey, String reason) {
-        boolean removed = registry.releaseSession(sessionKey, reason);
+    private void release(MarketStreamSessionKey sessionKey, SseEmitter emitter, String reason) {
+        boolean removed = registry.releaseSession(sessionKey, emitter, reason);
         if (removed) {
             recordConnectionClosed(reason);
             logLifecycle("*", null, lifecycleAction(reason), reason);

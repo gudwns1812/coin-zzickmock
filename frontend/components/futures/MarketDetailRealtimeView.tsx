@@ -195,11 +195,13 @@ export default function MarketDetailRealtimeView({
     const receivedAt = Date.now();
 
     if (envelope.kind === "MARKET_SUMMARY") {
+      console.log(`[SSE:MARKET_SUMMARY] ${envelope.symbol}`, envelope.data);
       applyMarketSummary(envelope.symbol, envelope.data as MarketApiResponse, receivedAt);
       return;
     }
 
     if (envelope.kind === "MARKET_CANDLE") {
+      console.log(`[SSE:MARKET_CANDLE] ${envelope.symbol} ${envelope.interval}`, envelope.data);
       if (envelope.symbol === initialMarket.symbol) {
         setMarketStreamCandle({
           ...envelope.data,
@@ -225,6 +227,9 @@ export default function MarketDetailRealtimeView({
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,
     url: marketStreamUrl,
+    onOpen: () => console.log(`[SSE:MARKET] Connected to ${marketStreamUrl}`),
+    onError: (e) => console.error(`[SSE:MARKET] Error on ${marketStreamUrl}`, e),
+    onReconnect: (reason) => console.log(`[SSE:MARKET] Reconnecting due to ${reason}`),
   });
 
   useEffect(() => {
@@ -363,6 +368,7 @@ export default function MarketDetailRealtimeView({
       ),
     [fundingCountdownNow, market.nextFundingAt, market.serverTime, marketUpdatedAt]
   );
+  const displayedLatestPrice = latestCandleClosePrice ?? market.lastPrice;
 
   return (
     <div className="flex w-full flex-col gap-main-2 px-main-2 pb-24">
@@ -414,7 +420,7 @@ export default function MarketDetailRealtimeView({
               <Stat
                 label="최신 체결가"
                 tone={market.change24h >= 0 ? "positive" : "negative"}
-                value={formatUsd(latestCandleClosePrice ?? market.lastPrice)}
+                value={formatUsd(displayedLatestPrice)}
               />
               <Stat label="Mark Price" value={formatUsd(market.markPrice)} />
               <Stat label="Index Price" value={formatUsd(market.indexPrice)} />
@@ -433,7 +439,7 @@ export default function MarketDetailRealtimeView({
 
           <FuturesPriceChart
             change24h={market.change24h}
-            currentPrice={market.lastPrice}
+            currentPrice={displayedLatestPrice}
             currentPriceUpdatedAt={marketUpdatedAt}
             marketStreamCandle={marketStreamCandle}
             marketStreamHistoryFinalized={marketStreamHistoryFinalized}
@@ -461,7 +467,7 @@ export default function MarketDetailRealtimeView({
         <QuickLimitPriceSelector
           change24h={market.change24h}
           indexPrice={market.indexPrice}
-          lastPrice={market.lastPrice}
+          lastPrice={displayedLatestPrice}
           markPrice={market.markPrice}
           onSelectPrice={handleQuickLimitPriceSelect}
           symbol={market.symbol}
@@ -496,7 +502,7 @@ export default function MarketDetailRealtimeView({
 
           <OrderEntryPanel
             accountSummary={accountSummary}
-            currentPrice={market.lastPrice}
+            currentPrice={displayedLatestPrice}
             isAuthenticated={isAuthenticated}
             positions={displayedPositions}
             quickLimitPriceSelection={quickLimitPriceSelection}

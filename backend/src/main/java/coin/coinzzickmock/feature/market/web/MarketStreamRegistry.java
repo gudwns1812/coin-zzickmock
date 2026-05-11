@@ -79,6 +79,20 @@ public class MarketStreamRegistry {
         return true;
     }
 
+    public synchronized boolean releaseSession(
+            MarketStreamSessionKey sessionKey,
+            SseEmitter emitter,
+            String reason
+    ) {
+        MarketStreamSession current = sessions.get(sessionKey);
+        if (current == null || current.emitter() != emitter) {
+            return false;
+        }
+        sessions.remove(sessionKey);
+        removeIndexes(current);
+        return true;
+    }
+
     public synchronized boolean addSummaryReason(
             MarketStreamSessionKey sessionKey,
             String symbol,

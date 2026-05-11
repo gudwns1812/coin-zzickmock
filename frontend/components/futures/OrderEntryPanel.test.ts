@@ -12,10 +12,11 @@ test("order entry panel does not expose disabled TP/SL controls", () => {
   assert.equal(source.includes("TP/SL"), false);
 });
 
-test("limit price is snapshot-initialized and not live-overwritten", () => {
+test("limit price follows live price until the user edits it", () => {
   assert.equal(source.includes("priceSnapshotSymbolRef"), true);
   assert.equal(source.includes("priceSnapshotSymbolRef.current !== symbol"), true);
-  assert.equal(source.includes("[currentPrice, symbol]"), true);
+  assert.equal(source.includes("if (!isLimitPriceDirty)"), true);
+  assert.equal(source.includes("[currentPrice, isLimitPriceDirty, symbol]"), true);
 });
 
 test("close mode submits through the position close endpoint", () => {

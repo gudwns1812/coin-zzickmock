@@ -56,7 +56,7 @@ PR 제목에 `[codex]` 같은 자동화 접두사를 붙이지 않는다.
 
 ## Enforcement
 
-로컬 또는 CI에서 같은 검사 스크립트를 사용한다.
+로컬 또는 CI에서 같은 검사 스크립트를 사용한다. 보호 브랜치인 `main`, `master`, `develop`, `dev`는 단독 브랜치명으로 허용한다.
 
 ```bash
 npm run check:branch -- feat/example-branch

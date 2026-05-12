@@ -13,10 +13,9 @@ const allowedTypes = [
     "perf",
     "style",
     "build",
-    "revert",
-    "dev"
+    "revert"
 ];
-const protectedBranches = new Set(["main", "master", "develop"]);
+const protectedBranches = new Set(["main", "master", "develop", "dev"]);
 const typePattern = allowedTypes.join("|");
 const branchPattern = new RegExp(
     `^(${typePattern})/[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$`,

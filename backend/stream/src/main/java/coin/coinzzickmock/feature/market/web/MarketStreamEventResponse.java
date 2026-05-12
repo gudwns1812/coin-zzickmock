@@ -1,7 +1,5 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import java.time.Instant;
 
 public record MarketStreamEventResponse(
@@ -14,7 +12,7 @@ public record MarketStreamEventResponse(
         Object data
 ) {
     public static MarketStreamEventResponse summary(
-            MarketSummaryResult result,
+            MarketSummaryResponse result,
             MarketStreamEventSource source,
             Instant serverTime
     ) {
@@ -25,14 +23,14 @@ public record MarketStreamEventResponse(
                 null,
                 serverTime,
                 source,
-                MarketSummaryResponse.from(result)
+                result
         );
     }
 
     public static MarketStreamEventResponse candle(
             String symbol,
             CandleSubscription subscription,
-            MarketCandleResult result,
+            MarketCandleResponse result,
             MarketStreamEventSource source,
             Instant serverTime
     ) {
@@ -40,10 +38,10 @@ public record MarketStreamEventResponse(
                 MarketStreamEventType.MARKET_CANDLE,
                 MarketStreamEventType.MARKET_CANDLE,
                 symbol,
-                subscription.interval().value(),
+                subscription.interval(),
                 serverTime,
                 source,
-                MarketCandleResponse.from(result)
+                result
         );
     }
 
@@ -56,7 +54,7 @@ public record MarketStreamEventResponse(
                 MarketStreamEventType.MARKET_HISTORY_FINALIZED,
                 MarketStreamEventType.MARKET_HISTORY_FINALIZED,
                 subscription.symbol(),
-                subscription.interval().value(),
+                subscription.interval(),
                 serverTime,
                 MarketStreamEventSource.LIVE,
                 response

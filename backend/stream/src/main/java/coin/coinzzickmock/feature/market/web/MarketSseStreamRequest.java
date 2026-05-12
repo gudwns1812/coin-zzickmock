@@ -1,9 +1,7 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.web.SseClientKey;
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.common.web.SseClientKeyException;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -14,7 +12,7 @@ public final class MarketSseStreamRequest {
     private final MarketSseStreamKind kind;
     private final Set<String> summarySymbols;
     private final String activeSymbol;
-    private final MarketCandleInterval candleInterval;
+    private final String candleInterval;
     private final String clientKey;
     private final SseEmitter emitter;
 
@@ -22,7 +20,7 @@ public final class MarketSseStreamRequest {
             MarketSseStreamKind kind,
             Set<String> summarySymbols,
             String activeSymbol,
-            MarketCandleInterval candleInterval,
+            String candleInterval,
             String clientKey,
             SseEmitter emitter
     ) {
@@ -52,7 +50,7 @@ public final class MarketSseStreamRequest {
 
     public static MarketSseStreamRequest candle(
             String activeSymbol,
-            MarketCandleInterval candleInterval,
+            String candleInterval,
             String clientKey,
             SseEmitter emitter
     ) {
@@ -60,7 +58,7 @@ public final class MarketSseStreamRequest {
                 MarketSseStreamKind.CANDLE,
                 null,
                 normalizeSymbol(activeSymbol),
-                Objects.requireNonNull(candleInterval, "candleInterval must not be null"),
+                normalizeSymbol(candleInterval),
                 clientKey,
                 emitter
         );
@@ -68,7 +66,7 @@ public final class MarketSseStreamRequest {
 
     public static MarketSseStreamRequest unified(
             String activeSymbol,
-            MarketCandleInterval candleInterval,
+            String candleInterval,
             String clientKey,
             SseEmitter emitter
     ) {
@@ -76,7 +74,7 @@ public final class MarketSseStreamRequest {
                 MarketSseStreamKind.UNIFIED,
                 null,
                 normalizeSymbol(activeSymbol),
-                Objects.requireNonNull(candleInterval, "candleInterval must not be null"),
+                normalizeSymbol(candleInterval),
                 clientKey,
                 emitter
         );
@@ -94,7 +92,7 @@ public final class MarketSseStreamRequest {
         return activeSymbol;
     }
 
-    public MarketCandleInterval candleInterval() {
+    public String candleInterval() {
         return candleInterval;
     }
 
@@ -108,7 +106,7 @@ public final class MarketSseStreamRequest {
 
     private static Set<String> normalizeSymbols(Set<String> rawSymbols) {
         if (rawSymbols == null || rawSymbols.isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new SseClientKeyException("Invalid market stream symbols");
         }
         Set<String> symbols = new LinkedHashSet<>();
         for (String rawSymbol : rawSymbols) {
@@ -119,7 +117,7 @@ public final class MarketSseStreamRequest {
 
     private static String normalizeSymbol(String rawSymbol) {
         if (rawSymbol == null || rawSymbol.isBlank()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new SseClientKeyException("Invalid market stream symbol");
         }
         return rawSymbol.trim();
     }

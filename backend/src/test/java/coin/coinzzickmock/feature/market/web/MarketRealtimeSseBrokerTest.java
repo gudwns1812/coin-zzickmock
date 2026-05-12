@@ -317,6 +317,78 @@ class MarketRealtimeSseBrokerTest {
         assertThat(telemetry.events()).contains("closed:market:client_replaced");
     }
 
+
+    @Test
+    void existingClientCanAddSymbolWithoutConsumingAnotherTotalPermit() {
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 1, 1);
+        CapturingSseEmitter replacement = new CapturingSseEmitter();
+
+        broker.register(broker.reserve("BTCUSDT", "tab-1"), new CapturingSseEmitter());
+        broker.register(broker.reserve(java.util.Set.of("BTCUSDT", "ETHUSDT"), "tab-1"), replacement);
+
+        assertThatThrownBy(() -> broker.reserve("SOLUSDT", "tab-2"))
+                .isInstanceOf(CoreException.class)
+                .extracting(error -> ((CoreException) error).errorCode())
+                .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+        assertThat(broker.totalSubscriberCount()).isEqualTo(1);
+        assertThat(broker.subscriberCount("BTCUSDT")).isEqualTo(1);
+        assertThat(broker.subscriberCount("ETHUSDT")).isEqualTo(1);
+    }
+
+    @Test
+    void existingClientAddingNewSymbolConsumesOnlyNewSymbolCapacity() {
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 1, 2);
+
+        broker.register(broker.reserve("BTCUSDT", "tab-1"), new CapturingSseEmitter());
+        broker.register(
+                broker.reserve(java.util.Set.of("BTCUSDT", "ETHUSDT"), "tab-1"),
+                new CapturingSseEmitter()
+        );
+
+        assertThatThrownBy(() -> broker.reserve("ETHUSDT", "tab-2"))
+                .isInstanceOf(CoreException.class)
+                .extracting(error -> ((CoreException) error).errorCode())
+                .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+        assertThat(broker.subscriberCount("BTCUSDT")).isEqualTo(1);
+        assertThat(broker.subscriberCount("ETHUSDT")).isEqualTo(1);
+    }
+
+    @Test
+    void releaseBeforeRegisterReclaimsAllMultiSymbolCapacity() {
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 1, 1);
+        MarketRealtimeSseBroker.SseSubscriptionPermit permit = broker.reserve(
+                java.util.Set.of("BTCUSDT", "ETHUSDT"),
+                "tab-1"
+        );
+
+        broker.release(permit);
+
+        assertThat(broker.hasSubscriberLimit("BTCUSDT")).isFalse();
+        assertThat(broker.hasSubscriberLimit("ETHUSDT")).isFalse();
+        broker.register(broker.reserve("SOLUSDT", "tab-2"), new CapturingSseEmitter());
+        assertThat(broker.totalSubscriberCount()).isEqualTo(1);
+    }
+
+    @Test
+    void recordsExecutorRejectionTelemetry() {
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(
+                command -> {
+                    throw new java.util.concurrent.RejectedExecutionException("queue full");
+                },
+                10,
+                20,
+                telemetry
+        );
+        broker.register(broker.reserve("BTCUSDT"), new CapturingSseEmitter());
+
+        broker.onMarketUpdated(new MarketSummaryUpdatedEvent(
+                new MarketSummaryResult("BTCUSDT", "Bitcoin Perpetual", 74000, 74010, 74005, 0.0001, 0.2)
+        ));
+
+        assertThat(telemetry.events()).contains("executor:market");
+    }
+
     @Test
     void sendsSameSymbolUpdatesToDifferentClientKeys() {
         MarketRealtimeSseBroker broker = new MarketRealtimeSseBroker(directExecutor(), 2, 2);

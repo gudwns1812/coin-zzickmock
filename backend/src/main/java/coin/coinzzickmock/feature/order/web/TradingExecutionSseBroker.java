@@ -77,15 +77,22 @@ public class TradingExecutionSseBroker {
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
-        bindLifecycle(permit, emitter);
-        var registration = subscriptions.register(permit.delegate, emitter);
-        if (!registration.registered()) {
-            reject(registration.rejection());
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+        Long memberId = permit.memberId();
+        try {
+            bindLifecycle(permit, emitter);
+            var registration = subscriptions.register(permit.delegate, emitter);
+            if (!registration.registered()) {
+                reject(registration.rejection());
+                throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+            }
+            recordConnectionOpened();
+            logLifecycle(memberId, "register", null);
+            completeReplacedEmitter(memberId, registration.replacedEmitter());
+        } catch (RuntimeException exception) {
+            discardRegisteredSubscription(memberId, emitter);
+            release(permit);
+            throw exception;
         }
-        recordConnectionOpened();
-        logLifecycle(permit.memberId(), "register", null);
-        completeReplacedEmitter(permit.memberId(), registration.replacedEmitter());
     }
 
     public void unregister(Long memberId, SseEmitter emitter) {
@@ -145,11 +152,15 @@ public class TradingExecutionSseBroker {
         try {
             emitter.send(response);
             recordSend("success", startedAt);
-        } catch (IOException exception) {
+        } catch (IOException | IllegalStateException exception) {
             log.debug("Trading SSE send failed; closing subscription. stream=trading_execution reason=send_failure", exception);
             recordSend("failure", startedAt);
             unregister(memberId, emitter, "send_failure");
         }
+    }
+
+    private void discardRegisteredSubscription(Long memberId, SseEmitter emitter) {
+        subscriptions.unregister(memberId, emitter);
     }
 
 

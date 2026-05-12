@@ -1,1 +1,9 @@
 // External adapter library module. Shared conventions live in the root backend build.
+
+dependencies {
+    // External provider contracts expose market domain records owned by storage.
+    api project(":storage")
+
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+}

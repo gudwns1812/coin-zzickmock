@@ -309,7 +309,7 @@ class MarketOrderExecutionServiceTest {
 
         assertTrue(positionRepository.findOpenPositions(1L).isEmpty());
         assertEquals("POSITION_LIQUIDATED", eventPublisher.events.get(0).type());
-        assertEquals(-20.09, eventPublisher.events.get(0).realizedPnl(), 0.0001);
+        assertEquals(-20.09, eventPublisher.events.get(0).realizedPnl().doubleValue(), 0.0001);
     }
 
     @Test
@@ -905,11 +905,11 @@ class MarketOrderExecutionServiceTest {
 
         assertEquals(3, eventPublisher.events.size());
         assertEquals("same-price-first", eventPublisher.events.get(0).orderId());
-        assertEquals(102, eventPublisher.events.get(0).executionPrice(), 0.0001);
+        assertEquals(102, eventPublisher.events.get(0).executionPrice().doubleValue(), 0.0001);
         assertEquals("same-price-second", eventPublisher.events.get(1).orderId());
-        assertEquals(102, eventPublisher.events.get(1).executionPrice(), 0.0001);
+        assertEquals(102, eventPublisher.events.get(1).executionPrice().doubleValue(), 0.0001);
         assertEquals("later-price", eventPublisher.events.get(2).orderId());
-        assertEquals(103, eventPublisher.events.get(2).executionPrice(), 0.0001);
+        assertEquals(103, eventPublisher.events.get(2).executionPrice().doubleValue(), 0.0001);
         PositionSnapshot opened = positionRepository.findOpenPosition(1L, "BTCUSDT", "SHORT", "ISOLATED")
                 .orElseThrow();
         assertEquals(0.004605, opened.accumulatedOpenFee(), 0.000001);
@@ -933,9 +933,9 @@ class MarketOrderExecutionServiceTest {
 
         assertEquals(2, eventPublisher.events.size());
         assertEquals("higher-price", eventPublisher.events.get(0).orderId());
-        assertEquals(99, eventPublisher.events.get(0).executionPrice(), 0.0001);
+        assertEquals(99, eventPublisher.events.get(0).executionPrice().doubleValue(), 0.0001);
         assertEquals("lower-price", eventPublisher.events.get(1).orderId());
-        assertEquals(97, eventPublisher.events.get(1).executionPrice(), 0.0001);
+        assertEquals(97, eventPublisher.events.get(1).executionPrice().doubleValue(), 0.0001);
         assertEquals(FuturesOrder.STATUS_PENDING, orderRepository.findByMemberIdAndOrderId(1L, "sell-side-ignored")
                 .orElseThrow()
                 .status());

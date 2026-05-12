@@ -1,5 +1,9 @@
 package coin.coinzzickmock.feature.order.application.realtime;
 
+import java.math.BigDecimal;
+import java.util.Locale;
+import java.util.ResourceBundle;
+
 public record TradingExecutionEvent(
         Long memberId,
         String type,
@@ -7,11 +11,40 @@ public record TradingExecutionEvent(
         String symbol,
         String positionSide,
         String marginMode,
-        double quantity,
-        double executionPrice,
-        double realizedPnl,
+        BigDecimal quantity,
+        BigDecimal executionPrice,
+        BigDecimal realizedPnl,
         String message
 ) {
+    private static final String MESSAGES_BUNDLE = "trading-execution-messages";
+    private static final Locale DEFAULT_LOCALE = Locale.KOREAN;
+
+    public TradingExecutionEvent(
+            Long memberId,
+            String type,
+            String orderId,
+            String symbol,
+            String positionSide,
+            String marginMode,
+            double quantity,
+            double executionPrice,
+            double realizedPnl,
+            String message
+    ) {
+        this(
+                memberId,
+                type,
+                orderId,
+                symbol,
+                positionSide,
+                marginMode,
+                BigDecimal.valueOf(quantity),
+                BigDecimal.valueOf(executionPrice),
+                BigDecimal.valueOf(realizedPnl),
+                message
+        );
+    }
+
     public static TradingExecutionEvent orderFilled(
             Long memberId,
             String orderId,
@@ -28,10 +61,10 @@ public record TradingExecutionEvent(
                 symbol,
                 positionSide,
                 marginMode,
-                quantity,
-                executionPrice,
-                0d,
-                "지정가 주문이 체결되었습니다."
+                BigDecimal.valueOf(quantity),
+                BigDecimal.valueOf(executionPrice),
+                BigDecimal.ZERO,
+                message("order.filled")
         );
     }
 
@@ -51,10 +84,10 @@ public record TradingExecutionEvent(
                 symbol,
                 positionSide,
                 marginMode,
-                quantity,
-                executionPrice,
-                realizedPnl,
-                "포지션이 강제 청산되었습니다."
+                BigDecimal.valueOf(quantity),
+                BigDecimal.valueOf(executionPrice),
+                BigDecimal.valueOf(realizedPnl),
+                message("position.liquidated")
         );
     }
 
@@ -71,9 +104,6 @@ public record TradingExecutionEvent(
         String type = "TAKE_PROFIT".equals(closeReason)
                 ? "POSITION_TAKE_PROFIT"
                 : "POSITION_STOP_LOSS";
-        String message = "TAKE_PROFIT".equals(closeReason)
-                ? "TP 가격에 도달해 포지션이 종료되었습니다."
-                : "SL 가격에 도달해 포지션이 종료되었습니다.";
         return new TradingExecutionEvent(
                 memberId,
                 type,
@@ -81,10 +111,20 @@ public record TradingExecutionEvent(
                 symbol,
                 positionSide,
                 marginMode,
-                quantity,
-                executionPrice,
-                realizedPnl,
-                message
+                BigDecimal.valueOf(quantity),
+                BigDecimal.valueOf(executionPrice),
+                BigDecimal.valueOf(realizedPnl),
+                triggerMessage(closeReason)
         );
+    }
+
+    private static String triggerMessage(String closeReason) {
+        return "TAKE_PROFIT".equals(closeReason)
+                ? message("position.take-profit")
+                : message("position.stop-loss");
+    }
+
+    private static String message(String key) {
+        return ResourceBundle.getBundle(MESSAGES_BUNDLE, DEFAULT_LOCALE).getString(key);
     }
 }

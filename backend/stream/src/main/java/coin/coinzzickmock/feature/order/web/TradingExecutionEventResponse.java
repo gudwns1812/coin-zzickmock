@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import java.math.BigDecimal;
 
 public record TradingExecutionEventResponse(
         String type,
@@ -8,9 +9,9 @@ public record TradingExecutionEventResponse(
         String symbol,
         String positionSide,
         String marginMode,
-        double quantity,
-        double executionPrice,
-        double realizedPnl,
+        BigDecimal quantity,
+        BigDecimal executionPrice,
+        BigDecimal realizedPnl,
         String message
 ) {
     static TradingExecutionEventResponse from(TradingExecutionEvent event) {

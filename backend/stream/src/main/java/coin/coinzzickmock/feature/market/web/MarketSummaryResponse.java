@@ -25,6 +25,7 @@ public record MarketSummaryResponse(
             double fundingRate,
             double change24h,
             double turnover24hUsdt,
+            double volume24h,
             Instant serverTime,
             Instant nextFundingAt,
             int fundingIntervalHours
@@ -38,7 +39,7 @@ public record MarketSummaryResponse(
                 fundingRate,
                 change24h,
                 turnover24hUsdt,
-                turnover24hUsdt,
+                volume24h,
                 serverTime,
                 nextFundingAt,
                 fundingIntervalHours

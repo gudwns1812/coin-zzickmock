@@ -177,8 +177,10 @@ class MarketUnifiedStreamTopologyContractTest {
                 "new open-position creation must publish PositionOpenedEvent after commit");
         assertTrue(closeFinalizer.contains("PositionFullyClosedEvent"),
                 "full close delete must publish PositionFullyClosedEvent after commit");
-        assertTrue(openApplier.contains("AfterCommitEventPublisher") || closeFinalizer.contains("AfterCommitEventPublisher"),
-                "position mutation events must be published through after-commit infrastructure");
+        assertTrue(openApplier.contains("AfterCommitEventPublisher"),
+                "open position event must be published through after-commit infrastructure");
+        assertTrue(closeFinalizer.contains("AfterCommitEventPublisher"),
+                "close position event must be published through after-commit infrastructure");
     }
 
     @Test

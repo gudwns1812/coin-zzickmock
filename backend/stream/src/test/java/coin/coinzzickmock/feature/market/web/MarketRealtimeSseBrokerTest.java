@@ -65,7 +65,7 @@ class MarketRealtimeSseBrokerTest {
     }
 
     private static MarketSummaryResponse summary(String symbol, double price) {
-        return MarketSummaryResponse.of(symbol, symbol, price, price, price, 0.01, 0.2, 100, Instant.parse("2026-05-12T00:00:00Z"), null, 8);
+        return MarketSummaryResponse.of(symbol, symbol, price, price, price, 0.01, 0.2, 100, 100, Instant.parse("2026-05-12T00:00:00Z"), null, 8);
     }
 
     private Executor directExecutor() { return Runnable::run; }

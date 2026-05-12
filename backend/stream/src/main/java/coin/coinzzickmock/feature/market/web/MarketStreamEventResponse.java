@@ -28,7 +28,6 @@ public record MarketStreamEventResponse(
     }
 
     public static MarketStreamEventResponse candle(
-            String symbol,
             CandleSubscription subscription,
             MarketCandleResponse result,
             MarketStreamEventSource source,
@@ -37,7 +36,7 @@ public record MarketStreamEventResponse(
         return new MarketStreamEventResponse(
                 MarketStreamEventType.MARKET_CANDLE,
                 MarketStreamEventType.MARKET_CANDLE,
-                symbol,
+                subscription.symbol(),
                 subscription.interval(),
                 serverTime,
                 source,
@@ -50,6 +49,7 @@ public record MarketStreamEventResponse(
             MarketCandleHistoryFinalizedResponse response,
             Instant serverTime
     ) {
+        // History finalization is emitted only after persisted market history closes, so it is always live.
         return new MarketStreamEventResponse(
                 MarketStreamEventType.MARKET_HISTORY_FINALIZED,
                 MarketStreamEventType.MARKET_HISTORY_FINALIZED,

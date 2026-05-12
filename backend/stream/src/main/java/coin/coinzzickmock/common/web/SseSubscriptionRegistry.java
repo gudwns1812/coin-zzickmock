@@ -15,6 +15,12 @@ public final class SseSubscriptionRegistry<K> {
     private final Semaphore totalSubscriberLimit;
 
     public SseSubscriptionRegistry(int maxSubscribersPerKey, int maxSubscribersTotal) {
+        if (maxSubscribersPerKey <= 0) {
+            throw new IllegalArgumentException("maxSubscribersPerKey must be positive");
+        }
+        if (maxSubscribersTotal <= 0) {
+            throw new IllegalArgumentException("maxSubscribersTotal must be positive");
+        }
         this.maxSubscribersPerKey = maxSubscribersPerKey;
         this.totalSubscriberLimit = new Semaphore(maxSubscribersTotal, true);
     }

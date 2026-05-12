@@ -62,7 +62,8 @@ class MarketStreamBrokerTest {
                 Instant.parse("2026-05-12T00:01:00Z")
         );
 
-        assertThat(btcEmitter.sent).anyMatch(MarketStreamEventResponse.class::isInstance);
+        assertThat(btcEmitter.sent).anyMatch(event -> event instanceof MarketStreamEventResponse response
+                && response.kind() == MarketStreamEventType.MARKET_HISTORY_FINALIZED);
         assertThat(ethEmitter.sent).noneMatch(event -> event instanceof MarketStreamEventResponse response
                 && response.kind() == MarketStreamEventType.MARKET_HISTORY_FINALIZED);
     }

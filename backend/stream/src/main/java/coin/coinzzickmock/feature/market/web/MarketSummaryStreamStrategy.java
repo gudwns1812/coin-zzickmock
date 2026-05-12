@@ -23,21 +23,22 @@ public class MarketSummaryStreamStrategy implements MarketSseStreamStrategy {
                 request.clientKey()
         );
         try {
-            boolean initialSendSucceeded = true;
+            boolean isInitialSendSucceeded = true;
             for (String symbol : request.summarySymbols()) {
                 MarketSummaryResponse currentMarket = marketSummarySnapshotReader.getMarket(symbol);
                 if (!sendEvent(request.emitter(), currentMarket)) {
-                    initialSendSucceeded = false;
+                    isInitialSendSucceeded = false;
                     break;
                 }
             }
 
-            if (initialSendSucceeded) {
+            if (isInitialSendSucceeded) {
                 marketRealtimeSseBroker.register(permit, request.emitter());
             } else {
                 marketRealtimeSseBroker.release(permit);
             }
         } catch (RuntimeException exception) {
+            request.emitter().complete();
             marketRealtimeSseBroker.release(permit);
             throw exception;
         }

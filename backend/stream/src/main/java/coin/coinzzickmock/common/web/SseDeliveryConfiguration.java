@@ -15,7 +15,7 @@ public class SseDeliveryConfiguration {
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(200);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
         executor.initialize();
         return executor;
     }

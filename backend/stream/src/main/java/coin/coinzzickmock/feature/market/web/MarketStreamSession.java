@@ -10,6 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 final class MarketStreamSession {
     private final MarketStreamSessionKey key;
     private final SseEmitter emitter;
+    // Guarded by MarketStreamRegistry's synchronized methods.
     private final Map<String, EnumSet<SummarySubscriptionReason>> summaryReasonsBySymbol = new LinkedHashMap<>();
     private CandleSubscription candleSubscription;
 
@@ -23,8 +24,11 @@ final class MarketStreamSession {
         this.key = Objects.requireNonNull(key, "key must not be null");
         this.emitter = Objects.requireNonNull(emitter, "emitter must not be null");
         this.candleSubscription = Objects.requireNonNull(candleSubscription, "candleSubscription must not be null");
+        Objects.requireNonNull(activeSymbol, "activeSymbol must not be null");
+        Objects.requireNonNull(openPositionSymbols, "openPositionSymbols must not be null");
         addSummaryReason(activeSymbol, SummarySubscriptionReason.ACTIVE_SYMBOL);
         for (String openPositionSymbol : openPositionSymbols) {
+            Objects.requireNonNull(openPositionSymbol, "openPositionSymbol must not be null");
             addSummaryReason(openPositionSymbol, SummarySubscriptionReason.OPEN_POSITION);
         }
     }
@@ -50,6 +54,8 @@ final class MarketStreamSession {
     }
 
     boolean addSummaryReason(String symbol, SummarySubscriptionReason reason) {
+        Objects.requireNonNull(symbol, "symbol must not be null");
+        Objects.requireNonNull(reason, "reason must not be null");
         EnumSet<SummarySubscriptionReason> reasons = summaryReasonsBySymbol.computeIfAbsent(
                 symbol,
                 ignored -> EnumSet.noneOf(SummarySubscriptionReason.class)
@@ -58,6 +64,8 @@ final class MarketStreamSession {
     }
 
     boolean removeSummaryReason(String symbol, SummarySubscriptionReason reason) {
+        Objects.requireNonNull(symbol, "symbol must not be null");
+        Objects.requireNonNull(reason, "reason must not be null");
         EnumSet<SummarySubscriptionReason> reasons = summaryReasonsBySymbol.get(symbol);
         if (reasons == null || !reasons.remove(reason)) {
             return false;
@@ -69,6 +77,7 @@ final class MarketStreamSession {
     }
 
     boolean hasSummarySymbol(String symbol) {
+        Objects.requireNonNull(symbol, "symbol must not be null");
         return summaryReasonsBySymbol.containsKey(symbol);
     }
 

@@ -10,15 +10,15 @@ class SseDeliveryExecutorTest {
 
     @Test
     void executesDelegatedCommand() {
-        boolean[] executed = {false};
+        int[] callCount = {0};
         SseDeliveryExecutor executor = new SseDeliveryExecutor(command -> {
-            executed[0] = true;
+            callCount[0]++;
             command.run();
         });
 
-        executor.execute(() -> executed[0] = true);
+        executor.execute(() -> callCount[0]++);
 
-        assertThat(executed[0]).isTrue();
+        assertThat(callCount[0]).isEqualTo(2);
     }
 
     @Test

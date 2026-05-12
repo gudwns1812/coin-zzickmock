@@ -25,6 +25,12 @@ public class MarketStreamRegistry {
             @Value("${coin.market.sse.max-subscribers-per-symbol:50}") int maxSessionsPerSummarySymbol,
             @Value("${coin.market.sse.max-total-subscribers:100}") int maxSessionsTotal
     ) {
+        if (maxSessionsPerSummarySymbol <= 0) {
+            throw new IllegalArgumentException("maxSessionsPerSummarySymbol must be positive");
+        }
+        if (maxSessionsTotal <= 0) {
+            throw new IllegalArgumentException("maxSessionsTotal must be positive");
+        }
         this.maxSessionsPerSummarySymbol = maxSessionsPerSummarySymbol;
         this.maxSessionsTotal = maxSessionsTotal;
     }
@@ -42,6 +48,8 @@ public class MarketStreamRegistry {
     ) {
         Objects.requireNonNull(sessionKey, "sessionKey must not be null");
         Objects.requireNonNull(emitter, "emitter must not be null");
+        Objects.requireNonNull(activeSymbol, "activeSymbol must not be null");
+        Objects.requireNonNull(openPositionSymbols, "openPositionSymbols must not be null");
         Objects.requireNonNull(candleSubscription, "candleSubscription must not be null");
         Set<String> requestedSummarySymbols = new LinkedHashSet<>();
         requestedSummarySymbols.add(activeSymbol);

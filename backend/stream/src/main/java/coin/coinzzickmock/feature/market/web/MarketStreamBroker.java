@@ -144,7 +144,6 @@ public class MarketStreamBroker {
         }
         marketCandleSnapshotReader.latest(symbol, interval)
                 .map(candle -> MarketStreamEventResponse.candle(
-                        symbol,
                         subscription,
                         candle,
                         MarketStreamEventSource.LIVE,
@@ -176,7 +175,6 @@ public class MarketStreamBroker {
         }
         marketCandleSnapshotReader.latest(activeSymbol, interval)
                 .map(candle -> MarketStreamEventResponse.candle(
-                        activeSymbol,
                         new CandleSubscription(activeSymbol, interval),
                         candle,
                         MarketStreamEventSource.INITIAL_SNAPSHOT,

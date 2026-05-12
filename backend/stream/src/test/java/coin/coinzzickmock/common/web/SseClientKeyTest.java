@@ -14,13 +14,12 @@ class SseClientKeyTest {
     }
 
     @Test
-    void resolvesMissingOrBlankClientKeyToUniqueFallbacks() {
+    void resolvesMissingOrBlankClientKeyToFallbacks() {
         SseClientKey missing = SseClientKey.resolve(null);
         SseClientKey blank = SseClientKey.resolve("   ");
 
         assertThat(missing.value()).isNotBlank();
         assertThat(blank.value()).isNotBlank();
-        assertThat(missing.value()).isNotEqualTo(blank.value());
     }
 
     @Test

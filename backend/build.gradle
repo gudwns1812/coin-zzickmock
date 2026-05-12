@@ -850,5 +850,6 @@ tasks.register('check') {
     description = 'Runs backend subproject checks and project architecture/runtime lint.'
     dependsOn tasks.named('verifySingleAppRuntime')
     dependsOn tasks.named('architectureLint')
+    dependsOn project(':app').tasks.named('verifyBootJarStorageMigrations')
     dependsOn subprojects.collect { it.tasks.named('check') }
 }

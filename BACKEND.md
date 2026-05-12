@@ -144,6 +144,7 @@
 - 리포트: `backend/build/reports/architecture-lint/violations.jsonl`
 - 실행 모듈: `app`만 Spring Boot executable이다.
 - 라이브러리 모듈: `stream`, `storage`, `external`은 서로 또는 `app`에 project dependency/source import를 두지 않는다.
+- `./gradlew check`는 architecture lint와 app boot jar 안의 storage Flyway migration 포함 여부를 함께 확인한다.
 
 이 린터는 사람이 보는 용도만이 아니라, Codex가 로그를 다시 읽어 수정 루프를 돌리는 용도로도 사용한다.
 로그 형식과 규칙의 상세 의미는 상세 설계 문서를 따른다.

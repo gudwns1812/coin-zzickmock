@@ -57,6 +57,7 @@
 - 릴리즈 대상 커밋은 적어도 현재 기준 CI를 통과해야 한다.
 - 프론트 변경이 있으면 `npm run build`를 기준 검증으로 삼는다.
 - 백엔드 변경이 있으면 `./gradlew check`를 기준 검증으로 삼고, 구조 변경이 있으면 `./gradlew architectureLint`도 확인한다.
+- 백엔드 4-module 구조 변경은 `app`만 executable이고 `stream`/`storage`/`external` leaf library가 서로 source/project dependency를 갖지 않는지 확인한다.
 - 운영 배포는 `application-prod.yml`, repo의 `docker-compose.prod.yml`/`infra/`, 서버의 `.env.prod` 계약이 서로 맞는지 확인한 뒤 실행한다.
 - 각 릴리즈는 하나의 고정된 commit SHA를 기준으로 식별한다.
 - 릴리즈마다 변경 범위, 실행자, 대상 환경, 스모크 테스트 결과, 롤백 기준점을 기록한다.

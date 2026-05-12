@@ -17,7 +17,7 @@
 ```text
 coin-zzickmock/
 ├── frontend/        # 현재 사용자 경험의 중심인 Next.js 앱
-├── backend/         # Spring Boot 서비스
+├── backend/         # Gradle multi-project backend; app/ is the Spring Boot service
 ├── docs/            # 제품 문서, 설계 기준, 계획, 참고 자료
 ├── FRONTEND.md      # 프론트 작업 기준과 읽기 순서
 ├── BACKEND.md       # 백엔드 작업 기준과 읽기 순서
@@ -56,13 +56,23 @@ coin-zzickmock/
 
 ### Backend Architecture
 
-백엔드는 `clean architecture lite`를 목표로 한 feature-first 구조다.
+백엔드는 Gradle multi-project 위에서 `clean architecture lite`를 목표로 한 feature-first 구조다.
 상세 원문은 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)와 [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)에 둔다.
 
-핵심 구조:
+Gradle module 구조:
 
 ```text
-backend/src/main/java/coin/coinzzickmock/
+backend/
+  app/        # 유일한 Spring Boot executable, 현재 feature/application composition
+  stream/     # SSE/realtime library module
+  storage/    # DB/JPA/Flyway library module
+  external/   # external adapter library module
+```
+
+현재 Java package 구조:
+
+```text
+backend/app/src/main/java/coin/coinzzickmock/
   CoinZzickmockApplication.java
   common/
   providers/
@@ -106,7 +116,7 @@ backend/src/main/java/coin/coinzzickmock/
 - 통합 검증: `./gradlew check`
 - 리포트: `backend/build/reports/architecture-lint/violations.jsonl`
 
-린트는 패키지 루트, 허용 top-level package, feature layer, domain framework-free, application service 간 직접 의존 금지, api의 persistence 직접 의존 금지 같은 규칙을 확인한다.
+린트는 모든 backend subproject의 `src/main/java`를 스캔하며, 패키지 루트, 허용 top-level package, feature layer, domain framework-free, application service 간 직접 의존 금지, api의 persistence 직접 의존 금지 같은 규칙을 확인한다.
 
 ## Top-level Responsibilities
 

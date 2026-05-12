@@ -1,61 +1,96 @@
 import groovy.json.JsonOutput
 
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.5.13'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot' version '3.5.13' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
 group = 'coin'
 version = '0.0.1-SNAPSHOT'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
+
+    repositories {
+        mavenCentral()
     }
 }
 
-repositories {
-    mavenCentral()
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+        testCompileOnly {
+            extendsFrom testAnnotationProcessor
+        }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        if (System.getProperty('coin.redis.integration') != null) {
+            systemProperty 'coin.redis.integration', System.getProperty('coin.redis.integration')
+        }
+    }
 }
 
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-mail'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.security:spring-security-crypto'
-    implementation 'org.springframework.retry:spring-retry'
-    implementation 'org.springframework:spring-aspects'
-    implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.1'
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
-    implementation 'org.flywaydb:flyway-core'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'io.github.openfeign.querydsl:querydsl-apt:7.1:jpa'
-    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
-    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
-
-    runtimeOnly 'org.flywaydb:flyway-mysql'
-    runtimeOnly 'com.mysql:mysql-connector-j'
-    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
-
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
-    testRuntimeOnly 'com.h2database:h2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+configure([project(':stream'), project(':storage'), project(':external')]) {
+    apply plugin: 'java-library'
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
-    if (System.getProperty('coin.redis.integration') != null) {
-        systemProperty 'coin.redis.integration', System.getProperty('coin.redis.integration')
+project(':app') {
+    apply plugin: 'org.springframework.boot'
+
+    dependencies {
+        implementation project(':stream')
+        implementation project(':storage')
+        implementation project(':external')
+
+        implementation 'org.springframework.boot:spring-boot-starter'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.boot:spring-boot-starter-cache'
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-mail'
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+        implementation 'org.springframework.security:spring-security-crypto'
+        implementation 'org.springframework.retry:spring-retry'
+        implementation 'org.springframework:spring-aspects'
+        implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.1'
+        implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
+        implementation 'org.flywaydb:flyway-core'
+
+        annotationProcessor 'io.github.openfeign.querydsl:querydsl-apt:7.1:jpa'
+        annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+        annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
+        runtimeOnly 'org.flywaydb:flyway-mysql'
+        runtimeOnly 'com.mysql:mysql-connector-j'
+        runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+        runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+        runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
+
+        testRuntimeOnly 'com.h2database:h2'
     }
 }
 
@@ -83,7 +118,14 @@ tasks.register('architectureLint') {
     group = 'verification'
     description = 'Validates project-specific backend architecture rules and emits JSONL logs.'
 
-    inputs.files(fileTree('src/main/java') { include '**/*.java' })
+    def mainSourceRoots = provider {
+        subprojects.collect { it.layout.projectDirectory.dir('src/main/java').asFile }
+    }
+    inputs.files(provider {
+        mainSourceRoots.get().collect { sourceRoot ->
+            fileTree(sourceRoot) { include '**/*.java' }
+        }
+    })
     outputs.file(architectureReport)
 
     doLast {
@@ -92,12 +134,15 @@ tasks.register('architectureLint') {
 
         int violationCount = 0
         int advisoryCount = 0
-        def sourceFiles = fileTree('src/main/java') { include '**/*.java' }.files.sort { it.path }
+        def sourceRoots = mainSourceRoots.get().findAll { it.exists() }
+        def sourceFiles = sourceRoots
+                .collectMany { sourceRoot -> fileTree(sourceRoot) { include '**/*.java' }.files }
+                .sort { it.path }
 
         reportFile.withWriter('UTF-8') { writer ->
             architectureEmit(writer, 'INFO', 'architecture_lint_started', [
-                sourceSet : 'src/main/java',
-                reportPath: project.relativePath(reportFile),
+                sourceSet : '*/src/main/java',
+                reportPath: rootProject.relativePath(reportFile),
                 rules     : [
                     'PACKAGE_ROOT_MATCH',
                     'PACKAGE_PATH_MATCH',
@@ -128,7 +173,7 @@ tasks.register('architectureLint') {
                     rule        : rule,
                     category    : 'architecture',
                     severity    : 'ERROR',
-                    file        : project.relativePath(file).replace('\\', '/'),
+                    file        : rootProject.relativePath(file).replace('\\', '/'),
                     line        : line,
                     message     : message,
                     suggestedFix: suggestedFix,
@@ -141,7 +186,7 @@ tasks.register('architectureLint') {
                     rule        : rule,
                     category    : 'architecture',
                     severity    : 'WARN',
-                    file        : project.relativePath(file).replace('\\', '/'),
+                    file        : rootProject.relativePath(file).replace('\\', '/'),
                     line        : line,
                     message     : message,
                     suggestedFix: suggestedFix,
@@ -149,7 +194,11 @@ tasks.register('architectureLint') {
             }
 
             sourceFiles.each { sourceFile ->
-                def relativePath = project.relativePath(sourceFile).replace('\\', '/')
+                def relativePath = rootProject.relativePath(sourceFile).replace('\\', '/')
+                def sourceRoot = sourceRoots.find { root ->
+                    sourceFile.toPath().startsWith(root.toPath())
+                }
+                def sourceRootPath = rootProject.relativePath(sourceRoot).replace('\\', '/')
                 def text = sourceFile.getText('UTF-8')
                 def lines = text.readLines()
                 def packageMatcher = text =~ /(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;/
@@ -167,7 +216,7 @@ tasks.register('architectureLint') {
                 }
 
                 int packageLine = lines.findIndexOf { it.contains("package ${packageName};") } + 1
-                def expectedPath = "src/main/java/${packageName.replace('.', '/')}/${sourceFile.name}"
+                def expectedPath = "${sourceRootPath}/${packageName.replace('.', '/')}/${sourceFile.name}"
 
                 if (!packageName.startsWith(architectureRootPackage)) {
                     logViolation(
@@ -360,7 +409,7 @@ tasks.register('architectureLint') {
                         def currentServiceName = sourceFile.name.replace('.java', '')
                         def applicationServiceNames = sourceFiles
                                 .findAll { candidate ->
-                                    def candidateRelativePath = project.relativePath(candidate).replace('\\', '/')
+                                    def candidateRelativePath = rootProject.relativePath(candidate).replace('\\', '/')
                                     candidateRelativePath.contains('/application/service/')
                                             && candidate.name.endsWith('Service.java')
                                 }
@@ -550,16 +599,19 @@ tasks.register('architectureLint') {
                 status     : violationCount == 0 ? 'passed' : 'failed',
                 violations : violationCount,
                 advisories : advisoryCount,
-                reportPath : project.relativePath(reportFile),
+                reportPath : rootProject.relativePath(reportFile),
             ])
         }
 
         if (violationCount > 0) {
-            throw new GradleException("Architecture lint failed with ${violationCount} violation(s). See ${project.relativePath(reportFile)}")
+            throw new GradleException("Architecture lint failed with ${violationCount} violation(s). See ${rootProject.relativePath(reportFile)}")
         }
     }
 }
 
-tasks.named('check') {
+tasks.register('check') {
+    group = 'verification'
+    description = 'Runs backend subproject checks and project architecture lint.'
     dependsOn tasks.named('architectureLint')
+    dependsOn subprojects.collect { it.tasks.named('check') }
 }

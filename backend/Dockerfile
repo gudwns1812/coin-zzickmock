@@ -4,9 +4,12 @@ WORKDIR /workspace
 
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle ./gradle
-COPY src ./src
+COPY app ./app
+COPY stream ./stream
+COPY storage ./storage
+COPY external ./external
 
-RUN chmod +x ./gradlew && ./gradlew bootJar --no-daemon
+RUN chmod +x ./gradlew && ./gradlew :app:bootJar --no-daemon
 
 FROM eclipse-temurin:17-jre AS runtime
 
@@ -18,7 +21,7 @@ RUN apt-get update \
     && groupadd --system app \
     && useradd --system --gid app app
 
-COPY --from=build /workspace/build/libs/*.jar /app/app.jar
+COPY --from=build /workspace/app/build/libs/*.jar /app/app.jar
 
 USER app
 

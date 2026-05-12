@@ -1,1 +1,3 @@
 rootProject.name = 'coin-zzickmock'
+
+include 'app', 'stream', 'storage', 'external'

@@ -666,9 +666,76 @@ tasks.register('architectureLint') {
     }
 }
 
+tasks.register('verifySingleAppRuntime') {
+    group = 'verification'
+    description = 'Verifies only the app module owns the executable Spring Boot runtime.'
+
+    def runtimeSourceFiles = provider {
+        subprojects.collectMany { subproject ->
+            def sourceRoot = subproject.layout.projectDirectory.dir('src/main/java').asFile
+            sourceRoot.exists()
+                    ? fileTree(sourceRoot) { include '**/*.java' }.files
+                    : []
+        }.sort { it.path }
+    }
+
+    inputs.files(provider { runtimeSourceFiles.get() })
+
+    doLast {
+        def expectedRuntimeProject = ':app'
+        def bootProjects = subprojects
+                .findAll { subproject -> subproject.plugins.hasPlugin('org.springframework.boot') }
+                .collect { it.path }
+                .sort()
+        if (bootProjects != [expectedRuntimeProject]) {
+            throw new GradleException("Exactly one Spring Boot runtime module is allowed: ${expectedRuntimeProject}. Found: ${bootProjects}")
+        }
+
+        def executableJarProjects = subprojects
+                .findAll { subproject ->
+                    def bootJar = subproject.tasks.findByName('bootJar')
+                    bootJar != null && bootJar.enabled
+                }
+                .collect { it.path }
+                .sort()
+        if (executableJarProjects != [expectedRuntimeProject]) {
+            throw new GradleException("Only ${expectedRuntimeProject} may produce an executable bootJar. Found enabled bootJar tasks: ${executableJarProjects}")
+        }
+
+        def runtimeMarkers = runtimeSourceFiles.get().collect { sourceFile ->
+            def text = sourceFile.getText('UTF-8')
+            [
+                file                 : sourceFile,
+                path                 : rootProject.relativePath(sourceFile).replace('\\', '/'),
+                springBootApplication: text.contains('@SpringBootApplication'),
+                springApplicationRun : text.contains('SpringApplication.run('),
+            ]
+        }
+
+        def springBootApplications = runtimeMarkers.findAll { it.springBootApplication }
+        def springApplicationRuns = runtimeMarkers.findAll { it.springApplicationRun }
+
+        if (springBootApplications.size() != 1) {
+            throw new GradleException("Exactly one @SpringBootApplication entrypoint is allowed. Found: ${springBootApplications.collect { it.path }}")
+        }
+        if (springApplicationRuns.size() != 1) {
+            throw new GradleException("Exactly one SpringApplication.run entrypoint is allowed. Found: ${springApplicationRuns.collect { it.path }}")
+        }
+
+        def runtimeEntrypoints = (springBootApplications + springApplicationRuns)
+                .collect { it.path }
+                .unique()
+        def nonAppEntrypoints = runtimeEntrypoints.findAll { !it.startsWith('app/src/main/java/') }
+        if (!nonAppEntrypoints.isEmpty()) {
+            throw new GradleException("Runtime entrypoints must stay in ${expectedRuntimeProject}. Invalid files: ${nonAppEntrypoints}")
+        }
+    }
+}
+
 tasks.register('check') {
     group = 'verification'
-    description = 'Runs backend subproject checks and project architecture lint.'
+    description = 'Runs backend subproject checks and project architecture/runtime lint.'
+    dependsOn tasks.named('verifySingleAppRuntime')
     dependsOn tasks.named('architectureLint')
     dependsOn subprojects.collect { it.tasks.named('check') }
 }

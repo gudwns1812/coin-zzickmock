@@ -52,7 +52,8 @@ public class GlobalExceptionHandler {
     ) {
         log.info("SSE subscription limit exceeded. method={} pathPattern={} reason={}",
                 requestMethod(request), pathPattern(request), exception.reason());
-        return handleCoreException(new CoreException(ErrorCode.TOO_MANY_REQUESTS), request);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ErrorResponse(ErrorCode.TOO_MANY_REQUESTS.name(), ErrorCode.TOO_MANY_REQUESTS.message()));
     }
 
     @ExceptionHandler(Exception.class)

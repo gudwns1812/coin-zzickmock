@@ -20,6 +20,8 @@ public class SseDeliveryConfiguration {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(200);
         executor.setRejectedExecutionHandler(new LoggingAbortPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         return executor;
     }

@@ -19,20 +19,20 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-class UnifiedMarketStreamOpenerTest {
+class UnifiedMarketStreamStrategyTest {
 
     @Test
     void anonymousStreamUsesActiveSymbolOnly() {
         MarketStreamBroker broker = mock(MarketStreamBroker.class);
         OpenPositionSymbolsReader openPositionSymbolsReader = mock(OpenPositionSymbolsReader.class);
-        UnifiedMarketStreamOpener opener = new UnifiedMarketStreamOpener(
+        UnifiedMarketStreamStrategy strategy = new UnifiedMarketStreamStrategy(
                 broker,
                 openPositionSymbolsReader,
                 providers(Optional.empty())
         );
         SseEmitter emitter = new SseEmitter();
 
-        opener.open("BTCUSDT", "1m", "tab-1", emitter);
+        strategy.open(MarketSseStreamRequest.unified("BTCUSDT", MarketCandleInterval.ONE_MINUTE, "tab-1", emitter));
 
         verify(openPositionSymbolsReader, never()).openSymbols(any());
         verify(broker).openSession(
@@ -50,14 +50,14 @@ class UnifiedMarketStreamOpenerTest {
         MarketStreamBroker broker = mock(MarketStreamBroker.class);
         OpenPositionSymbolsReader openPositionSymbolsReader = mock(OpenPositionSymbolsReader.class);
         when(openPositionSymbolsReader.openSymbols(1L)).thenReturn(List.of("ETHUSDT", "BTCUSDT", "ETHUSDT"));
-        UnifiedMarketStreamOpener opener = new UnifiedMarketStreamOpener(
+        UnifiedMarketStreamStrategy strategy = new UnifiedMarketStreamStrategy(
                 broker,
                 openPositionSymbolsReader,
                 providers(Optional.of(new Actor(1L, "user", "user@example.com", "User")))
         );
         SseEmitter emitter = new SseEmitter();
 
-        opener.open("BTCUSDT", "1m", " tab-1 ", emitter);
+        strategy.open(MarketSseStreamRequest.unified("BTCUSDT", MarketCandleInterval.ONE_MINUTE, " tab-1 ", emitter));
 
         verify(openPositionSymbolsReader).openSymbols(1L);
         verify(broker).openSession(
@@ -75,14 +75,18 @@ class UnifiedMarketStreamOpenerTest {
         MarketStreamBroker broker = mock(MarketStreamBroker.class);
         OpenPositionSymbolsReader openPositionSymbolsReader = mock(OpenPositionSymbolsReader.class);
         when(openPositionSymbolsReader.openSymbols(1L)).thenThrow(new IllegalStateException("db unavailable"));
-        UnifiedMarketStreamOpener opener = new UnifiedMarketStreamOpener(
+        UnifiedMarketStreamStrategy strategy = new UnifiedMarketStreamStrategy(
                 broker,
                 openPositionSymbolsReader,
                 providers(Optional.of(new Actor(1L, "user", "user@example.com", "User")))
         );
 
-        assertThatThrownBy(() -> opener.open("BTCUSDT", "1m", "tab-1", new SseEmitter()))
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> strategy.open(MarketSseStreamRequest.unified(
+                "BTCUSDT",
+                MarketCandleInterval.ONE_MINUTE,
+                "tab-1",
+                new SseEmitter()
+        ))).isInstanceOf(IllegalStateException.class);
 
         verify(broker, never()).openSession(any(), any(), any(), any(), any(), any());
     }

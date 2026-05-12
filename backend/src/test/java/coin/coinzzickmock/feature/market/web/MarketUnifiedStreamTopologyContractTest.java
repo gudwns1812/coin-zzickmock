@@ -77,26 +77,52 @@ class MarketUnifiedStreamTopologyContractTest {
     @Test
     void controllerAddsAuthenticatedUnifiedEndpointWithoutCouplingToPositionInternals() throws IOException {
         String controller = readRequired(MARKET_WEB.resolve("MarketController.java"));
-        String opener = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamOpener.java"));
+        String router = readRequired(MARKET_WEB.resolve("MarketSseStreamRouter.java"));
+        String strategyContract = readRequired(MARKET_WEB.resolve("MarketSseStreamStrategy.java"));
+        String strategy = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamStrategy.java"));
 
         assertTrue(controller.contains("/stream"), "controller must expose unified /api/futures/markets/stream");
-        assertTrue(controller.contains("UnifiedMarketStreamOpener"),
-                "controller must delegate unified stream opening to a web-level opener");
+        assertTrue(controller.contains("MarketSseStreamRequest.summary"),
+                "controller must build typed raw summary stream requests");
+        assertTrue(controller.contains("MarketSseStreamRequest.candle"),
+                "controller must build typed raw candle stream requests");
+        assertTrue(controller.contains("MarketSseStreamRequest.unified"),
+                "controller must build typed unified stream requests");
+        assertTrue(controller.contains("MarketSseStreamRouter"),
+                "controller must delegate SSE route selection to the market stream router");
+        assertFalse(controller.contains("UnifiedMarketStreamOpener"),
+                "controller must not depend on the removed unified stream opener");
+        assertFalse(Files.exists(MARKET_WEB.resolve("UnifiedMarketStreamOpener.java")),
+                "old unified stream opener source file must be removed");
+        assertFalse(controller.contains("private final MarketRealtimeSseBroker marketRealtimeSseBroker"),
+                "controller must not directly own the raw summary broker field");
+        assertFalse(controller.contains("private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker"),
+                "controller must not directly own the raw candle broker field");
         assertFalse(controller.contains("MarketStreamBroker marketStreamBroker"),
                 "controller must not directly own the unified market stream broker field");
-        assertTrue(opener.contains("MarketStreamBroker"), "opener must delegate unified stream lifecycle to broker");
-        assertTrue(opener.contains("OpenPositionSymbolsReader"),
-                "opener must ask a narrow application-facing reader for open position symbols");
+        assertTrue(router.contains("EnumMap"), "router must use explicit enum-key strategy wiring");
+        assertTrue(router.contains("EnumSet.allOf"),
+                "router must fail fast when any market SSE strategy kind is missing");
+        assertFalse(router.contains("supports("), "router must not use service-locator supports matching");
+        assertTrue(strategyContract.contains("MarketSseStreamKind kind();"),
+                "strategy contract must expose an explicit enum kind");
+        assertTrue(strategyContract.contains("void open(MarketSseStreamRequest request);"),
+                "strategy contract must expose the stream open operation");
+        assertFalse(strategyContract.contains("default "), "strategy contract must not define default behavior");
+        assertTrue(strategy.contains("MarketStreamBroker"), "strategy must delegate unified stream lifecycle to broker");
+        assertTrue(strategy.contains("OpenPositionSymbolsReader"),
+                "strategy must ask a narrow application-facing reader for open position symbols");
         assertFalse(controller.contains("PositionRepository"), "market web must not depend on position repositories");
         assertFalse(controller.contains("PositionJpa"), "market web must not depend on position persistence internals");
-        assertTrue(opener.contains("currentActorOptional"),
+        assertTrue(strategy.contains("currentActorOptional"),
                 "unified endpoint must allow anonymous market viewers and enrich authenticated sessions only when present");
-        assertFalse(opener.contains("currentActor().memberId()"),
+        assertFalse(strategy.contains("currentActor().memberId()"),
                 "unified endpoint must not require authentication for public market/candle data");
-        assertTrue(opener.contains("Set.of()"),
+        assertTrue(strategy.contains("Set.of()"),
                 "anonymous unified sessions must omit only open-position summary symbols");
         assertTrue(controller.contains("clientKey"), "unified endpoint must be scoped by clientKey");
-        assertTrue(opener.contains("interval"), "unified endpoint must register active candle interval");
+        assertTrue(controller.contains("MarketCandleInterval.from(interval)"),
+                "unified endpoint must register active candle interval");
     }
 
     @Test

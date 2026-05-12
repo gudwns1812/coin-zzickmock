@@ -100,6 +100,12 @@ class BitgetWebSocketMarketEventParserTest {
         assertThat(events).hasSize(1);
         BitgetWebSocketCandleEvent event = (BitgetWebSocketCandleEvent) events.get(0);
         assertThat(event.interval()).isEqualTo(ProviderMarketCandleInterval.ONE_HOUR);
+        assertThat(event.openTime()).isEqualTo(Instant.ofEpochMilli(1695682800000L));
+        assertThat(event.openPrice()).isEqualByComparingTo(new BigDecimal("27000"));
+        assertThat(event.highPrice()).isEqualByComparingTo(new BigDecimal("27100"));
+        assertThat(event.lowPrice()).isEqualByComparingTo(new BigDecimal("26900"));
+        assertThat(event.closePrice()).isEqualByComparingTo(new BigDecimal("27050"));
+        assertThat(event.baseVolume()).isEqualByComparingTo(new BigDecimal("3.2"));
     }
 
     @Test

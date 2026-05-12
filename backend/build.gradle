@@ -257,19 +257,6 @@ tasks.register('architectureLint') {
                 path.tokenize('/')[0]
             }
 
-            def packageAndTypeOwners = [:].withDefault { [] as Set }
-            sourceFiles.each { candidateFile ->
-                def candidateRelativePath = rootProject.relativePath(candidateFile).replace('\\', '/')
-                def candidateText = candidateFile.getText('UTF-8')
-                def candidatePackageMatcher = candidateText =~ /(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;/
-                if (candidatePackageMatcher.find()) {
-                    def candidatePackageName = candidatePackageMatcher.group(1)
-                    def candidateModule = moduleFromRelativePath(candidateRelativePath)
-                    def candidateTypeName = candidateFile.name.replaceFirst(/\.java$/, '')
-                    packageAndTypeOwners["${candidatePackageName}.${candidateTypeName}"] << candidateModule
-                }
-            }
-
             def moduleBuildLine = { Project project, String needleText ->
                 if (!project.buildFile.exists()) {
                     return 1

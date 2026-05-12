@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
@@ -453,7 +454,7 @@ class MarketRealtimeFeedTest {
 
         @Override
         public ConnectorProvider connector() {
-            return null;
+            return TestConnectorProvider.empty();
         }
 
         @Override

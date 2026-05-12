@@ -9,6 +9,7 @@ import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketSubscription;
 import coin.coinzzickmock.providers.infrastructure.JavaNetBitgetWebSocketConnectionFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -23,7 +24,9 @@ import org.springframework.context.annotation.Configuration;
 public class BitgetWebSocketConfiguration {
     @Bean
     HttpClient bitgetWebSocketHttpClient() {
-        return HttpClient.newHttpClient();
+        return HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     @Bean

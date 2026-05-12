@@ -11,8 +11,8 @@ public class BitgetConnectorConfiguration {
     @Bean
     RestClient bitgetRestClient() {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(Duration.ofSeconds(3));
-        requestFactory.setReadTimeout(Duration.ofSeconds(3));
+        requestFactory.setConnectTimeout(Duration.ofSeconds(10));
+        requestFactory.setReadTimeout(Duration.ofSeconds(30));
 
         return RestClient.builder()
                 .baseUrl("https://api.bitget.com")

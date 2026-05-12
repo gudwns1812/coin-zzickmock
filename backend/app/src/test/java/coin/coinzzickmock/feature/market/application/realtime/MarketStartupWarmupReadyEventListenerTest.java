@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.market.job.MarketStartupWarmupReadyEventListener;
@@ -118,7 +119,7 @@ class MarketStartupWarmupReadyEventListenerTest {
 
         @Override
         public ConnectorProvider connector() {
-            return null;
+            return TestConnectorProvider.empty();
         }
 
         @Override

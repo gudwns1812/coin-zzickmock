@@ -55,7 +55,7 @@ class BitgetMarketDataGatewayTest {
         ProviderMarketSnapshot market = gateway.loadMarket("BTCUSDT");
 
         server.verify();
-        assertThat(market.turnover24hUsdt()).isEqualTo(5_250_000_000d);
+        assertThat(market.turnover24hUsdt()).isEqualByComparingTo("5250000000");
     }
 
     @Test
@@ -139,7 +139,7 @@ class BitgetMarketDataGatewayTest {
         ProviderMarketSnapshot market = gateway.loadMarket("BTCUSDT");
 
         server.verify();
-        assertThat(market.lastPrice()).isEqualTo(74000);
+        assertThat(market.lastPrice()).isEqualByComparingTo("74000");
     }
 
     @Test
@@ -290,7 +290,7 @@ class BitgetMarketDataGatewayTest {
         assertThat(candles).hasSize(1);
         assertThat(candles.get(0).openTime()).isEqualTo(Instant.parse("2020-02-01T00:00:00Z"));
         assertThat(candles.get(0).closeTime()).isEqualTo(Instant.parse("2020-02-01T01:00:00Z"));
-        assertThat(candles.get(0).quoteVolume()).isEqualTo(1260);
+        assertThat(candles.get(0).quoteVolume()).isEqualByComparingTo("1260");
     }
 
     @Test

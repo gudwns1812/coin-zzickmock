@@ -3,18 +3,20 @@ package coin.coinzzickmock.providers.infrastructure.mapper;
 import coin.coinzzickmock.providers.connector.ProviderMarketSnapshot;
 import coin.coinzzickmock.providers.infrastructure.BitgetTickerData;
 import coin.coinzzickmock.providers.infrastructure.BitgetTickerResponse;
-import org.springframework.stereotype.Component;
-
+import java.math.BigDecimal;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 @Component
 public class BitgetTickerSnapshotMapper {
     private final Map<String, ProviderMarketSnapshot> fallbackSnapshots = Map.of(
             "BTCUSDT", new ProviderMarketSnapshot(
-                    "BTCUSDT", "Bitcoin Perpetual", 102450, 102418, 102401, 0.0001, 2.84, 1_280_000_000
+                    "BTCUSDT", "Bitcoin Perpetual", decimal("102450"), decimal("102418"), decimal("102401"),
+                    decimal("0.0001"), decimal("2.84"), decimal("1280000000")
             ),
             "ETHUSDT", new ProviderMarketSnapshot(
-                    "ETHUSDT", "Ethereum Perpetual", 3280, 3276, 3274, 0.00008, 1.72, 640_000_000
+                    "ETHUSDT", "Ethereum Perpetual", decimal("3280"), decimal("3276"), decimal("3274"),
+                    decimal("0.00008"), decimal("1.72"), decimal("640000000")
             )
     );
 
@@ -28,17 +30,27 @@ public class BitgetTickerSnapshotMapper {
         return new ProviderMarketSnapshot(
                 symbol,
                 displayName(symbol),
-                Double.parseDouble(data.lastPr()),
-                Double.parseDouble(data.markPrice()),
-                Double.parseDouble(data.indexPrice()),
-                Double.parseDouble(data.fundingRate()),
-                Double.parseDouble(data.change24h()),
-                parseOptional(data.usdtVolume(), fallback == null ? 0.0 : fallback.turnover24hUsdt())
+                parseOptional(data.lastPr(), fallback.lastPrice()),
+                parseOptional(data.markPrice(), fallback.markPrice()),
+                parseOptional(data.indexPrice(), fallback.indexPrice()),
+                parseOptional(data.fundingRate(), fallback.fundingRate()),
+                parseOptional(data.change24h(), fallback.change24h()),
+                parseOptional(data.usdtVolume(), fallback.turnover24hUsdt())
         );
     }
 
     public ProviderMarketSnapshot fallback(String symbol) {
-        return fallbackSnapshots.get(symbol);
+        String safeSymbol = symbol == null || symbol.isBlank() ? "UNKNOWN" : symbol;
+        return fallbackSnapshots.getOrDefault(safeSymbol, new ProviderMarketSnapshot(
+                safeSymbol,
+                displayName(safeSymbol),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO
+        ));
     }
 
     private String displayName(String symbol) {
@@ -49,10 +61,18 @@ public class BitgetTickerSnapshotMapper {
         };
     }
 
-    private double parseOptional(String value, double fallback) {
+    private BigDecimal parseOptional(String value, BigDecimal fallback) {
         if (value == null || value.isBlank()) {
             return fallback;
         }
-        return Double.parseDouble(value);
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
+    private static BigDecimal decimal(String value) {
+        return new BigDecimal(value);
     }
 }

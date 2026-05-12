@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.feature.market.application.history.MarketCandleRollupProjector;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleAppender;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleCache;
@@ -621,7 +622,7 @@ class GetMarketCandlesServiceTest {
 
         @Override
         public ConnectorProvider connector() {
-            return null;
+            return TestConnectorProvider.empty();
         }
 
         @Override

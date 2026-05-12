@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
@@ -131,7 +132,7 @@ class MarketSupportedMarketRefresherRealtimeSourceTest {
 
         @Override
         public ConnectorProvider connector() {
-            return null;
+            return TestConnectorProvider.empty();
         }
 
         @Override

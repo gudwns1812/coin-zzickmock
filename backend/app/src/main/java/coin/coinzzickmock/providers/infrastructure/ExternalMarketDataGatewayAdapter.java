@@ -1,5 +1,7 @@
 package coin.coinzzickmock.providers.infrastructure;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
@@ -11,8 +13,10 @@ import coin.coinzzickmock.providers.connector.ProviderMarketMinuteCandleSnapshot
 import coin.coinzzickmock.providers.connector.ProviderMarketSnapshot;
 import java.time.Instant;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class ExternalMarketDataGatewayAdapter implements MarketDataGateway {
     private final coin.coinzzickmock.providers.connector.MarketDataGateway delegate;
@@ -23,14 +27,22 @@ public class ExternalMarketDataGatewayAdapter implements MarketDataGateway {
 
     @Override
     public List<MarketSnapshot> loadSupportedMarkets() {
-        return delegate.loadSupportedMarkets().stream()
-                .map(this::toDomain)
-                .toList();
+        try {
+            return delegate.loadSupportedMarkets().stream()
+                    .map(this::toDomain)
+                    .toList();
+        } catch (RuntimeException exception) {
+            throw translate("load supported markets", null, null, null, null, exception);
+        }
     }
 
     @Override
     public MarketSnapshot loadMarket(String symbol) {
-        return toDomain(delegate.loadMarket(symbol));
+        try {
+            return toDomain(delegate.loadMarket(symbol));
+        } catch (RuntimeException exception) {
+            throw translate("load market", symbol, null, null, null, exception);
+        }
     }
 
     @Override
@@ -39,9 +51,13 @@ public class ExternalMarketDataGatewayAdapter implements MarketDataGateway {
             Instant fromInclusive,
             Instant toExclusive
     ) {
-        return delegate.loadMinuteCandles(symbol, fromInclusive, toExclusive).stream()
-                .map(this::toDomain)
-                .toList();
+        try {
+            return delegate.loadMinuteCandles(symbol, fromInclusive, toExclusive).stream()
+                    .map(this::toDomain)
+                    .toList();
+        } catch (RuntimeException exception) {
+            throw translate("load minute candles", symbol, null, fromInclusive, toExclusive, exception);
+        }
     }
 
     @Override
@@ -52,21 +68,26 @@ public class ExternalMarketDataGatewayAdapter implements MarketDataGateway {
             Instant toExclusive,
             int limit
     ) {
-        return delegate.loadHistoricalCandles(symbol, toProvider(interval), fromInclusive, toExclusive, limit).stream()
-                .map(this::toDomain)
-                .toList();
+        try {
+            return delegate.loadHistoricalCandles(symbol, toProvider(interval), fromInclusive, toExclusive, limit)
+                    .stream()
+                    .map(this::toDomain)
+                    .toList();
+        } catch (RuntimeException exception) {
+            throw translate("load historical candles", symbol, interval, fromInclusive, toExclusive, exception);
+        }
     }
 
     private MarketSnapshot toDomain(ProviderMarketSnapshot snapshot) {
         return new MarketSnapshot(
                 snapshot.symbol(),
                 snapshot.displayName(),
-                snapshot.lastPrice(),
-                snapshot.markPrice(),
-                snapshot.indexPrice(),
-                snapshot.fundingRate(),
-                snapshot.change24h(),
-                snapshot.turnover24hUsdt()
+                snapshot.lastPrice().doubleValue(),
+                snapshot.markPrice().doubleValue(),
+                snapshot.indexPrice().doubleValue(),
+                snapshot.fundingRate().doubleValue(),
+                snapshot.change24h().doubleValue(),
+                snapshot.turnover24hUsdt().doubleValue()
         );
     }
 
@@ -74,12 +95,12 @@ public class ExternalMarketDataGatewayAdapter implements MarketDataGateway {
         return new MarketMinuteCandleSnapshot(
                 candle.openTime(),
                 candle.closeTime(),
-                candle.openPrice(),
-                candle.highPrice(),
-                candle.lowPrice(),
-                candle.closePrice(),
-                candle.volume(),
-                candle.quoteVolume()
+                candle.openPrice().doubleValue(),
+                candle.highPrice().doubleValue(),
+                candle.lowPrice().doubleValue(),
+                candle.closePrice().doubleValue(),
+                candle.volume().doubleValue(),
+                candle.quoteVolume().doubleValue()
         );
     }
 
@@ -87,13 +108,33 @@ public class ExternalMarketDataGatewayAdapter implements MarketDataGateway {
         return new MarketHistoricalCandleSnapshot(
                 candle.openTime(),
                 candle.closeTime(),
-                candle.openPrice(),
-                candle.highPrice(),
-                candle.lowPrice(),
-                candle.closePrice(),
-                candle.volume(),
-                candle.quoteVolume()
+                candle.openPrice().doubleValue(),
+                candle.highPrice().doubleValue(),
+                candle.lowPrice().doubleValue(),
+                candle.closePrice().doubleValue(),
+                candle.volume().doubleValue(),
+                candle.quoteVolume().doubleValue()
         );
+    }
+
+    private CoreException translate(
+            String operation,
+            String symbol,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive,
+            RuntimeException exception
+    ) {
+        log.warn(
+                "External market gateway failed. operation={} symbol={} interval={} from={} to={}",
+                operation,
+                symbol,
+                interval == null ? null : interval.value(),
+                fromInclusive,
+                toExclusive,
+                exception
+        );
+        return new CoreException(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 
     private ProviderMarketCandleInterval toProvider(MarketCandleInterval interval) {

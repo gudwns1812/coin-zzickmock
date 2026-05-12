@@ -7,4 +7,7 @@ public record BitgetTickerResponse(
         String msg,
         List<BitgetTickerData> data
 ) {
+    public BitgetTickerResponse {
+        data = data == null ? List.of() : List.copyOf(data);
+    }
 }

@@ -7,6 +7,7 @@ import coin.coinzzickmock.providers.connector.ProviderMarketSnapshot;
 import coin.coinzzickmock.providers.connector.MarketHistoricalCandleGranularity;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -30,6 +31,7 @@ import org.springframework.web.client.RestClient;
 @Component
 public class BitgetMarketDataGateway implements MarketDataGateway {
     private static final int BITGET_HISTORICAL_CANDLE_LIMIT = 200;
+    private static final int BITGET_HISTORICAL_CANDLE_TOTAL_LIMIT = 10_000;
     private static final Duration BITGET_HISTORICAL_CANDLE_MAX_RANGE = Duration.ofDays(90);
     private static final String OPERATION_TICKER = "ticker";
     private static final String OPERATION_MINUTE_CANDLES = "minute_candles";
@@ -188,9 +190,10 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             return List.of();
         }
 
+        int safeLimit = Math.min(limit, BITGET_HISTORICAL_CANDLE_TOTAL_LIMIT);
         List<ProviderMarketHistoricalCandleSnapshot> candles = new ArrayList<>();
         Instant cursor = alignedFromInclusive;
-        int remaining = limit;
+        int remaining = safeLimit;
 
         while (cursor.isBefore(providerSafeToExclusive) && remaining > 0) {
             Instant batchEndExclusive = batchEndExclusive(cursor, providerSafeToExclusive, interval, remaining);
@@ -211,7 +214,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             cursor = batchEndExclusive;
         }
 
-        return newest(limit, candles.stream()
+        return newest(safeLimit, candles.stream()
                 .filter(candle -> !candle.openTime().isBefore(alignedFromInclusive))
                 .filter(candle -> candle.openTime().isBefore(providerSafeToExclusive))
                 .sorted(Comparator.comparing(ProviderMarketHistoricalCandleSnapshot::openTime))
@@ -406,17 +409,22 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             return null;
         }
 
-        Instant openTime = Instant.ofEpochMilli(Long.parseLong(rawCandle.get(0)));
-        return new ProviderMarketMinuteCandleSnapshot(
-                openTime,
-                openTime.plus(1, ChronoUnit.MINUTES),
-                parseDouble(rawCandle.get(1)),
-                parseDouble(rawCandle.get(2)),
-                parseDouble(rawCandle.get(3)),
-                parseDouble(rawCandle.get(4)),
-                parseDouble(rawCandle.get(5)),
-                parseDouble(rawCandle.get(6))
-        );
+        try {
+            Instant openTime = Instant.ofEpochMilli(Long.parseLong(rawCandle.get(0)));
+            return new ProviderMarketMinuteCandleSnapshot(
+                    openTime,
+                    openTime.plus(1, ChronoUnit.MINUTES),
+                    parseDecimal(rawCandle.get(1)),
+                    parseDecimal(rawCandle.get(2)),
+                    parseDecimal(rawCandle.get(3)),
+                    parseDecimal(rawCandle.get(4)),
+                    parseDecimal(rawCandle.get(5)),
+                    parseDecimal(rawCandle.get(6))
+            );
+        } catch (RuntimeException exception) {
+            log.debug("Skipping malformed Bitget minute candle. rawCandle={}", rawCandle, exception);
+            return null;
+        }
     }
 
     private ProviderMarketHistoricalCandleSnapshot toHistoricalCandleSnapshot(
@@ -427,17 +435,22 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             return null;
         }
 
-        Instant openTime = Instant.ofEpochMilli(Long.parseLong(rawCandle.get(0)));
-        return new ProviderMarketHistoricalCandleSnapshot(
-                openTime,
-                closeTime(openTime, interval),
-                parseDouble(rawCandle.get(1)),
-                parseDouble(rawCandle.get(2)),
-                parseDouble(rawCandle.get(3)),
-                parseDouble(rawCandle.get(4)),
-                parseDouble(rawCandle.get(5)),
-                parseDouble(rawCandle.get(6))
-        );
+        try {
+            Instant openTime = Instant.ofEpochMilli(Long.parseLong(rawCandle.get(0)));
+            return new ProviderMarketHistoricalCandleSnapshot(
+                    openTime,
+                    closeTime(openTime, interval),
+                    parseDecimal(rawCandle.get(1)),
+                    parseDecimal(rawCandle.get(2)),
+                    parseDecimal(rawCandle.get(3)),
+                    parseDecimal(rawCandle.get(4)),
+                    parseDecimal(rawCandle.get(5)),
+                    parseDecimal(rawCandle.get(6))
+            );
+        } catch (RuntimeException exception) {
+            log.debug("Skipping malformed Bitget historical candle. rawCandle={}", rawCandle, exception);
+            return null;
+        }
     }
 
     private Instant closeTime(Instant openTime, ProviderMarketCandleInterval interval) {
@@ -463,8 +476,8 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         };
     }
 
-    private double parseDouble(String value) {
-        return Double.parseDouble(value);
+    private BigDecimal parseDecimal(String value) {
+        return new BigDecimal(value);
     }
 
     private String responseCode(BitgetTickerResponse response) {

@@ -2,7 +2,7 @@ package coin.coinzzickmock.providers.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -79,7 +79,7 @@ class BitgetWebSocketMarketEventParserTest {
 
         assertThat(events).hasSize(1);
         BitgetWebSocketCandleEvent event = (BitgetWebSocketCandleEvent) events.get(0);
-        assertThat(event.interval()).isEqualTo(MarketCandleInterval.ONE_MINUTE);
+        assertThat(event.interval()).isEqualTo(ProviderMarketCandleInterval.ONE_MINUTE);
         assertThat(event.openTime()).isEqualTo(Instant.ofEpochMilli(1695685500000L));
         assertThat(event.highPrice()).isEqualByComparingTo(new BigDecimal("27000.5"));
         assertThat(event.lowPrice()).isEqualByComparingTo(new BigDecimal("26999.5"));
@@ -99,7 +99,7 @@ class BitgetWebSocketMarketEventParserTest {
 
         assertThat(events).hasSize(1);
         BitgetWebSocketCandleEvent event = (BitgetWebSocketCandleEvent) events.get(0);
-        assertThat(event.interval()).isEqualTo(MarketCandleInterval.ONE_HOUR);
+        assertThat(event.interval()).isEqualTo(ProviderMarketCandleInterval.ONE_HOUR);
     }
 
     @Test

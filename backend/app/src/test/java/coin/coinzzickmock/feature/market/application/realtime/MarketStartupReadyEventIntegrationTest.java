@@ -9,7 +9,7 @@ import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.time.Instant;
@@ -130,7 +130,7 @@ class MarketStartupReadyEventIntegrationTest {
 
                 @Override
                 public ConnectorProvider connector() {
-                    return () -> fakeMarketDataGateway;
+                    return null;
                 }
 
                 @Override

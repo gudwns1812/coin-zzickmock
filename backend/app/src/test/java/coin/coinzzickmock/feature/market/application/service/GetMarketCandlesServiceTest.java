@@ -21,7 +21,7 @@ import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
@@ -392,7 +392,7 @@ class GetMarketCandlesServiceTest {
         MarketHistoricalCandleCache cache = new MarketHistoricalCandleCache(
                 new MarketHistoricalCandleSegmentPolicy(),
                 new MarketHistoricalCandleSegmentStore(telemetry, objectProvider(cacheManager)),
-                new MarketHistoricalCandleSegmentFetcher(providers, telemetry)
+                new MarketHistoricalCandleSegmentFetcher(providers.marketDataGateway, telemetry)
         );
         MarketCandleRollupProjector rollupProjector = new MarketCandleRollupProjector();
         return new GetMarketCandlesService(
@@ -621,7 +621,7 @@ class GetMarketCandlesServiceTest {
 
         @Override
         public ConnectorProvider connector() {
-            return () -> marketDataGateway;
+            return null;
         }
 
         @Override

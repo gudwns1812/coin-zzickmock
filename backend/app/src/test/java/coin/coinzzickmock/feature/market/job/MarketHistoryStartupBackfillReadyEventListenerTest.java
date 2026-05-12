@@ -5,12 +5,9 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryStartupBackfill;
-import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import org.junit.jupiter.api.Test;
 
 class MarketHistoryStartupBackfillReadyEventListenerTest {
@@ -18,14 +15,10 @@ class MarketHistoryStartupBackfillReadyEventListenerTest {
     void delegatesBackfillThroughMarketDataGatewayWithoutWarmupLoad() {
         MarketHistoryStartupBackfill marketHistoryStartupBackfill = mock(MarketHistoryStartupBackfill.class);
         MarketDataGateway marketDataGateway = mock(MarketDataGateway.class);
-        ConnectorProvider connectorProvider = mock(ConnectorProvider.class);
-        Providers providers = mock(Providers.class);
-        when(providers.connector()).thenReturn(connectorProvider);
-        when(connectorProvider.marketDataGateway()).thenReturn(marketDataGateway);
         MarketHistoryStartupBackfillReadyEventListener listener =
                 new MarketHistoryStartupBackfillReadyEventListener(
                         marketHistoryStartupBackfill,
-                        providers
+                        marketDataGateway
                 );
 
         listener.backfillMissingHistoryAfterApplicationReady();

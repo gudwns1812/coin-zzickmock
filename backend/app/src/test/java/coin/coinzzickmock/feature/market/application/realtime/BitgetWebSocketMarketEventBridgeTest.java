@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketCandleEvent;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketTickerEvent;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketTradeEvent;
@@ -47,7 +48,7 @@ class BitgetWebSocketMarketEventBridgeTest {
         ));
         bridge.accept(new BitgetWebSocketCandleEvent(
                 "BTCUSDT",
-                MarketCandleInterval.ONE_MINUTE,
+                ProviderMarketCandleInterval.ONE_MINUTE,
                 Instant.parse("2026-04-30T05:30:00Z"),
                 new BigDecimal("75300"),
                 new BigDecimal("75310"),

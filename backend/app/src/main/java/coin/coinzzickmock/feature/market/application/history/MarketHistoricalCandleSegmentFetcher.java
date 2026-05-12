@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.market.application.history;
 
 import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
-import coin.coinzzickmock.providers.Providers;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
@@ -19,16 +19,16 @@ import org.springframework.stereotype.Component;
 public class MarketHistoricalCandleSegmentFetcher {
     private static final Duration PROVIDER_PERMIT_TIMEOUT = Duration.ofSeconds(3);
 
-    private final Providers providers;
+    private final MarketDataGateway marketDataGateway;
     private final MarketHistoricalCandleTelemetry telemetry;
     private final Semaphore providerLane = new Semaphore(1);
     private final ConcurrentMap<String, CompletableFuture<List<MarketCandleResult>>> fills = new ConcurrentHashMap<>();
 
     public MarketHistoricalCandleSegmentFetcher(
-            Providers providers,
+            MarketDataGateway marketDataGateway,
             MarketHistoricalCandleTelemetry telemetry
     ) {
-        this.providers = providers;
+        this.marketDataGateway = marketDataGateway;
         this.telemetry = telemetry;
     }
 
@@ -63,9 +63,7 @@ public class MarketHistoricalCandleSegmentFetcher {
             }
 
             telemetry.record("market.history.bitget.request", segment, "bitget", "request");
-            List<MarketCandleResult> candles = providers.connector()
-                    .marketDataGateway()
-                    .loadHistoricalCandles(
+            List<MarketCandleResult> candles = marketDataGateway.loadHistoricalCandles(
                             segment.symbol(),
                             segment.interval(),
                             segment.startInclusive(),

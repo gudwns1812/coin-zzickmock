@@ -1,6 +1,6 @@
 package coin.coinzzickmock.providers.infrastructure;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import java.util.Arrays;
@@ -99,17 +99,17 @@ final class MetricTags {
             "unknown"
     );
     private static final Set<String> DIRECTIONS = Set.of("request", "response");
-    private static final Set<String> INTERVALS = Arrays.stream(MarketCandleInterval.values())
+    private static final Set<String> INTERVALS = Arrays.stream(ProviderMarketCandleInterval.values())
             .map(MetricTags::requiredIntervalValue)
             .collect(Collectors.toUnmodifiableSet());
 
     private MetricTags() {
     }
 
-    private static String requiredIntervalValue(MarketCandleInterval interval) {
+    private static String requiredIntervalValue(ProviderMarketCandleInterval interval) {
         String value = interval.value();
         if (value == null) {
-            throw new IllegalStateException("MarketCandleInterval value() must not be null: " + interval);
+            throw new IllegalStateException("ProviderMarketCandleInterval value() must not be null: " + interval);
         }
         return value;
     }

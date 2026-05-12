@@ -2,7 +2,6 @@ package coin.coinzzickmock.feature.market.application.history;
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
-import coin.coinzzickmock.providers.connector.MarketHistoricalCandleGranularity;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,11 +27,23 @@ public class MarketHistoricalCandleSegmentPolicy {
         return new MarketHistoricalCandleSegment(
                 symbol,
                 interval,
-                MarketHistoricalCandleGranularity.from(interval).value(),
+                granularity(interval),
                 startInclusive,
                 segmentEnd(startInclusive, interval),
                 SEGMENT_SIZE
         );
+    }
+
+    private String granularity(MarketCandleInterval interval) {
+        return switch (interval) {
+            case ONE_HOUR -> "1H";
+            case FOUR_HOURS -> "4H";
+            case TWELVE_HOURS -> "12H";
+            case ONE_DAY -> "1Dutc";
+            case ONE_WEEK -> "1Wutc";
+            case ONE_MONTH -> "1Mutc";
+            default -> interval.value();
+        };
     }
 
     private Instant previousCandleTime(Instant toExclusive, MarketCandleInterval interval) {

@@ -1,26 +1,26 @@
 package coin.coinzzickmock.providers.connector;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
-import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
-import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketHistoricalCandleSnapshot;
+import coin.coinzzickmock.providers.connector.ProviderMarketMinuteCandleSnapshot;
+import coin.coinzzickmock.providers.connector.ProviderMarketSnapshot;
 import java.time.Instant;
 import java.util.List;
 
 public interface MarketDataGateway {
-    List<MarketSnapshot> loadSupportedMarkets();
+    List<ProviderMarketSnapshot> loadSupportedMarkets();
 
-    MarketSnapshot loadMarket(String symbol);
+    ProviderMarketSnapshot loadMarket(String symbol);
 
-    List<MarketMinuteCandleSnapshot> loadMinuteCandles(
+    List<ProviderMarketMinuteCandleSnapshot> loadMinuteCandles(
             String symbol,
             Instant fromInclusive,
             Instant toExclusive
     );
 
-    List<MarketHistoricalCandleSnapshot> loadHistoricalCandles(
+    List<ProviderMarketHistoricalCandleSnapshot> loadHistoricalCandles(
             String symbol,
-            MarketCandleInterval interval,
+            ProviderMarketCandleInterval interval,
             Instant fromInclusive,
             Instant toExclusive,
             int limit

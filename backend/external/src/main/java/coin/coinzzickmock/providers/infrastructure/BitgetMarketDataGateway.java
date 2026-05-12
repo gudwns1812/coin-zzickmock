@@ -1,17 +1,19 @@
 package coin.coinzzickmock.providers.infrastructure;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
-import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
-import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.market.domain.MarketTime;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketHistoricalCandleSnapshot;
+import coin.coinzzickmock.providers.connector.ProviderMarketMinuteCandleSnapshot;
+import coin.coinzzickmock.providers.connector.ProviderMarketSnapshot;
 import coin.coinzzickmock.providers.connector.MarketHistoricalCandleGranularity;
 import coin.coinzzickmock.providers.connector.MarketDataGateway;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.DayOfWeek;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,6 +34,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
     private static final String OPERATION_TICKER = "ticker";
     private static final String OPERATION_MINUTE_CANDLES = "minute_candles";
     private static final String OPERATION_HISTORY_CANDLES = "history_candles";
+    private static final ZoneOffset STORAGE_ZONE = ZoneOffset.UTC;
 
     private final RestClient bitgetRestClient;
     private final BitgetTickerSnapshotMapper bitgetTickerSnapshotMapper;
@@ -75,12 +78,12 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
     }
 
     @Override
-    public List<MarketSnapshot> loadSupportedMarkets() {
+    public List<ProviderMarketSnapshot> loadSupportedMarkets() {
         return List.of(loadMarket("BTCUSDT"), loadMarket("ETHUSDT"));
     }
 
     @Override
-    public MarketSnapshot loadMarket(String symbol) {
+    public ProviderMarketSnapshot loadMarket(String symbol) {
         long startedAt = System.nanoTime();
         try {
             BitgetTickerResponse response = bitgetRestClient.get()
@@ -96,7 +99,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                 log.warn("Bitget ticker response is empty; using fallback market snapshot. symbol={} code={}",
                         symbol, responseCode(response));
             }
-            MarketSnapshot market = bitgetTickerSnapshotMapper.fromResponse(symbol, response);
+            ProviderMarketSnapshot market = bitgetTickerSnapshotMapper.fromResponse(symbol, response);
             if (response == null || response.data() == null || response.data().isEmpty()) {
                 recordBitgetRequest(OPERATION_TICKER, "empty", startedAt);
                 recordBitgetFallback(OPERATION_TICKER, symbol, "empty");
@@ -113,7 +116,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
     }
 
     @Override
-    public List<MarketMinuteCandleSnapshot> loadMinuteCandles(
+    public List<ProviderMarketMinuteCandleSnapshot> loadMinuteCandles(
             String symbol,
             Instant fromInclusive,
             Instant toExclusive
@@ -143,12 +146,12 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                 return List.of();
             }
 
-            List<MarketMinuteCandleSnapshot> candles = response.data().stream()
+            List<ProviderMarketMinuteCandleSnapshot> candles = response.data().stream()
                     .map(this::toMinuteCandleSnapshot)
                     .filter(Objects::nonNull)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
-                    .sorted(Comparator.comparing(MarketMinuteCandleSnapshot::openTime))
+                    .sorted(Comparator.comparing(ProviderMarketMinuteCandleSnapshot::openTime))
                     .toList();
             if (candles.isEmpty()) {
                 recordBitgetRequest(OPERATION_MINUTE_CANDLES, "empty", startedAt);
@@ -167,9 +170,9 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
     }
 
     @Override
-    public List<MarketHistoricalCandleSnapshot> loadHistoricalCandles(
+    public List<ProviderMarketHistoricalCandleSnapshot> loadHistoricalCandles(
             String symbol,
-            MarketCandleInterval interval,
+            ProviderMarketCandleInterval interval,
             Instant fromInclusive,
             Instant toExclusive,
             int limit
@@ -185,7 +188,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             return List.of();
         }
 
-        List<MarketHistoricalCandleSnapshot> candles = new ArrayList<>();
+        List<ProviderMarketHistoricalCandleSnapshot> candles = new ArrayList<>();
         Instant cursor = alignedFromInclusive;
         int remaining = limit;
 
@@ -211,13 +214,13 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         return newest(limit, candles.stream()
                 .filter(candle -> !candle.openTime().isBefore(alignedFromInclusive))
                 .filter(candle -> candle.openTime().isBefore(providerSafeToExclusive))
-                .sorted(Comparator.comparing(MarketHistoricalCandleSnapshot::openTime))
+                .sorted(Comparator.comparing(ProviderMarketHistoricalCandleSnapshot::openTime))
                 .toList());
     }
 
-    private List<MarketHistoricalCandleSnapshot> loadHistoricalCandleBatch(
+    private List<ProviderMarketHistoricalCandleSnapshot> loadHistoricalCandleBatch(
             String symbol,
-            MarketCandleInterval interval,
+            ProviderMarketCandleInterval interval,
             Instant fromInclusive,
             Instant toExclusive,
             int requestLimit
@@ -247,12 +250,12 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
                 return List.of();
             }
 
-            List<MarketHistoricalCandleSnapshot> candles = response.data().stream()
+            List<ProviderMarketHistoricalCandleSnapshot> candles = response.data().stream()
                     .map(rawCandle -> toHistoricalCandleSnapshot(rawCandle, interval))
                     .filter(Objects::nonNull)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
-                    .sorted(Comparator.comparing(MarketHistoricalCandleSnapshot::openTime))
+                    .sorted(Comparator.comparing(ProviderMarketHistoricalCandleSnapshot::openTime))
                     .toList();
             if (candles.isEmpty()) {
                 recordBitgetRequest(OPERATION_HISTORY_CANDLES, "empty", startedAt);
@@ -289,7 +292,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
     private Instant batchEndExclusive(
             Instant cursor,
             Instant toExclusive,
-            MarketCandleInterval interval,
+            ProviderMarketCandleInterval interval,
             int remaining
     ) {
         Instant requestedEnd = endAfterCandles(cursor, interval, Math.min(remaining, BITGET_HISTORICAL_CANDLE_LIMIT));
@@ -301,7 +304,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         return min(toExclusive, nextCandleOpenTime(cursor, interval));
     }
 
-    private Instant endAfterCandles(Instant cursor, MarketCandleInterval interval, int candleCount) {
+    private Instant endAfterCandles(Instant cursor, ProviderMarketCandleInterval interval, int candleCount) {
         Instant requestedEnd = cursor;
         for (int count = 0; count < candleCount; count++) {
             requestedEnd = nextCandleOpenTime(requestedEnd, interval);
@@ -309,7 +312,7 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         return requestedEnd;
     }
 
-    private int candleCount(Instant fromInclusive, Instant toExclusive, MarketCandleInterval interval) {
+    private int candleCount(Instant fromInclusive, Instant toExclusive, ProviderMarketCandleInterval interval) {
         int count = 0;
         Instant cursor = fromInclusive;
         while (cursor.isBefore(toExclusive) && count < BITGET_HISTORICAL_CANDLE_LIMIT) {
@@ -319,23 +322,56 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         return count;
     }
 
-    private Instant alignHistoricalBoundary(Instant time, MarketCandleInterval interval) {
+    private Instant alignHistoricalBoundary(Instant time, ProviderMarketCandleInterval interval) {
         return switch (interval) {
-            case ONE_MINUTE -> MarketTime.alignToMinuteBucket(time, 1);
-            case THREE_MINUTES -> MarketTime.alignToMinuteBucket(time, 3);
-            case FIVE_MINUTES -> MarketTime.alignToMinuteBucket(time, 5);
-            case FIFTEEN_MINUTES -> MarketTime.alignToMinuteBucket(time, 15);
-            case ONE_HOUR -> MarketTime.truncate(time, ChronoUnit.HOURS);
-            case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
-                    MarketTime.bucketStart(time, interval);
+            case ONE_MINUTE -> alignToMinuteBucket(time, 1);
+            case THREE_MINUTES -> alignToMinuteBucket(time, 3);
+            case FIVE_MINUTES -> alignToMinuteBucket(time, 5);
+            case FIFTEEN_MINUTES -> alignToMinuteBucket(time, 15);
+            case ONE_HOUR -> truncate(time, ChronoUnit.HOURS);
+            case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH -> bucketStart(time, interval);
         };
+    }
+
+    private Instant alignToMinuteBucket(Instant time, int bucketMinutes) {
+        ZonedDateTime storageTime = atStorageZone(time).truncatedTo(ChronoUnit.MINUTES);
+        int alignedMinute = (storageTime.getMinute() / bucketMinutes) * bucketMinutes;
+        return storageTime.withMinute(alignedMinute).toInstant();
+    }
+
+    private Instant truncate(Instant instant, ChronoUnit unit) {
+        return atStorageZone(instant).truncatedTo(unit).toInstant();
+    }
+
+    private Instant bucketStart(Instant time, ProviderMarketCandleInterval interval) {
+        ZonedDateTime storageTime = atStorageZone(time);
+        return switch (interval) {
+            case FOUR_HOURS -> storageTime.truncatedTo(ChronoUnit.HOURS)
+                    .withHour((storageTime.getHour() / 4) * 4)
+                    .toInstant();
+            case TWELVE_HOURS -> storageTime.truncatedTo(ChronoUnit.HOURS)
+                    .withHour((storageTime.getHour() / 12) * 12)
+                    .toInstant();
+            case ONE_DAY -> storageTime.truncatedTo(ChronoUnit.DAYS).toInstant();
+            case ONE_WEEK -> storageTime.truncatedTo(ChronoUnit.DAYS)
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                    .toInstant();
+            case ONE_MONTH -> storageTime.truncatedTo(ChronoUnit.DAYS)
+                    .withDayOfMonth(1)
+                    .toInstant();
+            default -> throw new IllegalArgumentException("unsupported calendar interval: " + interval);
+        };
+    }
+
+    private ZonedDateTime atStorageZone(Instant instant) {
+        return ZonedDateTime.ofInstant(instant, STORAGE_ZONE);
     }
 
     private Instant min(Instant first, Instant second) {
         return first.isBefore(second) ? first : second;
     }
 
-    private Instant nextCandleOpenTime(Instant openTime, MarketCandleInterval interval) {
+    private Instant nextCandleOpenTime(Instant openTime, ProviderMarketCandleInterval interval) {
         return switch (interval) {
             case ONE_MINUTE -> openTime.plus(1, ChronoUnit.MINUTES);
             case THREE_MINUTES -> openTime.plus(3, ChronoUnit.MINUTES);
@@ -346,32 +382,32 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
             case TWELVE_HOURS -> openTime.plus(12, ChronoUnit.HOURS);
             case ONE_DAY -> openTime.plus(1, ChronoUnit.DAYS);
             case ONE_WEEK -> openTime.plus(7, ChronoUnit.DAYS);
-            case ONE_MONTH -> ZonedDateTime.ofInstant(openTime, MarketTime.STORAGE_ZONE)
+            case ONE_MONTH -> ZonedDateTime.ofInstant(openTime, STORAGE_ZONE)
                     .plusMonths(1)
                     .toInstant();
         };
     }
 
-    private List<MarketHistoricalCandleSnapshot> newest(
+    private List<ProviderMarketHistoricalCandleSnapshot> newest(
             int limit,
-            List<MarketHistoricalCandleSnapshot> candles
+            List<ProviderMarketHistoricalCandleSnapshot> candles
     ) {
-        Map<Instant, MarketHistoricalCandleSnapshot> candlesByOpenTime = new LinkedHashMap<>();
+        Map<Instant, ProviderMarketHistoricalCandleSnapshot> candlesByOpenTime = new LinkedHashMap<>();
         candles.forEach(candle -> candlesByOpenTime.put(candle.openTime(), candle));
-        List<MarketHistoricalCandleSnapshot> sorted = new ArrayList<>(candlesByOpenTime.values());
+        List<ProviderMarketHistoricalCandleSnapshot> sorted = new ArrayList<>(candlesByOpenTime.values());
         if (sorted.size() <= limit) {
             return sorted;
         }
         return sorted.subList(sorted.size() - limit, sorted.size());
     }
 
-    private MarketMinuteCandleSnapshot toMinuteCandleSnapshot(List<String> rawCandle) {
+    private ProviderMarketMinuteCandleSnapshot toMinuteCandleSnapshot(List<String> rawCandle) {
         if (rawCandle == null || rawCandle.size() < 7) {
             return null;
         }
 
         Instant openTime = Instant.ofEpochMilli(Long.parseLong(rawCandle.get(0)));
-        return new MarketMinuteCandleSnapshot(
+        return new ProviderMarketMinuteCandleSnapshot(
                 openTime,
                 openTime.plus(1, ChronoUnit.MINUTES),
                 parseDouble(rawCandle.get(1)),
@@ -383,16 +419,16 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         );
     }
 
-    private MarketHistoricalCandleSnapshot toHistoricalCandleSnapshot(
+    private ProviderMarketHistoricalCandleSnapshot toHistoricalCandleSnapshot(
             List<String> rawCandle,
-            MarketCandleInterval interval
+            ProviderMarketCandleInterval interval
     ) {
         if (rawCandle == null || rawCandle.size() < 7) {
             return null;
         }
 
         Instant openTime = Instant.ofEpochMilli(Long.parseLong(rawCandle.get(0)));
-        return new MarketHistoricalCandleSnapshot(
+        return new ProviderMarketHistoricalCandleSnapshot(
                 openTime,
                 closeTime(openTime, interval),
                 parseDouble(rawCandle.get(1)),
@@ -404,15 +440,26 @@ public class BitgetMarketDataGateway implements MarketDataGateway {
         );
     }
 
-    private Instant closeTime(Instant openTime, MarketCandleInterval interval) {
+    private Instant closeTime(Instant openTime, ProviderMarketCandleInterval interval) {
         return switch (interval) {
             case ONE_MINUTE -> openTime.plus(1, ChronoUnit.MINUTES);
             case THREE_MINUTES -> openTime.plus(3, ChronoUnit.MINUTES);
             case FIVE_MINUTES -> openTime.plus(5, ChronoUnit.MINUTES);
             case FIFTEEN_MINUTES -> openTime.plus(15, ChronoUnit.MINUTES);
             case ONE_HOUR -> openTime.plus(1, ChronoUnit.HOURS);
-            case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
-                    MarketTime.bucketClose(openTime, interval);
+            case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH -> bucketClose(openTime, interval);
+        };
+    }
+
+    private Instant bucketClose(Instant openTime, ProviderMarketCandleInterval interval) {
+        ZonedDateTime storageTime = atStorageZone(openTime);
+        return switch (interval) {
+            case FOUR_HOURS -> storageTime.plusHours(4).toInstant();
+            case TWELVE_HOURS -> storageTime.plusHours(12).toInstant();
+            case ONE_DAY -> storageTime.plusDays(1).toInstant();
+            case ONE_WEEK -> storageTime.plusWeeks(1).toInstant();
+            case ONE_MONTH -> storageTime.plusMonths(1).toInstant();
+            default -> throw new IllegalArgumentException("unsupported calendar interval: " + interval);
         };
     }
 

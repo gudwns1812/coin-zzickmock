@@ -156,6 +156,8 @@ def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
 def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
 def architectureLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
 def architectureTargetLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
+def architectureBackendModules = ['app', 'stream', 'storage', 'external'] as Set
+def architectureLibraryModules = ['stream', 'storage', 'external'] as Set
 def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
 
 def architectureEmit = { Writer writer, String level, String event, Map payload ->
@@ -220,7 +222,9 @@ tasks.register('architectureLint') {
                     'ACTIVE_MEMBER_LOOKUP_GUARD',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
-                    'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
+                    'MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY',
+                    'MODULE_BOUNDARY_NO_LIBRARY_SOURCE_IMPORT',
+                    'MODULE_EXECUTABLE_APP_ONLY',
                 ],
                 targetLayers: architectureTargetLayers,
             ])
@@ -249,6 +253,91 @@ tasks.register('architectureLint') {
                     message     : message,
                     suggestedFix: suggestedFix,
                 ] + extras)
+            }
+
+            def moduleFromRelativePath = { String path ->
+                path.tokenize('/')[0]
+            }
+
+            def packageAndTypeOwners = [:].withDefault { [] as Set }
+            sourceFiles.each { candidateFile ->
+                def candidateRelativePath = rootProject.relativePath(candidateFile).replace('\\', '/')
+                def candidateText = candidateFile.getText('UTF-8')
+                def candidatePackageMatcher = candidateText =~ /(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;/
+                if (candidatePackageMatcher.find()) {
+                    def candidatePackageName = candidatePackageMatcher.group(1)
+                    def candidateModule = moduleFromRelativePath(candidateRelativePath)
+                    def candidateTypeName = candidateFile.name.replaceFirst(/\.java$/, '')
+                    packageAndTypeOwners["${candidatePackageName}.${candidateTypeName}"] << candidateModule
+                }
+            }
+
+            def moduleBuildLine = { Project project, String needleText ->
+                if (!project.buildFile.exists()) {
+                    return 1
+                }
+                def found = project.buildFile.readLines().findIndexOf { it.contains(needleText) }
+                found >= 0 ? found + 1 : 1
+            }
+
+            subprojects.each { moduleProject ->
+                def moduleName = moduleProject.name
+                if (!architectureBackendModules.contains(moduleName)) {
+                    return
+                }
+
+                if (moduleName == 'app') {
+                    if (!moduleProject.plugins.hasPlugin('org.springframework.boot')) {
+                        logViolation(
+                            moduleProject.buildFile,
+                            moduleBuildLine(moduleProject, "project(':app')"),
+                            'MODULE_EXECUTABLE_APP_ONLY',
+                            'app module만 Spring Boot executable 진입점이어야 하며 app에는 Spring Boot plugin이 필요합니다.',
+                            "backend/build.gradle의 project(':app') 블록에 org.springframework.boot plugin을 유지하세요.",
+                            [moduleName: moduleName]
+                        )
+                    }
+                } else if (architectureLibraryModules.contains(moduleName)) {
+                    def bootJarTask = moduleProject.tasks.findByName('bootJar')
+                    if (moduleProject.plugins.hasPlugin('org.springframework.boot') || (bootJarTask != null && bootJarTask.enabled)) {
+                        logViolation(
+                            moduleProject.buildFile,
+                            1,
+                            'MODULE_EXECUTABLE_APP_ONLY',
+                            "${moduleName} module은 executable Spring Boot app이 아니라 library module이어야 합니다.",
+                            'stream/storage/external에는 org.springframework.boot plugin 또는 enabled bootJar task를 두지 마세요.',
+                            [moduleName: moduleName]
+                        )
+                    }
+
+                    def jarTask = moduleProject.tasks.findByName('jar')
+                    if (jarTask != null && !jarTask.enabled) {
+                        logViolation(
+                            moduleProject.buildFile,
+                            1,
+                            'MODULE_EXECUTABLE_APP_ONLY',
+                            "${moduleName} library module의 plain jar task가 비활성화되어 있습니다.",
+                            'library module은 app bootJar에 포함될 수 있도록 jar task를 활성화하세요.',
+                            [moduleName: moduleName]
+                        )
+                    }
+
+                    moduleProject.configurations.each { configuration ->
+                        configuration.dependencies.withType(org.gradle.api.artifacts.ProjectDependency).each { dependency ->
+                            def dependencyModuleName = dependency.dependencyProject.name
+                            if (architectureBackendModules.contains(dependencyModuleName) && dependencyModuleName != moduleName) {
+                                logViolation(
+                                    moduleProject.buildFile,
+                                    moduleBuildLine(moduleProject, "project(':${dependencyModuleName}')"),
+                                    'MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY',
+                                    "${moduleName} library module은 ${dependencyModuleName} module에 의존하면 안 됩니다.",
+                                    'stream/storage/external은 서로와 app에 project dependency를 두지 말고, 필요한 계약은 같은 module 내부 또는 app composition으로 이동하세요.',
+                                    [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             sourceFiles.each { sourceFile ->
@@ -339,18 +428,27 @@ tasks.register('architectureLint') {
                     )
                 }
 
-                if (relativePath.startsWith('app/src/main/java/') && (
-                        (topLevel == 'providers' && sourceFile.name.startsWith('Bitget')) ||
-                                relativePath.contains('/providers/connector/') ||
-                                sourceFile.name == 'DefaultConnectorProvider.java')) {
-                    logViolation(
-                        sourceFile,
-                        packageLine,
-                        'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
-                        'Bitget/external provider adapter code must live in the backend external module.',
-                        'Move Bitget providers, connector contracts, and external provider wiring to `backend/external/src/main/java` while preserving package roots.',
-                        [packageName: packageName, relativePath: relativePath]
-                    )
+                def currentModule = moduleFromRelativePath(relativePath)
+                if (architectureLibraryModules.contains(currentModule)) {
+                    lines.eachWithIndex { lineText, index ->
+                        def trimmed = lineText.trim()
+                        def importMatcher = trimmed =~ /^import\s+(?:static\s+)?([A-Za-z0-9_.]+)(?:\.\*)?;/
+                        if (importMatcher.matches()) {
+                            def importedTypeName = importMatcher.group(1)
+                            def owners = packageAndTypeOwners[importedTypeName] ?: [] as Set
+                            def foreignOwners = owners.findAll { it != currentModule && architectureBackendModules.contains(it) }
+                            if (!owners.contains(currentModule) && !foreignOwners.isEmpty()) {
+                                logViolation(
+                                    sourceFile,
+                                    index + 1,
+                                    'MODULE_BOUNDARY_NO_LIBRARY_SOURCE_IMPORT',
+                                    "${currentModule} library module imports source owned by ${foreignOwners.sort().join(', ')}.",
+                                    'stream/storage/external은 서로와 app의 Java source를 import하지 말고 app module에서만 조립하세요.',
+                                    [packageName: packageName, moduleName: currentModule, importLine: trimmed, importedOwners: foreignOwners.sort()]
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (topLevel == 'feature') {

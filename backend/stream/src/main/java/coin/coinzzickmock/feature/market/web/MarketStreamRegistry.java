@@ -140,6 +140,7 @@ public class MarketStreamRegistry {
             MarketStreamSessionKey sessionKey,
             CandleSubscription nextSubscription
     ) {
+        Objects.requireNonNull(nextSubscription, "nextSubscription must not be null");
         MarketStreamSession session = sessions.get(sessionKey);
         if (session == null) {
             return false;

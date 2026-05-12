@@ -18,6 +18,6 @@ class SseDeliveryConfigurationTest {
         assertEquals(200, executor.getQueueCapacity());
         assertEquals("market-sse-", executor.getThreadNamePrefix());
         assertThat(executor.getThreadPoolExecutor().getRejectedExecutionHandler())
-                .isInstanceOf(java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy.class);
+                .isInstanceOf(SseDeliveryConfiguration.LoggingAbortPolicy.class);
     }
 }

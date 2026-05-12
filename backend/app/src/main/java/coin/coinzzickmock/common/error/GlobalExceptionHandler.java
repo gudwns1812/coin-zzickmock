@@ -35,21 +35,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
-            MissingServletRequestParameterException.class
+            MissingServletRequestParameterException.class,
+            SseClientKeyException.class
     })
     public ResponseEntity<ErrorResponse> handleInvalidRequest(Exception exception, HttpServletRequest request) {
         log.debug("Invalid client request. method={} pathPattern={}",
-                requestMethod(request), pathPattern(request), exception);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(ErrorCode.INVALID_REQUEST.name(), ErrorCode.INVALID_REQUEST.message()));
-    }
-
-    @ExceptionHandler(SseClientKeyException.class)
-    public ResponseEntity<ErrorResponse> handleSseClientKeyException(
-            SseClientKeyException exception,
-            HttpServletRequest request
-    ) {
-        log.debug("Invalid SSE client key request. method={} pathPattern={}",
                 requestMethod(request), pathPattern(request), exception);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(ErrorCode.INVALID_REQUEST.name(), ErrorCode.INVALID_REQUEST.message()));
@@ -62,8 +52,7 @@ public class GlobalExceptionHandler {
     ) {
         log.info("SSE subscription limit exceeded. method={} pathPattern={} reason={}",
                 requestMethod(request), pathPattern(request), exception.reason());
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .body(new ErrorResponse(ErrorCode.TOO_MANY_REQUESTS.name(), ErrorCode.TOO_MANY_REQUESTS.message()));
+        return handleCoreException(new CoreException(ErrorCode.TOO_MANY_REQUESTS), request);
     }
 
     @ExceptionHandler(Exception.class)

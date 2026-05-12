@@ -11,12 +11,13 @@ class SseDeliveryConfigurationTest {
     void configuresSseEventExecutorForBoundedAsyncFanout() {
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) new SseDeliveryConfiguration()
                 .sseDeliveryTaskExecutor();
+        executor.initialize();
 
         assertEquals(2, executor.getCorePoolSize());
         assertEquals(8, executor.getMaxPoolSize());
         assertEquals(200, executor.getQueueCapacity());
         assertEquals("market-sse-", executor.getThreadNamePrefix());
         assertThat(executor.getThreadPoolExecutor().getRejectedExecutionHandler())
-                .isInstanceOf(java.util.concurrent.ThreadPoolExecutor.AbortPolicy.class);
+                .isInstanceOf(java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy.class);
     }
 }

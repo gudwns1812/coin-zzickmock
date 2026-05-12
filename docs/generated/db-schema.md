@@ -27,54 +27,54 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 테스트 DB 기준: H2 in-memory (`MODE=MySQL`)
 - migration 기준: Flyway
 - datasource 설정:
-  [backend/src/main/resources/application.yml](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/application.yml)
-  [backend/src/test/resources/application-test.yml](/Users/hj.park/projects/coin-zzickmock/backend/src/test/resources/application-test.yml)
+  [backend/app/src/main/resources/application.yml](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/resources/application.yml)
+  [backend/app/src/test/resources/application-test.yml](/Users/hj.park/projects/coin-zzickmock/backend/app/src/test/resources/application-test.yml)
 - JPA entity 기준:
-  [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
-  [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
-  [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
-  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
-  [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
-  [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
-  [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
-  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
-  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
-  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
-  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
+  [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
+  [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
+  [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
+  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+  [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
+  [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
+  [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
+  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
+  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
+  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
+  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
 - Query layer 기준:
-  [PositionPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionPersistenceRepository.java)
+  [PositionPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionPersistenceRepository.java)
 - migration 파일:
-  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql)
-  [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql)
-  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql)
-  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql)
-  [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql)
-  [V6__add_open_position_version.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V6__add_open_position_version.sql)
-  [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
-  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql)
-  [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql)
-  [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql)
-  [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql)
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql)
-  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
-  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql)
-  [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V15__add_wallet_history.sql)
-  [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql)
-  [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql)
-  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql)
-  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql)
-  [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql)
-  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql)
-  [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql)
-  [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql)
-  [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql)
-  [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V25__add_account_refill_state.sql)
+  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V1__initial_schema.sql)
+  [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V2__add_member_credentials.sql)
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V3__add_market_history_schema.sql)
+  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql)
+  [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql)
+  [V6__add_open_position_version.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V6__add_open_position_version.sql)
+  [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
+  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql)
+  [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql)
+  [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql)
+  [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql)
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql)
+  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
+  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql)
+  [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V15__add_wallet_history.sql)
+  [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql)
+  [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql)
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql)
+  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V19__add_member_daily_activity.sql)
+  [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql)
+  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql)
+  [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql)
+  [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql)
+  [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql)
+  [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V25__add_account_refill_state.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
 
 - DB 스키마를 읽는 작업은 이 문서를 먼저 보고 현재 테이블, 컬럼, 관계를 파악한다.
-- DB 스키마를 수정하는 작업은 먼저 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가한다.
+- DB 스키마를 수정하는 작업은 먼저 `backend/storage/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가한다.
 - 기존 migration을 덮어쓰는 대신 새 버전 파일로 누적 변경을 남긴다.
 - migration을 추가한 뒤 코드와 이 문서를 같은 작업에서 함께 갱신한다.
 
@@ -116,10 +116,10 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
-  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
-  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
-  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
-  [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
+  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
+  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
+  [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
 
 ### `account_refill_states`
 
@@ -138,8 +138,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
-  [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V25__add_account_refill_state.sql),
-  [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
+  [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V25__add_account_refill_state.sql),
+  [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
 
 ### `reward_point_wallets`
 
@@ -156,10 +156,10 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
-  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
-  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
-  [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
+  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
+  [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
 
 ### `wallet_history`
 
@@ -182,9 +182,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
-  [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V15__add_wallet_history.sql),
-  [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql),
-  [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
+  [V15__add_wallet_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V15__add_wallet_history.sql),
+  [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql),
+  [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
 
 ### `member_credentials`
 
@@ -207,11 +207,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.member`
 - 관련 migration 또는 schema 파일:
-  [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V2__add_member_credentials.sql),
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
-  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
-  [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql),
-  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+  [V2__add_member_credentials.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V2__add_member_credentials.sql),
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
+  [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql),
+  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
 
 ### `member_daily_activity`
 
@@ -232,9 +232,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.activity`
 - 관련 migration 또는 schema 파일:
-  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql),
-  [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql),
-  [MemberDailyActivityEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/activity/infrastructure/persistence/MemberDailyActivityEntity.java)
+  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V19__add_member_daily_activity.sql),
+  [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql),
+  [MemberDailyActivityEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/activity/infrastructure/persistence/MemberDailyActivityEntity.java)
 
 ### `daily_active_user_summary`
 
@@ -251,8 +251,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.activity`
 - 관련 migration 또는 schema 파일:
-  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V19__add_member_daily_activity.sql),
-  [DailyActiveUserSummaryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/activity/infrastructure/persistence/DailyActiveUserSummaryEntity.java)
+  [V19__add_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V19__add_member_daily_activity.sql),
+  [DailyActiveUserSummaryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/activity/infrastructure/persistence/DailyActiveUserSummaryEntity.java)
 
 ### `reward_shop_items`
 
@@ -273,9 +273,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
-  [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql),
-  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql),
+  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
 
 ### `reward_shop_member_item_usages`
 
@@ -292,8 +292,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
-  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
 
 ### `reward_point_histories`
 
@@ -308,9 +308,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
-  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
-  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
+  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
 
 ### `reward_redemption_requests`
 
@@ -331,9 +331,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
-  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
-  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
-  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
+  [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
+  [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
+  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
 
 ### `futures_orders`
 
@@ -352,11 +352,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.order`
 - 관련 migration 또는 schema 파일:
-  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
-  [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql),
-  [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql),
-  [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql),
-  [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
+  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V10__add_futures_order_conditional_trigger_fields.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V10__add_futures_order_conditional_trigger_fields.sql),
+  [V11__backfill_and_constrain_conditional_close_orders.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V11__backfill_and_constrain_conditional_close_orders.sql),
+  [V22__add_executable_pending_order_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V22__add_executable_pending_order_index.sql),
+  [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
 
 ### `open_positions`
 
@@ -377,12 +377,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
-  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V1__initial_schema.sql),
-  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
-  [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql),
-  [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql),
-  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
-  [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
+  [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V1__initial_schema.sql),
+  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
+  [V9__add_position_take_profit_stop_loss.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V9__add_position_take_profit_stop_loss.sql),
+  [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql),
+  [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
+  [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
 
 ### `position_history`
 
@@ -397,9 +397,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.position`
 - 관련 migration 또는 schema 파일:
-  [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql),
-  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
-  [PositionHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionHistoryEntity.java)
+  [V5__add_position_history_and_close_order_contract.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V5__add_position_history_and_close_order_contract.sql),
+  [V8__add_net_pnl_position_accounting.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V8__add_net_pnl_position_accounting.sql),
+  [PositionHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionHistoryEntity.java)
 
 ### `market_symbols`
 
@@ -412,8 +412,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 엔티티/모듈:
   `feature.market.infrastructure.persistence.MarketSymbolEntity`가 심볼과 funding schedule metadata를 읽는다.
 - 관련 migration 또는 schema 파일:
-  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
-  [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V3__add_market_history_schema.sql),
+  [V7__add_market_symbol_funding_schedule.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V7__add_market_symbol_funding_schedule.sql)
 - 초기 시드:
   `BTCUSDT`, `ETHUSDT`
 
@@ -428,12 +428,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 시간 기준:
   `open_time`, `close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
-  [MarketCandle1mEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1mEntity.java),
-  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
+  [MarketCandle1mEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1mEntity.java),
+  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
 - 관련 migration 또는 schema 파일:
-  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
-  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
-  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V3__add_market_history_schema.sql),
+  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
+  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
 - 인덱스:
   `uk_market_candles_1m_symbol_open_time`로 심볼별 시각 중복을 막고,
   `idx_market_candles_1m_open_time_symbol`로 시간 구간 기준 롤업 조회를 빠르게 한다.
@@ -451,12 +451,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 시간 기준:
   `open_time`, `close_time`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
-  [MarketCandle1hEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1hEntity.java),
-  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
+  [MarketCandle1hEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1hEntity.java),
+  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
 - 관련 migration 또는 schema 파일:
-  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V3__add_market_history_schema.sql),
-  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
-  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
+  [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V3__add_market_history_schema.sql),
+  [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
+  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
 - 인덱스:
   `uk_market_candles_1h_symbol_open_time`로 심볼별 시각 중복을 막고,
   `idx_market_candles_1h_open_time_symbol`로 completed hourly 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
@@ -475,11 +475,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 상태:
   `QUEUED`, `PROCESSING`, `WAITING_FOR_MINUTES`, `SUCCEEDED`, `FAILED`
 - 관련 엔티티/모듈:
-  [MarketHistoryRepairEventEntity](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairEventEntity.java),
-  [MarketHistoryRepairPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairPersistenceRepository.java),
-  [MarketHistoryRepairQueueAdapter](/Users/hj.park/projects/coin-zzickmock/backend/src/main/java/coin/coinzzickmock/feature/market/infrastructure/queue/MarketHistoryRepairQueueAdapter.java)
+  [MarketHistoryRepairEventEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairEventEntity.java),
+  [MarketHistoryRepairPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryRepairPersistenceRepository.java),
+  [MarketHistoryRepairQueueAdapter](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/queue/MarketHistoryRepairQueueAdapter.java)
 - 관련 migration 또는 schema 파일:
-  [V26__add_market_history_repair_events.sql](/Users/hj.park/projects/coin-zzickmock/backend/src/main/resources/db/migration/V26__add_market_history_repair_events.sql)
+  [V26__add_market_history_repair_events.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V26__add_market_history_repair_events.sql)
 - 인덱스:
   `uk_market_history_repair_events_identity`로 같은 `symbol + candle_interval + open_time` 복구 작업을 하나로 합치고,
   `idx_market_history_repair_events_status_updated`로 상태 기반 운영 조회를 지원한다.
@@ -577,7 +577,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 갱신 시 원칙:
 
 - 스키마 변경은 먼저 `Flyway` migration에 반영하고, 이 문서는 그 결과를 요약한다.
-- `Flyway` migration은 `backend/src/main/resources/db/migration` 아래에 새 버전 파일로 추가한다.
+- `Flyway` migration은 `backend/storage/src/main/resources/db/migration` 아래에 새 버전 파일로 추가한다.
 - 버전은 기존 최신 버전보다 큰 새 번호를 사용한다. 예: `V3__add_market_history_schema.sql` 다음 변경은 `V4__add_market_history_rollup_job_state.sql`
 - 모르는 내용은 지어내지 않는다.
 - 확인 가능한 사실만 적는다.

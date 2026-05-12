@@ -36,6 +36,7 @@
 - Gradle task: `./gradlew architectureLint`
 - 통합 검증: `./gradlew check`
 - 리포트 경로: `backend/build/reports/architecture-lint/violations.jsonl`
+- 스캔 범위: 모든 backend subproject의 `src/main/java`
 
 이 린터는 일반 스타일 린터가 아니라 구조 린터다.
 

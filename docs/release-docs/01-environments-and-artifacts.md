@@ -90,12 +90,12 @@
 ### Backend Artifact
 
 - 기준 명령: `cd backend && ./gradlew check`
-- 패키징 기준 명령: `cd backend && ./gradlew bootJar`
+- 패키징 기준 명령: `cd backend && ./gradlew :app:bootJar`
 - 의미: 백엔드 검증과 실행 가능한 jar 산출 가능 상태
 - 기록 항목:
   - 대상 commit SHA
   - 검증 결과
-  - jar 생성 여부
+  - `backend/app/build/libs/*.jar` 생성 여부
 
 ### Production Docker Artifact
 
@@ -105,7 +105,7 @@
 - 기준 플랫폼: `linux/arm64` Amazon Linux `aarch64`
 - 운영 compose 기준:
   - `docker-compose.prod.yml`
-  - `backend/src/main/resources/application-prod.yml`
+  - `backend/app/src/main/resources/application-prod.yml`
   - `infra/prod.env.example`
 - 의미: 운영 프로필과 Docker Compose로 backend, Redis, Nginx, Prometheus, Grafana, Loki, Promtail, Redis/Nginx/Node exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다.
 
@@ -154,7 +154,7 @@
 - 백엔드 비밀값은 서버 전용 환경에만 둔다.
 - 운영 자격증명은 코드, 샘플 파일, 문서 예시에 넣지 않는다.
 - 설정값이 바뀌면 적용 대상 환경과 주입 위치를 릴리즈 기록에 남긴다.
-- 운영 프로필은 `backend/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
+- 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
 - 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며
   `application-prod.yml`, `docker-compose.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.
 

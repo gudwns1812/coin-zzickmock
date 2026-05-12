@@ -61,7 +61,7 @@
 2. [docs/design-docs/backend-design/06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
 3. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
 4. 스키마를 읽을 때는 항상 `db-schema.md`를 먼저 참고한다.
-5. 스키마를 바꿀 때는 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
+5. 스키마를 바꿀 때는 현재 `backend/storage/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
 
 ### 외부 연동, 예외, 기술 네이밍을 확인할 때
 
@@ -127,7 +127,7 @@
 - 스프링이 관리하는 클래스가 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
 - DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
   본다.
-- DB를 바꾸면 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을
+- DB를 바꾸면 현재 `backend/storage/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을
   추가하고, [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 같이 갱신한다.
 - 백엔드 변경은 `./gradlew architectureLint`와 `./gradlew check`를 기준으로 검증한다.
 - backend 상세 설계 원문은 책임별 번호 문서로 유지한다.
@@ -142,10 +142,14 @@
 - 실행: `./gradlew architectureLint`
 - 통합 검증: `./gradlew check`
 - 리포트: `backend/build/reports/architecture-lint/violations.jsonl`
+- 실행 모듈: `app`만 Spring Boot executable이다.
+- 라이브러리 모듈: `stream`, `storage`, `external`은 서로 또는 `app`에 project dependency/source import를 두지 않는다.
 
 이 린터는 사람이 보는 용도만이 아니라, Codex가 로그를 다시 읽어 수정 루프를 돌리는 용도로도 사용한다.
 로그 형식과 규칙의 상세 의미는 상세 설계 문서를 따른다.
 특히 `application/service`가 다른 `application/service`를 직접 참조하면 `APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY` 위반으로 실패해야 한다.
+모듈 경계 위반은 `MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY`, `MODULE_BOUNDARY_NO_LIBRARY_SOURCE_IMPORT`,
+`MODULE_EXECUTABLE_APP_ONLY`로 실패해야 한다.
 
 ## Completion Checklist
 

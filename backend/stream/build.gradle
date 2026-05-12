@@ -1,0 +1,7 @@
+// Realtime/SSE library module. Shared conventions live in the root backend build.
+
+dependencies {
+    // Public stream APIs expose Spring Web's SseEmitter.
+    api "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework:spring-tx"
+}

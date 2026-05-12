@@ -72,16 +72,20 @@ coin-zzickmock/
 백엔드 목표 구조:
 
 ```text
-backend/src/main/java/coin/coinzzickmock/
-  common/
-  providers/
-  feature/
-    <feature-name>/
-      web/
-      job/
-      application/
-      domain/
-      infrastructure/
+backend/
+  app/src/main/java/coin/coinzzickmock/
+    common/
+    providers/
+    feature/
+      <feature-name>/
+        web/
+        job/
+        application/
+        domain/
+        infrastructure/
+  stream/
+  storage/
+  external/
 ```
 
 현재 주요 feature는 `market`, `order`, `position`, `account`, `member`, `reward`, `leaderboard`, `activity`다.
@@ -112,7 +116,7 @@ backend/src/main/java/coin/coinzzickmock/
 
 규칙:
 
-- DB 변경은 `backend/src/main/resources/db/migration` 아래 새 Flyway migration과 `docs/generated/db-schema.md` 갱신을 함께 한다.
+- DB 변경은 현재 `backend/storage/src/main/resources/db/migration` 아래 새 Flyway migration과 `docs/generated/db-schema.md` 갱신을 함께 한다. 후속 storage module 이동 후에는 해당 governing document를 먼저 갱신한다.
 - 비즈니스/도메인 실패는 프로젝트 예외 모델인 `CoreException`과 구조화된 error type을 사용한다.
 - 외부 실패는 application 또는 infrastructure 경계에서 번역한다.
 - HTTP 에러 매핑은 전역 예외 처리 경계에서 담당한다.

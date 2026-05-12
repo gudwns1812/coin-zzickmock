@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.market.web;
 
+import java.util.Locale;
+
 public record CandleSubscription(String symbol, String interval) {
     public CandleSubscription {
         if (symbol == null || symbol.isBlank()) {
@@ -8,7 +10,7 @@ public record CandleSubscription(String symbol, String interval) {
         if (interval == null || interval.isBlank()) {
             throw new IllegalArgumentException("interval is required");
         }
-        symbol = symbol.toUpperCase();
+        symbol = symbol.toUpperCase(Locale.ROOT);
         interval = interval.trim();
     }
 }

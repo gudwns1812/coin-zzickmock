@@ -61,7 +61,7 @@
 2. [docs/design-docs/backend-design/06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
 3. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
 4. 스키마를 읽을 때는 항상 `db-schema.md`를 먼저 참고한다.
-5. 스키마를 바꿀 때는 `backend/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
+5. 스키마를 바꿀 때는 현재 `backend/app/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
 
 ### 외부 연동, 예외, 기술 네이밍을 확인할 때
 
@@ -127,7 +127,7 @@
 - 스프링이 관리하는 클래스가 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
 - DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
   본다.
-- DB를 바꾸면 `backend/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을
+- DB를 바꾸면 현재 `backend/app/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을
   추가하고, [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 같이 갱신한다.
 - 백엔드 변경은 `./gradlew architectureLint`와 `./gradlew check`를 기준으로 검증한다.
 - backend 상세 설계 원문은 책임별 번호 문서로 유지한다.

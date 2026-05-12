@@ -16,7 +16,7 @@
 현재 패키지 루트는 `coin.coinzzickmock`이므로, 목표 구조는 아래를 기본값으로 한다.
 
 ```text
-backend/src/main/java/coin/coinzzickmock/
+backend/app/src/main/java/coin/coinzzickmock/
   CoinZzickmockApplication.java
   common/
     api/

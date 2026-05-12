@@ -32,7 +32,7 @@
 ```text
 coin-zzickmock/
 ├── frontend/                  # 현재 사용자 경험을 담당하는 Next.js 앱
-├── backend/                   # Spring Boot API/SSE 서비스와 도메인 규칙
+├── backend/                   # Gradle multi-project backend; app/ is the Spring Boot API/SSE runtime
 ├── docs/
 │   ├── product-specs/         # 제품 동작, 사용자 흐름, 계산 규칙
 │   ├── design-docs/           # 백엔드/UI 설계 기준
@@ -112,13 +112,13 @@ docker compose down
 ```bash
 docker compose up -d mysql redis
 cd backend
-./gradlew bootRun
+./gradlew :app:bootRun
 ```
 
 - 직접 실행 시 기본 backend URL: `http://localhost:8080`
 - 기본 DB: `jdbc:mysql://localhost:3306/coin_zzickmock`
 - 기본 Redis: `localhost:6379`
-- 기본 JWT secret과 로컬 DB 비밀번호는 `backend/src/main/resources/application.yml`의 개발용 기본값을 사용합니다.
+- 기본 JWT secret과 로컬 DB 비밀번호는 `backend/app/src/main/resources/application.yml`의 개발용 기본값을 사용합니다.
 
 ## 주요 라우트와 API 경계
 

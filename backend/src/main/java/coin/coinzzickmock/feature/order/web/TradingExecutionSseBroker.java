@@ -2,6 +2,8 @@ package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.web.SseDeliveryExecutor;
+import coin.coinzzickmock.common.web.SseEmitterLifecycle;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
@@ -14,7 +16,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -28,12 +29,12 @@ public class TradingExecutionSseBroker {
     private static final String CLIENT_REPLACED_REASON = "client_replaced";
 
     private final SseSubscriptionRegistry<Long> subscriptions;
-    private final Executor sseEventExecutor;
+    private final SseDeliveryExecutor sseEventExecutor;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
     public TradingExecutionSseBroker(
-            @Qualifier("marketRealtimeSseEventExecutor") Executor sseEventExecutor,
+            SseDeliveryExecutor sseEventExecutor,
             @Value("${coin.trading.sse.max-subscribers-per-member:10}") int maxSubscribersPerMember,
             @Value("${coin.trading.sse.max-total-subscribers:100}") int maxSubscribersTotal,
             SseTelemetry sseTelemetry
@@ -48,7 +49,16 @@ public class TradingExecutionSseBroker {
             int maxSubscribersPerMember,
             int maxSubscribersTotal
     ) {
-        this(sseEventExecutor, maxSubscribersPerMember, maxSubscribersTotal, NoopSseTelemetry.INSTANCE);
+        this(new SseDeliveryExecutor(sseEventExecutor), maxSubscribersPerMember, maxSubscribersTotal, NoopSseTelemetry.INSTANCE);
+    }
+
+    TradingExecutionSseBroker(
+            Executor sseEventExecutor,
+            int maxSubscribersPerMember,
+            int maxSubscribersTotal,
+            SseTelemetry sseTelemetry
+    ) {
+        this(new SseDeliveryExecutor(sseEventExecutor), maxSubscribersPerMember, maxSubscribersTotal, sseTelemetry);
     }
 
     public SseSubscriptionPermit reserve(Long memberId) {
@@ -68,15 +78,22 @@ public class TradingExecutionSseBroker {
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
-        bindLifecycle(permit, emitter);
-        var registration = subscriptions.register(permit.delegate, emitter);
-        if (!registration.registered()) {
-            reject(registration.rejection());
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+        Long memberId = permit.memberId();
+        try {
+            bindLifecycle(permit, emitter);
+            var registration = subscriptions.register(permit.delegate, emitter);
+            if (!registration.registered()) {
+                reject(registration.rejection());
+                throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+            }
+            recordConnectionOpened();
+            logLifecycle(memberId, "register", null);
+            completeReplacedEmitter(memberId, registration.replacedEmitter());
+        } catch (RuntimeException exception) {
+            discardRegisteredSubscription(memberId, emitter);
+            release(permit);
+            throw exception;
         }
-        recordConnectionOpened();
-        logLifecycle(permit.memberId(), "register", null);
-        completeReplacedEmitter(permit.memberId(), registration.replacedEmitter());
     }
 
     public void unregister(Long memberId, SseEmitter emitter) {
@@ -120,15 +137,15 @@ public class TradingExecutionSseBroker {
     }
 
     private void bindLifecycle(SseSubscriptionPermit permit, SseEmitter emitter) {
-        emitter.onCompletion(() -> unregister(permit.memberId(), permit.clientKey(), emitter, "client_complete"));
-        emitter.onTimeout(() -> {
-            unregister(permit.memberId(), permit.clientKey(), emitter, "timeout");
-            emitter.complete();
-        });
-        emitter.onError(error -> {
-            log.debug("Trading SSE emitter reported an error; closing subscription. stream=trading_execution", error);
-            unregister(permit.memberId(), permit.clientKey(), emitter, "error");
-        });
+        SseEmitterLifecycle.bind(
+                emitter,
+                () -> unregister(permit.memberId(), permit.clientKey(), emitter, "client_complete"),
+                () -> unregister(permit.memberId(), permit.clientKey(), emitter, "timeout"),
+                error -> {
+                    log.debug("Trading SSE emitter reported an error; closing subscription. stream=trading_execution", error);
+                    unregister(permit.memberId(), permit.clientKey(), emitter, "error");
+                }
+        );
     }
 
     private void send(Long memberId, SseEmitter emitter, TradingExecutionEventResponse response) {
@@ -136,11 +153,15 @@ public class TradingExecutionSseBroker {
         try {
             emitter.send(response);
             recordSend("success", startedAt);
-        } catch (IOException exception) {
+        } catch (IOException | IllegalStateException exception) {
             log.debug("Trading SSE send failed; closing subscription. stream=trading_execution reason=send_failure", exception);
             recordSend("failure", startedAt);
             unregister(memberId, emitter, "send_failure");
         }
+    }
+
+    private void discardRegisteredSubscription(Long memberId, SseEmitter emitter) {
+        subscriptions.unregister(memberId, emitter);
     }
 
 
@@ -156,11 +177,7 @@ public class TradingExecutionSseBroker {
         if (replacedEmitter == null) {
             return;
         }
-        try {
-            replacedEmitter.complete();
-        } catch (RuntimeException ignored) {
-            // The replaced client may already be closed.
-        }
+        SseEmitterLifecycle.completeSilently(replacedEmitter);
         recordConnectionClosed("client_replaced");
         logLifecycle(memberId, "replace", "client_replaced");
     }

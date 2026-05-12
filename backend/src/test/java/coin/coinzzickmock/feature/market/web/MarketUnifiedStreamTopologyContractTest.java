@@ -58,9 +58,8 @@ class MarketUnifiedStreamTopologyContractTest {
         assertTrue(broker.contains("MarketHistoryFinalizedEvent"), "broker must fan out history-finalized updates");
         assertTrue(broker.contains("sessionsForSummary"), "summary fan-out must come from registry snapshot");
         assertTrue(broker.contains("sessionsForCandle"), "candle fan-out must come from registry snapshot");
-        assertTrue(broker.contains("onCompletion"), "broker must wire completion lifecycle callback");
-        assertTrue(broker.contains("onTimeout"), "broker must wire timeout lifecycle callback");
-        assertTrue(broker.contains("onError"), "broker must wire error lifecycle callback");
+        assertTrue(broker.contains("SseEmitterLifecycle"),
+                "broker must delegate common emitter lifecycle callback mechanics");
         assertTrue(broker.contains("releaseSession"), "broker must release registry sessions on lifecycle/send failure");
         assertTrue(broker.contains("SseTelemetry"), "broker must preserve SSE telemetry boundary");
         assertTrue(broker.contains("private static final String STREAM = \"market\""),
@@ -77,21 +76,77 @@ class MarketUnifiedStreamTopologyContractTest {
     @Test
     void controllerAddsAuthenticatedUnifiedEndpointWithoutCouplingToPositionInternals() throws IOException {
         String controller = readRequired(MARKET_WEB.resolve("MarketController.java"));
+        String router = readRequired(MARKET_WEB.resolve("MarketSseStreamRouter.java"));
+        String strategyContract = readRequired(MARKET_WEB.resolve("MarketSseStreamStrategy.java"));
+        String strategy = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamStrategy.java"));
 
         assertTrue(controller.contains("/stream"), "controller must expose unified /api/futures/markets/stream");
-        assertTrue(controller.contains("MarketStreamBroker"), "controller must delegate unified stream lifecycle to broker");
-        assertTrue(controller.contains("OpenPositionSymbolsReader"),
-                "controller must ask a narrow application-facing reader for open position symbols");
+        assertTrue(controller.contains("MarketSseStreamRequest.summary"),
+                "controller must build typed raw summary stream requests");
+        assertTrue(controller.contains("MarketSseStreamRequest.candle"),
+                "controller must build typed raw candle stream requests");
+        assertTrue(controller.contains("MarketSseStreamRequest.unified"),
+                "controller must build typed unified stream requests");
+        assertTrue(controller.contains("MarketSseStreamRouter"),
+                "controller must delegate SSE route selection to the market stream router");
+        assertFalse(controller.contains("UnifiedMarketStreamOpener"),
+                "controller must not depend on the removed unified stream opener");
+        assertFalse(Files.exists(MARKET_WEB.resolve("UnifiedMarketStreamOpener.java")),
+                "old unified stream opener source file must be removed");
+        assertFalse(controller.contains("private final MarketRealtimeSseBroker marketRealtimeSseBroker"),
+                "controller must not directly own the raw summary broker field");
+        assertFalse(controller.contains("private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker"),
+                "controller must not directly own the raw candle broker field");
+        assertFalse(controller.contains("MarketStreamBroker marketStreamBroker"),
+                "controller must not directly own the unified market stream broker field");
+        assertTrue(router.contains("EnumMap"), "router must use explicit enum-key strategy wiring");
+        assertTrue(router.contains("EnumSet.allOf"),
+                "router must fail fast when any market SSE strategy kind is missing");
+        assertFalse(router.contains("supports("), "router must not use service-locator supports matching");
+        assertTrue(strategyContract.contains("MarketSseStreamKind kind();"),
+                "strategy contract must expose an explicit enum kind");
+        assertTrue(strategyContract.contains("void open(MarketSseStreamRequest request);"),
+                "strategy contract must expose the stream open operation");
+        assertFalse(strategyContract.contains("default "), "strategy contract must not define default behavior");
+        assertTrue(strategy.contains("MarketStreamBroker"), "strategy must delegate unified stream lifecycle to broker");
+        assertTrue(strategy.contains("OpenPositionSymbolsReader"),
+                "strategy must ask a narrow application-facing reader for open position symbols");
         assertFalse(controller.contains("PositionRepository"), "market web must not depend on position repositories");
         assertFalse(controller.contains("PositionJpa"), "market web must not depend on position persistence internals");
-        assertTrue(controller.contains("currentActorOptional"),
+        assertTrue(strategy.contains("currentActorOptional"),
                 "unified endpoint must allow anonymous market viewers and enrich authenticated sessions only when present");
-        assertFalse(controller.contains("currentActor().memberId()"),
+        assertFalse(strategy.contains("currentActor().memberId()"),
                 "unified endpoint must not require authentication for public market/candle data");
-        assertTrue(controller.contains("Set.of()"),
+        assertTrue(strategy.contains("Set.of()"),
                 "anonymous unified sessions must omit only open-position summary symbols");
         assertTrue(controller.contains("clientKey"), "unified endpoint must be scoped by clientKey");
-        assertTrue(controller.contains("interval"), "unified endpoint must register active candle interval");
+        assertTrue(controller.contains("MarketCandleInterval.from(interval)"),
+                "unified endpoint must register active candle interval");
+    }
+
+    @Test
+    void sseDeliveryExecutorHidesQualifiedExecutorFromFeatureBrokers() throws IOException {
+        String deliveryConfiguration = readRequired(MAIN.resolve(
+                "coin/coinzzickmock/common/web/SseDeliveryConfiguration.java"));
+        String deliveryExecutor = readRequired(MAIN.resolve(
+                "coin/coinzzickmock/common/web/SseDeliveryExecutor.java"));
+        List<String> brokerSources = List.of(
+                readRequired(MARKET_WEB.resolve("MarketStreamBroker.java")),
+                readRequired(MARKET_WEB.resolve("MarketRealtimeSseBroker.java")),
+                readRequired(MARKET_WEB.resolve("MarketCandleRealtimeSseBroker.java")),
+                readRequired(MAIN.resolve("coin/coinzzickmock/feature/order/web/TradingExecutionSseBroker.java"))
+        );
+
+        assertTrue(deliveryConfiguration.contains("sseDeliveryTaskExecutor"),
+                "backing SSE executor bean name must be delivery-neutral");
+        assertTrue(deliveryExecutor.contains("@Qualifier(\"sseDeliveryTaskExecutor\")"),
+                "qualifier must be isolated to common-web delivery wiring");
+        for (String broker : brokerSources) {
+            assertTrue(broker.contains("SseDeliveryExecutor"),
+                    "feature SSE brokers must depend on the typed delivery executor");
+            assertFalse(broker.contains("@Qualifier(\"marketRealtimeSseEventExecutor\")"),
+                    "feature SSE brokers must not inject raw named executors");
+        }
     }
 
     @Test

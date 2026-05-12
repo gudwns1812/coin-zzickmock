@@ -90,6 +90,10 @@ test("readRequiredSseClientKey trims and requires the query param", () => {
     readRequiredSseClientKey("http://localhost/api/futures/orders/stream"),
     null
   );
+  assert.equal(
+    readRequiredSseClientKey("http://localhost/api/futures/orders/stream?clientKey=%20%20"),
+    null
+  );
 });
 
 test("normalizeSseClientKey treats blank values as missing", () => {

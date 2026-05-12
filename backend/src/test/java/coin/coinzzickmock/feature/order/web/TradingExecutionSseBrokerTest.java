@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.order.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
@@ -37,6 +38,38 @@ class TradingExecutionSseBrokerTest {
         assertThat(failingEmitter.sendAttempts()).isEqualTo(1);
         assertThat(failingEmitter.completed()).isFalse();
         assertThat(healthyEmitter.events()).hasSize(2);
+    }
+
+    @Test
+    void registerFailureWhileBindingLifecycleReleasesSubscriberPermit() {
+        TradingExecutionSseBroker broker = new TradingExecutionSseBroker(Runnable::run, 1, 1);
+
+        assertThrows(IllegalStateException.class, () -> broker.register(
+                broker.reserve(1L),
+                new LifecycleFailingSseEmitter()
+        ));
+
+        broker.register(broker.reserve(1L), new CapturingSseEmitter());
+    }
+
+    @Test
+    void removesAlreadyCompletedEmitterWithoutPropagatingFailure() {
+        RecordingSseTelemetry telemetry = new RecordingSseTelemetry();
+        TradingExecutionSseBroker broker = new TradingExecutionSseBroker(Runnable::run, 10, 20, telemetry);
+        AlreadyCompletedSseEmitter completedEmitter = new AlreadyCompletedSseEmitter();
+        CapturingSseEmitter healthyEmitter = new CapturingSseEmitter();
+        broker.register(broker.reserve(1L, "completed-tab"), completedEmitter);
+        broker.register(broker.reserve(1L, "healthy-tab"), healthyEmitter);
+
+        broker.onTradingExecution(event());
+        broker.onTradingExecution(event());
+
+        assertThat(completedEmitter.sendAttempts()).isEqualTo(1);
+        assertThat(healthyEmitter.events()).hasSize(2);
+        assertThat(telemetry.events()).contains(
+                "send:trading_execution:failure",
+                "closed:trading_execution:send_failure"
+        );
     }
 
     @Test
@@ -170,6 +203,35 @@ class TradingExecutionSseBrokerTest {
 
         private boolean completed() {
             return completed;
+        }
+    }
+
+    private static class LifecycleFailingSseEmitter extends SseEmitter {
+        private LifecycleFailingSseEmitter() {
+            super(0L);
+        }
+
+        @Override
+        public synchronized void onCompletion(Runnable callback) {
+            throw new IllegalStateException("lifecycle callback rejected");
+        }
+    }
+
+    private static class AlreadyCompletedSseEmitter extends SseEmitter {
+        private int sendAttempts;
+
+        private AlreadyCompletedSseEmitter() {
+            super(0L);
+        }
+
+        @Override
+        public synchronized void send(Object object) throws IOException {
+            sendAttempts++;
+            throw new IllegalStateException("ResponseBodyEmitter has already completed");
+        }
+
+        private int sendAttempts() {
+            return sendAttempts;
         }
     }
 

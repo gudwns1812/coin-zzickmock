@@ -11,6 +11,14 @@ function readFrontendSource(relativePath: string) {
   return readFileSync(path.join(frontendRoot, relativePath), "utf8");
 }
 
+const sseRoutePaths = [
+  "app/api/futures/markets/[symbol]/stream/route.ts",
+  "app/api/futures/markets/stream/route.ts",
+  "app/api/futures/markets/summary/stream/route.ts",
+  "app/api/futures/markets/[symbol]/candles/stream/route.ts",
+  "app/api/futures/orders/stream/route.ts",
+] as const;
+
 test("markets landing opens one summary SSE through a child subscription", () => {
   const source = readFrontendSource(
     "components/router/(main)/markets/MarketsLandingRealtimeView.tsx"
@@ -66,12 +74,7 @@ test("candle stream invalidates futures candle queries by prefix", () => {
 });
 
 test("frontend SSE route handlers use the cancellable SSE proxy", () => {
-  const routeSources = [
-    "app/api/futures/markets/[symbol]/stream/route.ts",
-    "app/api/futures/markets/summary/stream/route.ts",
-    "app/api/futures/markets/[symbol]/candles/stream/route.ts",
-    "app/api/futures/orders/stream/route.ts",
-  ].map(readFrontendSource);
+  const routeSources = sseRoutePaths.map(readFrontendSource);
 
   for (const source of routeSources) {
     assert.equal(source.includes("proxySseStream({"), true);
@@ -86,16 +89,24 @@ test("frontend SSE route handlers use the cancellable SSE proxy", () => {
   assert.equal(proxySource.includes("async cancel()"), true);
 });
 
-test("frontend SSE routes require and forward clientKey", () => {
-  const routeSources = [
-    "app/api/futures/markets/[symbol]/stream/route.ts",
-    "app/api/futures/markets/summary/stream/route.ts",
-    "app/api/futures/markets/[symbol]/candles/stream/route.ts",
-    "app/api/futures/orders/stream/route.ts",
-  ].map(readFrontendSource);
+test("frontend SSE routes fail missing or blank clientKey before proxying", () => {
+  const routeSources = sseRoutePaths.map(readFrontendSource);
 
   for (const source of routeSources) {
     assert.equal(source.includes("readRequiredSseClientKey(request.url)"), true);
+    assert.match(
+      source,
+      /if \(!clientKey\) \{\s*return new Response\("Missing SSE client key", \{\s*status: 400,?\s*\}\);\s*\}/,
+      "missing or blank clientKey must resolve to the dedicated 400 response"
+    );
+    assert.equal(source.indexOf("Missing SSE client key") < source.indexOf("proxySseStream({"), true);
+  }
+});
+
+test("frontend SSE routes forward normalized clientKey to upstream", () => {
+  const routeSources = sseRoutePaths.map(readFrontendSource);
+
+  for (const source of routeSources) {
     assert.equal(source.includes("Missing SSE client key"), true);
     assert.equal(source.includes("SSE_CLIENT_KEY_PARAM"), true);
   }
@@ -107,6 +118,22 @@ test("useResilientEventSource appends tab clientKey at the shared hook boundary"
   assert.equal(source.includes("useSseClientKey"), true);
   assert.equal(source.includes("appendSseClientKey"), true);
   assert.equal(source.includes("eventSourceFactory(nextUrl)"), true);
+});
+
+test("useResilientEventSource reconnectKey reopens without changing the URL", () => {
+  const source = readFrontendSource("hooks/useResilientEventSource.ts");
+
+  assert.equal(source.includes("type EventSourceReconnectKey"), true);
+  assert.equal(source.includes("reconnectKey?: EventSourceReconnectKey"), true);
+  assert.equal(source.includes("reconnectKey = null"), true);
+  assert.match(
+    source,
+    /useMemo\(\s*\(\) => \(url \? appendSseClientKey\(url, sseClientKey\) : null\),\s*\[sseClientKey, url\]\s*\)/
+  );
+  assert.match(
+    source,
+    /reconnectKey,\s*updateStatus,\s*eventSourceUrl,/
+  );
 });
 
 test("frontend SSE consumers keep plain stream URLs and rely on the hook boundary", () => {
@@ -124,4 +151,6 @@ test("frontend SSE consumers keep plain stream URLs and rely on the hook boundar
   const detailSource = readFrontendSource("components/futures/MarketDetailRealtimeView.tsx");
   assert.equal(detailSource.includes("new URLSearchParams({"), true);
   assert.equal(detailSource.includes("interval: selectedInterval"), true);
+  assert.equal(detailSource.includes("viewer:"), false);
+  assert.equal(detailSource.includes("symbols:"), false);
 });

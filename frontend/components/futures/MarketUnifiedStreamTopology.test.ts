@@ -48,13 +48,16 @@ test("market detail opens public-compatible unified market SSE and keeps order e
   assert.equal(source.includes("/api/futures/orders/stream"), true);
   assert.equal(source.includes("useResilientEventSource"), true);
   assert.equal(source.includes("clientKey"), true);
+  assert.equal(source.includes("viewer:"), false);
+  assert.equal(source.includes("symbols:"), false);
+  assert.equal(source.includes("isAuthenticated, selectedInterval"), false);
   assert.equal(source.includes("MARKET_SUMMARY"), true);
   assert.equal(source.includes("MARKET_CANDLE"), true);
   assert.equal(source.includes("MARKET_HISTORY_FINALIZED"), true);
   assert.match(
     source,
-    /useResilientEventSource\(\{\s*onMessage: handleMarketStreamMessage,\s*url: marketStreamUrl,/,
-    "unified market stream must open for both anonymous and authenticated users"
+    /useResilientEventSource\(\{\s*onMessage: handleMarketStreamMessage,\s*reconnectKey: isAuthenticated \? "authenticated" : "anonymous",\s*url: marketStreamUrl,/,
+    "unified market stream must reopen when auth identity changes without changing the URL"
   );
   assert.equal(source.includes("handlePublicMarketSummaryMessage"), false);
   assert.equal(source.includes("handlePublicMarketCandleMessage"), false);
@@ -63,6 +66,22 @@ test("market detail opens public-compatible unified market SSE and keeps order e
     /useResilientEventSource\(\{\s*enabled: isAuthenticated,\s*onMessage: handleOrderStreamMessage,[\s\S]*?url: orderStreamUrl,/,
     "order execution stream must remain gated by authentication"
   );
+});
+
+test("off-screen order execution events refresh trading state without showing a symbol-scoped panel", () => {
+  const source = read("components/futures/MarketDetailRealtimeView.tsx");
+  const refreshIndex = source.indexOf(
+    "refreshTradingStateFromOrderStream({ force: true });"
+  );
+  const offscreenReturnIndex = source.indexOf("if (!isCurrentSymbolExecution)");
+  const displayIndex = source.indexOf("setExecutionEvents((current)");
+
+  assert.notEqual(refreshIndex, -1);
+  assert.notEqual(offscreenReturnIndex, -1);
+  assert.notEqual(displayIndex, -1);
+  assert.equal(refreshIndex < offscreenReturnIndex, true);
+  assert.equal(offscreenReturnIndex < displayIndex, true);
+  assert.equal(source.includes("if (data.symbol !== initialMarket.symbol)"), false);
 });
 
 test("futures price chart consumes parent unified candle events instead of opening its own SSE", () => {
@@ -81,6 +100,8 @@ test("unified market stream proxy route validates query and forwards to backend 
   assert.equal(source.includes("clientKey"), true);
   assert.equal(source.includes("symbol"), true);
   assert.equal(source.includes("interval"), true);
+  assert.equal(source.includes("viewer"), false);
+  assert.equal(source.includes("symbols"), false);
   assert.equal(source.includes("400"), true);
   assert.equal(source.includes("createSseUpstreamHeaders"), true);
   assert.equal(source.includes("proxySseStream"), true);

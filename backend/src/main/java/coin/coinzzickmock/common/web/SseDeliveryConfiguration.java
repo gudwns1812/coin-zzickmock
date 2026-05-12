@@ -8,8 +8,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 public class SseDeliveryConfiguration {
-    @Bean("marketRealtimeSseEventExecutor")
-    Executor marketRealtimeSseEventExecutor() {
+    @Bean("sseDeliveryTaskExecutor")
+    Executor sseDeliveryTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setThreadNamePrefix("market-sse-");
         executor.setCorePoolSize(2);

@@ -62,7 +62,7 @@ public class MarketStreamRegistry {
                 sessionKey,
                 emitter,
                 activeSymbol,
-                requestedSummarySymbols,
+                new LinkedHashSet<>(openPositionSymbols),
                 candleSubscription
         );
         sessions.put(sessionKey, next);

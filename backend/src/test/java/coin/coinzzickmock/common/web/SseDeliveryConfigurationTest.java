@@ -10,7 +10,7 @@ class SseDeliveryConfigurationTest {
     @Test
     void configuresSseEventExecutorForBoundedAsyncFanout() {
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) new SseDeliveryConfiguration()
-                .marketRealtimeSseEventExecutor();
+                .sseDeliveryTaskExecutor();
 
         assertEquals(2, executor.getCorePoolSize());
         assertEquals(8, executor.getMaxPoolSize());

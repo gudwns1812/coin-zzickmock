@@ -1,4 +1,5 @@
 import groovy.json.JsonOutput
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
 
 plugins {
     id 'org.springframework.boot' version '3.5.13' apply false
@@ -23,7 +24,7 @@ subprojects {
 
     dependencyManagement {
         imports {
-            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+            mavenBom SpringBootPlugin.BOM_COORDINATES
         }
     }
 
@@ -64,93 +65,6 @@ configure([project(':stream'), project(':storage'), project(':external')]) {
     apply plugin: 'java-library'
 }
 
-project(':app') {
-    apply plugin: 'org.springframework.boot'
-
-    dependencies {
-        implementation project(':stream')
-        implementation project(':storage')
-        implementation project(':external')
-
-        implementation 'org.springframework.boot:spring-boot-starter'
-        implementation 'org.springframework.boot:spring-boot-starter-actuator'
-        implementation 'org.springframework.boot:spring-boot-starter-cache'
-        implementation 'org.springframework.boot:spring-boot-starter-web'
-        implementation 'org.springframework.boot:spring-boot-starter-mail'
-        implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-        implementation 'org.springframework.security:spring-security-crypto'
-        implementation 'org.springframework.retry:spring-retry'
-        implementation 'org.springframework:spring-aspects'
-        implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
-
-        annotationProcessor 'io.github.openfeign.querydsl:querydsl-apt:7.1:jpa'
-        annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
-        annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
-
-        runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-        runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
-        runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
-
-        testRuntimeOnly 'com.h2database:h2'
-    }
-
-    tasks.register('verifyBootJarStorageMigrations') {
-        group = 'verification'
-        description = 'Verifies the executable app jar carries Flyway migrations from the storage module.'
-
-        dependsOn tasks.named('bootJar')
-
-        def storageMigrationTree = project(':storage').fileTree('src/main/resources/db/migration') {
-            include 'V*.sql'
-        }
-        def bootJarFile = tasks.named('bootJar').flatMap { it.archiveFile }
-
-        inputs.files(storageMigrationTree)
-        inputs.file(bootJarFile)
-
-        doLast {
-            def expectedMigrations = storageMigrationTree.files
-                    .collect { it.name }
-                    .sort()
-            if (expectedMigrations.isEmpty()) {
-                throw new GradleException('No storage Flyway migrations were found to validate.')
-            }
-
-            def appJar = bootJarFile.get().asFile
-            java.util.zip.ZipFile appZip = new java.util.zip.ZipFile(appJar)
-            try {
-                def storageJarEntry = appZip.entries().find { entry ->
-                    entry.name ==~ /BOOT-INF\/lib\/storage-[^\/]+\.jar/
-                }
-                if (storageJarEntry == null) {
-                    throw new GradleException("Expected ${appJar.name} to contain the storage module jar under BOOT-INF/lib.")
-                }
-
-                def tempStorageJar = File.createTempFile('storage-migrations-', '.jar', temporaryDir)
-                tempStorageJar.withOutputStream { output ->
-                    appZip.getInputStream(storageJarEntry).withCloseable { input ->
-                        output << input
-                    }
-                }
-
-                java.util.zip.ZipFile storageZip = new java.util.zip.ZipFile(tempStorageJar)
-                try {
-                    def missing = expectedMigrations.findAll { migrationName ->
-                        storageZip.getEntry("db/migration/${migrationName}") == null
-                    }
-                    if (!missing.isEmpty()) {
-                        throw new GradleException("Storage jar in ${appJar.name} is missing Flyway migrations: ${missing.join(', ')}")
-                    }
-                } finally {
-                    storageZip.close()
-                }
-            } finally {
-                appZip.close()
-            }
-        }
-    }
-}
-
 def architectureRootPackage = 'coin.coinzzickmock'
 def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
 def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
@@ -162,10 +76,10 @@ def architectureReport = layout.buildDirectory.file('reports/architecture-lint/v
 
 def architectureEmit = { Writer writer, String level, String event, Map payload ->
     def record = [
-        ts   : new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
-        level: level,
-        tool : 'backend-architecture-lint',
-        event: event,
+            ts   : new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX"),
+            level: level,
+            tool : 'backend-architecture-lint',
+            event: event,
     ] + payload
     def line = JsonOutput.toJson(record)
     writer.write(line)
@@ -200,56 +114,56 @@ tasks.register('architectureLint') {
 
         reportFile.withWriter('UTF-8') { writer ->
             architectureEmit(writer, 'INFO', 'architecture_lint_started', [
-                sourceSet : '*/src/main/java',
-                reportPath: rootProject.relativePath(reportFile),
-                rules     : [
-                    'PACKAGE_ROOT_MATCH',
-                    'PACKAGE_PATH_MATCH',
-                    'TOP_LEVEL_PACKAGE_ALLOWED',
-                    'FORBIDDEN_LEGACY_TOP_LEVEL',
-                    'FEATURE_LAYER_REQUIRED',
-                    'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
-                    'JOB_OWNS_BACKGROUND_TRIGGERS',
-                    'JOB_TRIGGER_ONLY',
-                    'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
-                    'DOMAIN_FRAMEWORK_FREE',
-                    'INTERFACE_DEFAULT_METHOD_FORBIDDEN',
-                    'APPLICATION_NO_SECURITY_CONTEXT',
-                    'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
-                    'WEB_NO_INFRASTRUCTURE_IMPORTS',
-                    'PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS',
-                    'CROSS_FEATURE_INFRASTRUCTURE_IMPORTS',
-                    'ACTIVE_MEMBER_LOOKUP_GUARD',
-                    'ENTITY_NAME_NO_TECH_SUFFIX',
-                    'PERSISTENCE_NAME_NO_TECH_TERM',
-                    'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
-                ],
-                targetLayers: architectureTargetLayers,
+                    sourceSet   : '*/src/main/java',
+                    reportPath  : rootProject.relativePath(reportFile),
+                    rules       : [
+                            'PACKAGE_ROOT_MATCH',
+                            'PACKAGE_PATH_MATCH',
+                            'TOP_LEVEL_PACKAGE_ALLOWED',
+                            'FORBIDDEN_LEGACY_TOP_LEVEL',
+                            'FEATURE_LAYER_REQUIRED',
+                            'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
+                            'JOB_OWNS_BACKGROUND_TRIGGERS',
+                            'JOB_TRIGGER_ONLY',
+                            'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
+                            'DOMAIN_FRAMEWORK_FREE',
+                            'INTERFACE_DEFAULT_METHOD_FORBIDDEN',
+                            'APPLICATION_NO_SECURITY_CONTEXT',
+                            'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
+                            'WEB_NO_INFRASTRUCTURE_IMPORTS',
+                            'PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS',
+                            'CROSS_FEATURE_INFRASTRUCTURE_IMPORTS',
+                            'ACTIVE_MEMBER_LOOKUP_GUARD',
+                            'ENTITY_NAME_NO_TECH_SUFFIX',
+                            'PERSISTENCE_NAME_NO_TECH_TERM',
+                            'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
+                    ],
+                    targetLayers: architectureTargetLayers,
             ])
 
             def logViolation = { File file, int line, String rule, String message, String suggestedFix, Map extras = [:] ->
                 violationCount++
                 architectureEmit(writer, 'ERROR', 'architecture_violation', [
-                    rule        : rule,
-                    category    : 'architecture',
-                    severity    : 'ERROR',
-                    file        : rootProject.relativePath(file).replace('\\', '/'),
-                    line        : line,
-                    message     : message,
-                    suggestedFix: suggestedFix,
+                        rule        : rule,
+                        category    : 'architecture',
+                        severity    : 'ERROR',
+                        file        : rootProject.relativePath(file).replace('\\', '/'),
+                        line        : line,
+                        message     : message,
+                        suggestedFix: suggestedFix,
                 ] + extras)
             }
 
             def logAdvisory = { File file, int line, String rule, String message, String suggestedFix, Map extras = [:] ->
                 advisoryCount++
                 architectureEmit(writer, 'WARN', 'architecture_advisory', [
-                    rule        : rule,
-                    category    : 'architecture',
-                    severity    : 'WARN',
-                    file        : rootProject.relativePath(file).replace('\\', '/'),
-                    line        : line,
-                    message     : message,
-                    suggestedFix: suggestedFix,
+                        rule        : rule,
+                        category    : 'architecture',
+                        severity    : 'WARN',
+                        file        : rootProject.relativePath(file).replace('\\', '/'),
+                        line        : line,
+                        message     : message,
+                        suggestedFix: suggestedFix,
                 ] + extras)
             }
 
@@ -274,36 +188,36 @@ tasks.register('architectureLint') {
                 if (moduleName == 'app') {
                     if (!moduleProject.plugins.hasPlugin('org.springframework.boot')) {
                         logViolation(
-                            moduleProject.buildFile,
-                            moduleBuildLine(moduleProject, "project(':app')"),
-                            'MODULE_EXECUTABLE_APP_ONLY',
-                            'app module만 Spring Boot executable 진입점이어야 하며 app에는 Spring Boot plugin이 필요합니다.',
-                            "backend/build.gradle의 project(':app') 블록에 org.springframework.boot plugin을 유지하세요.",
-                            [moduleName: moduleName]
+                                moduleProject.buildFile,
+                                moduleBuildLine(moduleProject, "org.springframework.boot"),
+                                'MODULE_EXECUTABLE_APP_ONLY',
+                                'app module만 Spring Boot executable 진입점이어야 하며 app에는 Spring Boot plugin이 필요합니다.',
+                                "backend/app/build.gradle에 org.springframework.boot plugin을 유지하세요.",
+                                [moduleName: moduleName]
                         )
                     }
                 } else if (architectureLibraryModules.contains(moduleName)) {
                     def bootJarTask = moduleProject.tasks.findByName('bootJar')
                     if (moduleProject.plugins.hasPlugin('org.springframework.boot') || (bootJarTask != null && bootJarTask.enabled)) {
                         logViolation(
-                            moduleProject.buildFile,
-                            1,
-                            'MODULE_EXECUTABLE_APP_ONLY',
-                            "${moduleName} module은 executable Spring Boot app이 아니라 library module이어야 합니다.",
-                            'stream/storage/external에는 org.springframework.boot plugin 또는 enabled bootJar task를 두지 마세요.',
-                            [moduleName: moduleName]
+                                moduleProject.buildFile,
+                                1,
+                                'MODULE_EXECUTABLE_APP_ONLY',
+                                "${moduleName} module은 executable Spring Boot app이 아니라 library module이어야 합니다.",
+                                'stream/storage/external에는 org.springframework.boot plugin 또는 enabled bootJar task를 두지 마세요.',
+                                [moduleName: moduleName]
                         )
                     }
 
                     def jarTask = moduleProject.tasks.findByName('jar')
                     if (jarTask != null && !jarTask.enabled) {
                         logViolation(
-                            moduleProject.buildFile,
-                            1,
-                            'MODULE_EXECUTABLE_APP_ONLY',
-                            "${moduleName} library module의 plain jar task가 비활성화되어 있습니다.",
-                            'library module은 app bootJar에 포함될 수 있도록 jar task를 활성화하세요.',
-                            [moduleName: moduleName]
+                                moduleProject.buildFile,
+                                1,
+                                'MODULE_EXECUTABLE_APP_ONLY',
+                                "${moduleName} library module의 plain jar task가 비활성화되어 있습니다.",
+                                'library module은 app bootJar에 포함될 수 있도록 jar task를 활성화하세요.',
+                                [moduleName: moduleName]
                         )
                     }
 
@@ -312,12 +226,12 @@ tasks.register('architectureLint') {
                             def dependencyModuleName = dependency.dependencyProject.name
                             if (architectureBackendModules.contains(dependencyModuleName) && dependencyModuleName != moduleName) {
                                 logViolation(
-                                    moduleProject.buildFile,
-                                    moduleBuildLine(moduleProject, "project(':${dependencyModuleName}')"),
-                                    'MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY',
-                                    "${moduleName} library module은 ${dependencyModuleName} module에 의존하면 안 됩니다.",
-                                    'stream/storage/external은 서로와 app에 project dependency를 두지 말고, 필요한 계약은 같은 module 내부 또는 app composition으로 이동하세요.',
-                                    [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
+                                        moduleProject.buildFile,
+                                        moduleBuildLine(moduleProject, "project(':${dependencyModuleName}')"),
+                                        'MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY',
+                                        "${moduleName} library module은 ${dependencyModuleName} module에 의존하면 안 됩니다.",
+                                        'stream/storage/external은 서로와 app에 project dependency를 두지 말고, 필요한 계약은 같은 module 내부 또는 app composition으로 이동하세요.',
+                                        [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
                                 )
                             }
                         }
@@ -338,11 +252,11 @@ tasks.register('architectureLint') {
 
                 if (packageName == null) {
                     logViolation(
-                        sourceFile,
-                        1,
-                        'PACKAGE_DECLARATION_REQUIRED',
-                        '모든 백엔드 Java 파일은 package 선언을 가져야 합니다.',
-                        "파일 상단에 `package ${architectureRootPackage}.<...>;` 형태의 선언을 추가하세요."
+                            sourceFile,
+                            1,
+                            'PACKAGE_DECLARATION_REQUIRED',
+                            '모든 백엔드 Java 파일은 package 선언을 가져야 합니다.',
+                            "파일 상단에 `package ${architectureRootPackage}.<...>;` 형태의 선언을 추가하세요."
                     )
                     return
                 }
@@ -352,39 +266,39 @@ tasks.register('architectureLint') {
 
                 if (!packageName.startsWith(architectureRootPackage)) {
                     logViolation(
-                        sourceFile,
-                        packageLine,
-                        'PACKAGE_ROOT_MATCH',
-                        "패키지 루트는 `${architectureRootPackage}`여야 합니다. 현재 값: `${packageName}`.",
-                        "패키지를 `${architectureRootPackage}` 아래로 옮기세요.",
-                        [packageName: packageName]
+                            sourceFile,
+                            packageLine,
+                            'PACKAGE_ROOT_MATCH',
+                            "패키지 루트는 `${architectureRootPackage}`여야 합니다. 현재 값: `${packageName}`.",
+                            "패키지를 `${architectureRootPackage}` 아래로 옮기세요.",
+                            [packageName: packageName]
                     )
                 }
 
                 if (relativePath != expectedPath) {
                     logViolation(
-                        sourceFile,
-                        packageLine,
-                        'PACKAGE_PATH_MATCH',
-                        "패키지 선언과 파일 경로가 일치하지 않습니다. 기대 경로: `${expectedPath}`.",
-                        'package 선언에 맞게 파일을 옮기거나 package 선언을 수정하세요.',
-                        [packageName: packageName, expectedPath: expectedPath]
+                            sourceFile,
+                            packageLine,
+                            'PACKAGE_PATH_MATCH',
+                            "패키지 선언과 파일 경로가 일치하지 않습니다. 기대 경로: `${expectedPath}`.",
+                            'package 선언에 맞게 파일을 옮기거나 package 선언을 수정하세요.',
+                            [packageName: packageName, expectedPath: expectedPath]
                     )
                 }
 
                 def packageSegments = packageName == architectureRootPackage
-                    ? []
-                    : packageName.substring(architectureRootPackage.length() + 1).tokenize('.')
+                        ? []
+                        : packageName.substring(architectureRootPackage.length() + 1).tokenize('.')
 
                 if (packageSegments.isEmpty()) {
                     if (!sourceFile.name.endsWith('Application.java')) {
                         logViolation(
-                            sourceFile,
-                            packageLine,
-                            'TOP_LEVEL_PACKAGE_ALLOWED',
-                            '루트 패키지 바로 아래에는 Spring Boot `*Application` 진입점만 둘 수 있습니다.',
-                            '나머지 클래스는 `common`, `providers`, `feature` 중 하나의 하위 패키지로 옮기세요.',
-                            [packageName: packageName]
+                                sourceFile,
+                                packageLine,
+                                'TOP_LEVEL_PACKAGE_ALLOWED',
+                                '루트 패키지 바로 아래에는 Spring Boot `*Application` 진입점만 둘 수 있습니다.',
+                                '나머지 클래스는 `common`, `providers`, `feature` 중 하나의 하위 패키지로 옮기세요.',
+                                [packageName: packageName]
                         )
                     }
                     return
@@ -393,23 +307,23 @@ tasks.register('architectureLint') {
                 def topLevel = packageSegments[0]
                 if (!architectureAllowedTopLevel.contains(topLevel)) {
                     logViolation(
-                        sourceFile,
-                        packageLine,
-                        'TOP_LEVEL_PACKAGE_ALLOWED',
-                        "최상위 패키지 `${topLevel}`는 허용되지 않습니다.",
-                        "최상위 패키지는 `${architectureAllowedTopLevel.join(', ')}` 중 하나를 사용하세요.",
-                        [packageName: packageName, topLevel: topLevel]
+                            sourceFile,
+                            packageLine,
+                            'TOP_LEVEL_PACKAGE_ALLOWED',
+                            "최상위 패키지 `${topLevel}`는 허용되지 않습니다.",
+                            "최상위 패키지는 `${architectureAllowedTopLevel.join(', ')}` 중 하나를 사용하세요.",
+                            [packageName: packageName, topLevel: topLevel]
                     )
                 }
 
                 if (architectureForbiddenTopLevel.contains(topLevel)) {
                     logViolation(
-                        sourceFile,
-                        packageLine,
-                        'FORBIDDEN_LEGACY_TOP_LEVEL',
-                        "레거시 최상위 패키지 `${topLevel}`는 금지됩니다.",
-                        '루트 `*Application`과 `feature`, `providers`, `common` 구조로 재배치하세요.',
-                        [packageName: packageName, topLevel: topLevel]
+                            sourceFile,
+                            packageLine,
+                            'FORBIDDEN_LEGACY_TOP_LEVEL',
+                            "레거시 최상위 패키지 `${topLevel}`는 금지됩니다.",
+                            '루트 `*Application`과 `feature`, `providers`, `common` 구조로 재배치하세요.',
+                            [packageName: packageName, topLevel: topLevel]
                     )
                 }
 
@@ -418,33 +332,33 @@ tasks.register('architectureLint') {
                                 relativePath.contains('/providers/connector/') ||
                                 sourceFile.name == 'DefaultConnectorProvider.java')) {
                     logViolation(
-                        sourceFile,
-                        packageLine,
-                        'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
-                        'Bitget/external provider adapter code must live in the backend external module.',
-                        'Move Bitget providers, connector contracts, and external provider wiring to `backend/external/src/main/java` while preserving package roots.',
-                        [packageName: packageName, relativePath: relativePath]
+                            sourceFile,
+                            packageLine,
+                            'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
+                            'Bitget/external provider adapter code must live in the backend external module.',
+                            'Move Bitget providers, connector contracts, and external provider wiring to `backend/external/src/main/java` while preserving package roots.',
+                            [packageName: packageName, relativePath: relativePath]
                     )
                 }
 
                 if (topLevel == 'feature') {
                     if (packageSegments.size() < 3) {
                         logViolation(
-                            sourceFile,
-                            packageLine,
-                            'FEATURE_LAYER_REQUIRED',
-                            'feature 패키지 아래 파일은 `feature.<name>.<layer>` 형태를 따라야 합니다.',
-                            '예: `feature.market.application`, `feature.member.domain`.',
-                            [packageName: packageName]
+                                sourceFile,
+                                packageLine,
+                                'FEATURE_LAYER_REQUIRED',
+                                'feature 패키지 아래 파일은 `feature.<name>.<layer>` 형태를 따라야 합니다.',
+                                '예: `feature.market.application`, `feature.member.domain`.',
+                                [packageName: packageName]
                         )
                     } else if (!architectureLayers.contains(packageSegments[2])) {
                         logViolation(
-                            sourceFile,
-                            packageLine,
-                            'FEATURE_LAYER_REQUIRED',
-                            "feature 레이어는 `${architectureLayers.join(', ')}` 중 하나여야 합니다. 현재 값: `${packageSegments[2]}`.",
-                            '`web`, `job`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요. `api` Java package는 더 이상 허용하지 않습니다.',
-                            [packageName: packageName, layer: packageSegments[2]]
+                                sourceFile,
+                                packageLine,
+                                'FEATURE_LAYER_REQUIRED',
+                                "feature 레이어는 `${architectureLayers.join(', ')}` 중 하나여야 합니다. 현재 값: `${packageSegments[2]}`.",
+                                '`web`, `job`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요. `api` Java package는 더 이상 허용하지 않습니다.',
+                                [packageName: packageName, layer: packageSegments[2]]
                         )
                     }
                 }
@@ -463,12 +377,12 @@ tasks.register('architectureLint') {
                             continue
                         }
                         logViolation(
-                            sourceFile,
-                            lineIndex + 1,
-                            'INTERFACE_DEFAULT_METHOD_FORBIDDEN',
-                            '운영 인터페이스에는 default 메서드를 두지 않습니다.',
-                            '메서드를 추상 계약으로 선언하고 운영 구현체가 명시적으로 구현하세요. 테스트 편의 기본 구현은 src/test/java의 테스트 전용 abstract/stub class로 옮기세요.',
-                            [packageName: packageName, methodStart: trimmedLine]
+                                sourceFile,
+                                lineIndex + 1,
+                                'INTERFACE_DEFAULT_METHOD_FORBIDDEN',
+                                '운영 인터페이스에는 default 메서드를 두지 않습니다.',
+                                '메서드를 추상 계약으로 선언하고 운영 구현체가 명시적으로 구현하세요. 테스트 편의 기본 구현은 src/test/java의 테스트 전용 abstract/stub class로 옮기세요.',
+                                [packageName: packageName, methodStart: trimmedLine]
                         )
                         lineIndex++
                     }
@@ -476,24 +390,24 @@ tasks.register('architectureLint') {
 
                 if (text.contains('@Entity') && sourceFile.name.endsWith('JpaEntity.java')) {
                     logViolation(
-                        sourceFile,
-                        1,
-                        'ENTITY_NAME_NO_TECH_SUFFIX',
-                        'JPA 엔티티 이름에 `Jpa` 같은 기술 접미사를 넣지 않습니다.',
-                        '엔티티 클래스명은 `*Entity`로 두고, 기술 세부사항은 패키지 경로와 프레임워크 타입으로만 드러내세요.',
-                        [packageName: packageName]
+                            sourceFile,
+                            1,
+                            'ENTITY_NAME_NO_TECH_SUFFIX',
+                            'JPA 엔티티 이름에 `Jpa` 같은 기술 접미사를 넣지 않습니다.',
+                            '엔티티 클래스명은 `*Entity`로 두고, 기술 세부사항은 패키지 경로와 프레임워크 타입으로만 드러내세요.',
+                            [packageName: packageName]
                     )
                 }
 
                 if (packageName.contains('.infrastructure.persistence') &&
                         (sourceFile.name.contains('Jpa') || sourceFile.name.contains('SpringData'))) {
                     logViolation(
-                        sourceFile,
-                        1,
-                        'PERSISTENCE_NAME_NO_TECH_TERM',
-                        'persistence 클래스 이름에 `Jpa`, `SpringData` 같은 기술명을 넣지 않습니다.',
-                        '패키지 경로와 `JpaRepository` 같은 타입으로 기술 세부사항을 드러내고, 클래스명은 역할 중심으로 바꾸세요.',
-                        [packageName: packageName, fileName: sourceFile.name]
+                            sourceFile,
+                            1,
+                            'PERSISTENCE_NAME_NO_TECH_TERM',
+                            'persistence 클래스 이름에 `Jpa`, `SpringData` 같은 기술명을 넣지 않습니다.',
+                            '패키지 경로와 `JpaRepository` 같은 타입으로 기술 세부사항을 드러내고, 클래스명은 역할 중심으로 바꾸세요.',
+                            [packageName: packageName, fileName: sourceFile.name]
                     )
                 }
 
@@ -502,22 +416,22 @@ tasks.register('architectureLint') {
                         def trimmed = lineText.trim()
                         if (trimmed.startsWith('import org.springframework.') || trimmed.startsWith('import jakarta.persistence.')) {
                             logViolation(
-                                sourceFile,
-                                index + 1,
-                                'DOMAIN_FRAMEWORK_FREE',
-                                'domain 레이어는 Spring 또는 JPA import에 의존하면 안 됩니다.',
-                                '해당 의존성은 `application` 또는 `infrastructure`로 이동하세요.',
-                                [packageName: packageName, importLine: trimmed]
+                                    sourceFile,
+                                    index + 1,
+                                    'DOMAIN_FRAMEWORK_FREE',
+                                    'domain 레이어는 Spring 또는 JPA import에 의존하면 안 됩니다.',
+                                    '해당 의존성은 `application` 또는 `infrastructure`로 이동하세요.',
+                                    [packageName: packageName, importLine: trimmed]
                             )
                         }
                         if (['@Entity', '@Transactional', '@Service', '@Component', '@Repository', '@RestController'].any { trimmed.contains(it) }) {
                             logViolation(
-                                sourceFile,
-                                index + 1,
-                                'DOMAIN_FRAMEWORK_FREE',
-                                'domain 레이어는 Spring/JPA annotation에 의존하면 안 됩니다.',
-                                '프레임워크 annotation은 `api` 또는 `infrastructure`로 이동하세요.',
-                                [packageName: packageName, code: trimmed]
+                                    sourceFile,
+                                    index + 1,
+                                    'DOMAIN_FRAMEWORK_FREE',
+                                    'domain 레이어는 Spring/JPA annotation에 의존하면 안 됩니다.',
+                                    '프레임워크 annotation은 `api` 또는 `infrastructure`로 이동하세요.',
+                                    [packageName: packageName, code: trimmed]
                             )
                         }
                     }
@@ -527,24 +441,24 @@ tasks.register('architectureLint') {
                     lines.eachWithIndex { lineText, index ->
                         def trimmed = lineText.trim()
                         if (trimmed.startsWith('import org.springframework.security.core.context.SecurityContextHolder') ||
-                            trimmed.startsWith('import org.springframework.security.core.Authentication')) {
+                                trimmed.startsWith('import org.springframework.security.core.Authentication')) {
                             logViolation(
-                                sourceFile,
-                                index + 1,
-                                'APPLICATION_NO_SECURITY_CONTEXT',
-                                'application 레이어는 Spring Security context를 직접 읽으면 안 됩니다.',
-                                '`Providers.auth()` 같은 추상화로 현재 actor를 주입하세요.',
-                                [packageName: packageName, importLine: trimmed]
+                                    sourceFile,
+                                    index + 1,
+                                    'APPLICATION_NO_SECURITY_CONTEXT',
+                                    'application 레이어는 Spring Security context를 직접 읽으면 안 됩니다.',
+                                    '`Providers.auth()` 같은 추상화로 현재 actor를 주입하세요.',
+                                    [packageName: packageName, importLine: trimmed]
                             )
                         }
                         if (['@RestController', '@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping'].any { trimmed.contains(it) }) {
                             logViolation(
-                                sourceFile,
-                                index + 1,
-                                'APPLICATION_NO_WEB_ANNOTATION',
-                                'application 레이어는 웹 annotation을 가지면 안 됩니다.',
-                                'HTTP 진입점은 `api` 레이어로 이동하세요.',
-                                [packageName: packageName, code: trimmed]
+                                    sourceFile,
+                                    index + 1,
+                                    'APPLICATION_NO_WEB_ANNOTATION',
+                                    'application 레이어는 웹 annotation을 가지면 안 됩니다.',
+                                    'HTTP 진입점은 `api` 레이어로 이동하세요.',
+                                    [packageName: packageName, code: trimmed]
                             )
                         }
                     }
@@ -573,12 +487,12 @@ tasks.register('architectureLint') {
                             }
                             if (matchLine >= 0) {
                                 logViolation(
-                                    sourceFile,
-                                    matchLine + 1,
-                                    'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
-                                    "application/service 유스케이스는 다른 service `${otherServiceName}`를 직접 참조하면 안 됩니다.",
-                                    '공유 로직은 `application`의 목적별 비-Service 협력 객체나 `domain` 정책/서비스로 옮기고, 유스케이스 service는 자기 흐름만 조합하세요.',
-                                    [packageName: packageName, dependency: otherServiceName]
+                                        sourceFile,
+                                        matchLine + 1,
+                                        'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
+                                        "application/service 유스케이스는 다른 service `${otherServiceName}`를 직접 참조하면 안 됩니다.",
+                                        '공유 로직은 `application`의 목적별 비-Service 협력 객체나 `domain` 정책/서비스로 옮기고, 유스케이스 service는 자기 흐름만 조합하세요.',
+                                        [packageName: packageName, dependency: otherServiceName]
                                 )
                             }
                         }
@@ -594,12 +508,12 @@ tasks.register('architectureLint') {
                                 (trimmed.startsWith("import ${architectureRootPackage}.feature.") &&
                                         trimmed.contains('.infrastructure.'))) {
                             logViolation(
-                                sourceFile,
-                                index + 1,
-                                'WEB_NO_INFRASTRUCTURE_IMPORTS',
-                                'web 레이어는 persistence/provider infrastructure/feature infrastructure 구현에 직접 의존하면 안 됩니다.',
-                                '영속성/보안 구현 의존은 `application` 또는 `providers` 계약 뒤로 숨기세요.',
-                                [packageName: packageName, importLine: trimmed]
+                                    sourceFile,
+                                    index + 1,
+                                    'WEB_NO_INFRASTRUCTURE_IMPORTS',
+                                    'web 레이어는 persistence/provider infrastructure/feature infrastructure 구현에 직접 의존하면 안 됩니다.',
+                                    '영속성/보안 구현 의존은 `application` 또는 `providers` 계약 뒤로 숨기세요.',
+                                    [packageName: packageName, importLine: trimmed]
                             )
                         }
                     }
@@ -623,12 +537,12 @@ tasks.register('architectureLint') {
                                     .any { text.contains(it) }
                     if (usesHttpDelivery && layer != 'web') {
                         logAdvisory(
-                            sourceFile,
-                            firstInterestingLine(['@RestController', 'SseEmitter', 'HandlerInterceptor', 'WebMvcConfigurer', '@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping']),
-                            'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
-                            'HTTP/SSE delivery class는 최종적으로 `web` layer가 소유해야 합니다.',
-                            'PR-2에서 controller/DTO/interceptor/WebMvcConfigurer/SSE broker를 `feature.<name>.web`으로 이동하세요.',
-                            [packageName: packageName, currentLayer: layer, targetLayer: 'web']
+                                sourceFile,
+                                firstInterestingLine(['@RestController', 'SseEmitter', 'HandlerInterceptor', 'WebMvcConfigurer', '@RequestMapping', '@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@PatchMapping']),
+                                'WEB_OWNS_HTTP_DELIVERY_ADVISORY',
+                                'HTTP/SSE delivery class는 최종적으로 `web` layer가 소유해야 합니다.',
+                                'PR-2에서 controller/DTO/interceptor/WebMvcConfigurer/SSE broker를 `feature.<name>.web`으로 이동하세요.',
+                                [packageName: packageName, currentLayer: layer, targetLayer: 'web']
                         )
                     }
 
@@ -636,12 +550,12 @@ tasks.register('architectureLint') {
                             text.contains('ApplicationReadyEvent')
                     if (usesBackgroundTrigger && packageName.contains('.feature.') && layer != 'job') {
                         logViolation(
-                            sourceFile,
-                            firstInterestingLine(['@Scheduled', 'ApplicationReadyEvent']),
-                            'JOB_OWNS_BACKGROUND_TRIGGERS',
-                            'feature scheduler/startup/background trigger는 `job` layer가 소유해야 합니다.',
-                            'feature use case를 실행하는 scheduler/startup/backfill/retry trigger는 `feature.<name>.job`으로 이동하세요.',
-                            [packageName: packageName, currentLayer: layer, targetLayer: 'job']
+                                sourceFile,
+                                firstInterestingLine(['@Scheduled', 'ApplicationReadyEvent']),
+                                'JOB_OWNS_BACKGROUND_TRIGGERS',
+                                'feature scheduler/startup/background trigger는 `job` layer가 소유해야 합니다.',
+                                'feature use case를 실행하는 scheduler/startup/backfill/retry trigger는 `feature.<name>.job`으로 이동하세요.',
+                                [packageName: packageName, currentLayer: layer, targetLayer: 'job']
                         )
                     }
 
@@ -657,12 +571,12 @@ tasks.register('architectureLint') {
                                             trimmed.contains('.infrastructure.'))
                             if (importsForbiddenRuntime) {
                                 logViolation(
-                                    sourceFile,
-                                    index + 1,
-                                    'JOB_TRIGGER_ONLY',
-                                    'job layer는 persistence, web, provider infrastructure, feature infrastructure 구현을 직접 import하면 안 됩니다.',
-                                    'job class는 얇은 trigger로 유지하고 application service/coordinator 또는 provider 계약만 호출하세요.',
-                                    [packageName: packageName, importLine: trimmed]
+                                        sourceFile,
+                                        index + 1,
+                                        'JOB_TRIGGER_ONLY',
+                                        'job layer는 persistence, web, provider infrastructure, feature infrastructure 구현을 직접 import하면 안 됩니다.',
+                                        'job class는 얇은 trigger로 유지하고 application service/coordinator 또는 provider 계약만 호출하세요.',
+                                        [packageName: packageName, importLine: trimmed]
                                 )
                             }
                         }
@@ -678,12 +592,12 @@ tasks.register('architectureLint') {
                                 def importedFeature = importedRemainder.tokenize('.')[0]
                                 if (importedFeature != featureName) {
                                     logViolation(
-                                        sourceFile,
-                                        index + 1,
-                                        'CROSS_FEATURE_INFRASTRUCTURE_IMPORTS',
-                                        'feature infrastructure는 다른 feature infrastructure 구현을 직접 import하면 안 됩니다.',
-                                        'cross-feature read가 필요하면 application/domain contract 또는 feature-owned dedicated projection query로 격리하세요.',
-                                        [packageName: packageName, importLine: trimmed, importedFeature: importedFeature]
+                                            sourceFile,
+                                            index + 1,
+                                            'CROSS_FEATURE_INFRASTRUCTURE_IMPORTS',
+                                            'feature infrastructure는 다른 feature infrastructure 구현을 직접 import하면 안 됩니다.',
+                                            'cross-feature read가 필요하면 application/domain contract 또는 feature-owned dedicated projection query로 격리하세요.',
+                                            [packageName: packageName, importLine: trimmed, importedFeature: importedFeature]
                                     )
                                 }
                             }
@@ -695,12 +609,12 @@ tasks.register('architectureLint') {
                                 text.contains('TaskScheduler')
                         if (hasInboundDelivery || hasFeatureJobRuntime) {
                             logViolation(
-                                sourceFile,
-                                firstInterestingLine(['WebMvcConfigurer', 'HandlerInterceptor', 'SseEmitter', '@Scheduled', 'TaskScheduler', 'ApplicationReadyEvent', '@Bean']),
-                                'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
-                                'feature infrastructure는 inbound web delivery나 feature job runtime을 소유하면 안 됩니다.',
-                                'MVC/SSE delivery config는 `web` 또는 shared web config로, scheduler/startup trigger wiring은 `job`으로 이동하세요.',
-                                [packageName: packageName, webConfigCandidate: hasInboundDelivery, jobConfigCandidate: hasFeatureJobRuntime]
+                                    sourceFile,
+                                    firstInterestingLine(['WebMvcConfigurer', 'HandlerInterceptor', 'SseEmitter', '@Scheduled', 'TaskScheduler', 'ApplicationReadyEvent', '@Bean']),
+                                    'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
+                                    'feature infrastructure는 inbound web delivery나 feature job runtime을 소유하면 안 됩니다.',
+                                    'MVC/SSE delivery config는 `web` 또는 shared web config로, scheduler/startup trigger wiring은 `job`으로 이동하세요.',
+                                    [packageName: packageName, webConfigCandidate: hasInboundDelivery, jobConfigCandidate: hasFeatureJobRuntime]
                             )
                         }
                     }
@@ -711,12 +625,12 @@ tasks.register('architectureLint') {
                             if (trimmed.contains('memberCredentialRepository.findByAccount(') ||
                                     trimmed.contains('memberCredentialRepository.findByMemberId(')) {
                                 logViolation(
-                                    sourceFile,
-                                    index + 1,
-                                    'ACTIVE_MEMBER_LOOKUP_GUARD',
-                                    'auth/member/profile 실행 경로는 active 여부가 드러나지 않는 member credential 조회를 쓰면 안 됩니다.',
-                                    '`findActiveByAccount`, `findActiveByMemberId`, 또는 의도가 드러나는 `IncludingWithdrawn`/`ForAudit` 조회로 바꾸세요.',
-                                    [packageName: packageName, code: trimmed]
+                                        sourceFile,
+                                        index + 1,
+                                        'ACTIVE_MEMBER_LOOKUP_GUARD',
+                                        'auth/member/profile 실행 경로는 active 여부가 드러나지 않는 member credential 조회를 쓰면 안 됩니다.',
+                                        '`findActiveByAccount`, `findActiveByMemberId`, 또는 의도가 드러나는 `IncludingWithdrawn`/`ForAudit` 조회로 바꾸세요.',
+                                        [packageName: packageName, code: trimmed]
                                 )
                             }
                         }
@@ -729,12 +643,12 @@ tasks.register('architectureLint') {
                         if (trimmed.startsWith("import ${architectureRootPackage}.feature.") &&
                                 trimmed.contains('.infrastructure.')) {
                             logViolation(
-                                sourceFile,
-                                index + 1,
-                                'PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS',
-                                'providers package는 feature infrastructure 구현을 직접 import하면 안 됩니다.',
-                                'provider 구현은 provider-owned infrastructure에 두고 feature와는 contract/domain/application 경계로만 연결하세요.',
-                                [packageName: packageName, importLine: trimmed]
+                                    sourceFile,
+                                    index + 1,
+                                    'PROVIDERS_NO_FEATURE_INFRASTRUCTURE_IMPORTS',
+                                    'providers package는 feature infrastructure 구현을 직접 import하면 안 됩니다.',
+                                    'provider 구현은 provider-owned infrastructure에 두고 feature와는 contract/domain/application 경계로만 연결하세요.',
+                                    [packageName: packageName, importLine: trimmed]
                             )
                         }
                     }
@@ -742,10 +656,10 @@ tasks.register('architectureLint') {
             }
 
             architectureEmit(writer, 'INFO', 'architecture_lint_summary', [
-                status     : violationCount == 0 ? 'passed' : 'failed',
-                violations : violationCount,
-                advisories : advisoryCount,
-                reportPath : rootProject.relativePath(reportFile),
+                    status    : violationCount == 0 ? 'passed' : 'failed',
+                    violations: violationCount,
+                    advisories: advisoryCount,
+                    reportPath: rootProject.relativePath(reportFile),
             ])
         }
 
@@ -794,10 +708,10 @@ tasks.register('verifySingleAppRuntime') {
         def runtimeMarkers = runtimeSourceFiles.get().collect { sourceFile ->
             def text = sourceFile.getText('UTF-8')
             [
-                file                 : sourceFile,
-                path                 : rootProject.relativePath(sourceFile).replace('\\', '/'),
-                springBootApplication: text.contains('@SpringBootApplication'),
-                springApplicationRun : text.contains('SpringApplication.run('),
+                    file                 : sourceFile,
+                    path                 : rootProject.relativePath(sourceFile).replace('\\', '/'),
+                    springBootApplication: text.contains('@SpringBootApplication'),
+                    springApplicationRun : text.contains('SpringApplication.run('),
             ]
         }
 

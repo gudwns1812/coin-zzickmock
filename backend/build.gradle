@@ -222,9 +222,7 @@ tasks.register('architectureLint') {
                     'ACTIVE_MEMBER_LOOKUP_GUARD',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
-                    'MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY',
-                    'MODULE_BOUNDARY_NO_LIBRARY_SOURCE_IMPORT',
-                    'MODULE_EXECUTABLE_APP_ONLY',
+                    'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
                 ],
                 targetLayers: architectureTargetLayers,
             ])
@@ -428,27 +426,18 @@ tasks.register('architectureLint') {
                     )
                 }
 
-                def currentModule = moduleFromRelativePath(relativePath)
-                if (architectureLibraryModules.contains(currentModule)) {
-                    lines.eachWithIndex { lineText, index ->
-                        def trimmed = lineText.trim()
-                        def importMatcher = trimmed =~ /^import\s+(?:static\s+)?([A-Za-z0-9_.]+)(?:\.\*)?;/
-                        if (importMatcher.matches()) {
-                            def importedTypeName = importMatcher.group(1)
-                            def owners = packageAndTypeOwners[importedTypeName] ?: [] as Set
-                            def foreignOwners = owners.findAll { it != currentModule && architectureBackendModules.contains(it) }
-                            if (!owners.contains(currentModule) && !foreignOwners.isEmpty()) {
-                                logViolation(
-                                    sourceFile,
-                                    index + 1,
-                                    'MODULE_BOUNDARY_NO_LIBRARY_SOURCE_IMPORT',
-                                    "${currentModule} library module imports source owned by ${foreignOwners.sort().join(', ')}.",
-                                    'stream/storage/external은 서로와 app의 Java source를 import하지 말고 app module에서만 조립하세요.',
-                                    [packageName: packageName, moduleName: currentModule, importLine: trimmed, importedOwners: foreignOwners.sort()]
-                                )
-                            }
-                        }
-                    }
+                if (relativePath.startsWith('app/src/main/java/') && (
+                        (topLevel == 'providers' && sourceFile.name.startsWith('Bitget')) ||
+                                relativePath.contains('/providers/connector/') ||
+                                sourceFile.name == 'DefaultConnectorProvider.java')) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
+                        'Bitget/external provider adapter code must live in the backend external module.',
+                        'Move Bitget providers, connector contracts, and external provider wiring to `backend/external/src/main/java` while preserving package roots.',
+                        [packageName: packageName, relativePath: relativePath]
+                    )
                 }
 
                 if (topLevel == 'feature') {

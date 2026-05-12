@@ -25,7 +25,7 @@ class ErrorCodeTest {
     @Test
     void keepsHandledClientAndBusinessFailuresBelowWarn() {
         assertThat(ErrorCode.values())
-                .filteredOn(errorCode -> errorCode.httpStatus().is4xxClientError())
+                .filteredOn(errorCode -> errorCode.httpStatusCode() >= 400 && errorCode.httpStatusCode() < 500)
                 .allSatisfy(errorCode -> assertThat(errorCode.logLevel())
                         .as("%s should not create incident-level logs", errorCode)
                         .isNotIn(EnumSet.of(Level.WARN, Level.ERROR)));

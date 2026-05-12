@@ -120,6 +120,22 @@ test("useResilientEventSource appends tab clientKey at the shared hook boundary"
   assert.equal(source.includes("eventSourceFactory(nextUrl)"), true);
 });
 
+test("useResilientEventSource reconnectKey reopens without changing the URL", () => {
+  const source = readFrontendSource("hooks/useResilientEventSource.ts");
+
+  assert.equal(source.includes("type EventSourceReconnectKey"), true);
+  assert.equal(source.includes("reconnectKey?: EventSourceReconnectKey"), true);
+  assert.equal(source.includes("reconnectKey = null"), true);
+  assert.match(
+    source,
+    /useMemo\(\s*\(\) => \(url \? appendSseClientKey\(url, sseClientKey\) : null\),\s*\[sseClientKey, url\]\s*\)/
+  );
+  assert.match(
+    source,
+    /reconnectKey,\s*updateStatus,\s*eventSourceUrl,/
+  );
+});
+
 test("frontend SSE consumers keep plain stream URLs and rely on the hook boundary", () => {
   const sources = [
     "components/router/(main)/markets/MarketsLandingRealtimeView.tsx",

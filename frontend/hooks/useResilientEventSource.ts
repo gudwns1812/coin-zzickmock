@@ -14,6 +14,7 @@ import { appendSseClientKey } from "@/lib/sse-client-key";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type EventSourceFactory = (url: string) => EventSource;
+type EventSourceReconnectKey = string | number | boolean | null;
 
 type UseResilientEventSourceOptions = {
   url: string | null;
@@ -25,6 +26,7 @@ type UseResilientEventSourceOptions = {
   baseReconnectDelayMs?: number;
   eventSourceFactory?: EventSourceFactory;
   maxReconnectDelayMs?: number;
+  reconnectKey?: EventSourceReconnectKey;
   reconnectOnFocus?: boolean;
   reconnectOnOnline?: boolean;
   reconnectOnVisible?: boolean;
@@ -57,6 +59,7 @@ export function useResilientEventSource({
   baseReconnectDelayMs = DEFAULT_EVENT_SOURCE_BASE_RECONNECT_MS,
   eventSourceFactory = createDefaultEventSource,
   maxReconnectDelayMs = DEFAULT_EVENT_SOURCE_MAX_RECONNECT_MS,
+  reconnectKey = null,
   reconnectOnFocus = false,
   reconnectOnOnline = true,
   reconnectOnVisible = true,
@@ -232,6 +235,7 @@ export function useResilientEventSource({
     closeCurrentStream,
     enabled,
     openStream,
+    reconnectKey,
     updateStatus,
     eventSourceUrl,
   ]);

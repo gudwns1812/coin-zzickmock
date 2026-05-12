@@ -79,7 +79,7 @@ type ClientApiResponse<T> = {
   message: string | null;
 };
 
-const ORDER_STREAM_RESUME_REFRESH_THROTTLE_MS = 2_000;
+const ORDER_STREAM_REFRESH_THROTTLE_MS = 2_000;
 const EXECUTION_EVENT_VISIBLE_MS = 6_000;
 
 type QuickLimitPriceSelection = {
@@ -129,7 +129,7 @@ export default function MarketDetailRealtimeView({
   const [marketStreamHistoryFinalized, setMarketStreamHistoryFinalized] = useState<
     (MarketStreamHistoryFinalized & { interval: FuturesCandleInterval; serverTime: string }) | null
   >(null);
-  const lastOrderResumeRefreshAtRef = useRef(0);
+  const lastOrderStreamRefreshAtRef = useRef(0);
   const executionEventSequenceRef = useRef(0);
   const executionEventDismissTimersRef = useRef(new Map<string, number>());
 
@@ -223,6 +223,7 @@ export default function MarketDetailRealtimeView({
 
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,
+    reconnectKey: isAuthenticated ? "authenticated" : "anonymous",
     url: marketStreamUrl,
   });
 
@@ -246,33 +247,44 @@ export default function MarketDetailRealtimeView({
     });
   }, []);
 
+  const refreshTradingStateFromOrderStream = useCallback(
+    ({ force = false }: { force?: boolean } = {}) => {
+      const nowMs = Date.now();
+
+      if (
+        !force &&
+        nowMs - lastOrderStreamRefreshAtRef.current <
+          ORDER_STREAM_REFRESH_THROTTLE_MS
+      ) {
+        return;
+      }
+
+      lastOrderStreamRefreshAtRef.current = nowMs;
+      router.refresh();
+    },
+    [router]
+  );
+
   const refreshOnOrderStreamResume = useCallback(
     (reason: EventSourceReconnectReason) => {
       if (reason === "error") {
         return;
       }
 
-      const nowMs = Date.now();
-
-      if (
-        nowMs - lastOrderResumeRefreshAtRef.current <
-        ORDER_STREAM_RESUME_REFRESH_THROTTLE_MS
-      ) {
-        return;
-      }
-
-      lastOrderResumeRefreshAtRef.current = nowMs;
-      router.refresh();
+      refreshTradingStateFromOrderStream();
     },
-    [router]
+    [refreshTradingStateFromOrderStream]
   );
 
   const handleOrderStreamMessage = useCallback(
     (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as FuturesTradingExecutionEvent;
+        const isCurrentSymbolExecution = data.symbol === initialMarket.symbol;
 
-        if (data.symbol !== initialMarket.symbol) {
+        refreshTradingStateFromOrderStream({ force: true });
+
+        if (!isCurrentSymbolExecution) {
           return;
         }
 
@@ -295,12 +307,11 @@ export default function MarketDetailRealtimeView({
         }, EXECUTION_EVENT_VISIBLE_MS);
         executionEventDismissTimersRef.current.set(displayId, dismissTimer);
         setActiveTab(data.type === "ORDER_FILLED" ? "ORDER_HISTORY" : "POSITIONS");
-        router.refresh();
       } catch {
         // Keep the stream alive when a malformed event slips through.
       }
     },
-    [initialMarket.symbol, router]
+    [initialMarket.symbol, refreshTradingStateFromOrderStream]
   );
 
   useEffect(() => {

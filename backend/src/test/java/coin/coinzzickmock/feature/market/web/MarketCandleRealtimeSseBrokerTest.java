@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.application.query.FinalizedCandleIntervalsReader;
 import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryFinalizedEvent;
-import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
@@ -103,8 +103,10 @@ class MarketCandleRealtimeSseBrokerTest {
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
                 new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
                 1,
-                1
+                1,
+                NoopSseTelemetry.INSTANCE
         );
         MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
         broker.register(broker.reserve(key), new FailingSseEmitter());
@@ -127,7 +129,7 @@ class MarketCandleRealtimeSseBrokerTest {
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
                 new RealtimeMarketCandleProjector(store),
-                null,
+                baseIntervalReader(),
                 1,
                 1,
                 telemetry
@@ -153,8 +155,10 @@ class MarketCandleRealtimeSseBrokerTest {
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
                 new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
                 2,
-                2
+                2,
+                NoopSseTelemetry.INSTANCE
         );
         MarketCandleRealtimeSseBroker.SubscriptionKey key = key("BTCUSDT", MarketCandleInterval.ONE_MINUTE);
         CapturingSseEmitter first = new CapturingSseEmitter();
@@ -174,7 +178,9 @@ class MarketCandleRealtimeSseBrokerTest {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
-                new RealtimeMarketCandleProjector(store)
+                new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
+                NoopSseTelemetry.INSTANCE
         );
         CapturingSseEmitter emitter = new CapturingSseEmitter();
         broker.register("BTCUSDT", MarketCandleInterval.ONE_MINUTE, emitter);
@@ -205,7 +211,9 @@ class MarketCandleRealtimeSseBrokerTest {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
-                new RealtimeMarketCandleProjector(store)
+                new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
+                NoopSseTelemetry.INSTANCE
         );
         FailingSseEmitter failingEmitter = new FailingSseEmitter();
         CapturingSseEmitter healthyEmitter = new CapturingSseEmitter();
@@ -242,6 +250,7 @@ class MarketCandleRealtimeSseBrokerTest {
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
                 new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
                 telemetry
         );
         AlreadyCompletedSseEmitter completedEmitter = new AlreadyCompletedSseEmitter();
@@ -269,6 +278,7 @@ class MarketCandleRealtimeSseBrokerTest {
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
                 new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
                 telemetry
         );
         FailingSseEmitter failingEmitter = new FailingSseEmitter();
@@ -290,6 +300,7 @@ class MarketCandleRealtimeSseBrokerTest {
                     throw new RejectedExecutionException("queue full");
                 },
                 new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
                 rejectedTelemetry
         );
         rejectedBroker.register("BTCUSDT", MarketCandleInterval.ONE_MINUTE, new CapturingSseEmitter());
@@ -304,7 +315,9 @@ class MarketCandleRealtimeSseBrokerTest {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
-                new RealtimeMarketCandleProjector(store)
+                new RealtimeMarketCandleProjector(store),
+                baseIntervalReader(),
+                NoopSseTelemetry.INSTANCE
         );
         CapturingSseEmitter oneMinuteEmitter = new CapturingSseEmitter();
         CapturingSseEmitter threeMinuteEmitter = new CapturingSseEmitter();
@@ -336,7 +349,7 @@ class MarketCandleRealtimeSseBrokerTest {
         MarketCandleRealtimeSseBroker broker = new MarketCandleRealtimeSseBroker(
                 Runnable::run,
                 new RealtimeMarketCandleProjector(store),
-                repository,
+                new FinalizedCandleIntervalsReader(repository),
                 NoopSseTelemetry.INSTANCE
         );
         CapturingSseEmitter oneHourEmitter = new CapturingSseEmitter();
@@ -401,9 +414,15 @@ class MarketCandleRealtimeSseBrokerTest {
         return new MarketCandleRealtimeSseBroker(
                 Runnable::run,
                 new RealtimeMarketCandleProjector(new RealtimeMarketDataStore()),
+                baseIntervalReader(),
                 maxSubscribersPerKey,
-                maxSubscribersTotal
+                maxSubscribersTotal,
+                NoopSseTelemetry.INSTANCE
         );
+    }
+
+    private static FinalizedCandleIntervalsReader baseIntervalReader() {
+        return new FinalizedCandleIntervalsReader(new RecordingMarketHistoryRepository());
     }
 
     private static MarketCandleRealtimeSseBroker.SubscriptionKey key(

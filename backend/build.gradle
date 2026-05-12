@@ -21,6 +21,12 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
 
+    dependencyManagement {
+        imports {
+            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+        }
+    }
+
     java {
         toolchain {
             languageVersion = JavaLanguageVersion.of(17)
@@ -71,26 +77,77 @@ project(':app') {
         implementation 'org.springframework.boot:spring-boot-starter-cache'
         implementation 'org.springframework.boot:spring-boot-starter-web'
         implementation 'org.springframework.boot:spring-boot-starter-mail'
-        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
         implementation 'org.springframework.boot:spring-boot-starter-data-redis'
         implementation 'org.springframework.security:spring-security-crypto'
         implementation 'org.springframework.retry:spring-retry'
         implementation 'org.springframework:spring-aspects'
-        implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.1'
         implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
-        implementation 'org.flywaydb:flyway-core'
 
         annotationProcessor 'io.github.openfeign.querydsl:querydsl-apt:7.1:jpa'
         annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
         annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
 
-        runtimeOnly 'org.flywaydb:flyway-mysql'
-        runtimeOnly 'com.mysql:mysql-connector-j'
         runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
         runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
         runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
 
         testRuntimeOnly 'com.h2database:h2'
+    }
+
+    tasks.register('verifyBootJarStorageMigrations') {
+        group = 'verification'
+        description = 'Verifies the executable app jar carries Flyway migrations from the storage module.'
+
+        dependsOn tasks.named('bootJar')
+
+        def storageMigrationTree = project(':storage').fileTree('src/main/resources/db/migration') {
+            include 'V*.sql'
+        }
+        def bootJarFile = tasks.named('bootJar').flatMap { it.archiveFile }
+
+        inputs.files(storageMigrationTree)
+        inputs.file(bootJarFile)
+
+        doLast {
+            def expectedMigrations = storageMigrationTree.files
+                    .collect { it.name }
+                    .sort()
+            if (expectedMigrations.isEmpty()) {
+                throw new GradleException('No storage Flyway migrations were found to validate.')
+            }
+
+            def appJar = bootJarFile.get().asFile
+            java.util.zip.ZipFile appZip = new java.util.zip.ZipFile(appJar)
+            try {
+                def storageJarEntry = appZip.entries().find { entry ->
+                    entry.name ==~ /BOOT-INF\/lib\/storage-[^\/]+\.jar/
+                }
+                if (storageJarEntry == null) {
+                    throw new GradleException("Expected ${appJar.name} to contain the storage module jar under BOOT-INF/lib.")
+                }
+
+                def tempStorageJar = File.createTempFile('storage-migrations-', '.jar', temporaryDir)
+                tempStorageJar.withOutputStream { output ->
+                    appZip.getInputStream(storageJarEntry).withCloseable { input ->
+                        output << input
+                    }
+                }
+
+                java.util.zip.ZipFile storageZip = new java.util.zip.ZipFile(tempStorageJar)
+                try {
+                    def missing = expectedMigrations.findAll { migrationName ->
+                        storageZip.getEntry("db/migration/${migrationName}") == null
+                    }
+                    if (!missing.isEmpty()) {
+                        throw new GradleException("Storage jar in ${appJar.name} is missing Flyway migrations: ${missing.join(', ')}")
+                    }
+                } finally {
+                    storageZip.close()
+                }
+            } finally {
+                appZip.close()
+            }
+        }
     }
 }
 

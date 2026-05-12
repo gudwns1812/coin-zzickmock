@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleCoreException(CoreException exception, HttpServletRequest request) {
         ErrorCode errorCode = exception.errorCode();
         logCoreException(errorCode, request, exception);
-        return ResponseEntity.status(errorCode.httpStatus())
+        return ResponseEntity.status(errorCode.httpStatusCode())
                 .body(new ErrorResponse(errorCode.name(), errorCode.message()));
     }
 
@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
     }
 
     private void logCoreException(ErrorCode errorCode, HttpServletRequest request, CoreException exception) {
-        int status = errorCode.httpStatus().value();
+        int status = errorCode.httpStatusCode();
         switch (errorCode.logLevel()) {
             case ERROR -> log.error("Handled core exception. errorCode={} status={} method={} pathPattern={}",
                     errorCode.name(), status, requestMethod(request), pathPattern(request), exception);

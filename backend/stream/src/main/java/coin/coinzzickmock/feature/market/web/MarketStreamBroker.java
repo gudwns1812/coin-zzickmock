@@ -1,30 +1,19 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
-import coin.coinzzickmock.feature.market.application.realtime.CurrentMarketCandleBootstrapper;
-import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryFinalizedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
-import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.common.web.SseEmitterLifecycle;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.LinkedHashSet;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -32,30 +21,27 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 public class MarketStreamBroker {
     private static final String STREAM = "market";
-    private static final MarketStreamEventType MARKET_SUMMARY = MarketStreamEventType.MARKET_SUMMARY;
-    private static final MarketStreamEventType MARKET_CANDLE = MarketStreamEventType.MARKET_CANDLE;
-    private static final MarketStreamEventType MARKET_HISTORY_FINALIZED = MarketStreamEventType.MARKET_HISTORY_FINALIZED;
 
     private final MarketStreamRegistry registry;
     private final SseDeliveryExecutor sseEventExecutor;
-    private final GetMarketSummaryService getMarketSummaryService;
-    private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
-    private final CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper;
+    private final MarketSummarySnapshotReader marketSummarySnapshotReader;
+    private final MarketCandleSnapshotReader marketCandleSnapshotReader;
+    private final MarketCurrentCandleBootstrapper currentMarketCandleBootstrapper;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
     public MarketStreamBroker(
             MarketStreamRegistry registry,
             SseDeliveryExecutor sseEventExecutor,
-            GetMarketSummaryService getMarketSummaryService,
-            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
-            CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper,
+            MarketSummarySnapshotReader marketSummarySnapshotReader,
+            MarketCandleSnapshotReader marketCandleSnapshotReader,
+            MarketCurrentCandleBootstrapper currentMarketCandleBootstrapper,
             SseTelemetry sseTelemetry
     ) {
         this.registry = registry;
         this.sseEventExecutor = sseEventExecutor;
-        this.getMarketSummaryService = getMarketSummaryService;
-        this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
+        this.marketSummarySnapshotReader = marketSummarySnapshotReader;
+        this.marketCandleSnapshotReader = marketCandleSnapshotReader;
         this.currentMarketCandleBootstrapper = currentMarketCandleBootstrapper;
         this.sseTelemetry = sseTelemetry;
     }
@@ -63,10 +49,12 @@ public class MarketStreamBroker {
     MarketStreamBroker(
             MarketStreamRegistry registry,
             Executor sseEventExecutor,
-            GetMarketSummaryService getMarketSummaryService,
-            RealtimeMarketCandleProjector realtimeMarketCandleProjector
+            MarketSummarySnapshotReader marketSummarySnapshotReader,
+            MarketCandleSnapshotReader marketCandleSnapshotReader,
+            MarketCurrentCandleBootstrapper currentMarketCandleBootstrapper
     ) {
-        this(registry, new SseDeliveryExecutor(sseEventExecutor), getMarketSummaryService, realtimeMarketCandleProjector, null, NoopSseTelemetry.INSTANCE);
+        this(registry, new SseDeliveryExecutor(sseEventExecutor), marketSummarySnapshotReader,
+                marketCandleSnapshotReader, currentMarketCandleBootstrapper, NoopSseTelemetry.INSTANCE);
     }
 
     public void openSession(
@@ -74,7 +62,7 @@ public class MarketStreamBroker {
             String clientKey,
             String activeSymbol,
             Set<String> openPositionSymbols,
-            MarketCandleInterval interval,
+            String interval,
             SseEmitter emitter
     ) {
         MarketStreamSessionKey sessionKey = new MarketStreamSessionKey(memberId, clientKey);
@@ -110,29 +98,26 @@ public class MarketStreamBroker {
                 registry.removeSummaryReason(sessionKey, symbol, SummarySubscriptionReason.OPEN_POSITION));
     }
 
-    @EventListener
-    public void onMarketUpdated(MarketSummaryUpdatedEvent event) {
-        List<MarketStreamSubscriber> subscribers = registry.sessionsForSummary(event.result().symbol());
+    public void onMarketUpdated(MarketSummaryResponse result) {
+        List<MarketStreamSubscriber> subscribers = registry.sessionsForSummary(result.symbol());
         if (subscribers.isEmpty()) {
             return;
         }
         MarketStreamEventResponse response = MarketStreamEventResponse.summary(
-                event.result(),
+                result,
                 MarketStreamEventSource.LIVE,
                 Instant.now()
         );
-        executeFanOut(event.result().symbol(), null, subscribers, response);
+        executeFanOut(result.symbol(), null, subscribers, response);
     }
 
-    @EventListener
-    public void onCandleUpdated(MarketCandleUpdatedEvent event) {
-        registry.candleSubscriptionsForSymbol(event.symbol())
-                .forEach(subscription -> fanOutCandleUpdate(event.symbol(), subscription.interval()));
+    public void onCandleUpdated(String symbol) {
+        registry.candleSubscriptionsForSymbol(symbol)
+                .forEach(subscription -> fanOutCandleUpdate(symbol, subscription.interval()));
     }
 
-    @EventListener
-    public void onHistoryFinalized(MarketHistoryFinalizedEvent event) {
-        registry.candleSubscriptionsForSymbol(event.symbol()).forEach(subscription -> {
+    public void onHistoryFinalized(String symbol, Instant openTime, Instant closeTime) {
+        registry.candleSubscriptionsForSymbol(symbol).forEach(subscription -> {
             List<MarketStreamSubscriber> subscribers = registry.sessionsForCandle(subscription);
             if (subscribers.isEmpty()) {
                 return;
@@ -140,24 +125,24 @@ public class MarketStreamBroker {
             MarketStreamEventResponse response = MarketStreamEventResponse.historyFinalized(
                     subscription,
                     MarketCandleHistoryFinalizedResponse.of(
-                            event.symbol(),
-                            event.openTime(),
-                            event.closeTime(),
-                            List.of(subscription.interval().value())
+                            symbol,
+                            openTime,
+                            closeTime,
+                            List.of(subscription.interval())
                     ),
                     Instant.now()
             );
-            executeFanOut(event.symbol(), subscription.interval(), subscribers, response);
+            executeFanOut(symbol, subscription.interval(), subscribers, response);
         });
     }
 
-    public void fanOutCandleUpdate(String symbol, MarketCandleInterval interval) {
+    public void fanOutCandleUpdate(String symbol, String interval) {
         CandleSubscription subscription = new CandleSubscription(symbol, interval);
         List<MarketStreamSubscriber> subscribers = registry.sessionsForCandle(subscription);
         if (subscribers.isEmpty()) {
             return;
         }
-        realtimeMarketCandleProjector.latest(symbol, interval)
+        marketCandleSnapshotReader.latest(symbol, interval)
                 .map(candle -> MarketStreamEventResponse.candle(
                         symbol,
                         subscription,
@@ -172,13 +157,13 @@ public class MarketStreamBroker {
             SseEmitter emitter,
             String activeSymbol,
             Set<String> openPositionSymbols,
-            MarketCandleInterval interval
+            String interval
     ) {
         Set<String> summarySymbols = new LinkedHashSet<>();
         summarySymbols.add(activeSymbol);
         summarySymbols.addAll(openPositionSymbols);
         for (String symbol : summarySymbols) {
-            MarketSummaryResult result = getMarketSummaryService.getMarket(new GetMarketQuery(symbol));
+            MarketSummaryResponse result = marketSummarySnapshotReader.getMarket(symbol);
             sendOrThrow(
                     activeSymbol,
                     interval,
@@ -189,7 +174,7 @@ public class MarketStreamBroker {
         if (currentMarketCandleBootstrapper != null) {
             currentMarketCandleBootstrapper.bootstrapIfNeeded(activeSymbol, interval);
         }
-        realtimeMarketCandleProjector.latest(activeSymbol, interval)
+        marketCandleSnapshotReader.latest(activeSymbol, interval)
                 .map(candle -> MarketStreamEventResponse.candle(
                         activeSymbol,
                         new CandleSubscription(activeSymbol, interval),
@@ -202,7 +187,7 @@ public class MarketStreamBroker {
 
     private void executeFanOut(
             String symbol,
-            MarketCandleInterval interval,
+            String interval,
             List<MarketStreamSubscriber> subscribers,
             MarketStreamEventResponse response
     ) {
@@ -210,7 +195,7 @@ public class MarketStreamBroker {
             sseEventExecutor.execute(() -> subscribers.forEach(subscriber -> send(subscriber, response)));
         } catch (RejectedExecutionException exception) {
             log.debug("Unified market SSE executor rejected fan-out. symbol={} interval={}",
-                    symbol, interval == null ? null : interval.value(), exception);
+                    symbol, interval, exception);
             recordExecutorRejected();
         }
     }
@@ -241,7 +226,7 @@ public class MarketStreamBroker {
 
     private void sendOrThrow(
             String activeSymbol,
-            MarketCandleInterval interval,
+            String interval,
             SseEmitter emitter,
             MarketStreamEventResponse response
     ) {
@@ -251,7 +236,7 @@ public class MarketStreamBroker {
             recordSend("success", startedAt);
         } catch (IOException | IllegalStateException exception) {
             recordSend("failure", startedAt);
-            log.debug("Initial unified market SSE send failed. symbol={} interval={}", activeSymbol, interval.value(), exception);
+            log.debug("Initial unified market SSE send failed. symbol={} interval={}", activeSymbol, interval, exception);
             throw new IllegalStateException("Initial unified market stream send failed", exception);
         }
     }
@@ -260,7 +245,7 @@ public class MarketStreamBroker {
         boolean removed = registry.releaseSession(sessionKey, emitter, reason);
         if (removed) {
             recordConnectionClosed(reason);
-            logLifecycle("*", null, lifecycleAction(reason), reason);
+            logLifecycle(sessionKey, lifecycleAction(reason), reason);
         }
     }
 
@@ -272,14 +257,28 @@ public class MarketStreamBroker {
         recordConnectionClosed("client_replaced");
     }
 
-    private void logLifecycle(String symbol, MarketCandleInterval interval, String action, String reason) {
+    private void logLifecycle(String symbol, String interval, String action, String reason) {
         log.info(
-                "SSE lifecycle stream={} keyType=member_client symbol={} interval={} action={} reason={} activeSessions={}",
+                "SSE lifecycle stream={} keyType=session symbol={} interval={} action={} reason={} activeKeyEmitters={} activeTotalEmitters={}",
                 STREAM,
                 symbol,
-                interval == null ? null : interval.value(),
+                interval,
                 action,
                 reason,
+                registry.summarySubscriberCount(symbol),
+                registry.activeSessionCount()
+        );
+    }
+
+    private void logLifecycle(MarketStreamSessionKey sessionKey, String action, String reason) {
+        log.info(
+                "SSE lifecycle stream={} keyType=session memberId={} clientKey={} action={} reason={} activeKeyEmitters={} activeTotalEmitters={}",
+                STREAM,
+                sessionKey.memberId(),
+                sessionKey.clientKey(),
+                action,
+                reason,
+                registry.activeSessionCount(),
                 registry.activeSessionCount()
         );
     }
@@ -311,7 +310,7 @@ public class MarketStreamBroker {
         try {
             sseTelemetry.sendRecorded(STREAM, result, Duration.ofNanos(System.nanoTime() - startedAt));
         } catch (RuntimeException exception) {
-            log.warn("Failed to record unified market SSE send telemetry. result={}", result, exception);
+            log.warn("Failed to record unified market SSE send telemetry", exception);
         }
     }
 

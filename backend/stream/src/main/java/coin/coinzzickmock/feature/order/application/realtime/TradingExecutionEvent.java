@@ -1,7 +1,5 @@
 package coin.coinzzickmock.feature.order.application.realtime;
 
-import coin.coinzzickmock.feature.position.domain.PositionHistory;
-
 public record TradingExecutionEvent(
         Long memberId,
         String type,
@@ -70,10 +68,10 @@ public record TradingExecutionEvent(
             double realizedPnl,
             String closeReason
     ) {
-        String type = PositionHistory.CLOSE_REASON_TAKE_PROFIT.equals(closeReason)
+        String type = "TAKE_PROFIT".equals(closeReason)
                 ? "POSITION_TAKE_PROFIT"
                 : "POSITION_STOP_LOSS";
-        String message = PositionHistory.CLOSE_REASON_TAKE_PROFIT.equals(closeReason)
+        String message = "TAKE_PROFIT".equals(closeReason)
                 ? "TP 가격에 도달해 포지션이 종료되었습니다."
                 : "SL 가격에 도달해 포지션이 종료되었습니다.";
         return new TradingExecutionEvent(

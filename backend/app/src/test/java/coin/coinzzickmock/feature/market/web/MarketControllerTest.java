@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -60,7 +59,7 @@ class MarketControllerTest {
         verify(router).open(argThat(request ->
                 request.kind() == MarketSseStreamKind.CANDLE
                         && request.activeSymbol().equals("BTCUSDT")
-                        && request.candleInterval() == MarketCandleInterval.ONE_MINUTE
+                        && request.candleInterval().equals("1m")
                         && request.clientKey().equals("tab-1")
                         && request.emitter() == emitter
         ));
@@ -76,7 +75,7 @@ class MarketControllerTest {
         verify(router).open(argThat(request ->
                 request.kind() == MarketSseStreamKind.UNIFIED
                         && request.activeSymbol().equals("BTCUSDT")
-                        && request.candleInterval() == MarketCandleInterval.ONE_MINUTE
+                        && request.candleInterval().equals("1m")
                         && request.clientKey().equals("tab-1")
                         && request.emitter() == emitter
         ));
@@ -112,7 +111,7 @@ class MarketControllerTest {
                 8
         );
 
-        MarketSummaryResponse response = MarketSummaryResponse.from(market);
+        MarketSummaryResponse response = MarketStreamResponseMapper.toResponse(market);
 
         assertTrue(response.turnover24hUsdt() == 6_400_000_000d);
         assertTrue(response.volume24h() == 6_400_000_000d);

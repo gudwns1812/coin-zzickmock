@@ -1,7 +1,6 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.web.SseSubscriptionLimitExceededException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -50,7 +49,7 @@ public class MarketStreamRegistry {
 
         MarketStreamSession previous = sessions.get(sessionKey);
         if (previous == null && sessions.size() >= maxSessionsTotal) {
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+            throw new SseSubscriptionLimitExceededException("total_limit");
         }
         assertSummaryCapacity(sessionKey, requestedSummarySymbols);
 
@@ -183,7 +182,7 @@ public class MarketStreamRegistry {
         for (String symbol : requestedSummarySymbols) {
             Set<MarketStreamSessionKey> keys = summaryIndex.get(symbol);
             if (keys != null && !keys.contains(sessionKey) && keys.size() >= maxSessionsPerSummarySymbol) {
-                throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+                throw new SseSubscriptionLimitExceededException("symbol_limit");
             }
         }
     }

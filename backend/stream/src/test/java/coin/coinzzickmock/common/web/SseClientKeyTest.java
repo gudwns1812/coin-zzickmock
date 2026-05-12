@@ -3,7 +3,6 @@ package coin.coinzzickmock.common.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import coin.coinzzickmock.common.error.CoreException;
 import org.junit.jupiter.api.Test;
 
 class SseClientKeyTest {
@@ -29,12 +28,12 @@ class SseClientKeyTest {
         String tooLong = "a".repeat(129);
 
         assertThatThrownBy(() -> SseClientKey.resolve(tooLong))
-                .isInstanceOf(CoreException.class);
+                .isInstanceOf(SseClientKeyException.class);
     }
 
     @Test
     void canonicalConstructorRejectsBlankValue() {
         assertThatThrownBy(() -> new SseClientKey(" "))
-                .isInstanceOf(CoreException.class);
+                .isInstanceOf(SseClientKeyException.class);
     }
 }

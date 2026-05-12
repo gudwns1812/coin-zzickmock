@@ -3,15 +3,13 @@ package coin.coinzzickmock.feature.market.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.common.web.SseClientKeyException;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 class MarketSseStreamRequestTest {
-
     @Test
     void summaryResolvesClientKeyAndKeepsImmutableSymbols() {
         Set<String> symbols = new LinkedHashSet<>(Set.of("BTCUSDT", "ETHUSDT"));
@@ -26,41 +24,31 @@ class MarketSseStreamRequestTest {
 
     @Test
     void candleRequiresActiveSymbolAndInterval() {
-        MarketSseStreamRequest request = MarketSseStreamRequest.candle(
-                " BTCUSDT ",
-                MarketCandleInterval.ONE_MINUTE,
-                "tab-1",
-                new SseEmitter()
-        );
+        MarketSseStreamRequest request = MarketSseStreamRequest.candle(" BTCUSDT ", "1m", "tab-1", new SseEmitter());
 
         assertThat(request.kind()).isEqualTo(MarketSseStreamKind.CANDLE);
         assertThat(request.activeSymbol()).isEqualTo("BTCUSDT");
-        assertThat(request.candleInterval()).isEqualTo(MarketCandleInterval.ONE_MINUTE);
+        assertThat(request.candleInterval()).isEqualTo("1m");
     }
 
     @Test
     void unifiedRequiresActiveSymbolAndInterval() {
-        MarketSseStreamRequest request = MarketSseStreamRequest.unified(
-                "BTCUSDT",
-                MarketCandleInterval.ONE_HOUR,
-                "tab-1",
-                new SseEmitter()
-        );
+        MarketSseStreamRequest request = MarketSseStreamRequest.unified("BTCUSDT", "1H", "tab-1", new SseEmitter());
 
         assertThat(request.kind()).isEqualTo(MarketSseStreamKind.UNIFIED);
         assertThat(request.activeSymbol()).isEqualTo("BTCUSDT");
-        assertThat(request.candleInterval()).isEqualTo(MarketCandleInterval.ONE_HOUR);
+        assertThat(request.candleInterval()).isEqualTo("1H");
     }
 
     @Test
     void requiredFieldsFailFast() {
         assertThatThrownBy(() -> MarketSseStreamRequest.summary(Set.of(), "tab-1", new SseEmitter()))
-                .isInstanceOf(CoreException.class);
+                .isInstanceOf(SseClientKeyException.class);
         assertThatThrownBy(() -> MarketSseStreamRequest.summary(Set.of(" "), "tab-1", new SseEmitter()))
-                .isInstanceOf(CoreException.class);
-        assertThatThrownBy(() -> MarketSseStreamRequest.candle(" ", MarketCandleInterval.ONE_MINUTE, "tab-1", new SseEmitter()))
-                .isInstanceOf(CoreException.class);
+                .isInstanceOf(SseClientKeyException.class);
+        assertThatThrownBy(() -> MarketSseStreamRequest.candle(" ", "1m", "tab-1", new SseEmitter()))
+                .isInstanceOf(SseClientKeyException.class);
         assertThatThrownBy(() -> MarketSseStreamRequest.unified("BTCUSDT", null, "tab-1", new SseEmitter()))
-                .isInstanceOf(NullPointerException.class);
+                .isInstanceOf(SseClientKeyException.class);
     }
 }

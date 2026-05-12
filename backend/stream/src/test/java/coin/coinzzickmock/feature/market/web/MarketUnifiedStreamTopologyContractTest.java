@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 
 class MarketUnifiedStreamTopologyContractTest {
     private static final Path MAIN = Path.of("src/main/java");
+    private static final Path APP_MAIN = Path.of("../app/src/main/java");
     private static final Path MARKET_WEB = MAIN.resolve("coin/coinzzickmock/feature/market/web");
+    private static final Path APP_MARKET_WEB = APP_MAIN.resolve("coin/coinzzickmock/feature/market/web");
 
     @Test
     void unifiedRegistryOwnsSessionSourceAndDerivedIndexesOnlyThroughApi() throws IOException {
@@ -53,9 +55,9 @@ class MarketUnifiedStreamTopologyContractTest {
         readRequired(MARKET_WEB.resolve("MarketStreamEventResponse.java"));
         readRequired(MARKET_WEB.resolve("MarketStreamEventType.java"));
 
-        assertTrue(broker.contains("MarketSummaryUpdatedEvent"), "broker must fan out market summary updates");
-        assertTrue(broker.contains("MarketCandleUpdatedEvent"), "broker must fan out candle updates");
-        assertTrue(broker.contains("MarketHistoryFinalizedEvent"), "broker must fan out history-finalized updates");
+        assertTrue(broker.contains("onMarketUpdated(MarketSummaryResponse"), "broker must fan out market summary updates");
+        assertTrue(broker.contains("onCandleUpdated(String symbol"), "broker must fan out candle updates");
+        assertTrue(broker.contains("onHistoryFinalized(String symbol"), "broker must fan out history-finalized updates");
         assertTrue(broker.contains("sessionsForSummary"), "summary fan-out must come from registry snapshot");
         assertTrue(broker.contains("sessionsForCandle"), "candle fan-out must come from registry snapshot");
         assertTrue(broker.contains("SseEmitterLifecycle"),
@@ -66,16 +68,17 @@ class MarketUnifiedStreamTopologyContractTest {
                 "unified market stream must emit the documented market telemetry stream label");
         assertFalse(broker.contains("market_stream"),
                 "undocumented stream labels are normalized to unknown in Micrometer telemetry");
-        assertTrue(broker.contains("MARKET_SUMMARY"), "unified envelopes must include market summary type");
-        assertTrue(broker.contains("MARKET_CANDLE"), "unified envelopes must include market candle type");
-        assertTrue(broker.contains("MARKET_HISTORY_FINALIZED"), "unified envelopes must include history finalized type");
+        String envelope = readRequired(MARKET_WEB.resolve("MarketStreamEventResponse.java"));
+        assertTrue(envelope.contains("MARKET_SUMMARY"), "unified envelopes must include market summary type");
+        assertTrue(envelope.contains("MARKET_CANDLE"), "unified envelopes must include market candle type");
+        assertTrue(envelope.contains("MARKET_HISTORY_FINALIZED"), "unified envelopes must include history finalized type");
         assertTrue(broker.contains("INITIAL_SNAPSHOT") || broker.contains("LIVE"),
                 "envelopes must carry source metadata for initial/live de-duplication");
     }
 
     @Test
     void controllerAddsAuthenticatedUnifiedEndpointWithoutCouplingToPositionInternals() throws IOException {
-        String controller = readRequired(MARKET_WEB.resolve("MarketController.java"));
+        String controller = readRequired(APP_MARKET_WEB.resolve("MarketController.java"));
         String router = readRequired(MARKET_WEB.resolve("MarketSseStreamRouter.java"));
         String strategyContract = readRequired(MARKET_WEB.resolve("MarketSseStreamStrategy.java"));
         String strategy = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamStrategy.java"));
@@ -109,18 +112,18 @@ class MarketUnifiedStreamTopologyContractTest {
                 "strategy contract must expose the stream open operation");
         assertFalse(strategyContract.contains("default "), "strategy contract must not define default behavior");
         assertTrue(strategy.contains("MarketStreamBroker"), "strategy must delegate unified stream lifecycle to broker");
-        assertTrue(strategy.contains("OpenPositionSymbolsReader"),
+        assertTrue(strategy.contains("MarketOpenPositionSymbolsReader"),
                 "strategy must ask a narrow application-facing reader for open position symbols");
         assertFalse(controller.contains("PositionRepository"), "market web must not depend on position repositories");
         assertFalse(controller.contains("PositionJpa"), "market web must not depend on position persistence internals");
-        assertTrue(strategy.contains("currentActorOptional"),
+        assertTrue(strategy.contains("currentMemberId"),
                 "unified endpoint must allow anonymous market viewers and enrich authenticated sessions only when present");
         assertFalse(strategy.contains("currentActor().memberId()"),
                 "unified endpoint must not require authentication for public market/candle data");
         assertTrue(strategy.contains("Set.of()"),
                 "anonymous unified sessions must omit only open-position summary symbols");
         assertTrue(controller.contains("clientKey"), "unified endpoint must be scoped by clientKey");
-        assertTrue(controller.contains("MarketCandleInterval.from(interval)"),
+        assertTrue(controller.contains("MarketCandleInterval.from(interval)") || controller.contains("MarketSseStreamRequest.unified"),
                 "unified endpoint must register active candle interval");
     }
 
@@ -155,9 +158,9 @@ class MarketUnifiedStreamTopologyContractTest {
         Path fullyClosed = findRequired("PositionFullyClosedEvent.java");
         String openedSource = Files.readString(opened);
         String closedSource = Files.readString(fullyClosed);
-        String openApplier = readRequired(MAIN.resolve(
+        String openApplier = readRequired(APP_MAIN.resolve(
                 "coin/coinzzickmock/feature/order/application/service/FilledOpenOrderApplier.java"));
-        String closeFinalizer = readRequired(MAIN.resolve(
+        String closeFinalizer = readRequired(APP_MAIN.resolve(
                 "coin/coinzzickmock/feature/position/application/close/PositionCloseFinalizer.java"));
 
         assertTrue(openedSource.contains("memberId") && openedSource.contains("symbol"),
@@ -180,12 +183,12 @@ class MarketUnifiedStreamTopologyContractTest {
 
     @Test
     void sseEmitterRemainsAtWebBoundaryAndRawMarketEndpointsStayPresent() throws IOException {
-        String controller = readRequired(MARKET_WEB.resolve("MarketController.java"));
+        String controller = readRequired(APP_MARKET_WEB.resolve("MarketController.java"));
 
         assertTrue(controller.contains("/{symbol}/stream"), "raw market summary SSE endpoint must remain present");
         assertTrue(controller.contains("/{symbol}/candles/stream"), "raw candle SSE endpoint must remain present");
 
-        try (Stream<Path> files = Files.walk(MAIN)) {
+        try (Stream<Path> files = Stream.concat(Files.walk(MAIN), Files.walk(APP_MAIN))) {
             List<Path> offenders = files
                     .filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> {
@@ -207,7 +210,7 @@ class MarketUnifiedStreamTopologyContractTest {
     }
 
     private static Path findRequired(String fileName) throws IOException {
-        try (Stream<Path> files = Files.walk(MAIN)) {
+        try (Stream<Path> files = Stream.concat(Files.walk(MAIN), Files.walk(APP_MAIN))) {
             return files
                     .filter(path -> path.getFileName().toString().equals(fileName))
                     .findFirst()

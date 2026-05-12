@@ -1,12 +1,11 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.web.SseClientKey;
 import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.common.web.SseEmitterLifecycle;
+import coin.coinzzickmock.common.web.SseClientKeyException;
+import coin.coinzzickmock.common.web.SseSubscriptionLimitExceededException;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
-import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
@@ -21,7 +20,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -80,7 +78,9 @@ public class MarketRealtimeSseBroker {
         MarketSummarySubscriptionRegistry.Reservation reservation = subscriptions.reserve(symbols, clientKey);
         if (!reservation.accepted()) {
             reject(reservation.rejection());
-            throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+            throw new SseSubscriptionLimitExceededException(
+                    reservation.rejection() == ReservationRejection.TOTAL_LIMIT ? "total_limit" : "symbol_limit"
+            );
         }
         return reservation.permit();
     }
@@ -125,15 +125,12 @@ public class MarketRealtimeSseBroker {
         }
     }
 
-    @EventListener
-    public void onMarketUpdated(MarketSummaryUpdatedEvent event) {
-        String symbol = event.result().symbol();
+    public void onMarketUpdated(MarketSummaryResponse response) {
+        String symbol = response.symbol();
         List<SseEmitter> symbolEmitters = subscribers(symbol);
         if (symbolEmitters.isEmpty()) {
             return;
         }
-
-        MarketSummaryResponse response = MarketSummaryResponse.from(event.result());
         try {
             sseEventExecutor.execute(() -> sendToSubscribers(symbol, symbolEmitters, response));
         } catch (RejectedExecutionException exception) {
@@ -177,12 +174,12 @@ public class MarketRealtimeSseBroker {
 
     private static Set<String> normalizeSymbols(Set<String> symbols) {
         if (symbols == null || symbols.isEmpty()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new SseClientKeyException("Invalid market stream symbols");
         }
         Set<String> normalized = new LinkedHashSet<>();
         for (String symbol : symbols) {
             if (symbol == null || symbol.isBlank()) {
-                throw new CoreException(ErrorCode.INVALID_REQUEST);
+                throw new SseClientKeyException("Invalid market stream symbol");
             }
             normalized.add(symbol.trim());
         }

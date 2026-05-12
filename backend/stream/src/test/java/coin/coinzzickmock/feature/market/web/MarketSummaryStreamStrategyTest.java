@@ -8,67 +8,55 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
-import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 class MarketSummaryStreamStrategyTest {
-
     @Test
     void registersSingleSymbolAfterInitialSend() {
-        GetMarketSummaryService service = mock(GetMarketSummaryService.class);
+        MarketSummarySnapshotReader reader = mock(MarketSummarySnapshotReader.class);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
-        when(service.getMarket(any())).thenReturn(summary("BTCUSDT"));
+        when(reader.getMarket("BTCUSDT")).thenReturn(summary("BTCUSDT"));
         when(broker.reserve(org.mockito.ArgumentMatchers.<Set<String>>eq(Set.of("BTCUSDT")), eq("tab-1")))
                 .thenReturn(permit);
         SseEmitter emitter = new SseEmitter();
 
-        new MarketSummaryStreamStrategy(service, broker)
+        new MarketSummaryStreamStrategy(reader, broker)
                 .open(MarketSseStreamRequest.summary(Set.of("BTCUSDT"), "tab-1", emitter));
 
-        verify(service).getMarket(org.mockito.ArgumentMatchers.argThat(query -> query.symbol().equals("BTCUSDT")));
+        verify(reader).getMarket("BTCUSDT");
         verify(broker).register(permit, emitter);
     }
 
     @Test
     void registersMultiSymbolSummaryAfterInitialSends() {
-        GetMarketSummaryService service = mock(GetMarketSummaryService.class);
+        MarketSummarySnapshotReader reader = symbol -> summary(symbol);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
-        when(service.getMarket(any())).thenAnswer(invocation -> {
-            GetMarketQuery query = invocation.getArgument(0);
-            return summary(query.symbol());
-        });
         when(broker.reserve(org.mockito.ArgumentMatchers.<Set<String>>eq(Set.of("BTCUSDT", "ETHUSDT")), eq("tab-1")))
                 .thenReturn(permit);
         SseEmitter emitter = new SseEmitter();
 
-        new MarketSummaryStreamStrategy(service, broker)
+        new MarketSummaryStreamStrategy(reader, broker)
                 .open(MarketSseStreamRequest.summary(Set.of("BTCUSDT", "ETHUSDT"), "tab-1", emitter));
 
-        verify(service).getMarket(org.mockito.ArgumentMatchers.argThat(query -> query.symbol().equals("BTCUSDT")));
-        verify(service).getMarket(org.mockito.ArgumentMatchers.argThat(query -> query.symbol().equals("ETHUSDT")));
         verify(broker).register(permit, emitter);
     }
 
     @Test
     void releasesPermitWhenInitialSendFails() {
-        GetMarketSummaryService service = mock(GetMarketSummaryService.class);
+        MarketSummarySnapshotReader reader = symbol -> summary(symbol);
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
-        when(service.getMarket(any())).thenReturn(summary("BTCUSDT"));
         when(broker.reserve(org.mockito.ArgumentMatchers.<Set<String>>eq(Set.of("BTCUSDT")), eq("tab-1")))
                 .thenReturn(permit);
         FailingSseEmitter emitter = new FailingSseEmitter();
 
-        new MarketSummaryStreamStrategy(service, broker)
+        new MarketSummaryStreamStrategy(reader, broker)
                 .open(MarketSseStreamRequest.summary(Set.of("BTCUSDT"), "tab-1", emitter));
 
         assertTrue(emitter.completed);
@@ -78,15 +66,14 @@ class MarketSummaryStreamStrategyTest {
 
     @Test
     void releasesPermitWhenLookupFails() {
-        GetMarketSummaryService service = mock(GetMarketSummaryService.class);
+        MarketSummarySnapshotReader reader = symbol -> { throw new IllegalStateException("not found"); };
         MarketRealtimeSseBroker broker = mock(MarketRealtimeSseBroker.class);
         MarketRealtimeSseBroker.SseSubscriptionPermit permit = mock(MarketRealtimeSseBroker.SseSubscriptionPermit.class);
-        when(service.getMarket(any())).thenThrow(new CoreException(ErrorCode.MARKET_NOT_FOUND));
         when(broker.reserve(org.mockito.ArgumentMatchers.<Set<String>>eq(Set.of("UNSUPPORTED")), eq("tab-1")))
                 .thenReturn(permit);
 
-        org.junit.jupiter.api.Assertions.assertThrows(CoreException.class, () ->
-                new MarketSummaryStreamStrategy(service, broker)
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () ->
+                new MarketSummaryStreamStrategy(reader, broker)
                         .open(MarketSseStreamRequest.summary(Set.of("UNSUPPORTED"), "tab-1", new SseEmitter()))
         );
 
@@ -94,25 +81,21 @@ class MarketSummaryStreamStrategyTest {
         verify(broker, never()).register(eq(permit), any(SseEmitter.class));
     }
 
-    private static MarketSummaryResult summary(String symbol) {
-        return new MarketSummaryResult(symbol, symbol + " Perpetual", 74000, 74010, 74005, 0.0001, 0.2);
+    static MarketSummaryResponse summary(String symbol) {
+        return MarketSummaryResponse.of(symbol, symbol, 1, 2, 3, 0.01, 0.2, 100, Instant.parse("2026-05-12T00:00:00Z"), null, 8);
     }
 
     private static class FailingSseEmitter extends SseEmitter {
-        private boolean completed;
+        boolean completed;
 
-        private FailingSseEmitter() {
-            super(0L);
+        @Override
+        public void send(Object object) throws IOException {
+            throw new IOException("failed");
         }
 
         @Override
-        public synchronized void send(Object object) throws IOException {
-            throw new IOException("client disconnected");
-        }
-
-        @Override
-        public synchronized void complete() {
-            this.completed = true;
+        public void complete() {
+            completed = true;
             super.complete();
         }
     }

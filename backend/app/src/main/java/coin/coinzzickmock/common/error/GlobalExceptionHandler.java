@@ -1,5 +1,7 @@
 package coin.coinzzickmock.common.error;
 
+import coin.coinzzickmock.common.web.SseClientKeyException;
+import coin.coinzzickmock.common.web.SseSubscriptionLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,28 @@ public class GlobalExceptionHandler {
                 requestMethod(request), pathPattern(request), exception);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(ErrorCode.INVALID_REQUEST.name(), ErrorCode.INVALID_REQUEST.message()));
+    }
+
+    @ExceptionHandler(SseClientKeyException.class)
+    public ResponseEntity<ErrorResponse> handleSseClientKeyException(
+            SseClientKeyException exception,
+            HttpServletRequest request
+    ) {
+        log.debug("Invalid SSE client key request. method={} pathPattern={}",
+                requestMethod(request), pathPattern(request), exception);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(ErrorCode.INVALID_REQUEST.name(), ErrorCode.INVALID_REQUEST.message()));
+    }
+
+    @ExceptionHandler(SseSubscriptionLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleSseSubscriptionLimitExceededException(
+            SseSubscriptionLimitExceededException exception,
+            HttpServletRequest request
+    ) {
+        log.info("SSE subscription limit exceeded. method={} pathPattern={} reason={}",
+                requestMethod(request), pathPattern(request), exception.reason());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ErrorResponse(ErrorCode.TOO_MANY_REQUESTS.name(), ErrorCode.TOO_MANY_REQUESTS.message()));
     }
 
     @ExceptionHandler(Exception.class)

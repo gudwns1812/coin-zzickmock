@@ -55,7 +55,7 @@ public class MarketController {
 
     @GetMapping("/{symbol}")
     public ApiResponse<MarketSummaryResponse> detail(@PathVariable String symbol) {
-        return ApiResponse.success(MarketSummaryResponse.from(
+        return ApiResponse.success(toResponse(
                 getMarketSummaryService.getMarket(new GetMarketQuery(symbol))
         ));
     }
@@ -70,7 +70,7 @@ public class MarketController {
         List<MarketCandleResult> candles = getMarketCandlesService.getCandles(
                 new GetMarketCandlesQuery(symbol, interval, limit, before)
         );
-        return ApiResponse.success(candles.stream().map(MarketCandleResponse::from).toList());
+        return ApiResponse.success(candles.stream().map(this::toCandleResponse).toList());
     }
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -82,7 +82,7 @@ public class MarketController {
         SseEmitter emitter = createEmitter();
         marketSseStreamRouter.open(MarketSseStreamRequest.unified(
                 symbol,
-                MarketCandleInterval.from(interval),
+                MarketCandleInterval.from(interval).value(),
                 clientKey,
                 emitter
         ));
@@ -130,7 +130,7 @@ public class MarketController {
         SseEmitter emitter = createEmitter();
         marketSseStreamRouter.open(MarketSseStreamRequest.candle(
                 symbol,
-                MarketCandleInterval.from(interval),
+                MarketCandleInterval.from(interval).value(),
                 clientKey,
                 emitter
         ));
@@ -153,7 +153,11 @@ public class MarketController {
     }
 
     private MarketSummaryResponse toResponse(MarketSummaryResult result) {
-        return MarketSummaryResponse.from(result);
+        return MarketStreamResponseMapper.toResponse(result);
+    }
+
+    private MarketCandleResponse toCandleResponse(MarketCandleResult result) {
+        return MarketStreamResponseMapper.toResponse(result);
     }
 
     SseEmitter createEmitter() {

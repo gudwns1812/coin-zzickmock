@@ -1,19 +1,14 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.common.web.SseEmitterLifecycle;
+import coin.coinzzickmock.common.web.SseSubscriptionLimitExceededException;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
-import coin.coinzzickmock.feature.market.application.query.FinalizedCandleIntervalsReader;
-import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryFinalizedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -21,7 +16,6 @@ import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -29,26 +23,25 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 public class MarketCandleRealtimeSseBroker {
     private static final String STREAM = "market_candle";
-    private static final String CLIENT_REPLACED_REASON = "client_replaced";
 
     private final SseSubscriptionRegistry<SubscriptionKey> subscriptions;
     private final Set<SubscriptionKey> activeKeys = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private final SseDeliveryExecutor sseEventExecutor;
-    private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
-    private final FinalizedCandleIntervalsReader finalizedCandleIntervalsReader;
+    private final MarketCandleSnapshotReader marketCandleSnapshotReader;
+    private final MarketFinalizedCandleIntervalsReader finalizedCandleIntervalsReader;
     private final SseTelemetry sseTelemetry;
 
     @Autowired
     public MarketCandleRealtimeSseBroker(
             SseDeliveryExecutor sseEventExecutor,
-            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
-            FinalizedCandleIntervalsReader finalizedCandleIntervalsReader,
+            MarketCandleSnapshotReader marketCandleSnapshotReader,
+            MarketFinalizedCandleIntervalsReader finalizedCandleIntervalsReader,
             @Value("${coin.market.sse.max-subscribers-per-symbol:50}") int maxSubscribersPerKey,
             @Value("${coin.market.sse.max-total-subscribers:100}") int maxSubscribersTotal,
             SseTelemetry sseTelemetry
     ) {
         this.sseEventExecutor = sseEventExecutor;
-        this.realtimeMarketCandleProjector = realtimeMarketCandleProjector;
+        this.marketCandleSnapshotReader = marketCandleSnapshotReader;
         this.finalizedCandleIntervalsReader = finalizedCandleIntervalsReader;
         this.subscriptions = new SseSubscriptionRegistry<>(maxSubscribersPerKey, maxSubscribersTotal);
         this.sseTelemetry = sseTelemetry;
@@ -56,15 +49,15 @@ public class MarketCandleRealtimeSseBroker {
 
     MarketCandleRealtimeSseBroker(
             Executor sseEventExecutor,
-            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
-            FinalizedCandleIntervalsReader finalizedCandleIntervalsReader,
+            MarketCandleSnapshotReader marketCandleSnapshotReader,
+            MarketFinalizedCandleIntervalsReader finalizedCandleIntervalsReader,
             int maxSubscribersPerKey,
             int maxSubscribersTotal,
             SseTelemetry sseTelemetry
     ) {
         this(
                 new SseDeliveryExecutor(sseEventExecutor),
-                realtimeMarketCandleProjector,
+                marketCandleSnapshotReader,
                 finalizedCandleIntervalsReader,
                 maxSubscribersPerKey,
                 maxSubscribersTotal,
@@ -74,13 +67,13 @@ public class MarketCandleRealtimeSseBroker {
 
     MarketCandleRealtimeSseBroker(
             Executor sseEventExecutor,
-            RealtimeMarketCandleProjector realtimeMarketCandleProjector,
-            FinalizedCandleIntervalsReader finalizedCandleIntervalsReader,
+            MarketCandleSnapshotReader marketCandleSnapshotReader,
+            MarketFinalizedCandleIntervalsReader finalizedCandleIntervalsReader,
             SseTelemetry sseTelemetry
     ) {
         this(
                 new SseDeliveryExecutor(sseEventExecutor),
-                realtimeMarketCandleProjector,
+                marketCandleSnapshotReader,
                 finalizedCandleIntervalsReader,
                 50,
                 100,
@@ -101,7 +94,9 @@ public class MarketCandleRealtimeSseBroker {
             return new SseSubscriptionPermit(reservation.permit());
         }
         reject(reservation.rejection());
-        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+        throw new SseSubscriptionLimitExceededException(
+                reservation.rejection() == ReservationRejection.TOTAL_LIMIT ? "total_limit" : "key_limit"
+        );
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
@@ -111,11 +106,11 @@ public class MarketCandleRealtimeSseBroker {
             var registration = subscriptions.register(permit.delegate, emitter);
             if (!registration.registered()) {
                 reject(registration.rejection());
-                throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+                throw new SseSubscriptionLimitExceededException(
+                        registration.rejection() == ReservationRejection.TOTAL_LIMIT ? "total_limit" : "key_limit"
+                );
             }
-            synchronized (activeKeys) {
-                activeKeys.add(key);
-            }
+            activeKeys.add(key);
             recordConnectionOpened();
             logLifecycle(key, "register", null);
             completeReplacedEmitter(key, registration.replacedEmitter());
@@ -127,12 +122,12 @@ public class MarketCandleRealtimeSseBroker {
         }
     }
 
-    public void register(String symbol, MarketCandleInterval interval, SseEmitter emitter) {
+    public void register(String symbol, String interval, SseEmitter emitter) {
         SubscriptionKey key = new SubscriptionKey(symbol, interval);
         register(reserve(key), emitter);
     }
 
-    public void register(String symbol, MarketCandleInterval interval, String clientKey, SseEmitter emitter) {
+    public void register(String symbol, String interval, String clientKey, SseEmitter emitter) {
         SubscriptionKey key = new SubscriptionKey(symbol, interval);
         register(reserve(key, clientKey), emitter);
     }
@@ -163,28 +158,25 @@ public class MarketCandleRealtimeSseBroker {
         }
     }
 
-    @EventListener
-    public void onCandleUpdated(MarketCandleUpdatedEvent event) {
+    public void onCandleUpdated(String symbol) {
         activeKeySnapshot().stream()
-                .filter(key -> key.symbol().equals(event.symbol()))
+                .filter(key -> key.symbol().equals(symbol))
                 .forEach(this::fanOutLatest);
     }
 
-    @EventListener
-    public void onHistoryFinalized(MarketHistoryFinalizedEvent event) {
-        List<String> affectedIntervals = affectedIntervals(event);
+    public void onHistoryFinalized(String symbol, Instant openTime, Instant closeTime) {
+        List<String> affectedIntervals = finalizedCandleIntervalsReader.readAffectedIntervals(symbol, openTime, closeTime);
         if (affectedIntervals.isEmpty()) {
             return;
         }
-
         MarketCandleHistoryFinalizedResponse response = MarketCandleHistoryFinalizedResponse.of(
-                event.symbol(),
-                event.openTime(),
-                event.closeTime(),
+                symbol,
+                openTime,
+                closeTime,
                 affectedIntervals
         );
         activeKeySnapshot().stream()
-                .filter(key -> key.symbol().equals(event.symbol()))
+                .filter(key -> key.symbol().equals(symbol))
                 .filter(key -> affectedIntervals.contains(key.interval().value()))
                 .forEach(key -> fanOut(key, response));
     }
@@ -194,8 +186,7 @@ public class MarketCandleRealtimeSseBroker {
         if (keyEmitters.isEmpty()) {
             return;
         }
-        realtimeMarketCandleProjector.latest(key.symbol(), key.interval())
-                .map(MarketCandleResponse::from)
+        marketCandleSnapshotReader.latest(key.symbol(), key.interval().value())
                 .ifPresent(response -> executeFanOut(key, keyEmitters, response));
     }
 
@@ -207,11 +198,7 @@ public class MarketCandleRealtimeSseBroker {
         executeFanOut(key, keyEmitters, response);
     }
 
-    private void executeFanOut(
-            SubscriptionKey key,
-            List<SseEmitter> keyEmitters,
-            Object response
-    ) {
+    private void executeFanOut(SubscriptionKey key, List<SseEmitter> keyEmitters, Object response) {
         try {
             sseEventExecutor.execute(() -> keyEmitters.forEach(emitter -> send(key, emitter, response)));
         } catch (RejectedExecutionException exception) {
@@ -228,8 +215,7 @@ public class MarketCandleRealtimeSseBroker {
                 () -> unregister(key, permit.clientKey(), emitter, "client_complete"),
                 () -> unregister(key, permit.clientKey(), emitter, "timeout"),
                 error -> {
-                    log.debug(
-                            "Market candle SSE emitter reported an error; closing subscription. stream={} symbol={} interval={}",
+                    log.debug("Market candle SSE emitter reported an error; closing subscription. stream={} symbol={} interval={}",
                             STREAM, key.symbol(), key.interval().value(), error);
                     unregister(key, permit.clientKey(), emitter, "error");
                 }
@@ -242,8 +228,7 @@ public class MarketCandleRealtimeSseBroker {
             emitter.send(response);
             recordSend("success", startedAt);
         } catch (IOException | IllegalStateException exception) {
-            log.debug(
-                    "Market candle SSE send failed; closing subscription. stream={} symbol={} interval={} reason=send_failure",
+            log.debug("Market candle SSE send failed; closing subscription. stream={} symbol={} interval={} reason=send_failure",
                     STREAM, key.symbol(), key.interval().value(), exception);
             recordSend("failure", startedAt);
             unregister(key, emitter, "send_failure");
@@ -251,16 +236,12 @@ public class MarketCandleRealtimeSseBroker {
     }
 
     private List<SubscriptionKey> activeKeySnapshot() {
-        synchronized (activeKeys) {
-            return List.copyOf(activeKeys);
-        }
+        return List.copyOf(activeKeys);
     }
 
     private void cleanupActiveKey(SubscriptionKey key) {
-        synchronized (activeKeys) {
-            if (isSubscriptionEmpty(key)) {
-                activeKeys.remove(key);
-            }
+        if (isSubscriptionEmpty(key)) {
+            activeKeys.remove(key);
         }
     }
 
@@ -271,20 +252,8 @@ public class MarketCandleRealtimeSseBroker {
     }
 
     private boolean isSubscriptionEmpty(SubscriptionKey key) {
-        List<SseEmitter> keyEmitters = subscriptions.subscribers(key);
-        return keyEmitters.isEmpty();
+        return subscriptions.subscribers(key).isEmpty();
     }
-
-    private List<String> affectedIntervals(MarketHistoryFinalizedEvent event) {
-        return finalizedCandleIntervalsReader.readAffectedIntervals(
-                        event.symbol(),
-                        event.openTime(),
-                        event.closeTime()
-                ).stream()
-                .map(MarketCandleInterval::value)
-                .toList();
-    }
-
 
     private void reject(ReservationRejection rejection) {
         if (rejection == ReservationRejection.TOTAL_LIMIT) {
@@ -363,7 +332,29 @@ public class MarketCandleRealtimeSseBroker {
         }
     }
 
-    public record SubscriptionKey(String symbol, MarketCandleInterval interval) {
+    public record SubscriptionKey(String symbol, CandleInterval interval) {
+        public SubscriptionKey(String symbol, String interval) {
+            this(symbol, new CandleInterval(interval));
+        }
+
+        public SubscriptionKey {
+            if (symbol == null || symbol.isBlank()) {
+                throw new IllegalArgumentException("symbol is required");
+            }
+            if (interval == null) {
+                throw new IllegalArgumentException("interval is required");
+            }
+            symbol = symbol.toUpperCase();
+        }
+    }
+
+    public record CandleInterval(String value) {
+        public CandleInterval {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("interval is required");
+            }
+            value = value.trim();
+        }
     }
 
     boolean hasSubscriberLimit(SubscriptionKey key) {

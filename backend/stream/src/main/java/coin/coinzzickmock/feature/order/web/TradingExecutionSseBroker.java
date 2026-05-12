@@ -1,9 +1,8 @@
 package coin.coinzzickmock.feature.order.web;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.web.SseDeliveryExecutor;
 import coin.coinzzickmock.common.web.SseEmitterLifecycle;
+import coin.coinzzickmock.common.web.SseSubscriptionLimitExceededException;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
@@ -18,8 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Slf4j
@@ -74,7 +71,9 @@ public class TradingExecutionSseBroker {
             return new SseSubscriptionPermit(reservation.permit());
         }
         reject(reservation.rejection());
-        throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+        throw new SseSubscriptionLimitExceededException(
+                reservation.rejection() == ReservationRejection.TOTAL_LIMIT ? "total_limit" : "member_limit"
+        );
     }
 
     public void register(SseSubscriptionPermit permit, SseEmitter emitter) {
@@ -84,7 +83,7 @@ public class TradingExecutionSseBroker {
             var registration = subscriptions.register(permit.delegate, emitter);
             if (!registration.registered()) {
                 reject(registration.rejection());
-                throw new CoreException(ErrorCode.TOO_MANY_REQUESTS);
+                throw new SseSubscriptionLimitExceededException("member_limit");
             }
             recordConnectionOpened();
             logLifecycle(memberId, "register", null);
@@ -120,7 +119,6 @@ public class TradingExecutionSseBroker {
         }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTradingExecution(TradingExecutionEvent event) {
         List<SseEmitter> memberEmitters = subscriptions.subscribers(event.memberId());
         if (memberEmitters.isEmpty()) {

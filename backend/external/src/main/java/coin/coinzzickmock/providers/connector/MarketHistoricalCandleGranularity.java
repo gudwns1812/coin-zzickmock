@@ -1,9 +1,9 @@
 package coin.coinzzickmock.providers.connector;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 
 public record MarketHistoricalCandleGranularity(String value) {
-    public static MarketHistoricalCandleGranularity from(MarketCandleInterval interval) {
+    public static MarketHistoricalCandleGranularity from(ProviderMarketCandleInterval interval) {
         return switch (interval) {
             case ONE_HOUR -> new MarketHistoricalCandleGranularity("1H");
             case FOUR_HOURS -> new MarketHistoricalCandleGranularity("4H");

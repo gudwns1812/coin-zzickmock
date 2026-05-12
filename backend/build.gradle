@@ -156,6 +156,8 @@ def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
 def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
 def architectureLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
 def architectureTargetLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
+def architectureBackendModules = ['app', 'stream', 'storage', 'external'] as Set
+def architectureLibraryModules = ['stream', 'storage', 'external'] as Set
 def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
 
 def architectureEmit = { Writer writer, String level, String event, Map payload ->
@@ -220,6 +222,7 @@ tasks.register('architectureLint') {
                     'ACTIVE_MEMBER_LOOKUP_GUARD',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
+                    'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
                 ],
                 targetLayers: architectureTargetLayers,
             ])
@@ -248,6 +251,78 @@ tasks.register('architectureLint') {
                     message     : message,
                     suggestedFix: suggestedFix,
                 ] + extras)
+            }
+
+            def moduleFromRelativePath = { String path ->
+                path.tokenize('/')[0]
+            }
+
+            def moduleBuildLine = { Project project, String needleText ->
+                if (!project.buildFile.exists()) {
+                    return 1
+                }
+                def found = project.buildFile.readLines().findIndexOf { it.contains(needleText) }
+                found >= 0 ? found + 1 : 1
+            }
+
+            subprojects.each { moduleProject ->
+                def moduleName = moduleProject.name
+                if (!architectureBackendModules.contains(moduleName)) {
+                    return
+                }
+
+                if (moduleName == 'app') {
+                    if (!moduleProject.plugins.hasPlugin('org.springframework.boot')) {
+                        logViolation(
+                            moduleProject.buildFile,
+                            moduleBuildLine(moduleProject, "project(':app')"),
+                            'MODULE_EXECUTABLE_APP_ONLY',
+                            'app module만 Spring Boot executable 진입점이어야 하며 app에는 Spring Boot plugin이 필요합니다.',
+                            "backend/build.gradle의 project(':app') 블록에 org.springframework.boot plugin을 유지하세요.",
+                            [moduleName: moduleName]
+                        )
+                    }
+                } else if (architectureLibraryModules.contains(moduleName)) {
+                    def bootJarTask = moduleProject.tasks.findByName('bootJar')
+                    if (moduleProject.plugins.hasPlugin('org.springframework.boot') || (bootJarTask != null && bootJarTask.enabled)) {
+                        logViolation(
+                            moduleProject.buildFile,
+                            1,
+                            'MODULE_EXECUTABLE_APP_ONLY',
+                            "${moduleName} module은 executable Spring Boot app이 아니라 library module이어야 합니다.",
+                            'stream/storage/external에는 org.springframework.boot plugin 또는 enabled bootJar task를 두지 마세요.',
+                            [moduleName: moduleName]
+                        )
+                    }
+
+                    def jarTask = moduleProject.tasks.findByName('jar')
+                    if (jarTask != null && !jarTask.enabled) {
+                        logViolation(
+                            moduleProject.buildFile,
+                            1,
+                            'MODULE_EXECUTABLE_APP_ONLY',
+                            "${moduleName} library module의 plain jar task가 비활성화되어 있습니다.",
+                            'library module은 app bootJar에 포함될 수 있도록 jar task를 활성화하세요.',
+                            [moduleName: moduleName]
+                        )
+                    }
+
+                    moduleProject.configurations.each { configuration ->
+                        configuration.dependencies.withType(org.gradle.api.artifacts.ProjectDependency).each { dependency ->
+                            def dependencyModuleName = dependency.dependencyProject.name
+                            if (architectureBackendModules.contains(dependencyModuleName) && dependencyModuleName != moduleName) {
+                                logViolation(
+                                    moduleProject.buildFile,
+                                    moduleBuildLine(moduleProject, "project(':${dependencyModuleName}')"),
+                                    'MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY',
+                                    "${moduleName} library module은 ${dependencyModuleName} module에 의존하면 안 됩니다.",
+                                    'stream/storage/external은 서로와 app에 project dependency를 두지 말고, 필요한 계약은 같은 module 내부 또는 app composition으로 이동하세요.',
+                                    [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             sourceFiles.each { sourceFile ->
@@ -335,6 +410,20 @@ tasks.register('architectureLint') {
                         "레거시 최상위 패키지 `${topLevel}`는 금지됩니다.",
                         '루트 `*Application`과 `feature`, `providers`, `common` 구조로 재배치하세요.',
                         [packageName: packageName, topLevel: topLevel]
+                    )
+                }
+
+                if (relativePath.startsWith('app/src/main/java/') && (
+                        (topLevel == 'providers' && sourceFile.name.startsWith('Bitget')) ||
+                                relativePath.contains('/providers/connector/') ||
+                                sourceFile.name == 'DefaultConnectorProvider.java')) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
+                        'Bitget/external provider adapter code must live in the backend external module.',
+                        'Move Bitget providers, connector contracts, and external provider wiring to `backend/external/src/main/java` while preserving package roots.',
+                        [packageName: packageName, relativePath: relativePath]
                     )
                 }
 
@@ -666,9 +755,77 @@ tasks.register('architectureLint') {
     }
 }
 
+tasks.register('verifySingleAppRuntime') {
+    group = 'verification'
+    description = 'Verifies only the app module owns the executable Spring Boot runtime.'
+
+    def runtimeSourceFiles = provider {
+        subprojects.collectMany { subproject ->
+            def sourceRoot = subproject.layout.projectDirectory.dir('src/main/java').asFile
+            sourceRoot.exists()
+                    ? fileTree(sourceRoot) { include '**/*.java' }.files
+                    : []
+        }.sort { it.path }
+    }
+
+    inputs.files(provider { runtimeSourceFiles.get() })
+
+    doLast {
+        def expectedRuntimeProject = ':app'
+        def bootProjects = subprojects
+                .findAll { subproject -> subproject.plugins.hasPlugin('org.springframework.boot') }
+                .collect { it.path }
+                .sort()
+        if (bootProjects != [expectedRuntimeProject]) {
+            throw new GradleException("Exactly one Spring Boot runtime module is allowed: ${expectedRuntimeProject}. Found: ${bootProjects}")
+        }
+
+        def executableJarProjects = subprojects
+                .findAll { subproject ->
+                    def bootJar = subproject.tasks.findByName('bootJar')
+                    bootJar != null && bootJar.enabled
+                }
+                .collect { it.path }
+                .sort()
+        if (executableJarProjects != [expectedRuntimeProject]) {
+            throw new GradleException("Only ${expectedRuntimeProject} may produce an executable bootJar. Found enabled bootJar tasks: ${executableJarProjects}")
+        }
+
+        def runtimeMarkers = runtimeSourceFiles.get().collect { sourceFile ->
+            def text = sourceFile.getText('UTF-8')
+            [
+                file                 : sourceFile,
+                path                 : rootProject.relativePath(sourceFile).replace('\\', '/'),
+                springBootApplication: text.contains('@SpringBootApplication'),
+                springApplicationRun : text.contains('SpringApplication.run('),
+            ]
+        }
+
+        def springBootApplications = runtimeMarkers.findAll { it.springBootApplication }
+        def springApplicationRuns = runtimeMarkers.findAll { it.springApplicationRun }
+
+        if (springBootApplications.size() != 1) {
+            throw new GradleException("Exactly one @SpringBootApplication entrypoint is allowed. Found: ${springBootApplications.collect { it.path }}")
+        }
+        if (springApplicationRuns.size() != 1) {
+            throw new GradleException("Exactly one SpringApplication.run entrypoint is allowed. Found: ${springApplicationRuns.collect { it.path }}")
+        }
+
+        def runtimeEntrypoints = (springBootApplications + springApplicationRuns)
+                .collect { it.path }
+                .unique()
+        def nonAppEntrypoints = runtimeEntrypoints.findAll { !it.startsWith('app/src/main/java/') }
+        if (!nonAppEntrypoints.isEmpty()) {
+            throw new GradleException("Runtime entrypoints must stay in ${expectedRuntimeProject}. Invalid files: ${nonAppEntrypoints}")
+        }
+    }
+}
+
 tasks.register('check') {
     group = 'verification'
-    description = 'Runs backend subproject checks and project architecture lint.'
+    description = 'Runs backend subproject checks and project architecture/runtime lint.'
+    dependsOn tasks.named('verifySingleAppRuntime')
     dependsOn tasks.named('architectureLint')
+    dependsOn project(':app').tasks.named('verifyBootJarStorageMigrations')
     dependsOn subprojects.collect { it.tasks.named('check') }
 }

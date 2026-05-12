@@ -1,12 +1,12 @@
 package coin.coinzzickmock.providers.infrastructure;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import java.math.BigDecimal;
 import java.time.Instant;
 
 public record BitgetWebSocketCandleEvent(
         String symbol,
-        MarketCandleInterval interval,
+        ProviderMarketCandleInterval interval,
         Instant openTime,
         BigDecimal openPrice,
         BigDecimal highPrice,

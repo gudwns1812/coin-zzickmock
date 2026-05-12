@@ -1,18 +1,18 @@
 package coin.coinzzickmock.providers.infrastructure;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import java.util.Optional;
 
 public enum BitgetWebSocketChannel {
     TRADE("trade", null),
     TICKER("ticker", null),
-    CANDLE_1M("candle1m", MarketCandleInterval.ONE_MINUTE),
-    CANDLE_1H("candle1H", MarketCandleInterval.ONE_HOUR);
+    CANDLE_1M("candle1m", ProviderMarketCandleInterval.ONE_MINUTE),
+    CANDLE_1H("candle1H", ProviderMarketCandleInterval.ONE_HOUR);
 
     private final String value;
-    private final MarketCandleInterval interval;
+    private final ProviderMarketCandleInterval interval;
 
-    BitgetWebSocketChannel(String value, MarketCandleInterval interval) {
+    BitgetWebSocketChannel(String value, ProviderMarketCandleInterval interval) {
         this.value = value;
         this.interval = interval;
     }
@@ -21,7 +21,7 @@ public enum BitgetWebSocketChannel {
         return value;
     }
 
-    public MarketCandleInterval interval() {
+    public ProviderMarketCandleInterval interval() {
         if (interval == null) {
             throw new IllegalStateException("channel does not represent a candle interval");
         }

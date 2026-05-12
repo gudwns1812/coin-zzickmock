@@ -9,9 +9,11 @@ import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketSubscription;
 import coin.coinzzickmock.providers.infrastructure.JavaNetBitgetWebSocketConnectionFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.Objects;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -23,7 +25,9 @@ import org.springframework.context.annotation.Configuration;
 public class BitgetWebSocketConfiguration {
     @Bean
     HttpClient bitgetWebSocketHttpClient() {
-        return HttpClient.newHttpClient();
+        return HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     @Bean
@@ -42,7 +46,7 @@ public class BitgetWebSocketConfiguration {
     @Bean
     List<BitgetWebSocketSubscription> bitgetWebSocketSubscriptions(BitgetWebSocketProperties properties) {
         List<BitgetWebSocketSubscription> subscriptions = new ArrayList<>();
-        for (String symbol : properties.getSymbols()) {
+        for (String symbol : Objects.requireNonNull(properties.getSymbols(), "bitget websocket symbols must not be null")) {
             subscriptions.add(BitgetWebSocketSubscription.usdtFutures(BitgetWebSocketChannel.TRADE, symbol));
             subscriptions.add(BitgetWebSocketSubscription.usdtFutures(BitgetWebSocketChannel.TICKER, symbol));
             subscriptions.add(BitgetWebSocketSubscription.usdtFutures(BitgetWebSocketChannel.CANDLE_1M, symbol));

@@ -4,7 +4,7 @@ import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryPersi
 import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryPersistenceStatus;
 import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryRecorder;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;

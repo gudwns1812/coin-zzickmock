@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
@@ -11,7 +12,7 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
@@ -61,7 +62,7 @@ class MarketSupportedMarketRefresherRealtimeSourceTest {
                 Instant.parse("2026-04-30T04:00:01Z")
         ));
         MarketSupportedMarketRefresher refresher = new MarketSupportedMarketRefresher(
-                new FakeProviders(marketDataGateway),
+                marketDataGateway,
                 snapshotStore,
                 event -> {
                 },
@@ -131,7 +132,7 @@ class MarketSupportedMarketRefresherRealtimeSourceTest {
 
         @Override
         public ConnectorProvider connector() {
-            return () -> marketDataGateway;
+            return TestConnectorProvider.empty();
         }
 
         @Override

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
@@ -27,7 +28,7 @@ import java.time.temporal.ChronoUnit;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.util.ArrayList;
@@ -296,7 +297,7 @@ class MarketRealtimeFeedTest {
         MarketSnapshotStore marketSnapshotStore = newSnapshotStore();
         return new MarketRealtimeFeed(
                 new MarketSupportedMarketRefresher(
-                        new FakeProviders(marketDataGateway),
+                        marketDataGateway,
                         marketSnapshotStore,
                         applicationEventPublisher,
                         defaultFundingScheduleLookup()
@@ -333,7 +334,7 @@ class MarketRealtimeFeedTest {
                 );
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new MarketSupportedMarketRefresher(
-                        new FakeProviders(marketDataGateway),
+                        marketDataGateway,
                         marketSnapshotStore,
                         applicationEventPublisher,
                         defaultFundingScheduleLookup()
@@ -453,7 +454,7 @@ class MarketRealtimeFeedTest {
 
         @Override
         public ConnectorProvider connector() {
-            return () -> marketDataGateway;
+            return TestConnectorProvider.empty();
         }
 
         @Override

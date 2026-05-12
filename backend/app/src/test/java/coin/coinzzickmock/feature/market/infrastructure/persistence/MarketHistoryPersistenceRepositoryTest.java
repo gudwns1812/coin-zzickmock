@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
@@ -12,7 +13,7 @@ import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.time.Instant;
@@ -282,7 +283,7 @@ class MarketHistoryPersistenceRepositoryTest {
 
                 @Override
                 public ConnectorProvider connector() {
-                    return () -> fakeMarketDataGateway;
+                    return TestConnectorProvider.empty();
                 }
 
                 @Override

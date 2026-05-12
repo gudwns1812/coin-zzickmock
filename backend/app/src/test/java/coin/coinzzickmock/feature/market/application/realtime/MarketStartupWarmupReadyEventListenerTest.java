@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.market.job.MarketStartupWarmupReadyEventListener;
@@ -11,7 +12,7 @@ import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
@@ -34,7 +35,7 @@ class MarketStartupWarmupReadyEventListenerTest {
                 CoinCacheNames.MARKET_SUPPORTED_SYMBOLS_LOCAL_CACHE
         ));
         MarketSupportedMarketRefresher marketSupportedMarketRefresher = new MarketSupportedMarketRefresher(
-                new FakeProviders(marketDataGateway),
+                marketDataGateway,
                 marketSnapshotStore,
                 applicationEventPublisher,
                 defaultFundingScheduleLookup()
@@ -118,7 +119,7 @@ class MarketStartupWarmupReadyEventListenerTest {
 
         @Override
         public ConnectorProvider connector() {
-            return () -> marketDataGateway;
+            return TestConnectorProvider.empty();
         }
 
         @Override

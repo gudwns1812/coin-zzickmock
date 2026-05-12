@@ -142,10 +142,14 @@
 - 실행: `./gradlew architectureLint`
 - 통합 검증: `./gradlew check`
 - 리포트: `backend/build/reports/architecture-lint/violations.jsonl`
+- 실행 모듈: `app`만 Spring Boot executable이다.
+- 라이브러리 모듈: `stream`, `storage`, `external`은 서로 또는 `app`에 project dependency/source import를 두지 않는다.
 
 이 린터는 사람이 보는 용도만이 아니라, Codex가 로그를 다시 읽어 수정 루프를 돌리는 용도로도 사용한다.
 로그 형식과 규칙의 상세 의미는 상세 설계 문서를 따른다.
 특히 `application/service`가 다른 `application/service`를 직접 참조하면 `APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY` 위반으로 실패해야 한다.
+모듈 경계 위반은 `MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY`, `MODULE_BOUNDARY_NO_LIBRARY_SOURCE_IMPORT`,
+`MODULE_EXECUTABLE_APP_ONLY`로 실패해야 한다.
 
 ## Completion Checklist
 

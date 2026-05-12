@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketCandleEvent;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEvent;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketTickerEvent;
@@ -49,7 +51,7 @@ public class BitgetWebSocketMarketEventBridge implements Consumer<BitgetWebSocke
         if (event instanceof BitgetWebSocketCandleEvent candle) {
             realtimeMarketCandleUpdateService.accept(new RealtimeMarketCandleUpdate(
                     candle.symbol(),
-                    candle.interval(),
+                    toDomain(candle.interval()),
                     candle.openTime(),
                     candle.openPrice(),
                     candle.highPrice(),
@@ -62,5 +64,20 @@ public class BitgetWebSocketMarketEventBridge implements Consumer<BitgetWebSocke
                     candle.receivedAt()
             ));
         }
+    }
+
+    private MarketCandleInterval toDomain(ProviderMarketCandleInterval interval) {
+        return switch (interval) {
+            case ONE_MINUTE -> MarketCandleInterval.ONE_MINUTE;
+            case THREE_MINUTES -> MarketCandleInterval.THREE_MINUTES;
+            case FIVE_MINUTES -> MarketCandleInterval.FIVE_MINUTES;
+            case FIFTEEN_MINUTES -> MarketCandleInterval.FIFTEEN_MINUTES;
+            case ONE_HOUR -> MarketCandleInterval.ONE_HOUR;
+            case FOUR_HOURS -> MarketCandleInterval.FOUR_HOURS;
+            case TWELVE_HOURS -> MarketCandleInterval.TWELVE_HOURS;
+            case ONE_DAY -> MarketCandleInterval.ONE_DAY;
+            case ONE_WEEK -> MarketCandleInterval.ONE_WEEK;
+            case ONE_MONTH -> MarketCandleInterval.ONE_MONTH;
+        };
     }
 }

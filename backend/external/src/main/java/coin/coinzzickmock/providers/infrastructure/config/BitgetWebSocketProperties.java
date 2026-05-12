@@ -31,11 +31,11 @@ public class BitgetWebSocketProperties {
     }
 
     public List<String> getSymbols() {
-        return symbols;
+        return List.copyOf(symbols);
     }
 
     public void setSymbols(List<String> symbols) {
-        this.symbols = symbols;
+        this.symbols = symbols == null ? new ArrayList<>() : new ArrayList<>(symbols);
     }
 
     public Duration getReconnectDelay() {

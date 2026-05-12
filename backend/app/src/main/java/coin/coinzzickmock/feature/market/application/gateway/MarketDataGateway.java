@@ -1,4 +1,4 @@
-package coin.coinzzickmock.providers.connector;
+package coin.coinzzickmock.feature.market.application.gateway;
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
@@ -18,6 +18,10 @@ public interface MarketDataGateway {
             Instant toExclusive
     );
 
+    /**
+     * Loads at most {@code limit} newest historical candles inside {@code [fromInclusive, toExclusive)} after provider
+     * alignment. Implementations return an empty list for non-positive limits or empty ranges.
+     */
     List<MarketHistoricalCandleSnapshot> loadHistoricalCandles(
             String symbol,
             MarketCandleInterval interval,

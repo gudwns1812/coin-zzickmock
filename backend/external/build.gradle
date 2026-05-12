@@ -1,1 +1,6 @@
 // External adapter library module. Shared conventions live in the root backend build.
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+}

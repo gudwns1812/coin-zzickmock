@@ -7,9 +7,9 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
-import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
-import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
+import coin.coinzzickmock.providers.connector.ProviderMarketHistoricalCandleSnapshot;
+import coin.coinzzickmock.providers.connector.ProviderMarketSnapshot;
 import coin.coinzzickmock.providers.infrastructure.mapper.BitgetTickerSnapshotMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
@@ -52,10 +52,10 @@ class BitgetMarketDataGatewayTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+        ProviderMarketSnapshot market = gateway.loadMarket("BTCUSDT");
 
         server.verify();
-        assertThat(market.turnover24hUsdt()).isEqualTo(5_250_000_000d);
+        assertThat(market.turnover24hUsdt()).isEqualByComparingTo("5250000000");
     }
 
     @Test
@@ -136,10 +136,10 @@ class BitgetMarketDataGatewayTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+        ProviderMarketSnapshot market = gateway.loadMarket("BTCUSDT");
 
         server.verify();
-        assertThat(market.lastPrice()).isEqualTo(74000);
+        assertThat(market.lastPrice()).isEqualByComparingTo("74000");
     }
 
     @Test
@@ -157,7 +157,7 @@ class BitgetMarketDataGatewayTest {
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withServerError());
 
-        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+        ProviderMarketSnapshot market = gateway.loadMarket("BTCUSDT");
 
         server.verify();
         assertThat(market.symbol()).isEqualTo("BTCUSDT");
@@ -199,7 +199,7 @@ class BitgetMarketDataGatewayTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        MarketSnapshot market = gateway.loadMarket("BTCUSDT");
+        ProviderMarketSnapshot market = gateway.loadMarket("BTCUSDT");
 
         server.verify();
         assertThat(market.symbol()).isEqualTo("BTCUSDT");
@@ -278,9 +278,9 @@ class BitgetMarketDataGatewayTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        List<MarketHistoricalCandleSnapshot> candles = gateway.loadHistoricalCandles(
+        List<ProviderMarketHistoricalCandleSnapshot> candles = gateway.loadHistoricalCandles(
                 "BTCUSDT",
-                MarketCandleInterval.ONE_HOUR,
+                ProviderMarketCandleInterval.ONE_HOUR,
                 Instant.parse("2020-02-01T00:00:00Z"),
                 Instant.parse("2020-02-01T02:00:00Z"),
                 500
@@ -290,7 +290,7 @@ class BitgetMarketDataGatewayTest {
         assertThat(candles).hasSize(1);
         assertThat(candles.get(0).openTime()).isEqualTo(Instant.parse("2020-02-01T00:00:00Z"));
         assertThat(candles.get(0).closeTime()).isEqualTo(Instant.parse("2020-02-01T01:00:00Z"));
-        assertThat(candles.get(0).quoteVolume()).isEqualTo(1260);
+        assertThat(candles.get(0).quoteVolume()).isEqualByComparingTo("1260");
     }
 
     @Test
@@ -334,16 +334,16 @@ class BitgetMarketDataGatewayTest {
                 }
                 """);
 
-        List<MarketHistoricalCandleSnapshot> candles = gateway.loadHistoricalCandles(
+        List<ProviderMarketHistoricalCandleSnapshot> candles = gateway.loadHistoricalCandles(
                 "BTCUSDT",
-                MarketCandleInterval.ONE_DAY,
+                ProviderMarketCandleInterval.ONE_DAY,
                 fromInclusive,
                 toExclusive,
                 240
         );
 
         server.verify();
-        assertThat(candles).extracting(MarketHistoricalCandleSnapshot::openTime)
+        assertThat(candles).extracting(ProviderMarketHistoricalCandleSnapshot::openTime)
                 .containsExactly(
                         Instant.parse("2025-01-01T00:00:00Z"),
                         Instant.parse("2025-04-01T00:00:00Z"),
@@ -403,14 +403,14 @@ class BitgetMarketDataGatewayTest {
 
         gateway.loadHistoricalCandles(
                 "BTCUSDT",
-                MarketCandleInterval.ONE_WEEK,
+                ProviderMarketCandleInterval.ONE_WEEK,
                 Instant.parse("2025-01-06T00:00:00Z"),
                 Instant.parse("2025-05-26T00:00:00Z"),
                 20
         );
         gateway.loadHistoricalCandles(
                 "BTCUSDT",
-                MarketCandleInterval.ONE_MONTH,
+                ProviderMarketCandleInterval.ONE_MONTH,
                 Instant.parse("2025-01-01T00:00:00Z"),
                 Instant.parse("2025-07-01T00:00:00Z"),
                 6
@@ -440,7 +440,7 @@ class BitgetMarketDataGatewayTest {
 
         gateway.loadHistoricalCandles(
                 "BTCUSDT",
-                MarketCandleInterval.ONE_DAY,
+                ProviderMarketCandleInterval.ONE_DAY,
                 Instant.parse("2026-04-22T00:00:00Z"),
                 Instant.parse("2026-11-08T00:00:00Z"),
                 200

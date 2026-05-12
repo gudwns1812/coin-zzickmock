@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.providers.Providers;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class MarketSupportedMarketRefresher {
-    private final Providers providers;
+    private final MarketDataGateway marketDataGateway;
     private final MarketSnapshotStore marketSnapshotStore;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final MarketFundingScheduleLookup marketFundingScheduleLookup;
@@ -26,13 +26,13 @@ public class MarketSupportedMarketRefresher {
 
     @Autowired
     public MarketSupportedMarketRefresher(
-            Providers providers,
+            MarketDataGateway marketDataGateway,
             MarketSnapshotStore marketSnapshotStore,
             ApplicationEventPublisher applicationEventPublisher,
             MarketFundingScheduleLookup marketFundingScheduleLookup,
             RealtimeMarketSummaryProjector realtimeMarketSummaryProjector
     ) {
-        this.providers = providers;
+        this.marketDataGateway = marketDataGateway;
         this.marketSnapshotStore = marketSnapshotStore;
         this.applicationEventPublisher = applicationEventPublisher;
         this.marketFundingScheduleLookup = marketFundingScheduleLookup;
@@ -40,13 +40,13 @@ public class MarketSupportedMarketRefresher {
     }
 
     MarketSupportedMarketRefresher(
-            Providers providers,
+            MarketDataGateway marketDataGateway,
             MarketSnapshotStore marketSnapshotStore,
             ApplicationEventPublisher applicationEventPublisher,
             MarketFundingScheduleLookup marketFundingScheduleLookup
     ) {
         this(
-                providers,
+                marketDataGateway,
                 marketSnapshotStore,
                 applicationEventPublisher,
                 marketFundingScheduleLookup,
@@ -70,7 +70,7 @@ public class MarketSupportedMarketRefresher {
     }
 
     private List<MarketSummaryResult> loadSupportedMarketsFromProvider() {
-        return providers.connector().marketDataGateway().loadSupportedMarkets()
+        return marketDataGateway.loadSupportedMarkets()
                 .stream()
                 .filter(Objects::nonNull)
                 .map(this::toResult)

@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +28,9 @@ public class BitgetTelemetry {
         if (meterRegistry == null) {
             return;
         }
+        Objects.requireNonNull(operation, "operation must not be null");
+        Objects.requireNonNull(result, "result must not be null");
+        Objects.requireNonNull(duration, "duration must not be null");
         String safeOperation = operation(operation);
         meterRegistry.counter(REQUEST_TOTAL, requestTags(safeOperation, result(result))).increment();
         meterRegistry.timer(REQUEST_DURATION, operationTags(safeOperation)).record(duration);
@@ -36,6 +40,9 @@ public class BitgetTelemetry {
         if (meterRegistry == null) {
             return;
         }
+        Objects.requireNonNull(operation, "operation must not be null");
+        Objects.requireNonNull(symbol, "symbol must not be null");
+        Objects.requireNonNull(reason, "reason must not be null");
         meterRegistry.counter(FALLBACK_TOTAL, fallbackTags(
                 operation(operation),
                 symbol(symbol),

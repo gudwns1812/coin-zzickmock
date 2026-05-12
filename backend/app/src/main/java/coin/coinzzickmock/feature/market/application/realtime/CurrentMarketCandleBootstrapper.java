@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;

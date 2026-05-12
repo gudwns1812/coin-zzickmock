@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -9,7 +10,7 @@ import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.providers.connector.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.time.Instant;
@@ -130,7 +131,7 @@ class MarketStartupReadyEventIntegrationTest {
 
                 @Override
                 public ConnectorProvider connector() {
-                    return () -> fakeMarketDataGateway;
+                    return TestConnectorProvider.empty();
                 }
 
                 @Override

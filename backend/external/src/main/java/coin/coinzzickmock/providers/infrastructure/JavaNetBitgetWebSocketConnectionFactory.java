@@ -4,10 +4,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
 public class JavaNetBitgetWebSocketConnectionFactory implements BitgetWebSocketConnectionFactory {
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+
     private final HttpClient httpClient;
     private final URI uri;
 
@@ -21,6 +24,7 @@ public class JavaNetBitgetWebSocketConnectionFactory implements BitgetWebSocketC
         JavaNetListener listener = new JavaNetListener(handler);
         WebSocket webSocket = httpClient.newWebSocketBuilder()
                 .buildAsync(uri, listener)
+                .orTimeout(CONNECT_TIMEOUT.toSeconds(), java.util.concurrent.TimeUnit.SECONDS)
                 .join();
         return new JavaNetConnection(webSocket);
     }

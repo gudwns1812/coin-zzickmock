@@ -69,6 +69,9 @@ backend/
   external/   # external adapter library module
 ```
 
+`stream`, `storage`, `external`은 leaf library module이다. 이 세 모듈은 서로 또는 `app`에 Gradle project dependency를 두지 않고,
+다른 backend module이 소유한 Java source를 import하지 않는다. 모듈 간 조립과 실행 runtime wiring은 `app`에서만 수행한다.
+
 현재 Java package 구조:
 
 ```text
@@ -116,7 +119,8 @@ backend/app/src/main/java/coin/coinzzickmock/
 - 통합 검증: `./gradlew check`
 - 리포트: `backend/build/reports/architecture-lint/violations.jsonl`
 
-린트는 모든 backend subproject의 `src/main/java`를 스캔하며, 패키지 루트, 허용 top-level package, feature layer, domain framework-free, application service 간 직접 의존 금지, api의 persistence 직접 의존 금지 같은 규칙을 확인한다.
+린트는 모든 backend subproject의 `src/main/java`를 스캔하며, 패키지 루트, 허용 top-level package, feature layer, domain framework-free, application service 간 직접 의존 금지, web의 persistence 직접 의존 금지 같은 규칙을 확인한다.
+또한 `app`만 Spring Boot executable인지, `stream`/`storage`/`external`이 서로 또는 `app`에 의존하거나 source import를 하지 않는지 확인한다.
 
 ## Top-level Responsibilities
 

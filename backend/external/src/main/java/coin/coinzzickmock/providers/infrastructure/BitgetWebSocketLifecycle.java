@@ -76,6 +76,7 @@ public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
     @Override
     public synchronized void onError(Throwable error) {
         reconnectState = BitgetWebSocketReconnectState.RECONNECTING;
+        log.warn("Bitget WebSocket error; switching to reconnecting state.", error);
     }
 
     @Override

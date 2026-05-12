@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.web.SseClientKey;
 import coin.coinzzickmock.common.web.SseDeliveryExecutor;
+import coin.coinzzickmock.common.web.SseEmitterLifecycle;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
@@ -142,15 +143,15 @@ public class MarketRealtimeSseBroker {
     }
 
     private void bindLifecycle(SseSubscriptionPermit permit, SseEmitter emitter) {
-        emitter.onCompletion(() -> unregister(permit.primarySymbol(), permit.clientKey(), emitter, "client_complete"));
-        emitter.onTimeout(() -> {
-            unregister(permit.primarySymbol(), permit.clientKey(), emitter, "timeout");
-            emitter.complete();
-        });
-        emitter.onError(error -> {
-            log.debug("Market SSE emitter reported an error; closing subscription. symbol={}", permit.primarySymbol(), error);
-            unregister(permit.primarySymbol(), permit.clientKey(), emitter, "error");
-        });
+        SseEmitterLifecycle.bind(
+                emitter,
+                () -> unregister(permit.primarySymbol(), permit.clientKey(), emitter, "client_complete"),
+                () -> unregister(permit.primarySymbol(), permit.clientKey(), emitter, "timeout"),
+                error -> {
+                    log.debug("Market SSE emitter reported an error; closing subscription. symbol={}", permit.primarySymbol(), error);
+                    unregister(permit.primarySymbol(), permit.clientKey(), emitter, "error");
+                }
+        );
     }
 
     private void send(String symbol, SseEmitter emitter, MarketSummaryResponse response) {
@@ -200,11 +201,7 @@ public class MarketRealtimeSseBroker {
         if (replacedEmitter == null) {
             return;
         }
-        try {
-            replacedEmitter.complete();
-        } catch (RuntimeException ignored) {
-            // The replaced client may already be closed.
-        }
+        SseEmitterLifecycle.completeSilently(replacedEmitter);
         recordConnectionClosed(CLIENT_REPLACED_REASON);
         logLifecycle(symbol, "replace", CLIENT_REPLACED_REASON);
     }

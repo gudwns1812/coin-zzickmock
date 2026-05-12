@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.common.web.SseDeliveryExecutor;
+import coin.coinzzickmock.common.web.SseEmitterLifecycle;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
@@ -93,7 +94,7 @@ public class MarketStreamBroker {
             logLifecycle(activeSymbol, interval, "register", null);
         } catch (RuntimeException exception) {
             registry.releaseSession(sessionKey, emitter, "initial_send_failure");
-            completeEmitter(emitter);
+            SseEmitterLifecycle.completeSilently(emitter);
             recordConnectionClosed("initial_send_failure");
             throw exception;
         }
@@ -215,15 +216,15 @@ public class MarketStreamBroker {
     }
 
     private void bindLifecycle(MarketStreamSessionKey sessionKey, SseEmitter emitter) {
-        emitter.onCompletion(() -> release(sessionKey, emitter, "client_complete"));
-        emitter.onTimeout(() -> {
-            release(sessionKey, emitter, "timeout");
-            completeEmitter(emitter);
-        });
-        emitter.onError(error -> {
-            log.debug("Unified market SSE emitter reported an error; closing session.", error);
-            release(sessionKey, emitter, "error");
-        });
+        SseEmitterLifecycle.bind(
+                emitter,
+                () -> release(sessionKey, emitter, "client_complete"),
+                () -> release(sessionKey, emitter, "timeout"),
+                error -> {
+                    log.debug("Unified market SSE emitter reported an error; closing session.", error);
+                    release(sessionKey, emitter, "error");
+                }
+        );
     }
 
     private void send(MarketStreamSubscriber subscriber, MarketStreamEventResponse response) {
@@ -267,16 +268,8 @@ public class MarketStreamBroker {
         if (replacedEmitter == null) {
             return;
         }
-        completeEmitter(replacedEmitter);
+        SseEmitterLifecycle.completeSilently(replacedEmitter);
         recordConnectionClosed("client_replaced");
-    }
-
-    private void completeEmitter(SseEmitter emitter) {
-        try {
-            emitter.complete();
-        } catch (RuntimeException ignored) {
-            // The client may already be gone.
-        }
     }
 
     private void logLifecycle(String symbol, MarketCandleInterval interval, String action, String reason) {

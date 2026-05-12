@@ -58,9 +58,8 @@ class MarketUnifiedStreamTopologyContractTest {
         assertTrue(broker.contains("MarketHistoryFinalizedEvent"), "broker must fan out history-finalized updates");
         assertTrue(broker.contains("sessionsForSummary"), "summary fan-out must come from registry snapshot");
         assertTrue(broker.contains("sessionsForCandle"), "candle fan-out must come from registry snapshot");
-        assertTrue(broker.contains("onCompletion"), "broker must wire completion lifecycle callback");
-        assertTrue(broker.contains("onTimeout"), "broker must wire timeout lifecycle callback");
-        assertTrue(broker.contains("onError"), "broker must wire error lifecycle callback");
+        assertTrue(broker.contains("SseEmitterLifecycle"),
+                "broker must delegate common emitter lifecycle callback mechanics");
         assertTrue(broker.contains("releaseSession"), "broker must release registry sessions on lifecycle/send failure");
         assertTrue(broker.contains("SseTelemetry"), "broker must preserve SSE telemetry boundary");
         assertTrue(broker.contains("private static final String STREAM = \"market\""),

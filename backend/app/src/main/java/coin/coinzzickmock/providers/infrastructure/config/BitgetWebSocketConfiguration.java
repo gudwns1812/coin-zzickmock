@@ -1,11 +1,9 @@
 package coin.coinzzickmock.providers.infrastructure.config;
 
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdateService;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketChannel;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketConnectionFactory;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketLifecycle;
-import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEventConsumer;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEvent;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEventParser;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketSubscription;
 import coin.coinzzickmock.providers.infrastructure.JavaNetBitgetWebSocketConnectionFactory;
@@ -13,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -53,25 +52,17 @@ public class BitgetWebSocketConfiguration {
     }
 
     @Bean
-    BitgetWebSocketMarketEventConsumer bitgetWebSocketMarketEventConsumer(
-            RealtimeMarketDataStore realtimeMarketDataStore,
-            RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService
-    ) {
-        return new BitgetWebSocketMarketEventConsumer(realtimeMarketDataStore, realtimeMarketCandleUpdateService);
-    }
-
-    @Bean
     BitgetWebSocketLifecycle bitgetWebSocketLifecycle(
             BitgetWebSocketConnectionFactory bitgetWebSocketConnectionFactory,
             BitgetWebSocketMarketEventParser bitgetWebSocketMarketEventParser,
             List<BitgetWebSocketSubscription> bitgetWebSocketSubscriptions,
-            BitgetWebSocketMarketEventConsumer bitgetWebSocketMarketEventConsumer
+            Consumer<BitgetWebSocketMarketEvent> bitgetWebSocketMarketEventBridge
     ) {
         return new BitgetWebSocketLifecycle(
                 bitgetWebSocketConnectionFactory,
                 bitgetWebSocketMarketEventParser,
                 bitgetWebSocketSubscriptions,
-                bitgetWebSocketMarketEventConsumer
+                bitgetWebSocketMarketEventBridge
         );
     }
 

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.providers.infrastructure.config;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeReconnectState;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketReconnectState;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketLifecycle;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +19,8 @@ public class BitgetWebSocketRuntime {
 
     @Scheduled(fixedDelayString = "${coin.bitget.websocket.reconnect-delay:PT5S}")
     public void recoverDisconnectedConnection() {
-        if (lifecycle.reconnectState() == MarketRealtimeReconnectState.CONNECTED
-                || lifecycle.reconnectState() == MarketRealtimeReconnectState.CONNECTING) {
+        if (lifecycle.reconnectState() == BitgetWebSocketReconnectState.CONNECTED
+                || lifecycle.reconnectState() == BitgetWebSocketReconnectState.CONNECTING) {
             return;
         }
         lifecycle.recover();

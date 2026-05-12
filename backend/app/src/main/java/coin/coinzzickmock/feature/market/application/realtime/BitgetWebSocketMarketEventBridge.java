@@ -1,17 +1,15 @@
-package coin.coinzzickmock.providers.infrastructure;
+package coin.coinzzickmock.feature.market.application.realtime;
 
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdateService;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketCandleEvent;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEvent;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketTickerEvent;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketTradeEvent;
 import java.util.function.Consumer;
-
-public class BitgetWebSocketMarketEventConsumer implements Consumer<BitgetWebSocketMarketEvent> {
+public class BitgetWebSocketMarketEventBridge implements Consumer<BitgetWebSocketMarketEvent> {
     private final RealtimeMarketDataStore realtimeMarketDataStore;
     private final RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService;
 
-    public BitgetWebSocketMarketEventConsumer(
+    public BitgetWebSocketMarketEventBridge(
             RealtimeMarketDataStore realtimeMarketDataStore,
             RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService
     ) {

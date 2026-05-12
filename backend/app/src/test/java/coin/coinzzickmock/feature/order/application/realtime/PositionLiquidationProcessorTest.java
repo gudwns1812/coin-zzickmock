@@ -20,7 +20,7 @@ class PositionLiquidationProcessorTest {
         assertTrue(scenario.positions.findOpenPositions(1L).isEmpty());
         assertEquals(1, scenario.events.tradingEvents().size());
         assertEquals("POSITION_LIQUIDATED", scenario.events.tradingEvents().get(0).type());
-        assertEquals(-20.09, scenario.events.tradingEvents().get(0).realizedPnl(), 0.0001);
+        assertEquals(-20.09, scenario.events.tradingEvents().get(0).realizedPnl().doubleValue(), 0.0001);
     }
 
     @Test

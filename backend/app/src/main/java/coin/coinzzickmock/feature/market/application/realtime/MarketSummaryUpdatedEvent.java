@@ -11,7 +11,10 @@ public record MarketSummaryUpdatedEvent(
         this(result, null, MarketPriceMovementDirection.UNCHANGED);
     }
 
-    public static MarketSummaryUpdatedEvent from(MarketSummaryResult previous, MarketSummaryResult current) {
+    public static MarketSummaryUpdatedEvent from(
+            MarketSummaryResult previous,
+            MarketSummaryResult current
+    ) {
         Double previousLastPrice = previous == null ? null : previous.lastPrice();
         return new MarketSummaryUpdatedEvent(
                 current,

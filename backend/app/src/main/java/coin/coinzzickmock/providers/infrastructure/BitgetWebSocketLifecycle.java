@@ -1,6 +1,5 @@
 package coin.coinzzickmock.providers.infrastructure;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeReconnectState;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -14,7 +13,7 @@ public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
     private final List<BitgetWebSocketSubscription> subscriptions;
     private final Consumer<BitgetWebSocketMarketEvent> eventConsumer;
 
-    private MarketRealtimeReconnectState reconnectState = MarketRealtimeReconnectState.NOT_STARTED;
+    private BitgetWebSocketReconnectState reconnectState = BitgetWebSocketReconnectState.NOT_STARTED;
     private BitgetWebSocketConnection connection;
     private int reconnectAttempts;
 
@@ -30,26 +29,27 @@ public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
         this.eventConsumer = Objects.requireNonNull(eventConsumer, "eventConsumer must not be null");
     }
 
-    public void start() {
-        if (reconnectState == MarketRealtimeReconnectState.CONNECTED
-                || reconnectState == MarketRealtimeReconnectState.CONNECTING) {
+    public synchronized void start() {
+        if (reconnectState == BitgetWebSocketReconnectState.CONNECTED
+                || reconnectState == BitgetWebSocketReconnectState.CONNECTING) {
             return;
         }
 
-        reconnectState = MarketRealtimeReconnectState.CONNECTING;
+        reconnectState = BitgetWebSocketReconnectState.CONNECTING;
         try {
             connection = connectionFactory.connect(this);
-            reconnectState = MarketRealtimeReconnectState.CONNECTED;
             subscribeAll();
+            reconnectState = BitgetWebSocketReconnectState.CONNECTED;
         } catch (RuntimeException exception) {
-            reconnectState = MarketRealtimeReconnectState.DISCONNECTED;
+            closeConnection();
+            reconnectState = BitgetWebSocketReconnectState.DISCONNECTED;
             log.warn("Bitget WebSocket connection failed; runtime will retry.", exception);
         }
     }
 
-    public void recover() {
-        if (reconnectState == MarketRealtimeReconnectState.CONNECTED
-                || reconnectState == MarketRealtimeReconnectState.CONNECTING) {
+    public synchronized void recover() {
+        if (reconnectState == BitgetWebSocketReconnectState.CONNECTED
+                || reconnectState == BitgetWebSocketReconnectState.CONNECTING) {
             return;
         }
 
@@ -57,15 +57,13 @@ public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
         start();
     }
 
-    public void stop() {
-        if (connection != null) {
-            connection.close();
-        }
-        reconnectState = MarketRealtimeReconnectState.DISCONNECTED;
+    public synchronized void stop() {
+        closeConnection();
+        reconnectState = BitgetWebSocketReconnectState.DISCONNECTED;
     }
 
-    public void heartbeat() {
-        if (reconnectState == MarketRealtimeReconnectState.CONNECTED && connection != null) {
+    public synchronized void heartbeat() {
+        if (reconnectState == BitgetWebSocketReconnectState.CONNECTED && connection != null) {
             connection.send("ping");
         }
     }
@@ -76,26 +74,33 @@ public class BitgetWebSocketLifecycle implements BitgetWebSocketMessageHandler {
     }
 
     @Override
-    public void onError(Throwable error) {
-        reconnectState = MarketRealtimeReconnectState.RECONNECTING;
+    public synchronized void onError(Throwable error) {
+        reconnectState = BitgetWebSocketReconnectState.RECONNECTING;
     }
 
     @Override
-    public void onClosed() {
-        reconnectState = MarketRealtimeReconnectState.DISCONNECTED;
+    public synchronized void onClosed() {
+        reconnectState = BitgetWebSocketReconnectState.DISCONNECTED;
     }
 
-    public MarketRealtimeReconnectState reconnectState() {
+    public synchronized BitgetWebSocketReconnectState reconnectState() {
         return reconnectState;
     }
 
-    public int reconnectAttempts() {
+    public synchronized int reconnectAttempts() {
         return reconnectAttempts;
     }
 
     private void subscribeAll() {
         for (BitgetWebSocketSubscription subscription : subscriptions) {
             connection.send(subscription.subscribeMessage());
+        }
+    }
+
+    private void closeConnection() {
+        if (connection != null) {
+            connection.close();
+            connection = null;
         }
     }
 }

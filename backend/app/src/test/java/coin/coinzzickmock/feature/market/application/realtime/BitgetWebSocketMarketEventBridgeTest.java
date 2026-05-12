@@ -1,11 +1,11 @@
-package coin.coinzzickmock.providers.infrastructure;
+package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdateService;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketCandleEvent;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketTickerEvent;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketTradeEvent;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,20 +13,20 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
-class BitgetWebSocketMarketEventConsumerTest {
+class BitgetWebSocketMarketEventBridgeTest {
     @Test
     void routesParsedTradeTickerAndCandleEventsIntoRealtimeState() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         List<Object> publishedEvents = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
-        BitgetWebSocketMarketEventConsumer consumer = new BitgetWebSocketMarketEventConsumer(
+        BitgetWebSocketMarketEventBridge bridge = new BitgetWebSocketMarketEventBridge(
                 store,
                 new RealtimeMarketCandleUpdateService(store, publisher)
         );
         Instant sourceEventTime = Instant.parse("2026-04-30T05:30:00Z");
         Instant receivedAt = Instant.parse("2026-04-30T05:30:01Z");
 
-        consumer.accept(new BitgetWebSocketTradeEvent(
+        bridge.accept(new BitgetWebSocketTradeEvent(
                 "BTCUSDT",
                 "trade-1",
                 new BigDecimal("75300.1"),
@@ -35,7 +35,7 @@ class BitgetWebSocketMarketEventConsumerTest {
                 sourceEventTime,
                 receivedAt
         ));
-        consumer.accept(new BitgetWebSocketTickerEvent(
+        bridge.accept(new BitgetWebSocketTickerEvent(
                 "BTCUSDT",
                 new BigDecimal("75301.2"),
                 new BigDecimal("75302.3"),
@@ -45,7 +45,7 @@ class BitgetWebSocketMarketEventConsumerTest {
                 sourceEventTime,
                 receivedAt
         ));
-        consumer.accept(new BitgetWebSocketCandleEvent(
+        bridge.accept(new BitgetWebSocketCandleEvent(
                 "BTCUSDT",
                 MarketCandleInterval.ONE_MINUTE,
                 Instant.parse("2026-04-30T05:30:00Z"),

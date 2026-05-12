@@ -71,13 +71,30 @@ class BitgetWebSocketLifecycleTest {
         lifecycle.onError(new IllegalStateException("boom"));
 
         assertThat(lifecycle.reconnectState()).isEqualTo(
-                coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeReconnectState.RECONNECTING);
+                BitgetWebSocketReconnectState.RECONNECTING);
 
         lifecycle.recover();
 
         assertThat(lifecycle.reconnectAttempts()).isEqualTo(1);
         assertThat(lifecycle.reconnectState()).isEqualTo(
-                coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeReconnectState.CONNECTED);
+                BitgetWebSocketReconnectState.CONNECTED);
+    }
+
+    @Test
+    void disconnectsAndClosesConnectionWhenSubscriptionFails() {
+        FailingConnectionFactory connectionFactory = new FailingConnectionFactory();
+        BitgetWebSocketLifecycle lifecycle = new BitgetWebSocketLifecycle(
+                connectionFactory,
+                new BitgetWebSocketMarketEventParser(new ObjectMapper()),
+                List.of(BitgetWebSocketSubscription.usdtFutures(BitgetWebSocketChannel.TRADE, "BTCUSDT")),
+                event -> {
+                }
+        );
+
+        lifecycle.start();
+
+        assertThat(lifecycle.reconnectState()).isEqualTo(BitgetWebSocketReconnectState.DISCONNECTED);
+        assertThat(connectionFactory.connection().isClosed()).isTrue();
     }
 
     private static final class RecordingConnectionFactory implements BitgetWebSocketConnectionFactory {
@@ -114,6 +131,38 @@ class BitgetWebSocketLifecycleTest {
 
         List<String> sentMessages() {
             return sentMessages;
+        }
+    }
+
+    private static final class FailingConnectionFactory implements BitgetWebSocketConnectionFactory {
+        private FailingConnection connection;
+
+        @Override
+        public BitgetWebSocketConnection connect(BitgetWebSocketMessageHandler handler) {
+            this.connection = new FailingConnection();
+            return connection;
+        }
+
+        FailingConnection connection() {
+            return connection;
+        }
+    }
+
+    private static final class FailingConnection implements BitgetWebSocketConnection {
+        private boolean isClosed;
+
+        @Override
+        public void send(String message) {
+            throw new IllegalStateException("subscription failed");
+        }
+
+        @Override
+        public void close() {
+            isClosed = true;
+        }
+
+        boolean isClosed() {
+            return isClosed;
         }
     }
 }

@@ -1,8 +1,5 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
-import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -11,7 +8,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Component
 @RequiredArgsConstructor
 public class MarketSummaryStreamStrategy implements MarketSseStreamStrategy {
-    private final GetMarketSummaryService getMarketSummaryService;
+    private final MarketSummarySnapshotReader marketSummarySnapshotReader;
     private final MarketRealtimeSseBroker marketRealtimeSseBroker;
 
     @Override
@@ -28,7 +25,7 @@ public class MarketSummaryStreamStrategy implements MarketSseStreamStrategy {
         try {
             boolean initialSendSucceeded = true;
             for (String symbol : request.summarySymbols()) {
-                MarketSummaryResult currentMarket = getMarketSummaryService.getMarket(new GetMarketQuery(symbol));
+                MarketSummaryResponse currentMarket = marketSummarySnapshotReader.getMarket(symbol);
                 if (!sendEvent(request.emitter(), currentMarket)) {
                     initialSendSucceeded = false;
                     break;
@@ -48,10 +45,10 @@ public class MarketSummaryStreamStrategy implements MarketSseStreamStrategy {
 
     private boolean sendEvent(
             SseEmitter emitter,
-            MarketSummaryResult result
+            MarketSummaryResponse result
     ) {
         try {
-            emitter.send(MarketSummaryResponse.from(result));
+            emitter.send(result);
             return true;
         } catch (IOException exception) {
             emitter.complete();

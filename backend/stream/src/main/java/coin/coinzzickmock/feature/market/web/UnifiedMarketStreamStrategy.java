@@ -1,8 +1,5 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.feature.position.application.query.OpenPositionSymbolsReader;
-import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.auth.Actor;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +9,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UnifiedMarketStreamStrategy implements MarketSseStreamStrategy {
     private final MarketStreamBroker marketStreamBroker;
-    private final OpenPositionSymbolsReader openPositionSymbolsReader;
-    private final Providers providers;
+    private final MarketOpenPositionSymbolsReader openPositionSymbolsReader;
+    private final MarketStreamActorReader marketStreamActorReader;
 
     @Override
     public MarketSseStreamKind kind() {
@@ -22,8 +19,7 @@ public class UnifiedMarketStreamStrategy implements MarketSseStreamStrategy {
 
     @Override
     public void open(MarketSseStreamRequest request) {
-        Actor actor = providers.auth().currentActorOptional().orElse(null);
-        Long memberId = actor == null ? null : actor.memberId();
+        Long memberId = marketStreamActorReader.currentMemberId().orElse(null);
         Set<String> openSymbols = memberId == null
                 ? Set.of()
                 : new LinkedHashSet<>(openPositionSymbolsReader.openSymbols(memberId));

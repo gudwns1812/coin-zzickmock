@@ -1,8 +1,5 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.feature.market.application.realtime.CurrentMarketCandleBootstrapper;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -12,8 +9,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 public class MarketCandleStreamStrategy implements MarketSseStreamStrategy {
     private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker;
-    private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
-    private final CurrentMarketCandleBootstrapper currentMarketCandleBootstrapper;
+    private final MarketCandleSnapshotReader marketCandleSnapshotReader;
+    private final MarketCurrentCandleBootstrapper currentMarketCandleBootstrapper;
 
     @Override
     public MarketSseStreamKind kind() {
@@ -30,7 +27,7 @@ public class MarketCandleStreamStrategy implements MarketSseStreamStrategy {
         );
         try {
             currentMarketCandleBootstrapper.bootstrapIfNeeded(request.activeSymbol(), request.candleInterval());
-            boolean initialSendSucceeded = realtimeMarketCandleProjector.latest(
+            boolean initialSendSucceeded = marketCandleSnapshotReader.latest(
                             request.activeSymbol(),
                             request.candleInterval()
                     )
@@ -49,10 +46,10 @@ public class MarketCandleStreamStrategy implements MarketSseStreamStrategy {
 
     private boolean sendCandleEvent(
             SseEmitter emitter,
-            MarketCandleResult candle
+            MarketCandleResponse candle
     ) {
         try {
-            emitter.send(MarketCandleResponse.from(candle));
+            emitter.send(candle);
             return true;
         } catch (IOException exception) {
             emitter.complete();

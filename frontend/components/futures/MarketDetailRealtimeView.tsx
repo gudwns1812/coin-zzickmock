@@ -9,6 +9,7 @@ import {
   getAccumulatedClosedQuantity,
 } from "@/components/futures/livePositionDisplay";
 import OrderEntryPanel from "@/components/futures/OrderEntryPanel";
+import { calculateTpslProjectedPnl } from "@/components/futures/tpslProjectedPnl";
 import type { FuturesCandleInterval } from "@/components/futures/futuresChartViewport";
 import {
   parseMarketStreamEnvelope,
@@ -913,9 +914,15 @@ function PositionTpslEditor({
           <TpslInput
             label="TP"
             onChange={setTakeProfitPrice}
+            position={position}
             value={takeProfitPrice}
           />
-          <TpslInput label="SL" onChange={setStopLossPrice} value={stopLossPrice} />
+          <TpslInput
+            label="SL"
+            onChange={setStopLossPrice}
+            position={position}
+            value={stopLossPrice}
+          />
           <div className="grid grid-cols-2 gap-2 sm:col-span-2">
             <button
               className="rounded-main bg-main-dark-gray px-3 py-2 text-xs-custom font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -943,12 +950,22 @@ function PositionTpslEditor({
 function TpslInput({
   label,
   onChange,
+  position,
   value,
 }: {
   label: string;
   onChange: (value: string) => void;
+  position: FuturesPosition;
   value: string;
 }) {
+  const projectedPnl = calculateTpslProjectedPnl(value, position);
+  const projectedPnlText =
+    projectedPnl === null ? "-" : formatSignedUsd(projectedPnl);
+  const projectedPnlToneClassName =
+    projectedPnl === null
+      ? "text-main-dark-gray/45"
+      : getSignedFinancialTextClassName(projectedPnl);
+
   return (
     <label className="block">
       <span className="text-xs-custom font-semibold text-main-dark-gray/60">
@@ -968,6 +985,10 @@ function TpslInput({
           USDT
         </span>
       </div>
+      <p className="mt-2 text-xs-custom font-semibold text-main-dark-gray/55">
+        예상 손익(수수료 전){" "}
+        <span className={projectedPnlToneClassName}>{projectedPnlText}</span>
+      </p>
     </label>
   );
 }

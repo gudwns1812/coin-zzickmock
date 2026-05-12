@@ -98,6 +98,13 @@ test("TP/SL editor does not default empty fields to mark price", () => {
   assert.equal(source.includes("snapshotPrice"), false);
 });
 
+test("TP/SL editor previews projected PnL with financial tone", () => {
+  assert.equal(source.includes("position={position}"), true);
+  assert.equal(source.includes("예상 손익(수수료 전)"), true);
+  assert.equal(source.includes("calculateTpslProjectedPnl"), true);
+  assert.equal(source.includes("getSignedFinancialTextClassName(projectedPnl)"), true);
+});
+
 test("position card labels estimated and unavailable liquidation prices", () => {
   assert.equal(source.includes("function formatPositionLiquidationPrice"), true);
   assert.equal(source.includes('position.liquidationPriceType === "UNAVAILABLE"'), true);

@@ -220,6 +220,7 @@ tasks.register('architectureLint') {
                     'ACTIVE_MEMBER_LOOKUP_GUARD',
                     'ENTITY_NAME_NO_TECH_SUFFIX',
                     'PERSISTENCE_NAME_NO_TECH_TERM',
+                    'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
                 ],
                 targetLayers: architectureTargetLayers,
             ])
@@ -335,6 +336,20 @@ tasks.register('architectureLint') {
                         "레거시 최상위 패키지 `${topLevel}`는 금지됩니다.",
                         '루트 `*Application`과 `feature`, `providers`, `common` 구조로 재배치하세요.',
                         [packageName: packageName, topLevel: topLevel]
+                    )
+                }
+
+                if (relativePath.startsWith('app/src/main/java/') && (
+                        (topLevel == 'providers' && sourceFile.name.startsWith('Bitget')) ||
+                                relativePath.contains('/providers/connector/') ||
+                                sourceFile.name == 'DefaultConnectorProvider.java')) {
+                    logViolation(
+                        sourceFile,
+                        packageLine,
+                        'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
+                        'Bitget/external provider adapter code must live in the backend external module.',
+                        'Move Bitget providers, connector contracts, and external provider wiring to `backend/external/src/main/java` while preserving package roots.',
+                        [packageName: packageName, relativePath: relativePath]
                     )
                 }
 

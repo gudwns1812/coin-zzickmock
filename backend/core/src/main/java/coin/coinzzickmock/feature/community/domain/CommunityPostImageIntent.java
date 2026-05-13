@@ -19,7 +19,7 @@ public record CommunityPostImageIntent(
     public CommunityPostImageIntent {
         if (uploaderMemberId == null || uploaderMemberId <= 0 || objectKey == null || objectKey.isBlank()
                 || publicUrl == null || publicUrl.isBlank() || contentType == null || contentType.isBlank()
-                || sizeBytes <= 0 || status == null || createdAt == null) {
+                || sizeBytes <= 0 || status == null || createdAt == null || updatedAt == null) {
             throw invalid();
         }
         objectKey = objectKey.trim();

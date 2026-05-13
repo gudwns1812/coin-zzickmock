@@ -1,5 +1,13 @@
 package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
+import coin.coinzzickmock.feature.community.application.query.CommunityPostListQuery;
+import coin.coinzzickmock.feature.community.application.repository.CommunityPostImageRepository;
+import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
+import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;
+import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
+import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
+import coin.coinzzickmock.feature.community.domain.CommunityPost;
+import coin.coinzzickmock.feature.community.domain.CommunityPostImageIntent;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -7,14 +15,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
-public class CommunityPostPersistenceRepository {
+public class CommunityPostPersistenceRepository implements CommunityPostRepository,
+        CommunityPostLikeRepository, CommunityPostImageRepository {
     private static final String NOTICE_CATEGORY = "NOTICE";
     private static final String ATTACHED_STATUS = "ATTACHED";
     private static final Set<String> ATTACHABLE_IMAGE_STATUSES = Set.of("PRESIGNED", ATTACHED_STATUS);
@@ -24,142 +32,79 @@ public class CommunityPostPersistenceRepository {
     private final CommunityPostLikeEntityRepository likeEntityRepository;
     private final CommunityPostImageEntityRepository imageEntityRepository;
 
+    @Override
     @Transactional(readOnly = true)
-    public List<CommunityPostEntity> findLatestNoticePosts() {
-        return postEntityRepository.findTop3ByCategoryAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(NOTICE_CATEGORY);
+    public List<CommunityPost> findLatestNotices(int limit) {
+        return postEntityRepository.findTop3ByCategoryAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(NOTICE_CATEGORY)
+                .stream().limit(limit).map(CommunityPostEntity::toDomain).toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public Page<CommunityPostEntity> findNormalPosts(String category, Pageable pageable) {
-        if (category == null || category.isBlank() || NOTICE_CATEGORY.equals(category)) {
-            return postEntityRepository.findByCategoryNotAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(
-                    NOTICE_CATEGORY,
-                    pageable
-            );
-        }
-        return postEntityRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(category, pageable);
+    public CommunityPostPage findNormalPosts(CommunityPostListQuery query) {
+        var pageable = PageRequest.of(query.page(), query.size());
+        var page = query.category() == null || query.category().name().equals(NOTICE_CATEGORY)
+                ? postEntityRepository.findByCategoryNotAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(NOTICE_CATEGORY, pageable)
+                : postEntityRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(query.category().name(), pageable);
+        return new CommunityPostPage(page.getContent().stream().map(CommunityPostEntity::toDomain).toList(),
+                page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages(), page.hasNext());
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public Optional<CommunityPostEntity> findActivePost(Long postId) {
-        return postEntityRepository.findByIdAndDeletedAtIsNull(postId);
+    public Optional<CommunityPost> findActiveById(Long postId) {
+        return postEntityRepository.findByIdAndDeletedAtIsNull(postId).map(CommunityPostEntity::toDomain);
     }
 
+    @Override
     @Transactional
-    public CommunityPostEntity savePost(CommunityPostEntity post) {
-        return postEntityRepository.save(post);
+    public Optional<CommunityPost> findActiveByIdForUpdate(Long postId) {
+        return postEntityRepository.findWithLockingById(postId).filter(post -> post.deletedAt() == null).map(CommunityPostEntity::toDomain);
     }
 
+    @Override
     @Transactional
-    public Optional<CommunityPostEntity> softDeletePost(Long postId, Instant deletedAt) {
-        return postEntityRepository.findWithLockingById(postId)
-                .filter(post -> post.deletedAt() == null)
-                .map(post -> {
-                    post.softDelete(deletedAt);
-                    return post;
-                });
+    public CommunityPost save(CommunityPost post) {
+        CommunityPostEntity entity = post.id() == null ? CommunityPostEntity.from(post)
+                : postEntityRepository.findById(post.id()).map(existing -> { existing.apply(post); return existing; })
+                .orElseGet(() -> CommunityPostEntity.from(post));
+        return postEntityRepository.save(entity).toDomain();
     }
 
-    @Transactional
-    public Optional<CommunityPostEntity> incrementViewCount(Long postId) {
-        return postEntityRepository.findWithLockingById(postId)
-                .filter(post -> post.deletedAt() == null)
-                .map(post -> {
-                    post.incrementViewCount();
-                    return post;
-                });
-    }
+    @Override @Transactional public void incrementViewCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::incrementViewCount); }
+    @Override @Transactional public void incrementLikeCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::incrementLikeCount); }
+    @Override @Transactional public void decrementLikeCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::decrementLikeCount); }
+    @Override @Transactional public void incrementCommentCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::incrementCommentCount); }
+    @Override @Transactional public void decrementCommentCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::decrementCommentCount); }
+    @Override @Transactional public void softDelete(Long postId, Instant deletedAt) { postEntityRepository.findWithLockingById(postId).ifPresent(post -> post.softDelete(deletedAt)); }
 
-    @Transactional(readOnly = true)
-    public Page<CommunityCommentEntity> findActiveComments(Long postId, Pageable pageable) {
-        return commentEntityRepository.findByPostIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(postId, pageable);
-    }
+    @Override @Transactional(readOnly = true) public boolean exists(Long postId, Long memberId) { return likeEntityRepository.existsByPostIdAndMemberId(postId, memberId); }
+    @Override @Transactional public boolean addIfAbsent(Long postId, Long memberId) { if (exists(postId, memberId)) return false; likeEntityRepository.save(new CommunityPostLikeEntity(postId, memberId, Instant.now())); return true; }
+    @Override @Transactional public boolean removeIfPresent(Long postId, Long memberId) { return likeEntityRepository.deleteByPostIdAndMemberId(postId, memberId) > 0; }
 
-    @Transactional
-    public CommunityCommentEntity saveCommentAndIncrementCount(CommunityCommentEntity comment) {
-        CommunityPostEntity post = postEntityRepository.findWithLockingById(comment.postId())
-                .filter(candidate -> candidate.deletedAt() == null)
-                .orElseThrow(() -> new IllegalArgumentException("active post not found"));
-        CommunityCommentEntity saved = commentEntityRepository.save(comment);
-        post.incrementCommentCount();
-        return saved;
-    }
-
-    @Transactional
-    public Optional<CommunityCommentEntity> softDeleteCommentAndDecrementCount(Long commentId, Instant deletedAt) {
-        return commentEntityRepository.findWithLockingById(commentId)
-                .filter(comment -> comment.deletedAt() == null)
-                .flatMap(comment -> postEntityRepository.findWithLockingById(comment.postId())
-                        .filter(post -> post.deletedAt() == null)
-                        .map(post -> {
-                            comment.softDelete(deletedAt);
-                            post.decrementCommentCount();
-                            return comment;
-                        }));
-    }
+    @Override @Transactional(readOnly = true) public Set<String> findAttachableObjectKeys(Long uploaderMemberId, Set<String> objectKeys) { return findOwnedAttachable(uploaderMemberId, objectKeys).stream().map(CommunityPostImageIntent::objectKey).collect(java.util.stream.Collectors.toSet()); }
+    @Override @Transactional public void attachToPost(Long postId, Long uploaderMemberId, Set<String> objectKeys, CommunityImageStatus status) { attachImagesToPost(postId, uploaderMemberId, objectKeys, Instant.now()); }
+    @Override @Transactional public void detachMissingImages(Long postId, Set<String> retainedObjectKeys, CommunityImageStatus status) { Set<String> retained = retainedObjectKeys == null ? Set.of() : retainedObjectKeys; imageEntityRepository.findByPostIdAndStatus(postId, ATTACHED_STATUS).stream().filter(image -> !retained.contains(image.objectKey())).forEach(CommunityPostImageEntity::markOrphaned); }
 
     @Transactional(readOnly = true)
-    public boolean existsLike(Long postId, Long memberId) {
-        return likeEntityRepository.existsByPostIdAndMemberId(postId, memberId);
-    }
-
-    @Transactional
-    public LikeMutation addLikeIfAbsent(Long postId, Long memberId, Instant createdAt) {
-        CommunityPostEntity post = postEntityRepository.findWithLockingById(postId)
-                .filter(candidate -> candidate.deletedAt() == null)
-                .orElseThrow(() -> new IllegalArgumentException("active post not found"));
-        if (!likeEntityRepository.existsByPostIdAndMemberId(postId, memberId)) {
-            likeEntityRepository.save(new CommunityPostLikeEntity(postId, memberId, createdAt));
-            post.incrementLikeCount();
-            return new LikeMutation(true, post.likeCount());
-        }
-        return new LikeMutation(false, post.likeCount());
-    }
-
-    @Transactional
-    public LikeMutation removeLikeIfPresent(Long postId, Long memberId) {
-        CommunityPostEntity post = postEntityRepository.findWithLockingById(postId)
-                .filter(candidate -> candidate.deletedAt() == null)
-                .orElseThrow(() -> new IllegalArgumentException("active post not found"));
-        long deleted = likeEntityRepository.deleteByPostIdAndMemberId(postId, memberId);
-        if (deleted > 0) {
-            post.decrementLikeCount();
-            return new LikeMutation(true, post.likeCount());
-        }
-        return new LikeMutation(false, post.likeCount());
-    }
-
-    @Transactional(readOnly = true)
-    public List<CommunityPostImageEntity> findOwnedAttachableImages(Long uploaderMemberId, Collection<String> objectKeys) {
-        Set<String> requestedKeys = new HashSet<>(objectKeys == null ? Set.of() : objectKeys);
-        if (requestedKeys.isEmpty()) {
-            return List.of();
-        }
+    public List<CommunityPostImageIntent> findOwnedAttachable(Long uploaderMemberId, Collection<String> objectKeys) {
+        Set<String> requested = new HashSet<>(objectKeys == null ? Set.of() : objectKeys);
+        if (requested.isEmpty()) return List.of();
         String requiredPrefix = "community/" + uploaderMemberId + "/";
-        return imageEntityRepository.findByObjectKeyIn(requestedKeys).stream()
+        return imageEntityRepository.findByObjectKeyIn(requested).stream()
                 .filter(image -> uploaderMemberId.equals(image.uploaderMemberId()))
                 .filter(image -> image.objectKey().startsWith(requiredPrefix))
                 .filter(image -> ATTACHABLE_IMAGE_STATUSES.contains(image.status()))
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<CommunityPostImageEntity> findAttachedImages(Long postId) {
-        return imageEntityRepository.findByPostIdAndStatus(postId, ATTACHED_STATUS);
+                .map(CommunityPostImageEntity::toDomain).toList();
     }
 
     @Transactional
-    public List<CommunityPostImageEntity> attachImages(Long postId, Long uploaderMemberId, Collection<String> objectKeys) {
-        List<CommunityPostImageEntity> images = findOwnedAttachableImages(uploaderMemberId, objectKeys);
-        images.forEach(image -> image.attachToPost(postId));
-        return images;
-    }
-
-    @Transactional
-    public CommunityPostImageEntity saveImageIntent(CommunityPostImageEntity image) {
-        return imageEntityRepository.save(image);
-    }
-
-    public record LikeMutation(boolean changed, long likeCount) {
+    public List<CommunityPostImageIntent> attachImagesToPost(Long postId, Long uploaderMemberId, Collection<String> objectKeys, Instant attachedAt) {
+        Set<String> requested = new HashSet<>(objectKeys == null ? Set.of() : objectKeys);
+        if (requested.isEmpty()) return List.of();
+        return imageEntityRepository.findByObjectKeyIn(requested).stream()
+                .filter(image -> uploaderMemberId.equals(image.uploaderMemberId()))
+                .peek(image -> image.attachToPost(postId))
+                .map(CommunityPostImageEntity::toDomain).toList();
     }
 }

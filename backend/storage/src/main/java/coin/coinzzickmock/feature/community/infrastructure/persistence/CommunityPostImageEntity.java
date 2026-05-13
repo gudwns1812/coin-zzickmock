@@ -1,6 +1,8 @@
 package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
 import coin.coinzzickmock.common.persistence.AuditableEntity;
+import coin.coinzzickmock.feature.community.domain.CommunityPostImageIntent;
+import coin.coinzzickmock.feature.community.domain.CommunityPostImageStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -68,6 +70,12 @@ public class CommunityPostImageEntity extends AuditableEntity {
     public void markOrphaned() {
         this.postId = null;
         this.status = "ORPHANED";
+    }
+
+
+    public CommunityPostImageIntent toDomain() {
+        return new CommunityPostImageIntent(id, postId, uploaderMemberId, objectKey, publicUrl, contentType, sizeBytes,
+                CommunityPostImageStatus.valueOf(status), createdAt(), updatedAt());
     }
 
     public Long id() {

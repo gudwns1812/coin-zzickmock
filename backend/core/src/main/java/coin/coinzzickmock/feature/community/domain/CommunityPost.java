@@ -79,6 +79,31 @@ public final class CommunityPost {
         );
     }
 
+    public static CommunityPost restore(
+            Long id,
+            Long authorMemberId,
+            String authorNickname,
+            CommunityCategory category,
+            String title,
+            TiptapJsonDocument content,
+            long viewCount,
+            long likeCount,
+            long commentCount,
+            Instant deletedAt,
+            Instant createdAt,
+            Instant updatedAt,
+            long version
+    ) {
+        requireAuthor(authorMemberId, authorNickname);
+        requireCategory(category);
+        if (id == null || id <= 0 || viewCount < 0 || likeCount < 0 || commentCount < 0 || createdAt == null) {
+            throw invalid();
+        }
+        return new CommunityPost(id, authorMemberId, authorNickname.trim(), category, requireTitle(title),
+                Objects.requireNonNull(content, "content"), viewCount, likeCount, commentCount, deletedAt,
+                createdAt, updatedAt == null ? createdAt : updatedAt, version);
+    }
+
     public CommunityPost withId(Long id) {
         return new CommunityPost(
                 id,

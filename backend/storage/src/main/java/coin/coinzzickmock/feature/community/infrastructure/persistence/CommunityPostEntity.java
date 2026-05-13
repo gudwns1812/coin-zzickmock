@@ -1,6 +1,9 @@
 package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
 import coin.coinzzickmock.common.persistence.AuditableEntity;
+import coin.coinzzickmock.feature.community.domain.CommunityCategory;
+import coin.coinzzickmock.feature.community.domain.CommunityPost;
+import coin.coinzzickmock.feature.community.domain.TiptapJsonDocument;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -74,6 +77,30 @@ public class CommunityPostEntity extends AuditableEntity {
         this.likeCount = likeCount;
         this.commentCount = commentCount;
         this.deletedAt = deletedAt;
+    }
+
+
+    public static CommunityPostEntity from(CommunityPost post) {
+        return new CommunityPostEntity(null, post.authorMemberId(), post.authorNickname(), post.category().name(),
+                post.title(), post.content().value(), post.viewCount(), post.likeCount(), post.commentCount(), post.deletedAt());
+    }
+
+    public void apply(CommunityPost post) {
+        this.authorMemberId = post.authorMemberId();
+        this.authorNickname = post.authorNickname();
+        this.category = post.category().name();
+        this.title = post.title();
+        this.contentJson = post.content().value();
+        this.viewCount = post.viewCount();
+        this.likeCount = post.likeCount();
+        this.commentCount = post.commentCount();
+        this.deletedAt = post.deletedAt();
+    }
+
+    public CommunityPost toDomain() {
+        return CommunityPost.restore(id, authorMemberId, authorNickname, CommunityCategory.valueOf(category), title,
+                TiptapJsonDocument.of(contentJson), viewCount, likeCount, commentCount, deletedAt,
+                createdAt(), updatedAt(), version);
     }
 
     public void applyContent(String category, String title, String contentJson) {

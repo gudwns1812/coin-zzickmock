@@ -59,6 +59,24 @@ public final class CommunityComment {
         );
     }
 
+    public static CommunityComment restore(
+            Long id,
+            Long postId,
+            Long authorMemberId,
+            String authorNickname,
+            String content,
+            Instant deletedAt,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        if (id == null || id <= 0 || postId == null || postId <= 0 || authorMemberId == null || authorMemberId <= 0
+                || authorNickname == null || authorNickname.isBlank() || createdAt == null) {
+            throw invalid();
+        }
+        return new CommunityComment(id, postId, authorMemberId, authorNickname.trim(), normalizeContent(content),
+                deletedAt, createdAt, updatedAt == null ? createdAt : updatedAt);
+    }
+
     public CommunityComment withId(Long id) {
         return new CommunityComment(id, postId, authorMemberId, authorNickname, content, deletedAt, createdAt, updatedAt);
     }

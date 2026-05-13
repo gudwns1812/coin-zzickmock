@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
 import coin.coinzzickmock.common.persistence.AuditableEntity;
+import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -49,6 +50,24 @@ public class CommunityCommentEntity extends AuditableEntity {
         this.authorNickname = authorNickname;
         this.content = content;
         this.deletedAt = deletedAt;
+    }
+
+
+    public static CommunityCommentEntity from(CommunityComment comment) {
+        return new CommunityCommentEntity(null, comment.postId(), comment.authorMemberId(), comment.authorNickname(),
+                comment.content(), comment.deletedAt());
+    }
+
+    public void apply(CommunityComment comment) {
+        this.postId = comment.postId();
+        this.authorMemberId = comment.authorMemberId();
+        this.authorNickname = comment.authorNickname();
+        this.content = comment.content();
+        this.deletedAt = comment.deletedAt();
+    }
+
+    public CommunityComment toDomain() {
+        return CommunityComment.restore(id, postId, authorMemberId, authorNickname, content, deletedAt, createdAt(), updatedAt());
     }
 
     public void softDelete(Instant deletedAt) {

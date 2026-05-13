@@ -11,7 +11,6 @@ import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import coin.coinzzickmock.feature.community.domain.TiptapJsonDocument;
 import coin.coinzzickmock.feature.community.domain.TiptapJsonImagePolicy;
-import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Set;
@@ -46,13 +45,12 @@ public class UpdateCommunityPostService {
     }
 
     private TiptapJsonDocument validatedContent(UpdateCommunityPostCommand command) {
-        TiptapContentPolicy policy = command.contentPolicy();
-        if (policy == null || policy.approvedImageObjectKeys().isEmpty()) {
+        if (command.imageObjectKeys().isEmpty()) {
             return TiptapJsonDocument.of(command.contentJson());
         }
         return TiptapJsonDocument.of(
                 command.contentJson(),
-                new TiptapJsonImagePolicy("community/" + command.actorMemberId() + "/", policy.allowedImageSrcPrefixes())
+                new TiptapJsonImagePolicy("community/" + command.actorMemberId() + "/", command.allowedImageSrcPrefixes())
         );
     }
 

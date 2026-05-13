@@ -35,7 +35,7 @@ class TiptapContentValidatorTest {
                 }
                 """;
 
-        assertThatCode(() -> TiptapContentJson.from(json)).doesNotThrowAnyException();
+        assertThatCode(() -> TiptapContentJson.of(json, TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://cdn.example/community/")))).doesNotThrowAnyException();
     }
 
     @Test
@@ -79,7 +79,7 @@ class TiptapContentValidatorTest {
     @Test
     void rejectsDocumentDepthAboveLimit() {
         String nested = paragraphText("deep");
-        for (int i = 0; i < TiptapContentValidator.MAX_DOCUMENT_DEPTH; i++) {
+        for (int i = 0; i < TiptapContentValidator.MAX_DEPTH; i++) {
             nested = "{\"type\":\"blockquote\",\"content\":[" + nested + "]}";
         }
         assertInvalid(doc(nested));
@@ -111,7 +111,7 @@ class TiptapContentValidatorTest {
     }
 
     private static void assertInvalid(String json) {
-        assertThatThrownBy(() -> TiptapContentValidator.validate(json))
+        assertThatThrownBy(() -> TiptapContentValidator.validate(json, TiptapContentPolicy.withoutImages()))
                 .isInstanceOf(CoreException.class)
                 .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }

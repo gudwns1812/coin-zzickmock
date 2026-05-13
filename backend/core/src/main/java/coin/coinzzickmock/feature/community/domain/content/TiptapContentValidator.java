@@ -31,12 +31,9 @@ public final class TiptapContentValidator {
         if (!(parsed instanceof Map<?, ?> document)) {
             throw invalid();
         }
-        Object parsed = new Parser(rawJson).parse();
-        if (!(parsed instanceof Map<?, ?>)) {
-            invalid();
-        }
-        ValidationState state = new ValidationState();
-        validateNode(asStringObjectMap((Map<?, ?>) parsed), 1, state);
+        State state = new State(policy == null ? TiptapContentPolicy.withoutImages() : policy);
+        validateNode(document, "doc", 1, state);
+        return new Validation(json, new TiptapContentValidationResult(state.textLength, state.imageCount, state.imageObjectKeys));
     }
 
     private static void validateNode(Map<?, ?> node, String expectedType, int depth, State state) {
@@ -71,12 +68,12 @@ public final class TiptapContentValidator {
         if ("text".equals(type)) {
             allowed.add("text");
         }
-        if (node.containsKey("content")) {
-            for (Object child : listValue(node.get("content"))) {
-                if (!(child instanceof Map<?, ?>)) {
-                    invalid();
-                }
-                validateNode(asStringObjectMap((Map<?, ?>) child), depth + 1, state);
+        if ("heading".equals(type) || "image".equals(type)) {
+            allowed.add("attrs");
+        }
+        for (Object key : node.keySet()) {
+            if (!(key instanceof String keyText) || !allowed.contains(keyText)) {
+                throw invalid();
             }
         }
     }
@@ -107,15 +104,7 @@ public final class TiptapContentValidator {
         String text = stringField(node, "text", true);
         state.textLength += text.length();
         if (state.textLength > MAX_TEXT_LENGTH) {
-            invalid();
-        }
-        if (node.containsKey("marks")) {
-            for (Object mark : listValue(node.get("marks"))) {
-                if (!(mark instanceof Map<?, ?>)) {
-                    invalid();
-                }
-                validateMark(asStringObjectMap((Map<?, ?>) mark));
-            }
+            throw invalid();
         }
     }
 
@@ -158,45 +147,26 @@ public final class TiptapContentValidator {
         }
     }
 
-    private static Map<String, Object> attrsValue(Object value) {
-        if (!(value instanceof Map<?, ?>)) {
-            invalid();
+    private static void validateMarks(Map<?, ?> node, String nodeType) {
+        Object marks = node.get("marks");
+        if (marks == null) {
+            return;
         }
-        return asStringObjectMap((Map<?, ?>) value);
-    }
-
-    private static List<?> listValue(Object value) {
-        if (!(value instanceof List<?>)) {
-            invalid();
+        if (!"text".equals(nodeType) || !(marks instanceof List<?> markList)) {
+            throw invalid();
         }
-        return (List<?>) value;
-    }
-
-    private static String stringValue(Object value) {
-        if (!(value instanceof String) || ((String) value).isEmpty()) {
-            invalid();
-        }
-        return (String) value;
-    }
-
-    private static int intValue(Object value) {
-        if (value instanceof Integer integer) {
-            return integer;
-        }
-        if (value instanceof Long longValue && longValue >= Integer.MIN_VALUE && longValue <= Integer.MAX_VALUE) {
-            return longValue.intValue();
-        }
-        invalid();
-        return 0;
-    }
-
-    private static Map<String, Object> asStringObjectMap(Map<?, ?> map) {
-        Map<String, Object> typed = new LinkedHashMap<>();
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (!(entry.getKey() instanceof String)) {
-                invalid();
+        for (Object mark : markList) {
+            if (!(mark instanceof Map<?, ?> markMap)) {
+                throw invalid();
             }
-            typed.put((String) entry.getKey(), entry.getValue());
+            String type = stringField(markMap, "type", true);
+            if (!MARK_TYPES.contains(type)) {
+                throw invalid();
+            }
+            validateMarkKeys(markMap, type);
+            if ("link".equals(type)) {
+                validateLinkAttrs(markMap.get("attrs"));
+            }
         }
     }
 

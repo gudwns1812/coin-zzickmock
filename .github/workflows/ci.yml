@@ -75,8 +75,11 @@ jobs:
       - name: Ensure Gradle wrapper is executable
         run: chmod +x gradlew
 
-      - name: Run backend check
-        run: ./gradlew check --console=plain
+      - name: Run backend check and package jar
+        run: ./gradlew check :app:bootJar --console=plain
+
+      - name: Build backend Docker image
+        run: docker build --target jar-runtime -t coin-zzickmock-backend:ci .
 
       - name: Upload backend architecture lint report
         if: always()

@@ -17,7 +17,7 @@ public class GetOrderHistoryService {
     public List<OrderHistoryResult> getOrderHistory(Long memberId, String symbol) {
         return orderRepository.findByMemberId(memberId).stream()
                 .filter(order -> matchesSymbol(order, symbol))
-                .map(this::toResult)
+                .map(OrderHistoryResult::from)
                 .toList();
     }
 
@@ -25,26 +25,4 @@ public class GetOrderHistoryService {
         return symbol == null || symbol.isBlank() || order.symbol().equalsIgnoreCase(symbol);
     }
 
-    private OrderHistoryResult toResult(FuturesOrder order) {
-        return new OrderHistoryResult(
-                order.orderId(),
-                order.symbol(),
-                order.positionSide(),
-                order.orderType(),
-                order.orderPurpose(),
-                order.marginMode(),
-                order.leverage(),
-                order.quantity(),
-                order.limitPrice(),
-                order.status(),
-                order.feeType(),
-                order.estimatedFee(),
-                order.executionPrice(),
-                order.orderTime(),
-                order.triggerPrice(),
-                order.triggerType(),
-                order.triggerSource(),
-                order.ocoGroupId()
-        );
-    }
 }

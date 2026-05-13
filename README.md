@@ -88,6 +88,9 @@ docker compose up --build
 docker compose up --build -d
 ```
 
+로컬 Compose는 backend Dockerfile의 `source-runtime` target을 사용하므로 Docker build 안에서 JAR를 만듭니다.
+CI/CD의 운영 이미지 발행 경로는 `jar-runtime` target을 사용해 GitHub Actions에서 만든 JAR만 이미지에 복사합니다.
+
 정리:
 
 ```bash
@@ -160,7 +163,7 @@ cd backend
 ./gradlew check --console=plain
 ```
 
-CI는 브랜치명 정책, 프론트 typecheck/build, 백엔드 `./gradlew check`를 검증합니다.
+CI는 브랜치명 정책, 프론트 typecheck/build, 백엔드 `./gradlew check :app:bootJar`, backend Docker image 포장을 검증합니다.
 
 ## 배포와 운영
 

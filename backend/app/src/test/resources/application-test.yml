@@ -32,6 +32,19 @@ coin:
       enabled: false
     startup-backfill:
       enabled: false
+    history-repair:
+      worker:
+        enabled: false
+  cache:
+    redis:
+      enabled: false
+  leaderboard:
+    redis:
+      enabled: false
+    refresh:
+      enabled: false
+    warmup:
+      enabled: false
   account:
     wallet-history:
       startup-baseline:

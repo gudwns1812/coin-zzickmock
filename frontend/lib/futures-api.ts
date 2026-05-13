@@ -175,11 +175,59 @@ export type FuturesLeaderboard = {
   myRank: MarketRankingMemberRank | null;
 };
 
+export type LeaderboardMode = FuturesLeaderboard["mode"];
+
+export type LeaderboardSearchResult = MarketRankingEntry & {
+  targetToken: string;
+};
+
+export type PositionPeekTarget = {
+  rank: number | null;
+  nickname: string;
+  walletBalance: number | null;
+  profitRate: number | null;
+  targetToken: string;
+};
+
+export type PositionPeekPublicPosition = {
+  symbol: MarketSymbol | string;
+  positionSide: "LONG" | "SHORT" | string;
+  leverage: number;
+  positionSize: number;
+  entryPrice: number | null;
+  notionalValue: number;
+  unrealizedPnl: number;
+  roi: number;
+};
+
+export type PositionPeekSnapshot = {
+  peekId: string;
+  target: Omit<PositionPeekTarget, "targetToken">;
+  createdAt?: string;
+  snapshotCreatedAt?: string;
+  positions: PositionPeekPublicPosition[];
+  remainingPeekItemCount?: number;
+};
+
+export type PositionPeekStatus = {
+  target: PositionPeekTarget;
+  latestSnapshot: PositionPeekSnapshot | null;
+  peekItemCount?: number;
+  remainingPeekItemCount?: number;
+  itemCount?: number;
+};
+
+export type PeekItemBalance = {
+  peekItemCount?: number;
+  remainingPeekItemCount?: number;
+  itemCount?: number;
+};
+
 export type ShopItem = {
   code: string;
   name: string;
   description: string;
-  itemType: "COFFEE_VOUCHER" | "ACCOUNT_REFILL_COUNT" | string;
+  itemType: "COFFEE_VOUCHER" | "ACCOUNT_REFILL_COUNT" | "POSITION_PEEK" | string;
   price: number;
   active: boolean;
   totalStock: number | null;
@@ -265,7 +313,8 @@ export type RewardRedemptionsResult = {
 export type ShopPurchaseResult = {
   itemCode: string;
   rewardPoint: number;
-  refillRemainingCount: number;
+  refillRemainingCount: number | null;
+  positionPeekItemBalance: number | null;
 };
 
 export type OrderPreviewRequest = {

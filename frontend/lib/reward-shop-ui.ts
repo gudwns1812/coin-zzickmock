@@ -2,6 +2,7 @@ import type { ShopItem } from "@/lib/futures-api";
 
 const COFFEE_SHOP_ITEM_IMAGE_PATH = "/images/IceAmericano.webp";
 export const ACCOUNT_REFILL_ITEM_TYPE = "ACCOUNT_REFILL_COUNT";
+export const POSITION_PEEK_ITEM_TYPE = "POSITION_PEEK";
 
 export function normalizeVoucherPhoneNumber(value: string): string {
   return value.trim().replaceAll("-", "");
@@ -50,6 +51,18 @@ export function isAccountRefillShopItem(
   item: Pick<ShopItem, "itemType">
 ): boolean {
   return item.itemType === ACCOUNT_REFILL_ITEM_TYPE;
+}
+
+export function isPositionPeekShopItem(
+  item: Pick<ShopItem, "itemType">
+): boolean {
+  return item.itemType === POSITION_PEEK_ITEM_TYPE;
+}
+
+export function isInstantPurchaseShopItem(
+  item: Pick<ShopItem, "itemType">
+): boolean {
+  return isAccountRefillShopItem(item) || isPositionPeekShopItem(item);
 }
 
 export function getShopItemAvailabilityLabel(item: ShopItem): string {

@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.reward.application.service;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
@@ -10,6 +11,7 @@ import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRe
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
 import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
+import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistoryType;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
@@ -42,6 +44,7 @@ class RewardRedemptionServiceTest {
     private static final Long ADMIN_ID = 1L;
     private static final String ITEM_CODE = "voucher.coffee";
     private static final String REFILL_ITEM_CODE = "account.refill-count";
+    private static final String POSITION_PEEK_ITEM_CODE = "position.peek";
 
     @Autowired
     private CreateRewardRedemptionService createRewardRedemptionService;
@@ -69,6 +72,9 @@ class RewardRedemptionServiceTest {
 
     @Autowired
     private RewardShopMemberItemUsageRepository rewardShopMemberItemUsageRepository;
+
+    @Autowired
+    private RewardItemBalanceRepository rewardItemBalanceRepository;
 
     @Autowired
     private RewardRedemptionRequestRepository rewardRedemptionRequestRepository;
@@ -128,6 +134,34 @@ class RewardRedemptionServiceTest {
         RewardPointHistory history = rewardPointHistoryRepository.findByMemberId(MEMBER_ID).get(0);
         assertEquals(RewardPointHistoryType.REDEMPTION_DEDUCT, history.historyType());
         assertEquals(-20, history.amount());
+        assertEquals("INSTANT_SHOP_PURCHASE", history.sourceType());
+    }
+
+
+    @Test
+    void purchasesPositionPeekItemWithoutCreatingRedemptionRequest() {
+        rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 100));
+
+        ShopPurchaseResult result = purchaseShopItemService.purchase(MEMBER_ID, POSITION_PEEK_ITEM_CODE);
+
+        assertEquals(POSITION_PEEK_ITEM_CODE, result.itemCode());
+        assertEquals(90, result.rewardPoint());
+        assertEquals(null, result.refillRemainingCount());
+        assertEquals(1, result.positionPeekItemBalance());
+        assertEquals(90, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
+        RewardShopItem item = rewardShopItemRepository.findByCode(POSITION_PEEK_ITEM_CODE).orElseThrow();
+        assertEquals(1, item.soldQuantity());
+        RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
+                .findByMemberIdAndShopItemIdForUpdate(MEMBER_ID, item.id())
+                .orElseThrow();
+        assertEquals(1, usage.purchaseCount());
+        RewardItemBalance balance = rewardItemBalanceRepository
+                .findByMemberIdAndShopItemIdForUpdate(MEMBER_ID, item.id())
+                .orElseThrow();
+        assertEquals(1, balance.remainingQuantity());
+        assertEquals(0, rewardRedemptionRequestRepository.findByStatus(RewardRedemptionStatus.PENDING).size());
+        RewardPointHistory history = rewardPointHistoryRepository.findByMemberId(MEMBER_ID).get(0);
+        assertEquals(-10, history.amount());
         assertEquals("INSTANT_SHOP_PURCHASE", history.sourceType());
     }
 

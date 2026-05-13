@@ -32,6 +32,7 @@ type PriceFlashMetadata = {
 type MarketsLandingRealtimeViewProps = {
   initialMarkets: [MarketSnapshot, MarketSnapshot];
   isMarketDataDegraded: boolean;
+  isAuthenticated: boolean;
   rankingEntries: MarketRankingEntry[];
   summaryCards: DashboardSummaryCard[];
 };
@@ -132,6 +133,7 @@ function isRecoveringStatus(status: EventSourceReconnectStatus | undefined) {
 export default function MarketsLandingRealtimeView({
   initialMarkets,
   isMarketDataDegraded,
+  isAuthenticated,
   rankingEntries,
   summaryCards,
 }: MarketsLandingRealtimeViewProps) {
@@ -308,6 +310,7 @@ export default function MarketsLandingRealtimeView({
       />
       <MarketsLanding
         isMarketDataDegraded={isStreamRecovering}
+        isAuthenticated={isAuthenticated}
         markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
         rankingEntries={rankingEntries}
         summaryCards={summaryCards}

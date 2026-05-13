@@ -17,7 +17,7 @@ class LeaderboardResponseTest {
                 "profitRate",
                 "database",
                 Instant.parse("2026-04-26T00:00:00Z"),
-                List.of(new LeaderboardEntryResult(1, "Demo", 124_580, 0.2458)),
+                List.of(new LeaderboardEntryResult(1, "Demo", 124_580, 0.2458, "token-1")),
                 Optional.empty()
         ));
 

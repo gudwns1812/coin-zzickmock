@@ -28,6 +28,7 @@ export type MarketRankingEntry = {
   nickname: string;
   walletBalance: number;
   profitRate: number;
+  targetToken?: string;
 };
 
 export type MarketRankingMemberRank = {

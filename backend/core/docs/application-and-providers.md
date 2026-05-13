@@ -207,6 +207,28 @@ feature/order/application/
 - `*Port`는 외부 경계를 표현하는 계약이 정말 필요할 때만 만든다.
 - 구현이 하나뿐이고 호출 전달만 하는 인터페이스는 만들지 않는다.
 
+## Application Result Factory Rule
+
+`application/service`는 유스케이스를 조율하고, result 필드 조립과 변환 책임은 각 `application/result/*Result`가 소유한다.
+
+강한 규칙:
+
+- service가 domain model, snapshot, projection entry를 result constructor로 직접 펼치지 않는다.
+- 변환이 필요하면 result record 내부에 `from(...)`, `of(...)`, `pending(...)` 같은 명명된 static factory method를 둔다.
+- service는 repository/provider 호출, 유효성 검증, transaction orchestration, token 발급처럼 유스케이스 진행에 필요한 입력값만 준비한다.
+- token 발급, 외부 조회, repository 호출처럼 side effect가 있는 작업은 result factory 안으로 숨기지 않는다. service가 값을 준비하고 result factory에는 준비된 값이나 순수 callback만 넘긴다.
+- 여러 result가 공유하는 복잡한 projection 전용 로직은 기존 `Assembler`, `Projector`, `Reader` 같은 목적형 협력 객체로 남길 수 있다. 이 경우에도 service가 직접 constructor mapping을 반복하지 않는다.
+
+예:
+
+```java
+// 권장
+return OpenOrderResult.from(order);
+
+// 비권장
+return new OpenOrderResult(order.orderId(), order.symbol(), ...);
+```
+
 ## Related Documents
 
 - [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/package-and-wiring.md)

@@ -13,7 +13,7 @@ class StorageMigrationResourceTest {
                 .getResource("db/migration/V1__initial_schema.sql");
         URL latestRepairMigration = Thread.currentThread()
                 .getContextClassLoader()
-                .getResource("db/migration/V26__add_market_history_repair_events.sql");
+                .getResource("db/migration/V28__add_position_peek_inventory_and_snapshots.sql");
 
         assertThat(initialMigration).isNotNull();
         assertThat(latestRepairMigration).isNotNull();

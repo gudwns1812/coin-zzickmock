@@ -24,7 +24,8 @@
 - 현재 구현: `.github/workflows/ci.yml`
 - 기본 검증:
   - 프론트엔드 `npm run lint`, `npm run build`
-  - 백엔드 `./gradlew check`
+  - 백엔드 `./gradlew check :app:bootJar`
+  - 백엔드 Docker image 포장 smoke build
 - 비고: 현재는 배포를 수행하지 않는다
 
 ### CD
@@ -34,7 +35,7 @@
 - 기본 동작:
   - `main`/`master`의 `backend/**`, `docker-compose.prod.yml`, `infra/**` 변경 또는 수동 실행으로 시작한다
   - 변경 범위를 `backend_image`, `backend_runtime`, `infra_runtime`, `nginx_config` 배포 효과로 분류한다
-  - `backend_image`일 때만 백엔드 `./gradlew check`와 backend Docker image push를 수행한다
+  - `backend_image`일 때만 백엔드 `./gradlew check :app:bootJar`와 backend Docker image push를 수행한다
   - SSH로 EC2에 접속해 staged compose/env preflight를 먼저 수행한다
   - `backend_image`는 EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 교체한 뒤 backend를 pull/restart한다
   - `backend_runtime`, `infra_runtime`, `nginx_config`는 backend image를 새로 만들지 않고 필요한 runtime 파일과 서비스만 반영한다
@@ -95,7 +96,7 @@
 - 기록 항목:
   - 대상 commit SHA
   - 검증 결과
-  - `backend/app/build/libs/*.jar` 생성 여부
+  - `backend/app/build/libs/app.jar` 생성 여부
 
 ### Production Docker Artifact
 

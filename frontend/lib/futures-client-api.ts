@@ -2,7 +2,12 @@ import type {
   AccountRefillResult,
   AdminShopItem,
   AdminShopItemInput,
+  LeaderboardMode,
+  LeaderboardSearchResult,
   ModifyFuturesOrderResult,
+  PeekItemBalance,
+  PositionPeekSnapshot,
+  PositionPeekStatus,
   RewardRedemption,
   ShopPurchaseResult,
 } from "@/lib/futures-api";
@@ -12,6 +17,90 @@ type ClientApiResponse<T> = {
   data: T | null;
   message: string | null;
 };
+
+type ClientApiErrorPayload = {
+  message?: string | null;
+};
+
+export class FuturesClientApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+    this.name = "FuturesClientApiError";
+  }
+}
+
+function readClientApiData<T>(
+  response: Response,
+  payload: ClientApiResponse<T> | ClientApiErrorPayload | null
+): T {
+  if (
+    !response.ok ||
+    !payload ||
+    !("success" in payload) ||
+    !payload.success ||
+    !payload.data
+  ) {
+    throw new FuturesClientApiError(
+      payload?.message ?? "요청을 처리하지 못했습니다.",
+      response.status
+    );
+  }
+
+  return payload.data;
+}
+
+export async function searchFuturesLeaderboardMembers(
+  query: string,
+  options: { mode?: LeaderboardMode; limit?: number } = {}
+): Promise<LeaderboardSearchResult[]> {
+  const trimmedQuery = query.trim();
+
+  if (trimmedQuery.length === 0) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    mode: options.mode ?? "profitRate",
+    query: trimmedQuery,
+    limit: String(options.limit ?? 10),
+  });
+  return readFuturesApi<LeaderboardSearchResult[]>(
+    `/leaderboard/search?${params.toString()}`
+  );
+}
+
+export async function getPositionPeekLatest(
+  targetToken: string
+): Promise<PositionPeekStatus> {
+  return writeFuturesApi<PositionPeekStatus>("/position-peeks/latest", {
+    targetToken,
+  });
+}
+
+export async function getPositionPeekSnapshot(
+  peekId: string
+): Promise<PositionPeekSnapshot> {
+  return readFuturesApi<PositionPeekSnapshot>(
+    `/position-peeks/${encodeURIComponent(peekId)}`
+  );
+}
+
+export async function getPositionPeekItemBalance(): Promise<PeekItemBalance> {
+  return readFuturesApi<PeekItemBalance>("/position-peeks/item-balance");
+}
+
+export async function consumePositionPeek(
+  targetToken: string,
+  idempotencyKey: string
+): Promise<PositionPeekStatus> {
+  return writeFuturesApi<PositionPeekStatus>("/position-peeks", {
+    targetToken,
+    idempotencyKey,
+  });
+}
 
 export async function createRewardRedemption(
   itemCode: string,
@@ -98,6 +187,20 @@ export async function deactivateAdminShopItem(
   );
 }
 
+async function readFuturesApi<T>(path: string): Promise<T> {
+  const response = await fetch(`/proxy-futures${path}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | ClientApiResponse<T>
+    | ClientApiErrorPayload
+    | null;
+
+  return readClientApiData(response, payload);
+}
+
 async function writeFuturesApi<T>(
   path: string,
   body: unknown
@@ -113,11 +216,8 @@ async function writeFuturesApi<T>(
 
   const payload = (await response.json().catch(() => null)) as
     | ClientApiResponse<T>
+    | ClientApiErrorPayload
     | null;
 
-  if (!response.ok || !payload?.success || !payload.data) {
-    throw new Error(payload?.message ?? "요청을 처리하지 못했습니다.");
-  }
-
-  return payload.data;
+  return readClientApiData(response, payload);
 }

@@ -22,6 +22,6 @@ public class AccountRefillCreditProcessor {
                 datePolicy.currentRefillDate(),
                 count
         );
-        return new AccountRefillCreditResult(saved.remainingCount());
+        return AccountRefillCreditResult.from(saved);
     }
 }

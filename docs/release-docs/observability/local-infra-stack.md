@@ -29,6 +29,9 @@ docker compose up --build
 docker compose up --build -d
 ```
 
+로컬 Compose는 backend Dockerfile의 `source-runtime` target을 사용하므로 Docker build 안에서 JAR를 만든다.
+CI/CD 운영 이미지 발행 경로는 `jar-runtime` target을 사용해 GitHub Actions에서 만든 JAR만 이미지에 복사한다.
+
 정리:
 
 ```bash

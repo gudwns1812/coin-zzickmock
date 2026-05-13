@@ -71,6 +71,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V25__add_account_refill_state.sql)
   [V26__add_market_history_repair_events.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V26__add_market_history_repair_events.sql)
   [V27__weekly_account_refill_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V27__weekly_account_refill_description.sql)
+  [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql)
+  [V29__add_position_peek_entry_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V29__add_position_peek_entry_price.sql)
+  [V30__lower_position_peek_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V30__lower_position_peek_price.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -273,11 +276,15 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   관리자 상품 관리는 기존 row를 hard delete하지 않는다. 판매 중지는 `active = false`로 처리하고, 이미 생성된 교환권 요청은 요청 시점의 `item_code`, `item_name`, `item_price`, `point_amount` 스냅샷을 유지한다.
 - 재고:
   `sold_quantity`는 item-level 재고 소진 수량이다. 유한 재고 상품은 `sold_quantity <= total_stock` 제약을 가진다.
+- 기본 시드:
+  `voucher.coffee`, `account.refill-count`, `position.peek`를 migration으로 관리한다. `position.peek`는 `POSITION_PEEK` 타입, 10 포인트, 무제한 재고 상품이다.
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql),
+  [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql),
+  [V30__lower_position_peek_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V30__lower_position_peek_price.sql),
   [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
 
 ### `reward_shop_member_item_usages`
@@ -297,6 +304,24 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
+
+### `reward_item_balances`
+
+- 목적:
+  `POSITION_PEEK` 같은 즉시 소비형 상점 아이템의 회원별 사용 가능 수량을 저장한다. 구매 제한 추적용 `reward_shop_member_item_usages.purchase_count`와 분리한다.
+- PK:
+  `id` (auto increment)
+- 유니크:
+  `member_id`, `shop_item_id`
+- 주요 컬럼:
+  `member_id`, `shop_item_id`, `remaining_quantity`, `version`, `created_at`, `updated_at`
+- 수량 제약:
+  `remaining_quantity >= 0`이며, 구매 성공 시 증가하고 엿보기 snapshot 생성 transaction이 성공한 경우에만 감소한다.
+- 관련 엔티티/모듈:
+  `feature.reward`
+- 관련 migration 또는 schema 파일:
+  [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql),
+  [RewardItemBalanceEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardItemBalanceEntity.java)
 
 ### `reward_point_histories`
 
@@ -386,6 +411,39 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V16__enforce_single_open_position_per_side.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V16__enforce_single_open_position_per_side.sql),
   [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
+
+### `position_peek_snapshots`
+
+- 목적:
+  viewer가 `POSITION_PEEK` 아이템 1개를 소비해 생성한 target의 current position 공개 요약 snapshot metadata를 저장한다.
+- PK:
+  `id` (auto increment)
+- 유니크:
+  `peek_id`
+- 주요 컬럼:
+  `peek_id`, `viewer_member_id`, `target_member_id`, `target_token_fingerprint`, `target_display_name_snapshot`, `discovery_source`, `rank_at_use`, `leaderboard_mode_at_use`, `created_at`, `updated_at`
+- 권한 모델:
+  저장 snapshot 조회는 live leaderboard membership이 아니라 `viewer_member_id + peek_id` ownership으로 판단한다. public response에는 internal member id를 노출하지 않는다.
+- 관련 엔티티/모듈:
+  `feature.position`, `feature.reward`
+- 관련 migration 또는 schema 파일:
+  [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql)
+
+### `position_peek_snapshot_positions`
+
+- 목적:
+  `position_peek_snapshots` 생성 시점의 public-safe open position rows를 normalized form으로 저장한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `peek_snapshot_id`, `symbol`, `position_side`, `leverage`, `position_size`, `entry_price`, `notional_value`, `unrealized_pnl`, `roi`, `created_at`, `updated_at`
+- 공개 필드 경계:
+  TP/SL, 주문/청산 action, closeable quantity, order id, raw member id, position history id는 저장하지 않는다.
+- 관련 엔티티/모듈:
+  `feature.position`, `feature.reward`
+- 관련 migration 또는 schema 파일:
+  [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql),
+  [V29__add_position_peek_entry_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V29__add_position_peek_entry_price.sql)
 
 ### `position_history`
 
@@ -570,6 +628,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V19__add_member_daily_activity.sql`로 DB 기반 DAU 수집용 `member_daily_activity`와 식별자 없는 장기 집계용 `daily_active_user_summary`를 추가했다.
 - 2026-05-03:
   `V20__add_member_withdrawn_at.sql`로 `member_credentials.withdrawn_at` nullable soft-delete column과 보조 index를 추가했다. 기존 row는 `withdrawn_at IS NULL` active member로 해석하며, `account` unique 제약은 유지한다.
+- 2026-05-13:
+  `V30__lower_position_peek_price.sql`로 기본 `position.peek` 상점 상품 가격을 30P에서 10P로 낮췄다.
 ## Update Rule
 
 아래 상황에서는 이 문서를 같이 갱신한다.

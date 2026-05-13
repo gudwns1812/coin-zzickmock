@@ -4,11 +4,13 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.refill.AccountRefillCreditProcessor;
 import coin.coinzzickmock.feature.account.application.result.AccountRefillCreditResult;
+import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
+import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
@@ -26,23 +28,24 @@ public class PurchaseShopItemService {
     private final RewardPointRepository rewardPointRepository;
     private final RewardPointHistoryRepository rewardPointHistoryRepository;
     private final AccountRefillCreditProcessor accountRefillCreditProcessor;
+    private final RewardItemBalanceRepository rewardItemBalanceRepository;
 
     @Transactional
     public ShopPurchaseResult purchase(Long memberId, String itemCode) {
         String normalizedItemCode = requireItemCode(itemCode);
-        RewardShopItem item = loadPurchasableRefillItemForUpdate(normalizedItemCode);
+        RewardShopItem item = loadPurchasableInstantItemForUpdate(normalizedItemCode);
         RewardShopMemberItemUsage usage = loadUsageForUpdate(memberId, item);
         validatePurchase(item, usage);
 
         RewardPointWallet deductedWallet = deductWallet(memberId, item.price());
-        AccountRefillCreditResult refillCredit = applyRefillCredit(memberId);
         ReservedShopPurchase reservedPurchase = reserveItemAndUsage(item, usage);
+        ShopPurchaseEffect effect = applyPurchaseEffect(memberId, item);
 
         persistReservation(reservedPurchase);
         RewardPointWallet savedWallet = rewardPointRepository.save(deductedWallet);
         recordHistory(memberId, item.price(), savedWallet.rewardPoint());
 
-        return new ShopPurchaseResult(normalizedItemCode, savedWallet.rewardPoint(), refillCredit.remainingCount());
+        return effect.toResult(normalizedItemCode, savedWallet.rewardPoint());
     }
 
     private String requireItemCode(String itemCode) {
@@ -52,14 +55,10 @@ public class PurchaseShopItemService {
         return itemCode;
     }
 
-    private AccountRefillCreditResult applyRefillCredit(Long memberId) {
-        return accountRefillCreditProcessor.addCurrentWeekCount(memberId, 1);
-    }
-
-    private RewardShopItem loadPurchasableRefillItemForUpdate(String itemCode) {
+    private RewardShopItem loadPurchasableInstantItemForUpdate(String itemCode) {
         RewardShopItem item = rewardShopItemRepository.findByCodeForUpdate(itemCode)
                 .orElseThrow(this::invalid);
-        if (!item.accountRefillCount()) {
+        if (!item.instantConsumable()) {
             throw invalid();
         }
         return item;
@@ -75,6 +74,22 @@ public class PurchaseShopItemService {
         RewardPointWallet wallet = rewardPointRepository.findByMemberIdForUpdate(memberId)
                 .orElse(RewardPointWallet.empty(memberId));
         return wallet.deduct(price);
+    }
+
+    private ShopPurchaseEffect applyPurchaseEffect(Long memberId, RewardShopItem item) {
+        if (item.accountRefillCount()) {
+            AccountRefillCreditResult refillCredit = accountRefillCreditProcessor.addCurrentWeekCount(memberId, 1);
+            return ShopPurchaseEffect.accountRefill(refillCredit.remainingCount());
+        }
+        if (item.positionPeek()) {
+            RewardItemBalance balance = rewardItemBalanceRepository
+                    .findByMemberIdAndShopItemIdForUpdate(memberId, item.id())
+                    .orElse(RewardItemBalance.empty(memberId, item.id()))
+                    .addOne();
+            RewardItemBalance saved = rewardItemBalanceRepository.save(balance);
+            return ShopPurchaseEffect.positionPeek(saved.remainingQuantity());
+        }
+        throw invalid();
     }
 
     private ReservedShopPurchase reserveItemAndUsage(RewardShopItem item, RewardShopMemberItemUsage usage) {
@@ -115,5 +130,28 @@ public class PurchaseShopItemService {
             RewardShopItem item,
             RewardShopMemberItemUsage usage
     ) {
+    }
+
+    private record ShopPurchaseEffect(
+            Integer refillRemainingCount,
+            Integer positionPeekItemBalance
+    ) {
+        static ShopPurchaseEffect accountRefill(int refillRemainingCount) {
+            return new ShopPurchaseEffect(refillRemainingCount, null);
+        }
+
+        static ShopPurchaseEffect positionPeek(int positionPeekItemBalance) {
+            return new ShopPurchaseEffect(null, positionPeekItemBalance);
+        }
+
+        ShopPurchaseResult toResult(String itemCode, int rewardPoint) {
+            if (refillRemainingCount != null) {
+                return ShopPurchaseResult.accountRefill(itemCode, rewardPoint, refillRemainingCount);
+            }
+            if (positionPeekItemBalance != null) {
+                return ShopPurchaseResult.positionPeek(itemCode, rewardPoint, positionPeekItemBalance);
+            }
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
     }
 }

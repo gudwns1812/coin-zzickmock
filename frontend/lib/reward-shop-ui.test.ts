@@ -9,6 +9,8 @@ const {
   getShopItemImagePath,
   getShopItemAvailabilityLabel,
   isAccountRefillShopItem,
+  isInstantPurchaseShopItem,
+  isPositionPeekShopItem,
   isShopItemLimitReached,
   isShopItemSoldOut,
   normalizeVoucherPhoneNumber,
@@ -52,9 +54,12 @@ test("derives sold-out and per-member limit item states", () => {
   assert.equal(getShopItemAvailabilityLabel(limitedItem), "구매 제한 도달");
 });
 
-test("identifies account refill count shop items", () => {
+test("identifies instant-purchase shop items", () => {
   assert.equal(isAccountRefillShopItem({ itemType: "ACCOUNT_REFILL_COUNT" }), true);
-  assert.equal(isAccountRefillShopItem({ itemType: "COFFEE_VOUCHER" }), false);
+  assert.equal(isPositionPeekShopItem({ itemType: "POSITION_PEEK" }), true);
+  assert.equal(isInstantPurchaseShopItem({ itemType: "ACCOUNT_REFILL_COUNT" }), true);
+  assert.equal(isInstantPurchaseShopItem({ itemType: "POSITION_PEEK" }), true);
+  assert.equal(isInstantPurchaseShopItem({ itemType: "COFFEE_VOUCHER" }), false);
 });
 
 test("maps coffee shop items to the bundled coffee image", () => {

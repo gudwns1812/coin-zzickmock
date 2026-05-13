@@ -10,10 +10,13 @@ public record CommunityAuthor(Long memberId, String nickname) {
         if (memberId == null || memberId <= 0) {
             throw invalid();
         }
-        if (nickname == null || nickname.isBlank() || nickname.length() > MAX_NICKNAME_LENGTH) {
+        if (nickname == null) {
             throw invalid();
         }
         nickname = nickname.trim();
+        if (nickname.isEmpty() || nickname.length() > MAX_NICKNAME_LENGTH) {
+            throw invalid();
+        }
     }
 
     private static CoreException invalid() {

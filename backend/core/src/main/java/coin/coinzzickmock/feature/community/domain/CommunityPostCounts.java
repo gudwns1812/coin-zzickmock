@@ -23,7 +23,10 @@ public record CommunityPostCounts(long viewCount, long likeCount, long commentCo
     }
 
     public CommunityPostCounts unliked() {
-        return new CommunityPostCounts(viewCount, Math.max(0, likeCount - 1), commentCount);
+        if (likeCount == 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        return new CommunityPostCounts(viewCount, likeCount - 1, commentCount);
     }
 
     public CommunityPostCounts commented() {
@@ -31,6 +34,9 @@ public record CommunityPostCounts(long viewCount, long likeCount, long commentCo
     }
 
     public CommunityPostCounts uncommented() {
-        return new CommunityPostCounts(viewCount, likeCount, Math.max(0, commentCount - 1));
+        if (commentCount == 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        return new CommunityPostCounts(viewCount, likeCount, commentCount - 1);
     }
 }

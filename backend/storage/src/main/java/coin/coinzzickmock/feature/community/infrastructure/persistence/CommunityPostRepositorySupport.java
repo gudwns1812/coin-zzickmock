@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -9,6 +11,8 @@ class CommunityPostRepositorySupport {
     private final CommunityPostEntityRepository postEntityRepository;
 
     void decrementCommentCount(Long postId) {
-        postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::decrementCommentCount);
+        postEntityRepository.findWithLockingByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST))
+                .decrementCommentCount();
     }
 }

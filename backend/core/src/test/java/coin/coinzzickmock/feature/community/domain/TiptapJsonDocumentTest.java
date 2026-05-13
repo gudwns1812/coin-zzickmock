@@ -40,7 +40,10 @@ class TiptapJsonDocumentTest {
     void rejectsOversizedDepthTextAndImagePolicyViolations() {
         assertThrows(CoreException.class, () -> TiptapJsonDocument.of(deepDocument(21)));
         assertThrows(CoreException.class, () -> TiptapJsonDocument.of(textDocument(10_001)));
-        assertThrows(CoreException.class, () -> TiptapJsonDocument.of(imageDocument(11)));
+        assertThrows(CoreException.class, () -> TiptapJsonDocument.of(
+                imageDocument(11),
+                new TiptapJsonImagePolicy("community/1/", java.util.List.of("https://cdn.example/community/"))
+        ));
         assertThrows(CoreException.class, () -> TiptapJsonDocument.of(
                 """
                 {"type":"doc","content":[{"type":"image","attrs":{"src":"https://evil.example/image.webp","objectKey":"community/1/image.webp"}}]}

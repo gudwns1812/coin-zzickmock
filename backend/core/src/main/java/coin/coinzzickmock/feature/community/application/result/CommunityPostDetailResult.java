@@ -4,6 +4,7 @@ import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import java.time.Instant;
+import java.util.Objects;
 
 public record CommunityPostDetailResult(
         Long id,
@@ -16,15 +17,17 @@ public record CommunityPostDetailResult(
         long commentCount,
         boolean canEdit,
         boolean canDelete,
-        boolean likedByMe,
+        boolean isLikedByMe,
         Instant createdAt,
         Instant updatedAt
 ) {
-    public static CommunityPostDetailResult from(CommunityPost post, Long actorMemberId, boolean actorAdmin, boolean likedByMe) {
-        boolean author = post.authorMemberId().equals(actorMemberId);
+    public static CommunityPostDetailResult from(CommunityPost post, Long actorMemberId, boolean isActorAdmin, boolean isLikedByMe) {
+        Objects.requireNonNull(post, "post must not be null");
+        boolean isAuthor = Objects.equals(actorMemberId, post.authorMemberId());
+        CommunityCategory currentCategory = post.category();
         return new CommunityPostDetailResult(post.id(), post.category(), post.title(), post.authorNickname(), post.content().value(),
                 post.viewCount(), post.likeCount(), post.commentCount(),
-                CommunityPermissionPolicy.canEditPost(actorAdmin, author, post.category(), post.category()),
-                CommunityPermissionPolicy.canDeletePost(actorAdmin, author), likedByMe, post.createdAt(), post.updatedAt());
+                CommunityPermissionPolicy.canEditPost(isActorAdmin, isAuthor, currentCategory, currentCategory),
+                CommunityPermissionPolicy.canDeletePost(isActorAdmin, isAuthor), isLikedByMe, post.createdAt(), post.updatedAt());
     }
 }

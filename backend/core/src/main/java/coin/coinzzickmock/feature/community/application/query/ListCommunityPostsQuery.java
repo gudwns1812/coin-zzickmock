@@ -5,15 +5,11 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 
 public record ListCommunityPostsQuery(CommunityCategory category, int page, int size) {
-    private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_SIZE = 100;
 
     public ListCommunityPostsQuery {
-        if (category == CommunityCategory.NOTICE || page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
-            throw invalid();
+        if (page < 0 || size < 1 || size > MAX_SIZE || (category != null && category.isNotice())) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-    }
-
-    private static CoreException invalid() {
-        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

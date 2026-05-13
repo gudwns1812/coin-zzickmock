@@ -11,9 +11,9 @@ public record CommunityCommentListResult(
         int totalPages,
         boolean hasNext
 ) {
-    public static CommunityCommentListResult from(CommunityCommentPage page, Long actorMemberId, boolean actorAdmin) {
+    public static CommunityCommentListResult from(CommunityCommentPage page, Long actorMemberId, boolean isActorAdmin) {
         return new CommunityCommentListResult(page.comments().stream()
-                .map(comment -> CommunityCommentResult.from(comment, actorMemberId, actorAdmin)).toList(),
+                .map(comment -> CommunityCommentResult.from(comment, actorMemberId, isActorAdmin)).toList(),
                 page.page(), page.size(), page.totalElements(), page.totalPages(), page.hasNext());
     }
 }

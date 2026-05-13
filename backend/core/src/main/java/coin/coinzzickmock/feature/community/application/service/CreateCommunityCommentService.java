@@ -24,9 +24,10 @@ public class CreateCommunityCommentService {
     public CommunityCommentMutationResult execute(CreateCommunityCommentCommand command) {
         communityPostRepository.findActiveById(command.postId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        CommunityComment comment = CommunityComment.create(command.postId(), command.actorMemberId(), command.actorNickname(), command.content(), Instant.now(clock));
+        CommunityComment comment = CommunityComment.create(command.postId(), command.actorMemberId(), command.authorNickname(), command.content(), Instant.now(clock));
         CommunityComment saved = communityCommentRepository.save(comment);
-        communityPostRepository.incrementCommentCount(command.postId());
+        communityPostRepository.findActiveByIdForUpdate(command.postId())
+                .ifPresent(post -> communityPostRepository.save(post.incrementCommentCount(Instant.now(clock))));
         return CommunityCommentMutationResult.from(saved);
     }
 }

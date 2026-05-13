@@ -1,17 +1,10 @@
+import type { TiptapJson } from "@/lib/community-content";
+import { parseTiptapDocument } from "@/lib/community-content";
 import type { ReactNode } from "react";
 
-type TiptapNode = {
-  type: string;
-  text?: string;
-  attrs?: Record<string, unknown>;
-  marks?: TiptapMark[];
-  content?: TiptapNode[];
-};
+type TiptapNode = TiptapJson;
 
-type TiptapMark = {
-  type: string;
-  attrs?: Record<string, unknown>;
-};
+type TiptapMark = NonNullable<TiptapJson["marks"]>[number];
 
 export default function CommunityTiptapRenderer({ contentJson }: { contentJson: string }) {
   const document = parseDocument(contentJson);
@@ -27,23 +20,8 @@ export default function CommunityTiptapRenderer({ contentJson }: { contentJson: 
 }
 
 function parseDocument(contentJson: string): TiptapNode | null {
-  try {
-    const parsed: unknown = JSON.parse(contentJson);
-    if (!isNode(parsed) || parsed.type !== "doc") {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function isNode(value: unknown): value is TiptapNode {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const candidate = value as { type?: unknown };
-  return typeof candidate.type === "string";
+  const document = parseTiptapDocument(contentJson);
+  return document.type === "doc" ? document : null;
 }
 
 function renderChildren(children: TiptapNode[] | undefined): ReactNode[] {

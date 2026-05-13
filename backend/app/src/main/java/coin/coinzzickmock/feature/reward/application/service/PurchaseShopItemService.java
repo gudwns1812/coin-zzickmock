@@ -53,7 +53,7 @@ public class PurchaseShopItemService {
     }
 
     private AccountRefillCreditResult applyRefillCredit(Long memberId) {
-        return accountRefillCreditProcessor.addTodayCount(memberId, 1);
+        return accountRefillCreditProcessor.addCurrentWeekCount(memberId, 1);
     }
 
     private RewardShopItem loadPurchasableRefillItemForUpdate(String itemCode) {

@@ -7,7 +7,7 @@ import java.util.Optional;
 public interface AccountRefillStateRepository {
     Optional<AccountRefillState> findByMemberIdAndRefillDate(Long memberId, LocalDate refillDate);
 
-    void provisionDailyStateIfAbsent(Long memberId, LocalDate refillDate);
+    void provisionWeeklyStateIfAbsent(Long memberId, LocalDate refillDate);
 
     AccountRefillState grantExtraRefillCount(Long memberId, LocalDate refillDate, int count);
 

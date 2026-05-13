@@ -355,7 +355,7 @@ class CreateRewardRedemptionServiceTest {
                 2L,
                 REFILL_ITEM_CODE,
                 "리필 횟수 추가권",
-                "오늘 자정 전까지 사용할 수 있는 지갑 리필 횟수 1회",
+                "다음 KST 월요일 00:00 리셋 전까지 사용할 수 있는 지갑 리필 횟수 1회",
                 RewardShopItem.ITEM_TYPE_ACCOUNT_REFILL_COUNT,
                 20,
                 true,

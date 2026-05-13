@@ -124,16 +124,16 @@ class RefillTradingAccountServiceTest {
         }
 
         @Override
-        public void provisionDailyStateIfAbsent(Long memberId, LocalDate refillDate) {
+        public void provisionWeeklyStateIfAbsent(Long memberId, LocalDate refillDate) {
             if (state == null) {
-                state = AccountRefillState.daily(memberId, refillDate);
+                state = AccountRefillState.weekly(memberId, refillDate);
             }
         }
 
         @Override
         public AccountRefillState grantExtraRefillCount(Long memberId, LocalDate refillDate, int count) {
             if (state == null) {
-                state = AccountRefillState.daily(memberId, refillDate);
+                state = AccountRefillState.weekly(memberId, refillDate);
             }
             state = state.addCount(count).withVersion(state.version() + 1);
             return state;

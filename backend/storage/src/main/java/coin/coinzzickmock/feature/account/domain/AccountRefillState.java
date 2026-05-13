@@ -23,7 +23,7 @@ public record AccountRefillState(
         }
     }
 
-    public static AccountRefillState daily(Long memberId, LocalDate refillDate) {
+    public static AccountRefillState weekly(Long memberId, LocalDate refillDate) {
         return new AccountRefillState(memberId, refillDate, 1, 0);
     }
 

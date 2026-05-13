@@ -28,12 +28,12 @@ class AccountRefillStatePersistenceRepositoryTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void provisionDailyStateIfAbsentDoesNotResetExistingCount() {
+    void provisionWeeklyStateIfAbsentDoesNotResetExistingCount() {
         Long memberId = saveMember();
 
-        accountRefillStateRepository.provisionDailyStateIfAbsent(memberId, REFILL_DATE);
+        accountRefillStateRepository.provisionWeeklyStateIfAbsent(memberId, REFILL_DATE);
         accountRefillStateRepository.grantExtraRefillCount(memberId, REFILL_DATE, 2);
-        accountRefillStateRepository.provisionDailyStateIfAbsent(memberId, REFILL_DATE);
+        accountRefillStateRepository.provisionWeeklyStateIfAbsent(memberId, REFILL_DATE);
 
         AccountRefillState state = accountRefillStateRepository
                 .findByMemberIdAndRefillDate(memberId, REFILL_DATE)
@@ -42,7 +42,7 @@ class AccountRefillStatePersistenceRepositoryTest {
     }
 
     @Test
-    void grantExtraRefillCountCreatesDailyBaseAndAddsExtraCount() {
+    void grantExtraRefillCountCreatesWeeklyBaseAndAddsExtraCount() {
         Long memberId = saveMember();
 
         AccountRefillState state = accountRefillStateRepository.grantExtraRefillCount(memberId, REFILL_DATE, 1);
@@ -54,7 +54,7 @@ class AccountRefillStatePersistenceRepositoryTest {
     @Test
     void grantExtraRefillCountAdvancesVersionWhenUpdatingExistingState() {
         Long memberId = saveMember();
-        accountRefillStateRepository.provisionDailyStateIfAbsent(memberId, REFILL_DATE);
+        accountRefillStateRepository.provisionWeeklyStateIfAbsent(memberId, REFILL_DATE);
 
         AccountRefillState state = accountRefillStateRepository.grantExtraRefillCount(memberId, REFILL_DATE, 1);
 

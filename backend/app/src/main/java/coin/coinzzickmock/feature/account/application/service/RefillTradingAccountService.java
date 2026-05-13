@@ -33,10 +33,10 @@ public class RefillTradingAccountService {
 
     @Transactional
     public AccountRefillResult refill(Long memberId) {
-        LocalDate refillDate = datePolicy.today();
+        LocalDate refillDate = datePolicy.currentRefillDate();
         TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        accountRefillStateRepository.provisionDailyStateIfAbsent(memberId, refillDate);
+        accountRefillStateRepository.provisionWeeklyStateIfAbsent(memberId, refillDate);
         LockedAccountRefillState lockedState = accountRefillStateRepository
                 .findByMemberIdAndRefillDateForUpdate(memberId, refillDate)
                 .orElseThrow(() -> {

@@ -152,10 +152,10 @@ class PurchaseShopItemServiceTest {
         }
 
         @Override
-        public void provisionDailyStateIfAbsent(Long memberId, LocalDate refillDate) {
+        public void provisionWeeklyStateIfAbsent(Long memberId, LocalDate refillDate) {
             lockOrder.add("refill-state");
             if (state == null) {
-                state = AccountRefillState.daily(memberId, refillDate);
+                state = AccountRefillState.weekly(memberId, refillDate);
             }
         }
 
@@ -163,7 +163,7 @@ class PurchaseShopItemServiceTest {
         public AccountRefillState grantExtraRefillCount(Long memberId, LocalDate refillDate, int count) {
             lockOrder.add("refill-state");
             if (state == null) {
-                state = AccountRefillState.daily(memberId, refillDate);
+                state = AccountRefillState.weekly(memberId, refillDate);
             }
             state = state.addCount(count).withVersion(state.version() + 1);
             return state;
@@ -329,7 +329,7 @@ class PurchaseShopItemServiceTest {
                 1L,
                 REFILL_ITEM_CODE,
                 "리필 횟수 추가권",
-                "오늘 자정 전까지 사용할 수 있는 지갑 리필 횟수 1회",
+                "다음 KST 월요일 00:00 리셋 전까지 사용할 수 있는 지갑 리필 횟수 1회",
                 RewardShopItem.ITEM_TYPE_ACCOUNT_REFILL_COUNT,
                 20,
                 true,

@@ -228,7 +228,7 @@ export default function ShopRedemptionClient({
 
           {selectedItem && isAccountRefillShopItem(selectedItem) ? (
             <div className="mt-5 rounded-main bg-main-light-gray/45 p-main text-sm-custom leading-6 text-main-dark-gray/70 break-keep">
-              구매 즉시 오늘 사용 가능한 리필 횟수가 1회 추가됩니다. 사용하지 않은 추가 횟수는 다음 KST 자정 리셋 때 사라집니다.
+              구매 즉시 이번 주 사용 가능한 리필 횟수가 1회 추가됩니다. 사용하지 않은 추가 횟수는 다음 KST 월요일 리셋 때 사라집니다.
             </div>
           ) : (
             <>

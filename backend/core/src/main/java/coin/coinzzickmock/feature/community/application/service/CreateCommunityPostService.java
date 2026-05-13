@@ -6,6 +6,8 @@ import coin.coinzzickmock.feature.community.application.repository.CommunityPost
 import coin.coinzzickmock.feature.community.application.result.CommunityPostResult;
 import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
+import coin.coinzzickmock.feature.community.domain.TiptapJsonDocument;
+import coin.coinzzickmock.feature.community.domain.TiptapJsonImagePolicy;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +26,30 @@ public class CreateCommunityPostService {
         if (!CommunityPermissionPolicy.canCreatePost(command.actorAdmin(), command.category())) {
             throw CommunityApplicationSupport.forbidden();
         }
+        validateImageOwnership(command.actorMemberId(), Set.copyOf(command.imageObjectKeys()));
         Instant now = Instant.now(clock);
-        var content = CommunityApplicationSupport.content(command.actorMemberId(), command.contentJson(),
-                command.imageObjectKeys(), command.allowedImageSrcPrefixes(), communityImageRepository);
-        CommunityPost saved = communityPostRepository.save(CommunityPost.create(
-                command.actorMemberId(), command.authorNickname(), command.category(), command.title(), content, now));
-        communityImageRepository.attachToPost(saved.id(), command.actorMemberId(), command.imageObjectKeys(), now);
-        return CommunityPostResult.from(saved, command.actorMemberId(), command.actorAdmin(), false);
+        CommunityPost post = CommunityPost.create(command.actorMemberId(), command.authorNickname(), category,
+                command.title(), validatedContent(command), now);
+        CommunityPost saved = communityPostRepository.save(post);
+        communityPostImageRepository.attachToPost(saved.id(), command.actorMemberId(), Set.copyOf(command.imageObjectKeys()), CommunityImageStatus.ATTACHED);
+        return CommunityPostMutationResult.from(saved);
+    }
+
+
+    private TiptapJsonDocument validatedContent(CreateCommunityPostCommand command) {
+        if (command.imageObjectKeys().isEmpty()) {
+            return TiptapJsonDocument.of(command.contentJson());
+        }
+        return TiptapJsonDocument.of(
+                command.contentJson(),
+                new TiptapJsonImagePolicy("community/" + command.actorMemberId() + "/", command.allowedImageSrcPrefixes())
+        );
+    }
+
+    private void validateImageOwnership(Long memberId, Set<String> objectKeys) {
+        Set<String> attachable = communityPostImageRepository.findAttachableObjectKeys(memberId, objectKeys);
+        if (!attachable.containsAll(objectKeys)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
     }
 }

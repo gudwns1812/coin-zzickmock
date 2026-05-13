@@ -34,6 +34,9 @@ class TiptapJsonDocumentTest {
         assertThrows(CoreException.class, () -> TiptapJsonDocument.of("""
                 {"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"javascript:alert(1)"}}]}]}]}
                 """));
+        assertThrows(CoreException.class, () -> TiptapJsonDocument.of("""
+                {"type":"doc","content":[{"type":"paragraph","attrs":{"foo":"bar"},"content":[{"type":"text","text":"x"}]}]}
+                """));
     }
 
     @Test
@@ -47,6 +50,12 @@ class TiptapJsonDocumentTest {
         assertThrows(CoreException.class, () -> TiptapJsonDocument.of(
                 """
                 {"type":"doc","content":[{"type":"image","attrs":{"src":"https://evil.example/image.webp","objectKey":"community/1/image.webp"}}]}
+                """,
+                new TiptapJsonImagePolicy("community/1/", java.util.List.of("https://cdn.example/community/"))
+        ));
+        assertThrows(CoreException.class, () -> TiptapJsonDocument.of(
+                """
+                {"type":"doc","content":[{"type":"image","attrs":{"src":"https://cdn.example/community/2/image.webp","objectKey":"community/2/image.webp"}}]}
                 """,
                 new TiptapJsonImagePolicy("community/1/", java.util.List.of("https://cdn.example/community/"))
         ));

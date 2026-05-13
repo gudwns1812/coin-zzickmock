@@ -39,6 +39,8 @@
 - `/watchlist`
 - `/community`
 - `/community/[postId]`
+- `/community/write`
+- `/community/[postId]/edit`
 - `/shop`
 - `/admin`
 - `/admin/reward-redemptions`

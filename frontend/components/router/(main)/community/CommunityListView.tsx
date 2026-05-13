@@ -5,7 +5,7 @@ import type {
 } from "@/lib/futures-api";
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, Eye, MessageCircle, Pin, ThumbsUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, MessageCircle, PencilLine, Pin, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import CommunityState from "./CommunityState";
 import {
@@ -57,9 +57,12 @@ export default function CommunityListView({
               공지와 트레이딩 인사이트를 읽고 시장 관점을 빠르게 확인하세요.
             </p>
           </div>
-          <div className="rounded-main bg-main-light-gray/35 px-main py-3 text-right text-xs-custom text-main-dark-gray/55">
-            글쓰기·댓글·좋아요 입력은 다음 단계에서 활성화됩니다.
-          </div>
+          <Link
+            className="inline-flex items-center gap-2 rounded-main bg-main-blue px-main py-3 text-sm-custom font-semibold text-white shadow-sm transition-colors hover:bg-main-blue/90"
+            href="/community/write"
+          >
+            <PencilLine size={16} /> 글쓰기
+          </Link>
         </div>
       </section>
 

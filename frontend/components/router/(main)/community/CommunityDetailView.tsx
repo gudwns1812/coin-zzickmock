@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft, Eye, MessageCircle, ShieldCheck, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import CommunityState from "./CommunityState";
+import { CommunityComments, CommunityPostActions } from "./CommunityDetailInteractions";
 import CommunityTiptapRenderer from "./CommunityTiptapRenderer";
 import {
   COMMUNITY_CATEGORY_LABELS,
@@ -68,31 +69,10 @@ export default function CommunityDetailView({
 
       <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
         <CommunityTiptapRenderer contentJson={post.contentJson} />
+        <CommunityPostActions post={post} />
       </section>
 
-      <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl-custom font-bold text-main-dark-gray">댓글</h2>
-          <span className="text-xs-custom text-main-dark-gray/50">읽기 전용</span>
-        </div>
-        {comments?.comments.length ? (
-          <div className="mt-main grid gap-3">
-            {comments.comments.map((comment) => (
-              <div key={comment.id} className="rounded-main bg-main-light-gray/30 p-main">
-                <div className="flex items-center justify-between gap-main">
-                  <span className="font-semibold text-main-dark-gray">{comment.authorNickname}</span>
-                  <span className="text-xs-custom text-main-dark-gray/45">{formatCommunityDate(comment.createdAt)}</span>
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm-custom leading-6 text-main-dark-gray/70">{comment.content}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-main rounded-main bg-main-light-gray/35 p-main text-sm-custom text-main-dark-gray/55">
-            아직 댓글이 없습니다. 댓글 작성은 다음 단계에서 연결됩니다.
-          </div>
-        )}
-      </section>
+      <CommunityComments initialComments={comments} postId={post.id} />
     </article>
   );
 }

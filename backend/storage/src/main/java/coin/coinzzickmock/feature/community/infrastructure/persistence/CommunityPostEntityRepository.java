@@ -7,14 +7,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
 public interface CommunityPostEntityRepository extends JpaRepository<CommunityPostEntity, Long> {
-    List<CommunityPostEntity> findTop3ByCategoryAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(String category);
+    Page<CommunityPostEntity> findByCategoryAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(String category, Pageable pageable);
 
-    Page<CommunityPostEntity> findByCategoryAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(
-            String category,
-            Pageable pageable
-    );
+    @Query("select p from CommunityPostEntity p where p.category = :category and p.deletedAt is null")
+    Page<CommunityPostEntity> findLatestByCategory(String category, Pageable pageable);
 
     Page<CommunityPostEntity> findByCategoryNotAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(
             String category,
@@ -25,4 +24,7 @@ public interface CommunityPostEntityRepository extends JpaRepository<CommunityPo
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CommunityPostEntity> findWithLockingById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<CommunityPostEntity> findWithLockingByIdAndDeletedAtIsNull(Long id);
 }

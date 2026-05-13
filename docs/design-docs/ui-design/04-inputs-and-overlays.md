@@ -51,7 +51,7 @@
 - unauthenticated 상태는 `position-peeks/latest`를 호출하지 않고 "로그인 후 포지션 엿보기를 사용할 수 있습니다" 안내와 `/login` CTA만 보여준다.
 - consuming 상태는 CTA pending, 중복 클릭 방지, 실패 메시지를 같은 popover 안에서 처리한다. 실패 후 item count는 최신 값으로 갱신한다.
 - unlocked 상태는 `createdAt`, rank/nickname context, public position rows를 보여준다. 사용자-facing copy에는 "저장된 스냅샷" 같은 내부 저장 모델 용어를 노출하지 않고 "공개 포지션", "확인 시각"처럼 행위 중심 표현을 쓴다. public position row는 수량, 진입가, 미실현 PnL, ROI를 표시하고 명목가는 표시하지 않는다. 무료 `새로고침` 버튼은 두지 않고 `다시 사용`만 새 snapshot 생성 CTA로 제공한다.
-- empty snapshot은 성공 상태로 보이며 "열린 포지션이 없습니다"처럼 명확히 설명한다.
+- empty snapshot은 성공 상태로 보이며 locked 상태와 구분되는 완료 카드로 표시한다. "포지션 엿보기 완료", "열린 포지션 0개", "확인 시각 기준으로 공개할 열린 포지션이 없습니다"처럼 사용 완료 여부와 빈 결과를 함께 설명한다.
 - forbidden field: TP/SL, close/edit/order action, history, raw member id는 locked/unlocked 어느 상태에도 표시하지 않는다.
 
 ## 모달과 오버레이

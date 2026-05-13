@@ -95,8 +95,8 @@ export async function getPositionPeekItemBalance(): Promise<PeekItemBalance> {
 export async function consumePositionPeek(
   targetToken: string,
   idempotencyKey: string
-): Promise<PositionPeekStatus> {
-  return writeFuturesApi<PositionPeekStatus>("/position-peeks", {
+): Promise<PositionPeekSnapshot> {
+  return writeFuturesApi<PositionPeekSnapshot>("/position-peeks", {
     targetToken,
     idempotencyKey,
   });

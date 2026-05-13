@@ -22,11 +22,13 @@ import {
 import type {
   PositionPeekPublicPosition,
   PositionPeekSnapshot,
+  PositionPeekStatus,
   PositionPeekTarget,
 } from "@/lib/futures-api";
 import { getPositionPeekItemCount, getPositionPeekSnapshotCreatedAt } from "@/lib/position-peek-ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  CheckCircle2,
   Trophy,
   Search,
   TrendingUp,
@@ -631,12 +633,26 @@ function PositionPeekPanel({
   });
   const consumeMutation = useMutation({
     mutationFn: () => consumePositionPeek(target?.targetToken ?? "", crypto.randomUUID()),
-    onSuccess: (status) => {
+    onSuccess: (snapshot) => {
       const targetToken = target?.targetToken;
       if (!targetToken) {
         return;
       }
-      queryClient.setQueryData(["position-peek-latest", targetToken], status);
+      queryClient.setQueryData<PositionPeekStatus>(
+        ["position-peek-latest", targetToken],
+        (previous) => ({
+          target: previous?.target ?? {
+            rank: target.rank,
+            nickname: target.nickname,
+            walletBalance: target.walletBalance,
+            profitRate: target.profitRate,
+            targetToken,
+          },
+          latestSnapshot: snapshot,
+          remainingPeekItemCount:
+            snapshot.remainingPeekItemCount ?? getPositionPeekItemCount(previous),
+        })
+      );
       void queryClient.invalidateQueries({ queryKey: ["position-peek-latest", targetToken] });
     },
   });
@@ -645,7 +661,7 @@ function PositionPeekPanel({
     return null;
   }
 
-  const status = consumeMutation.data ?? latestQuery.data ?? null;
+  const status = latestQuery.data ?? null;
   const snapshot = status?.latestSnapshot ?? null;
   const itemCount = getPositionPeekItemCount(status);
   const isStatusLoading = latestQuery.isLoading;
@@ -807,9 +823,7 @@ function UnlockedPeekState({
         </p>
       </div>
       {snapshot.positions.length === 0 ? (
-        <p className="mt-4 rounded-main bg-white/80 p-4 text-sm-custom text-main-dark-gray/70">
-          현재 열린 포지션이 없습니다.
-        </p>
+        <EmptyPeekSnapshotState />
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           {snapshot.positions.map((position) => (
@@ -825,6 +839,31 @@ function UnlockedPeekState({
       >
         {isPending ? "다시 사용 중..." : `다시 사용 (${itemCount}개 보유)`}
       </button>
+    </div>
+  );
+}
+
+function EmptyPeekSnapshotState() {
+  return (
+    <div className="mt-4 rounded-main border border-main-blue/20 bg-main-blue/[0.06] p-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-main-blue/12 text-main-blue">
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm-custom font-bold text-main-dark-gray">
+              포지션 엿보기 완료
+            </p>
+            <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs-custom font-bold text-main-blue">
+              열린 포지션 0개
+            </span>
+          </div>
+          <p className="mt-2 text-xs-custom leading-relaxed text-main-dark-gray/65">
+            확인 시각 기준으로 공개할 열린 포지션이 없습니다.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

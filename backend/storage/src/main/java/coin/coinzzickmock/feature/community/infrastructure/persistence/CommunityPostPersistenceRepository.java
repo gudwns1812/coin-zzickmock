@@ -162,12 +162,16 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
             return List.of();
         }
         String requiredPrefix = "community/" + uploaderMemberId + "/";
-        return imageEntityRepository.findByObjectKeyIn(requested).stream()
+        List<CommunityPostImageEntity> attachableImages = imageEntityRepository.findByObjectKeyIn(requested).stream()
                 .filter(image -> uploaderMemberId.equals(image.uploaderMemberId()))
                 .filter(image -> image.objectKey().startsWith(requiredPrefix))
                 .filter(image -> ATTACHABLE_IMAGE_STATUSES.contains(image.status()))
-                .peek(image -> image.attachToPost(postId, attachedAt))
-                .map(CommunityPostImageEntity::toDomain).toList();
+                .toList();
+        if (attachableImages.size() != requested.size()) {
+            throw invalidRequest();
+        }
+        attachableImages.forEach(image -> image.attachToPost(postId, attachedAt));
+        return attachableImages.stream().map(CommunityPostImageEntity::toDomain).toList();
     }
 
     private CommunityPostEntity requireActivePostWithLock(Long postId) {

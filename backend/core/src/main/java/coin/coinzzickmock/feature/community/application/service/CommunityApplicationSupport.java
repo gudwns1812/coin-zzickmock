@@ -34,7 +34,7 @@ final class CommunityApplicationSupport {
             return TiptapJsonDocument.of(contentJson);
         }
         validateOwnedAttachableImages(memberId, keys, imageRepository);
-        return TiptapJsonDocument.of(contentJson, new TiptapJsonImagePolicy(community/ + memberId + /, allowedImageSrcPrefixes));
+        return TiptapJsonDocument.of(contentJson, new TiptapJsonImagePolicy("community/" + memberId + "/", allowedImageSrcPrefixes));
     }
 
     static void validateOwnedAttachableImages(Long memberId, List<String> objectKeys, CommunityImageRepository imageRepository) {

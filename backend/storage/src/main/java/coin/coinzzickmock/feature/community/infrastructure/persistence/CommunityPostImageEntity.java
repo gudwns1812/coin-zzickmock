@@ -9,6 +9,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.Objects;
 
 @Entity
 @Table(name = "community_post_images")
@@ -54,22 +56,26 @@ public class CommunityPostImageEntity extends AuditableEntity {
     ) {
         this.id = id;
         this.postId = postId;
-        this.uploaderMemberId = uploaderMemberId;
-        this.objectKey = objectKey;
-        this.publicUrl = publicUrl;
-        this.contentType = contentType;
+        this.uploaderMemberId = Objects.requireNonNull(uploaderMemberId, "uploaderMemberId");
+        this.objectKey = requireText(objectKey, "objectKey");
+        this.publicUrl = requireText(publicUrl, "publicUrl");
+        this.contentType = requireText(contentType, "contentType");
+        if (sizeBytes <= 0) {
+            throw new IllegalArgumentException("sizeBytes must be positive");
+        }
         this.sizeBytes = sizeBytes;
-        this.status = status;
+        this.status = requireStatus(status).name();
     }
 
-    public void attachToPost(Long postId) {
-        this.postId = postId;
-        this.status = "ATTACHED";
+    public void attachToPost(Long postId, Instant attachedAt) {
+        this.postId = Objects.requireNonNull(postId, "postId");
+        Objects.requireNonNull(attachedAt, "attachedAt");
+        this.status = CommunityPostImageStatus.ATTACHED.name();
     }
 
     public void markOrphaned() {
         this.postId = null;
-        this.status = "ORPHANED";
+        this.status = CommunityPostImageStatus.ORPHANED.name();
     }
 
 
@@ -108,5 +114,16 @@ public class CommunityPostImageEntity extends AuditableEntity {
 
     public String status() {
         return status;
+    }
+
+    private static String requireText(String value, String name) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(name + " must not be blank");
+        }
+        return value.trim();
+    }
+
+    private static CommunityPostImageStatus requireStatus(String status) {
+        return CommunityPostImageStatus.valueOf(Objects.requireNonNull(status, "status"));
     }
 }

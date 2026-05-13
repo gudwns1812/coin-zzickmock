@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentPage;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentRepository;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
@@ -34,17 +36,23 @@ public class CommunityCommentPersistenceRepository implements CommunityCommentRe
     @Transactional
     public CommunityComment save(CommunityComment comment) {
         CommunityCommentEntity entity = comment.id() == null ? CommunityCommentEntity.from(comment)
-                : commentEntityRepository.findById(comment.id()).map(existing -> { existing.apply(comment); return existing; })
-                .orElseGet(() -> CommunityCommentEntity.from(comment));
+                : commentEntityRepository.findById(comment.id()).map(existing -> {
+                    existing.apply(comment);
+                    return existing;
+                }).orElseThrow(CommunityCommentPersistenceRepository::invalidRequest);
         return commentEntityRepository.save(entity).toDomain();
     }
 
     @Override
     @Transactional
     public void softDelete(Long commentId, Instant deletedAt) {
-        commentEntityRepository.findWithLockingById(commentId).ifPresent(comment -> {
-            comment.softDelete(deletedAt);
-            postRepositorySupport.decrementCommentCount(comment.postId());
-        });
+        CommunityCommentEntity comment = commentEntityRepository.findWithLockingByIdAndDeletedAtIsNull(commentId)
+                .orElseThrow(CommunityCommentPersistenceRepository::invalidRequest);
+        comment.softDelete(deletedAt);
+        postRepositorySupport.decrementCommentCount(comment.postId());
+    }
+
+    private static CoreException invalidRequest() {
+        return new CoreException(ErrorCode.INVALID_REQUEST);
     }
 }

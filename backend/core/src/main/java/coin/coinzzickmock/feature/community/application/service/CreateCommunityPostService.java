@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
 import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import coin.coinzzickmock.feature.community.domain.TiptapJsonDocument;
+import coin.coinzzickmock.feature.community.domain.TiptapJsonImagePolicy;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Set;
@@ -31,12 +32,12 @@ public class CreateCommunityPostService {
         if (!CommunityPermissionPolicy.canCreatePost(command.actorAdmin(), category)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
-        validateImageOwnership(command.actorMemberId(), command.imageObjectKeys());
+        validateImageOwnership(command.actorMemberId(), Set.copyOf(command.imageObjectKeys()));
         Instant now = Instant.now(clock);
         CommunityPost post = CommunityPost.create(command.actorMemberId(), command.actorNickname(), category,
-                command.title(), TiptapJsonDocument.of(command.contentJson()), now);
+                command.title(), content(command.actorMemberId(), command.contentJson(), command.imageObjectKeys(), command.contentPolicy().allowedImageSrcPrefixes()), now);
         CommunityPost saved = communityPostRepository.save(post);
-        communityPostImageRepository.attachToPost(saved.id(), command.actorMemberId(), command.imageObjectKeys(), CommunityImageStatus.ATTACHED);
+        communityPostImageRepository.attachToPost(saved.id(), command.actorMemberId(), Set.copyOf(command.imageObjectKeys()), CommunityImageStatus.ATTACHED);
         return CommunityPostMutationResult.from(saved);
     }
 
@@ -45,5 +46,12 @@ public class CreateCommunityPostService {
         if (!attachable.containsAll(objectKeys)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
+    }
+
+    private TiptapJsonDocument content(Long actorMemberId, String contentJson, java.util.Set<String> imageObjectKeys, java.util.List<String> allowedImageSrcPrefixes) {
+        if (imageObjectKeys == null || imageObjectKeys.isEmpty()) {
+            return TiptapJsonDocument.of(contentJson);
+        }
+        return TiptapJsonDocument.of(contentJson, new TiptapJsonImagePolicy("community/" + actorMemberId + "/", allowedImageSrcPrefixes));
     }
 }

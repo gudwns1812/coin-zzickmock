@@ -13,11 +13,4 @@ public record CommunityActor(Long memberId, boolean isAdmin) {
     public boolean isSameMember(Long otherMemberId) {
         return otherMemberId != null && memberId.equals(otherMemberId);
     }
-
-    /**
-     * Compatibility accessor for app code that has not yet moved to the predicate record accessor.
-     */
-    public boolean admin() {
-        return isAdmin;
-    }
 }

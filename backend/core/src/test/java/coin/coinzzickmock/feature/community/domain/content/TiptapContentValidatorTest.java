@@ -130,9 +130,11 @@ class TiptapContentValidatorTest {
     @Test
     void validationResultRejectsImpossibleMetrics() {
         assertThatThrownBy(() -> new TiptapContentValidationResult(-1, 0, java.util.Set.of()))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(CoreException.class)
+                .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
         assertThatThrownBy(() -> new TiptapContentValidationResult(0, 0, java.util.Set.of("community/7/chart.webp")))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(CoreException.class)
+                .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }
 
     private static String doc(String child) {

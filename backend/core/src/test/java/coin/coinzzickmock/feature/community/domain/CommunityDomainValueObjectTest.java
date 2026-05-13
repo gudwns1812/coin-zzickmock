@@ -42,7 +42,7 @@ class CommunityDomainValueObjectTest {
                 Instant.parse("2026-05-13T00:00:00Z")
         );
 
-        assertThat(image.canAttachBy(7L)).isTrue();
+        assertThat(image.canBeAttachedBy(7L)).isTrue();
         assertThat(image.attachTo(10L, Instant.parse("2026-05-13T00:01:00Z")).status())
                 .isEqualTo(CommunityPostImageStatus.ATTACHED);
         assertThat(image.markOrphaned(Instant.parse("2026-05-13T00:02:00Z")).status())

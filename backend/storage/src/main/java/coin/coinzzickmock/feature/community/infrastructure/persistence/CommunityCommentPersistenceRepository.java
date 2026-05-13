@@ -32,12 +32,6 @@ public class CommunityCommentPersistenceRepository implements CommunityCommentRe
 
     @Override
     @Transactional
-    public Optional<CommunityComment> findActiveByIdForUpdate(Long commentId) {
-        return commentEntityRepository.findWithLockingById(commentId).filter(comment -> comment.deletedAt() == null).map(CommunityCommentEntity::toDomain);
-    }
-
-    @Override
-    @Transactional
     public CommunityComment save(CommunityComment comment) {
         CommunityCommentEntity entity = comment.id() == null ? CommunityCommentEntity.from(comment)
                 : commentEntityRepository.findById(comment.id()).map(existing -> { existing.apply(comment); return existing; })

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
-import coin.coinzzickmock.feature.community.application.query.CommunityPostListQuery;
+import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostImageRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;
@@ -41,7 +41,7 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
 
     @Override
     @Transactional(readOnly = true)
-    public CommunityPostPage findNormalPosts(CommunityPostListQuery query) {
+    public CommunityPostPage findPosts(ListCommunityPostsQuery query) {
         var pageable = PageRequest.of(query.page(), query.size());
         var page = query.category() == null || query.category().name().equals(NOTICE_CATEGORY)
                 ? postEntityRepository.findByCategoryNotAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(NOTICE_CATEGORY, pageable)
@@ -58,12 +58,6 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
 
     @Override
     @Transactional
-    public Optional<CommunityPost> findActiveByIdForUpdate(Long postId) {
-        return postEntityRepository.findWithLockingById(postId).filter(post -> post.deletedAt() == null).map(CommunityPostEntity::toDomain);
-    }
-
-    @Override
-    @Transactional
     public CommunityPost save(CommunityPost post) {
         CommunityPostEntity entity = post.id() == null ? CommunityPostEntity.from(post)
                 : postEntityRepository.findById(post.id()).map(existing -> { existing.apply(post); return existing; })
@@ -71,11 +65,19 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
         return postEntityRepository.save(entity).toDomain();
     }
 
-    @Override @Transactional public void incrementViewCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::incrementViewCount); }
+    @Override
+    @Transactional
+    public CommunityPost update(CommunityPost post) {
+        CommunityPostEntity entity = postEntityRepository.findWithLockingById(post.id())
+                .filter(existing -> existing.deletedAt() == null)
+                .orElseGet(() -> CommunityPostEntity.from(post));
+        entity.apply(post);
+        return postEntityRepository.save(entity).toDomain();
+    }
+
     @Override @Transactional public void incrementLikeCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::incrementLikeCount); }
     @Override @Transactional public void decrementLikeCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::decrementLikeCount); }
     @Override @Transactional public void incrementCommentCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::incrementCommentCount); }
-    @Override @Transactional public void decrementCommentCount(Long postId) { postEntityRepository.findWithLockingById(postId).ifPresent(CommunityPostEntity::decrementCommentCount); }
     @Override @Transactional public void softDelete(Long postId, Instant deletedAt) { postEntityRepository.findWithLockingById(postId).ifPresent(post -> post.softDelete(deletedAt)); }
 
     @Override @Transactional(readOnly = true) public boolean exists(Long postId, Long memberId) { return likeEntityRepository.existsByPostIdAndMemberId(postId, memberId); }

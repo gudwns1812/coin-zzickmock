@@ -21,6 +21,8 @@ import coin.coinzzickmock.feature.community.application.result.CommunityCommentM
 import coin.coinzzickmock.feature.community.application.result.CommunityCommentResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityPostListResult;
+import coin.coinzzickmock.feature.community.application.result.CommunityPostMutationResult;
+import coin.coinzzickmock.feature.community.application.result.CommunityPostSummaryResult;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
@@ -168,7 +170,11 @@ class CommunityApplicationServiceRegressionTest {
     void resultFactoriesFailFastForNullDomainInputs() {
         assertThatThrownBy(() -> CommunityCommentMutationResult.from(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> CommunityCommentResult.from(null, 1L, false)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> CommunityPostMutationResult.from(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> CommunityPostDetailResult.from(null, 1L, false, false)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> CommunityPostSummaryResult.from(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> CommunityPostListResult.from(null, new CommunityPostPage(List.of(), 0, 20, 0, 0, false)))
+                .isInstanceOf(NullPointerException.class);
     }
 
     private static CreateCommunityPostCommand createPost(Long actorId, boolean admin, CommunityCategory category, String content, Set<String> imageKeys, TiptapContentPolicy policy) {

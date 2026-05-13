@@ -14,6 +14,7 @@ import coin.coinzzickmock.feature.community.domain.TiptapJsonImagePolicy;
 import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ public class UpdateCommunityPostService {
     public CommunityPostMutationResult execute(UpdateCommunityPostCommand command) {
         CommunityPost existing = communityPostRepository.findActiveById(command.postId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        boolean isAuthor = existing.authorMemberId().equals(command.actorMemberId());
+        boolean isAuthor = Objects.equals(command.actorMemberId(), existing.authorMemberId());
         if (!CommunityPermissionPolicy.canEditPost(command.isActorAdmin(), isAuthor, existing.category(), command.category())) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }

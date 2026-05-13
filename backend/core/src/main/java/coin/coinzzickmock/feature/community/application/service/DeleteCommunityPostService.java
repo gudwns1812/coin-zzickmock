@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,8 @@ public class DeleteCommunityPostService {
     public void execute(DeleteCommunityPostCommand command) {
         CommunityPost post = communityPostRepository.findActiveById(command.postId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        if (!CommunityPermissionPolicy.canDeletePost(command.isActorAdmin(), post.authorMemberId().equals(command.actorMemberId()))) {
+        boolean isAuthor = Objects.equals(command.actorMemberId(), post.authorMemberId());
+        if (!CommunityPermissionPolicy.canDeletePost(command.isActorAdmin(), isAuthor)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         communityPostRepository.softDelete(command.postId(), Instant.now(clock));

@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,8 @@ public class DeleteCommunityCommentService {
     public void execute(DeleteCommunityCommentCommand command) {
         CommunityComment comment = communityCommentRepository.findActiveById(command.commentId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        if (!CommunityPermissionPolicy.canDeleteComment(command.isActorAdmin(), comment.authorMemberId().equals(command.actorMemberId()))) {
+        boolean isAuthor = Objects.equals(command.actorMemberId(), comment.authorMemberId());
+        if (!CommunityPermissionPolicy.canDeleteComment(command.isActorAdmin(), isAuthor)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         communityCommentRepository.softDelete(command.commentId(), Instant.now(clock));

@@ -5,4 +5,11 @@ public record PositionPeekStatusResult(
         PositionPeekSnapshotResult latestSnapshot,
         int remainingPeekItemCount
 ) {
+    public static PositionPeekStatusResult from(
+            PositionPeekTargetResult target,
+            PositionPeekSnapshotResult latestSnapshot,
+            int remainingPeekItemCount
+    ) {
+        return new PositionPeekStatusResult(target, latestSnapshot, remainingPeekItemCount);
+    }
 }

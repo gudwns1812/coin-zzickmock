@@ -23,9 +23,9 @@ public class GetPositionPeekItemBalanceService {
         RewardShopItem item = rewardShopItemRepository.findByCode(POSITION_PEEK_ITEM_CODE)
                 .filter(RewardShopItem::positionPeek)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        int quantity = rewardItemBalanceRepository.findByMemberIdAndShopItemId(memberId, item.id())
-                .map(balance -> balance.remainingQuantity())
-                .orElse(0);
-        return new PositionPeekItemBalanceResult(item.code(), quantity);
+        return PositionPeekItemBalanceResult.from(
+                item,
+                rewardItemBalanceRepository.findByMemberIdAndShopItemId(memberId, item.id())
+        );
     }
 }

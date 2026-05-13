@@ -13,7 +13,6 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,11 +53,7 @@ public class RefillTradingAccountService {
         ));
         afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
 
-        return new AccountRefillResult(
-                BigDecimal.valueOf(updatedAccount.walletBalance()),
-                BigDecimal.valueOf(updatedAccount.availableMargin()),
-                consumedState.remainingCount()
-        );
+        return AccountRefillResult.from(updatedAccount, consumedState.remainingCount());
     }
 
     private void validateRefillable(Long memberId, TradingAccount account, AccountRefillState state) {

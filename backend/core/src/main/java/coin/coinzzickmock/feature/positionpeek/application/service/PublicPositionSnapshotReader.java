@@ -19,16 +19,7 @@ public class PublicPositionSnapshotReader {
     public List<PositionPeekPublicPositionResult> read(Long targetMemberId) {
         return positionRepository.findOpenPositions(targetMemberId).stream()
                 .map(this::markToMarketForRead)
-                .map(snapshot -> new PositionPeekPublicPositionResult(
-                        snapshot.symbol(),
-                        snapshot.positionSide(),
-                        snapshot.leverage(),
-                        snapshot.quantity(),
-                        snapshot.entryPrice(),
-                        Math.abs(snapshot.quantity() * snapshot.markPrice()),
-                        snapshot.unrealizedPnl(),
-                        snapshot.roi()
-                ))
+                .map(PositionPeekPublicPositionResult::from)
                 .toList();
     }
 

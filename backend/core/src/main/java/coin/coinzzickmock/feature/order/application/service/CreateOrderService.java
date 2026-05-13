@@ -98,17 +98,7 @@ public class CreateOrderService {
             }
         }
 
-        return new CreateOrderResult(
-                resultOrder.orderId(),
-                resultOrder.status(),
-                resultOrder.symbol(),
-                resultOrder.feeType(),
-                resultPreview.estimatedFee(),
-                resultPreview.estimatedInitialMargin(),
-                resultPreview.estimatedLiquidationPrice(),
-                resultPreview.estimatedLiquidationPriceType(),
-                resultOrder.executionPrice()
-        );
+        return CreateOrderResult.from(resultOrder, resultPreview);
     }
 
     private Optional<PostSaveLimitFill> fillIfMarketableAfterSave(CreateOrderCommand command, String orderId) {

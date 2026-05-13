@@ -16,6 +16,6 @@ public class GetRewardPointService {
     public RewardPointResult get(Long memberId) {
         RewardPointWallet wallet = rewardPointRepository.findByMemberId(memberId)
                 .orElse(RewardPointWallet.empty(memberId));
-        return new RewardPointResult(wallet.rewardPoint(), "POINT_WALLET");
+        return RewardPointResult.wallet(wallet);
     }
 }

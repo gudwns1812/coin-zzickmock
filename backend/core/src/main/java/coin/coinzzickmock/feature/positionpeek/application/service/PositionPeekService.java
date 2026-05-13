@@ -37,10 +37,10 @@ public class PositionPeekService {
         ResolvedTarget target = resolveTarget(targetToken);
         PositionPeekSnapshotResult latest = positionPeekSnapshotRepository
                 .findLatestByViewerMemberIdAndTargetMemberId(viewerMemberId, target.memberId())
-                .map(record -> toResult(record, null))
+                .map(record -> PositionPeekSnapshotResult.from(record, null))
                 .orElse(null);
-        return new PositionPeekStatusResult(
-                target.toTargetResult(targetToken),
+        return PositionPeekStatusResult.from(
+                target.result(),
                 latest,
                 itemBalanceService.getRemainingCount(viewerMemberId)
         );
@@ -64,15 +64,15 @@ public class PositionPeekService {
                 viewerMemberId,
                 target.memberId(),
                 targetTokenService.fingerprint(targetToken),
-                target.nickname(),
-                target.rank(),
+                target.result().nickname(),
+                target.result().rank(),
                 target.leaderboardMode(),
                 Instant.now(),
                 positions
         ));
-        return new PositionPeekStatusResult(
-                target.toTargetResult(targetToken),
-                toResult(savedSnapshot, savedBalance.remainingQuantity()),
+        return PositionPeekStatusResult.from(
+                target.result(),
+                PositionPeekSnapshotResult.from(savedSnapshot, savedBalance.remainingQuantity()),
                 savedBalance.remainingQuantity()
         );
     }
@@ -80,7 +80,7 @@ public class PositionPeekService {
     @Transactional(readOnly = true)
     public PositionPeekSnapshotResult getSnapshot(Long viewerMemberId, String peekId) {
         return positionPeekSnapshotRepository.findByPeekIdAndViewerMemberId(peekId, viewerMemberId)
-                .map(record -> toResult(record, null))
+                .map(record -> PositionPeekSnapshotResult.from(record, null))
                 .orElseThrow(this::invalid);
     }
 
@@ -90,27 +90,8 @@ public class PositionPeekService {
                 .orElseThrow(this::invalid);
         return new ResolvedTarget(
                 entry.memberId(),
-                payload.rank(),
-                entry.nickname(),
-                entry.walletBalance(),
-                entry.profitRate(),
+                PositionPeekTargetResult.from(entry, payload.rank(), targetToken),
                 payload.leaderboardMode()
-        );
-    }
-
-    private PositionPeekSnapshotResult toResult(PositionPeekSnapshotRecord record, Integer remainingCount) {
-        return new PositionPeekSnapshotResult(
-                record.peekId(),
-                new PositionPeekTargetResult(
-                        record.rankAtUse(),
-                        record.targetDisplayNameSnapshot(),
-                        null,
-                        null,
-                        null
-                ),
-                record.createdAt(),
-                record.positions(),
-                remainingCount
         );
     }
 
@@ -120,14 +101,8 @@ public class PositionPeekService {
 
     private record ResolvedTarget(
             Long memberId,
-            Integer rank,
-            String nickname,
-            Double walletBalance,
-            Double profitRate,
+            PositionPeekTargetResult result,
             String leaderboardMode
     ) {
-        PositionPeekTargetResult toTargetResult(String targetToken) {
-            return new PositionPeekTargetResult(rank, nickname, walletBalance, profitRate, targetToken);
-        }
     }
 }

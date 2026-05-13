@@ -9,7 +9,6 @@ import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,14 +33,7 @@ public class GetAccountRefillStatusService {
                 .orElse(AccountRefillState.weekly(memberId, refillDate));
         String disabledReason = disabledReason(memberId, account, state);
 
-        return new AccountRefillStatusResult(
-                state.remainingCount(),
-                disabledReason == null,
-                disabledReason,
-                BigDecimal.valueOf(TradingAccount.INITIAL_WALLET_BALANCE),
-                BigDecimal.valueOf(TradingAccount.INITIAL_AVAILABLE_MARGIN),
-                datePolicy.nextResetAt()
-        );
+        return AccountRefillStatusResult.from(state, disabledReason, datePolicy.nextResetAt());
     }
 
     private String disabledReason(Long memberId, TradingAccount account, AccountRefillState state) {

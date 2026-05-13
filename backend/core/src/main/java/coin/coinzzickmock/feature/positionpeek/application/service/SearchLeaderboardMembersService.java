@@ -34,12 +34,16 @@ public class SearchLeaderboardMembersService {
                 .map(entry -> new RankedEntry(rank.incrementAndGet(), entry))
                 .filter(entry -> entry.entry().nickname().toLowerCase(Locale.ROOT).contains(normalizedQuery))
                 .limit(limit)
-                .map(entry -> toTarget(mode, entry.rank(), entry.entry()))
+                .map(entry -> PositionPeekTargetResult.from(
+                        entry.entry(),
+                        entry.rank(),
+                        issueTargetToken(mode, entry.rank(), entry.entry())
+                ))
                 .toList();
     }
 
-    public PositionPeekTargetResult toTarget(LeaderboardMode mode, int rank, LeaderboardEntry entry) {
-        String token = targetTokenService.issue(new PositionPeekTargetTokenCodec.TargetTokenPayload(
+    private String issueTargetToken(LeaderboardMode mode, int rank, LeaderboardEntry entry) {
+        return targetTokenService.issue(new PositionPeekTargetTokenCodec.TargetTokenPayload(
                 entry.memberId(),
                 rank,
                 entry.nickname(),
@@ -47,7 +51,6 @@ public class SearchLeaderboardMembersService {
                 entry.profitRate(),
                 mode.value()
         ));
-        return new PositionPeekTargetResult(rank, entry.nickname(), entry.walletBalance(), entry.profitRate(), token);
     }
 
     private String requireQuery(String query) {

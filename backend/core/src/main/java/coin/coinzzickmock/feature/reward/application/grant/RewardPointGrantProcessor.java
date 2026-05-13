@@ -62,7 +62,7 @@ public class RewardPointGrantProcessor {
         if (grantedPoint == 0) {
             RewardPointWallet current = rewardPointRepository.findByMemberIdForUpdate(command.memberId())
                     .orElse(RewardPointWallet.empty(command.memberId()));
-            return new RewardPointResult(current.rewardPoint(), rewardPointPolicy.tierLabel(grantedPoint));
+            return RewardPointResult.fromGrant(current, rewardPointPolicy, grantedPoint);
         }
 
         RewardPointWallet current = rewardPointRepository.findByMemberIdForUpdate(command.memberId())
@@ -74,6 +74,6 @@ public class RewardPointGrantProcessor {
                 updated.rewardPoint(),
                 null
         ));
-        return new RewardPointResult(updated.rewardPoint(), rewardPointPolicy.tierLabel(grantedPoint));
+        return RewardPointResult.fromGrant(updated, rewardPointPolicy, grantedPoint);
     }
 }

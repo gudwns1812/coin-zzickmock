@@ -84,7 +84,7 @@ public class ClosePositionService {
                     limitPrice == null ? market.lastPrice() : limitPrice
             ));
             pendingCloseOrderCapReconciler.reconcile(memberId, pendingCloseOrder, position.quantity(), market.lastPrice());
-            return new ClosePositionResult(symbol, 0, 0, 0);
+            return ClosePositionResult.pending(symbol);
         }
 
         double closeFee = decision.estimatedFee(Math.min(quantity, position.quantity()));

@@ -3,10 +3,7 @@ package coin.coinzzickmock.feature.community.domain.content;
 import java.util.List;
 import java.util.Set;
 
-public record TiptapContentPolicy(
-        Set<String> approvedImageObjectKeys,
-        List<String> allowedImageSrcPrefixes
-) {
+public record TiptapContentPolicy(Set<String> approvedImageObjectKeys, List<String> allowedImageSrcPrefixes) {
     public TiptapContentPolicy {
         approvedImageObjectKeys = approvedImageObjectKeys == null ? Set.of() : Set.copyOf(approvedImageObjectKeys);
         allowedImageSrcPrefixes = allowedImageSrcPrefixes == null ? List.of() : List.copyOf(allowedImageSrcPrefixes);
@@ -24,10 +21,10 @@ public record TiptapContentPolicy(
         if (objectKey == null || objectKey.isBlank() || src == null || src.isBlank()) {
             return false;
         }
-        if (approvedImageObjectKeys.isEmpty() || !approvedImageObjectKeys.contains(objectKey)) {
+        if (!objectKey.startsWith("community/")) {
             return false;
         }
-        if (!objectKey.startsWith("community/")) {
+        if (approvedImageObjectKeys.isEmpty() || !approvedImageObjectKeys.contains(objectKey)) {
             return false;
         }
         return allowedImageSrcPrefixes.stream().anyMatch(src::startsWith);

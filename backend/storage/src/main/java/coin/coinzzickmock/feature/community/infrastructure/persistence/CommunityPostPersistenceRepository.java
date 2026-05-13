@@ -109,6 +109,12 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
     }
 
     @Override
+    @Transactional
+    public void incrementViewCount(Long postId) {
+        requireActivePostWithLock(postId).incrementViewCount();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public boolean exists(Long postId, Long memberId) {
         return likeEntityRepository.existsByPostIdAndMemberId(postId, memberId);
@@ -134,9 +140,47 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
         return likeEntityRepository.deleteByPostIdAndMemberId(postId, memberId) > 0;
     }
 
-    @Override @Transactional(readOnly = true) public Set<String> findAttachableObjectKeys(Long uploaderMemberId, Set<String> objectKeys) { return findOwnedAttachable(uploaderMemberId, objectKeys).stream().map(CommunityPostImageIntent::objectKey).collect(java.util.stream.Collectors.toSet()); }
-    @Override @Transactional public void attachToPost(Long postId, Long uploaderMemberId, Set<String> objectKeys, CommunityImageStatus status) { attachImagesToPost(postId, uploaderMemberId, objectKeys, Instant.now()); }
-    @Override @Transactional public void detachMissingImages(Long postId, Set<String> retainedObjectKeys, CommunityImageStatus status) { Set<String> retained = retainedObjectKeys == null ? Set.of() : retainedObjectKeys; imageEntityRepository.findByPostIdAndStatus(postId, ATTACHED_STATUS).stream().filter(image -> !retained.contains(image.objectKey())).forEach(CommunityPostImageEntity::markOrphaned); }
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> findAttachableObjectKeys(Long uploaderMemberId, Set<String> objectKeys) {
+        return findOwnedAttachable(uploaderMemberId, objectKeys).stream()
+                .map(CommunityPostImageIntent::objectKey)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Override
+    @Transactional
+    public void attachToPost(Long postId, Long uploaderMemberId, Set<String> objectKeys, CommunityImageStatus status) {
+        attachImagesToPost(postId, uploaderMemberId, objectKeys, Instant.now());
+    }
+
+    @Override
+    @Transactional
+    public void detachMissingImages(Long postId, Set<String> retainedObjectKeys, CommunityImageStatus status) {
+        Set<String> retained = retainedObjectKeys == null ? Set.of() : retainedObjectKeys;
+        imageEntityRepository.findByPostIdAndStatus(postId, ATTACHED_STATUS).stream()
+                .filter(image -> !retained.contains(image.objectKey()))
+                .forEach(CommunityPostImageEntity::markOrphaned);
+    }
+
+    @Override
+    @Transactional
+    public void saveImageIntent(CommunityPostImageIntent intent) {
+        try {
+            imageEntityRepository.saveAndFlush(new CommunityPostImageEntity(
+                    intent.id(),
+                    intent.postId(),
+                    intent.uploaderMemberId(),
+                    intent.objectKey(),
+                    intent.publicUrl(),
+                    intent.contentType(),
+                    intent.sizeBytes(),
+                    intent.status().name()
+            ));
+        } catch (DataIntegrityViolationException exception) {
+            throw invalidRequest();
+        }
+    }
 
     @Transactional(readOnly = true)
     public List<CommunityPostImageIntent> findOwnedAttachable(Long uploaderMemberId, Collection<String> objectKeys) {

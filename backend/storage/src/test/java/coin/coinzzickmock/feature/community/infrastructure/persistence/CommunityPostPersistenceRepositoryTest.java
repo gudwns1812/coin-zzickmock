@@ -12,6 +12,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.persistence.AuditableEntity;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
+import coin.coinzzickmock.feature.community.domain.CommunityPostImageIntent;
 import coin.coinzzickmock.feature.community.domain.CommunityPostImageStatus;
 import java.lang.reflect.Field;
 import java.time.Instant;
@@ -120,6 +121,46 @@ class CommunityPostPersistenceRepositoryTest {
 
         assertThat(image.postId()).isEqualTo(1L);
         assertThat(image.status()).isEqualTo(CommunityPostImageStatus.ATTACHED.name());
+    }
+
+    @Test
+    void saveImageIntentPersistsPresignedImage() {
+        CommunityPostImageIntent intent = new CommunityPostImageIntent(
+                null,
+                null,
+                10L,
+                "community/10/new.png",
+                "https://cdn.example.com/community/10/new.png",
+                "image/png",
+                100L,
+                CommunityPostImageStatus.PRESIGNED,
+                Instant.parse("2026-05-13T00:00:00Z"),
+                Instant.parse("2026-05-13T00:00:00Z")
+        );
+
+        repository.saveImageIntent(intent);
+
+        verify(imageEntityRepository).saveAndFlush(any(CommunityPostImageEntity.class));
+    }
+
+    @Test
+    void saveImageIntentTranslatesDuplicateObjectKey() {
+        when(imageEntityRepository.saveAndFlush(any(CommunityPostImageEntity.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+        CommunityPostImageIntent intent = new CommunityPostImageIntent(
+                null,
+                null,
+                10L,
+                "community/10/new.png",
+                "https://cdn.example.com/community/10/new.png",
+                "image/png",
+                100L,
+                CommunityPostImageStatus.PRESIGNED,
+                Instant.parse("2026-05-13T00:00:00Z"),
+                Instant.parse("2026-05-13T00:00:00Z")
+        );
+
+        assertThatThrownBy(() -> repository.saveImageIntent(intent)).isInstanceOf(CoreException.class);
     }
 
     @Test

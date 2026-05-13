@@ -85,6 +85,17 @@ coin:
       enabled: ${LEADERBOARD_REDIS_ENABLED:true}
     refresh:
       enabled: ${LEADERBOARD_REFRESH_ENABLED:false}
+  community:
+    images:
+      allowed-mime: ${COMMUNITY_IMAGE_ALLOWED_MIME:image/png,image/jpeg,image/webp,image/gif}
+      allowed-src-prefixes: ${COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES:${PUBLIC_CDN_BASE_URL:${CDN_BASE_URL:https://}}}
+      max-bytes: ${COMMUNITY_IMAGE_MAX_BYTES:5242880}
+      presign-ttl: ${COMMUNITY_IMAGE_PRESIGN_TTL:PT10M}
+      key-prefix: ${S3_KEY_PREFIX:community}
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${S3_REGION:ap-northeast-2}
+      public-base-url: ${PUBLIC_CDN_BASE_URL:${CDN_BASE_URL}}
   activity:
     summary:
       enabled: ${DAU_SUMMARY_ENABLED:true}

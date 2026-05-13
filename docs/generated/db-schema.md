@@ -72,6 +72,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V26__add_market_history_repair_events.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V26__add_market_history_repair_events.sql)
   [V27__weekly_account_refill_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V27__weekly_account_refill_description.sql)
   [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql)
+  [V29__add_position_peek_entry_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V29__add_position_peek_entry_price.sql)
+  [V30__lower_position_peek_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V30__lower_position_peek_price.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -275,13 +277,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 재고:
   `sold_quantity`는 item-level 재고 소진 수량이다. 유한 재고 상품은 `sold_quantity <= total_stock` 제약을 가진다.
 - 기본 시드:
-  `voucher.coffee`, `account.refill-count`, `position.peek`를 migration으로 관리한다. `position.peek`는 `POSITION_PEEK` 타입, 30 포인트, 무제한 재고 상품이다.
+  `voucher.coffee`, `account.refill-count`, `position.peek`를 migration으로 관리한다. `position.peek`는 `POSITION_PEEK` 타입, 10 포인트, 무제한 재고 상품이다.
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql),
   [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql),
+  [V30__lower_position_peek_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V30__lower_position_peek_price.sql),
   [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
 
 ### `reward_shop_member_item_usages`
@@ -433,13 +436,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `peek_snapshot_id`, `symbol`, `position_side`, `leverage`, `position_size`, `notional_value`, `unrealized_pnl`, `roi`, `created_at`, `updated_at`
+  `peek_snapshot_id`, `symbol`, `position_side`, `leverage`, `position_size`, `entry_price`, `notional_value`, `unrealized_pnl`, `roi`, `created_at`, `updated_at`
 - 공개 필드 경계:
   TP/SL, 주문/청산 action, closeable quantity, order id, raw member id, position history id는 저장하지 않는다.
 - 관련 엔티티/모듈:
   `feature.position`, `feature.reward`
 - 관련 migration 또는 schema 파일:
-  [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql)
+  [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql),
+  [V29__add_position_peek_entry_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V29__add_position_peek_entry_price.sql)
 
 ### `position_history`
 
@@ -624,6 +628,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V19__add_member_daily_activity.sql`로 DB 기반 DAU 수집용 `member_daily_activity`와 식별자 없는 장기 집계용 `daily_active_user_summary`를 추가했다.
 - 2026-05-03:
   `V20__add_member_withdrawn_at.sql`로 `member_credentials.withdrawn_at` nullable soft-delete column과 보조 index를 추가했다. 기존 row는 `withdrawn_at IS NULL` active member로 해석하며, `account` unique 제약은 유지한다.
+- 2026-05-13:
+  `V30__lower_position_peek_price.sql`로 기본 `position.peek` 상점 상품 가격을 30P에서 10P로 낮췄다.
 ## Update Rule
 
 아래 상황에서는 이 문서를 같이 갱신한다.

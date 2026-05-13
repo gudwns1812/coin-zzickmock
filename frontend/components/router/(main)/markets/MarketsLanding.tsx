@@ -15,6 +15,7 @@ import {
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import {
   consumePositionPeek,
+  FuturesClientApiError,
   getPositionPeekLatest,
   searchFuturesLeaderboardMembers,
 } from "@/lib/futures-client-api";
@@ -34,7 +35,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type CSSProperties, useState } from "react";
 
 export type DashboardSummaryCard = {
   title: string;
@@ -71,8 +72,59 @@ const MARKET_SORT_VALUE: Record<
     market.hasExtendedMetrics ? market.turnover24hUsdt : -1,
 };
 
+function getRankPresentation(rank: number) {
+  if (rank === 1) {
+    return {
+      rankLabel: "1위",
+      rowClass:
+        "border-l-[#f59e0b] bg-[linear-gradient(90deg,_rgba(245,158,11,0.14),_rgba(255,255,255,0.72)_46%,_rgba(255,255,255,0.35))]",
+      selectedClass: "ring-[#f59e0b]/35",
+      badgeHalo: "bg-[#f59e0b]/12 ring-[#fbbf24]/35",
+      numericBadge: "bg-gradient-to-br from-[#fde68a] to-[#f59e0b] text-white shadow-md",
+      accentText: "text-[#b45309]",
+    };
+  }
+
+  if (rank === 2) {
+    return {
+      rankLabel: "2위",
+      rowClass:
+        "border-l-[#94a3b8] bg-[linear-gradient(90deg,_rgba(148,163,184,0.16),_rgba(255,255,255,0.7)_46%,_rgba(255,255,255,0.35))]",
+      selectedClass: "ring-[#64748b]/30",
+      badgeHalo: "bg-slate-200/55 ring-slate-300",
+      numericBadge: "bg-gradient-to-br from-[#f8fafc] to-[#94a3b8] text-white shadow-sm",
+      accentText: "text-slate-600",
+    };
+  }
+
+  if (rank === 3) {
+    return {
+      rankLabel: "3위",
+      rowClass:
+        "border-l-[#b45309] bg-[linear-gradient(90deg,_rgba(180,83,9,0.13),_rgba(255,255,255,0.7)_46%,_rgba(255,255,255,0.35))]",
+      selectedClass: "ring-[#b45309]/25",
+      badgeHalo: "bg-orange-100/70 ring-orange-200",
+      numericBadge: "bg-gradient-to-br from-[#fed7aa] to-[#b45309] text-white shadow-sm",
+      accentText: "text-orange-700",
+    };
+  }
+
+  return {
+    rankLabel: `${rank.toLocaleString("ko-KR")}위`,
+    rowClass: "border-l-main-light-gray bg-white/40",
+    selectedClass: "ring-main-blue/30",
+    badgeHalo: "bg-main-light-gray/35 ring-main-light-gray",
+    numericBadge: "bg-main-light-gray/70 text-main-dark-gray/70",
+    accentText: "text-main-blue",
+  };
+}
+
+const PEEK_PANEL_ARROW_BASE_PX = 40;
+const PEEK_PANEL_ROW_HEIGHT_PX = 82;
+
 type MarketsLandingProps = {
   isMarketDataDegraded: boolean;
+  isAuthenticated: boolean;
   markets: [MarketSnapshot, MarketSnapshot];
   summaryCards: DashboardSummaryCard[];
   lastUpdatedLabel: string;
@@ -82,6 +134,7 @@ type MarketsLandingProps = {
 
 export default function MarketsLanding({
   isMarketDataDegraded,
+  isAuthenticated,
   markets,
   summaryCards,
   lastUpdatedLabel,
@@ -89,7 +142,26 @@ export default function MarketsLanding({
   priceFlashBySymbol,
 }: MarketsLandingProps) {
   const [sortKey, setSortKey] = useState<MarketSortKey>("default");
+  const [leaderboardSearchQuery, setLeaderboardSearchQuery] = useState("");
   const [selectedPeekTarget, setSelectedPeekTarget] = useState<PositionPeekTarget | null>(null);
+  const trimmedLeaderboardSearchQuery = leaderboardSearchQuery.trim();
+  const isSearchingLeaderboard = trimmedLeaderboardSearchQuery.length > 0;
+  const leaderboardSearch = useQuery({
+    queryKey: ["leaderboard-peek-search", trimmedLeaderboardSearchQuery],
+    queryFn: () =>
+      searchFuturesLeaderboardMembers(trimmedLeaderboardSearchQuery, { limit: 4 }),
+    enabled: isSearchingLeaderboard,
+    staleTime: 20_000,
+  });
+  const displayedRankingEntries = isSearchingLeaderboard
+    ? leaderboardSearch.data ?? []
+    : rankingEntries;
+  const selectedDisplayIndex = displayedRankingEntries.findIndex(
+    (entry) =>
+      Boolean(selectedPeekTarget?.targetToken) &&
+      entry.targetToken === selectedPeekTarget?.targetToken
+  );
+  const isPeekOpen = Boolean(selectedPeekTarget);
   const sortedMarkets = [...markets].sort((left, right) => {
     if (sortKey === "default") {
       return 0;
@@ -120,7 +192,7 @@ export default function MarketsLanding({
         ))}
       </section>
 
-      <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
+      <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-visible transition-all duration-300 hover:shadow-lg">
         <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-6">
           <div>
             <h2 className="text-xl-custom font-semibold text-main-dark-gray">
@@ -183,7 +255,7 @@ export default function MarketsLanding({
         </div>
       </section>
 
-      <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
+      <section className="rounded-main border border-white/50 bg-white/70 backdrop-blur-md shadow-md overflow-visible transition-all duration-300 hover:shadow-lg">
         <div className="flex items-start justify-between gap-main border-b border-main-light-gray/40 px-main-2 py-6">
           <div>
             <h2 className="text-xl-custom font-semibold text-main-dark-gray">
@@ -199,32 +271,64 @@ export default function MarketsLanding({
         </div>
 
         <LeaderboardPeekSearch
-          entries={rankingEntries}
-          selectedTarget={selectedPeekTarget}
-          onSelect={setSelectedPeekTarget}
+          query={leaderboardSearchQuery}
+          isError={leaderboardSearch.isError}
+          isLoading={leaderboardSearch.isFetching}
+          compact={isPeekOpen}
+          onQueryChange={(nextQuery) => {
+            setLeaderboardSearchQuery(nextQuery);
+            setSelectedPeekTarget(null);
+          }}
         />
 
-        {rankingEntries.length === 0 ? (
-          <div className="px-main-2 py-8 text-sm-custom text-main-dark-gray">
-            데이터 집계 중
+        <div
+          className={`transition-all duration-300 ${
+            isPeekOpen
+              ? "grid grid-cols-[minmax(0,1fr)_360px] items-start gap-4 px-main-2 pb-5"
+              : ""
+          }`}
+        >
+          <div
+            className={`min-w-0 transition-transform duration-300 ${
+              isPeekOpen
+                ? "-translate-x-2 overflow-hidden rounded-main border border-main-light-gray/40 bg-white/45 shadow-sm"
+                : ""
+            }`}
+          >
+            {leaderboardSearch.isFetching ? (
+              <div className="px-main-2 py-8 text-sm-custom text-main-dark-gray">
+                검색 중...
+              </div>
+            ) : displayedRankingEntries.length === 0 ? (
+              <div className="px-main-2 py-8 text-sm-custom text-main-dark-gray">
+                {isSearchingLeaderboard ? "검색 결과가 없습니다." : "데이터 집계 중"}
+              </div>
+            ) : (
+              <div className="divide-y divide-main-light-gray/30">
+                {displayedRankingEntries.map((entry) => (
+                  <RankingRow
+                    key={`${entry.rank}-${entry.nickname}-${entry.targetToken ?? "no-target"}`}
+                    entry={entry}
+                    isCompact={isPeekOpen}
+                    isSelected={Boolean(
+                      selectedPeekTarget?.targetToken &&
+                        selectedPeekTarget.targetToken === entry.targetToken
+                    )}
+                    onSelect={entry.targetToken ? setSelectedPeekTarget : undefined}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="divide-y divide-main-light-gray/30">
-            {rankingEntries.map((entry) => (
-              <RankingRow
-                key={entry.rank}
-                entry={entry}
-                onSelect={entry.targetToken ? setSelectedPeekTarget : undefined}
-              />
-            ))}
-          </div>
-        )}
-      </section>
 
-      <PositionPeekPanel
-        target={selectedPeekTarget}
-        onClose={() => setSelectedPeekTarget(null)}
-      />
+          <PositionPeekPanel
+            target={selectedPeekTarget}
+            anchorIndex={Math.max(selectedDisplayIndex, 0)}
+            isAuthenticated={isAuthenticated}
+            onClose={() => setSelectedPeekTarget(null)}
+          />
+        </div>
+      </section>
     </div>
   );
 }
@@ -368,17 +472,22 @@ function MarketTableRow({
 
 function RankingRow({
   entry,
+  isCompact,
+  isSelected,
   onSelect,
 }: {
   entry: MarketRankingEntry;
+  isCompact: boolean;
+  isSelected: boolean;
   onSelect?: (target: PositionPeekTarget) => void;
 }) {
+  const presentation = getRankPresentation(entry.rank);
   const content = (
     <>
       <div className="flex items-center gap-3">
         <RankBadge rank={entry.rank} />
-        <span className="text-sm-custom font-semibold text-main-dark-gray/80">
-          {entry.rank}위
+        <span className={`text-sm-custom font-black ${presentation.accentText}`}>
+          {presentation.rankLabel}
         </span>
       </div>
       <p className="text-sm-custom font-semibold text-main-dark-gray">
@@ -395,8 +504,12 @@ function RankingRow({
     </>
   );
 
-  const className =
-    "grid w-full grid-cols-[120px_1fr_220px_180px] items-center gap-main px-main-2 py-6 text-left transition-colors duration-200 hover:bg-main-blue/5";
+  const layoutClassName = isCompact
+    ? "grid-cols-[150px_minmax(110px,1fr)_minmax(120px,140px)_110px] gap-3 px-4 py-4"
+    : "grid-cols-[170px_1fr_220px_180px] gap-main px-main-2 py-6";
+  const className = `grid w-full ${layoutClassName} items-center border-l-4 text-left transition-all duration-200 hover:bg-main-blue/5 ${presentation.rowClass} ${
+    isSelected ? `relative z-10 ring-2 ${presentation.selectedClass}` : ""
+  }`;
 
   if (!onSelect || !entry.targetToken) {
     return <div className={className}>{content}</div>;
@@ -423,9 +536,12 @@ function RankingRow({
 
 function RankBadge({ rank }: { rank: number }) {
   const iconPath = getMarketRankIconPath(rank);
+  const presentation = getRankPresentation(rank);
   if (iconPath) {
     return (
-      <span className="relative flex h-11 w-11 items-center justify-center">
+      <span
+        className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-2 ${presentation.badgeHalo}`}
+      >
         <Image
           src={iconPath}
           alt={`${rank}위`}
@@ -437,18 +553,9 @@ function RankBadge({ rank }: { rank: number }) {
     );
   }
 
-  const toneClassName =
-    rank === 1
-      ? "bg-gradient-to-br from-[#ffd700] to-[#f79d00] text-white shadow-md"
-      : rank === 2
-        ? "bg-gradient-to-br from-[#e2e8f0] to-[#94a3b8] text-white shadow-sm"
-        : rank === 3
-          ? "bg-gradient-to-br from-[#fbc2eb] to-[#a6c1ee] text-white shadow-sm"
-          : "bg-main-light-gray/50 text-main-dark-gray/70";
-
   return (
     <span
-      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs-custom font-bold ${toneClassName}`}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs-custom font-bold ${presentation.numericBadge}`}
     >
       {rank}
     </span>
@@ -456,30 +563,20 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 function LeaderboardPeekSearch({
-  entries,
-  selectedTarget,
-  onSelect,
+  query,
+  isError,
+  isLoading,
+  compact,
+  onQueryChange,
 }: {
-  entries: MarketRankingEntry[];
-  selectedTarget: PositionPeekTarget | null;
-  onSelect: (target: PositionPeekTarget) => void;
+  query: string;
+  isError: boolean;
+  isLoading: boolean;
+  compact: boolean;
+  onQueryChange: (query: string) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const trimmedQuery = query.trim();
-  const fallbackTargets = useMemo(
-    () => entries.filter((entry) => entry.targetToken),
-    [entries]
-  );
-  const searchQuery = useQuery({
-    queryKey: ["leaderboard-peek-search", trimmedQuery],
-    queryFn: () => searchFuturesLeaderboardMembers(trimmedQuery),
-    enabled: trimmedQuery.length >= 1,
-    staleTime: 20_000,
-  });
-  const results = trimmedQuery.length > 0 ? searchQuery.data ?? [] : fallbackTargets;
-
   return (
-    <div className="border-b border-main-light-gray/40 bg-white/40 px-main-2 py-5">
+    <div className={`border-b border-main-light-gray/40 bg-white/40 ${compact ? "px-4 py-4" : "px-main-2 py-5"}`}>
       <label className="text-xs-custom font-semibold text-main-dark-gray" htmlFor="leaderboard-peek-search">
         랭킹 사용자 검색
       </label>
@@ -488,54 +585,49 @@ function LeaderboardPeekSearch({
         <input
           id="leaderboard-peek-search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => onQueryChange(event.target.value)}
           placeholder="닉네임으로 전체 랭킹 검색"
           className="w-full bg-transparent text-sm-custom text-main-dark-gray outline-none placeholder:text-main-dark-gray/40"
         />
+        {isLoading ? (
+          <span className="text-xs-custom font-semibold text-main-dark-gray/45">
+            검색 중
+          </span>
+        ) : null}
       </div>
-      {searchQuery.isError ? (
+      {isError ? (
         <p className="mt-3 text-xs-custom text-main-red">검색 결과를 불러오지 못했습니다.</p>
       ) : null}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {results.slice(0, 8).map((result) => (
-          <button
-            key={`${result.rank}-${result.nickname}-${result.targetToken}`}
-            type="button"
-            className={`rounded-main border px-3 py-2 text-xs-custom font-semibold transition-all ${
-              selectedTarget?.targetToken === result.targetToken
-                ? "border-main-blue bg-main-blue text-white"
-                : "border-main-light-gray bg-white/70 text-main-dark-gray hover:border-main-blue hover:text-main-blue"
-            }`}
-            onClick={() =>
-              onSelect({
-                rank: result.rank,
-                nickname: result.nickname,
-                walletBalance: result.walletBalance,
-                profitRate: result.profitRate,
-                targetToken: result.targetToken ?? "",
-              })
-            }
-          >
-            {result.rank}위 · {result.nickname}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
 
 function PositionPeekPanel({
   target,
+  anchorIndex,
+  isAuthenticated,
   onClose,
 }: {
   target: PositionPeekTarget | null;
+  anchorIndex: number;
+  isAuthenticated: boolean;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const latestQuery = useQuery({
     queryKey: ["position-peek-latest", target?.targetToken],
     queryFn: () => getPositionPeekLatest(target?.targetToken ?? ""),
-    enabled: Boolean(target?.targetToken),
+    enabled: Boolean(target?.targetToken) && isAuthenticated,
+    retry: (failureCount, error) => {
+      if (
+        error instanceof FuturesClientApiError &&
+        [400, 401, 403].includes(error.status)
+      ) {
+        return false;
+      }
+
+      return failureCount < 2;
+    },
   });
   const consumeMutation = useMutation({
     mutationFn: () => consumePositionPeek(target?.targetToken ?? "", crypto.randomUUID()),
@@ -556,20 +648,46 @@ function PositionPeekPanel({
   const status = consumeMutation.data ?? latestQuery.data ?? null;
   const snapshot = status?.latestSnapshot ?? null;
   const itemCount = getPositionPeekItemCount(status);
-  const isLoading = latestQuery.isLoading || consumeMutation.isPending;
+  const isStatusLoading = latestQuery.isLoading;
+  const isConsuming = consumeMutation.isPending;
+  const isLoading = isStatusLoading || isConsuming;
+  const rankPresentation =
+    typeof target.rank === "number" ? getRankPresentation(target.rank) : null;
+  const profitRateLabel =
+    typeof target.profitRate === "number"
+      ? `수익률 ${formatPercent(target.profitRate * 100)}`
+      : "수익률 집계 중";
+  const walletBalanceLabel =
+    typeof target.walletBalance === "number"
+      ? `잔고 ${formatUsd(target.walletBalance)}`
+      : "잔고 집계 중";
   const errorMessage = latestQuery.isError || consumeMutation.isError
     ? "엿보기 정보를 불러오지 못했습니다. 보유 수량 또는 대상 선택을 다시 확인해 주세요."
     : null;
+  const arrowTop = PEEK_PANEL_ARROW_BASE_PX + anchorIndex * PEEK_PANEL_ROW_HEIGHT_PX;
+  const panelStyle = {
+    "--peek-arrow-top": `${arrowTop}px`,
+  } as CSSProperties;
 
   return (
-    <aside className="fixed right-8 top-28 z-40 w-[380px] rounded-main border border-white/60 bg-white/95 p-6 shadow-2xl backdrop-blur-xl">
+    <aside
+      className="relative sticky top-24 z-30 min-h-[332px] w-full rounded-main border border-white/60 bg-white/95 p-6 shadow-2xl backdrop-blur-xl before:absolute before:-left-2 before:top-[var(--peek-arrow-top)] before:h-4 before:w-4 before:rotate-45 before:border-b before:border-l before:border-white/60 before:bg-white/95"
+      style={panelStyle}
+    >
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs-custom font-semibold text-main-blue">포지션 엿보기</p>
-          <h3 className="mt-2 text-xl-custom font-bold text-main-dark-gray">{target.nickname}</h3>
-          <p className="mt-1 text-xs-custom text-main-dark-gray/60">
-            {target.rank ? `${target.rank}위 · ` : ""}저장된 공개 스냅샷만 표시합니다.
-          </p>
+        <div className="flex items-start gap-3">
+          {typeof target.rank === "number" ? <RankBadge rank={target.rank} /> : null}
+          <div>
+            <p className={`text-xs-custom font-black ${rankPresentation?.accentText ?? "text-main-blue"}`}>
+              {rankPresentation?.rankLabel ?? "등수 집계 중"}
+            </p>
+            <h3 className="mt-2 text-xl-custom font-bold text-main-dark-gray">
+              {target.nickname}님의 포지션
+            </h3>
+            <p className="mt-1 text-xs-custom text-main-dark-gray/60">
+              {profitRateLabel} · {walletBalanceLabel}
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -582,16 +700,24 @@ function PositionPeekPanel({
       </div>
 
       <div className="mt-5 rounded-main border border-main-light-gray/50 bg-main-light-gray/20 p-4">
-        {isLoading ? <p className="text-sm-custom text-main-dark-gray">처리 중...</p> : null}
+        {isStatusLoading ? (
+          <p className="text-sm-custom text-main-dark-gray">
+            엿보기 상태 확인 중...
+          </p>
+        ) : null}
+        {isConsuming ? (
+          <p className="text-sm-custom text-main-dark-gray">처리 중...</p>
+        ) : null}
         {errorMessage ? <p className="text-sm-custom text-main-red">{errorMessage}</p> : null}
-        {!isLoading && !snapshot ? (
+        {!isAuthenticated ? <LoginRequiredPeekState /> : null}
+        {isAuthenticated && !isLoading && !snapshot ? (
           <LockedPeekState
             itemCount={itemCount}
             onUse={() => consumeMutation.mutate()}
             isPending={consumeMutation.isPending}
           />
         ) : null}
-        {snapshot ? (
+        {isAuthenticated && snapshot ? (
           <UnlockedPeekState
             snapshot={snapshot}
             itemCount={itemCount}
@@ -615,9 +741,14 @@ function LockedPeekState({
 }) {
   return (
     <div>
-      <p className="text-sm-custom font-semibold text-main-dark-gray">아직 저장된 스냅샷이 없습니다.</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm-custom font-semibold text-main-dark-gray">포지션 엿보기</p>
+        <span className="rounded-full bg-white/80 px-3 py-1 text-xs-custom font-bold text-main-blue">
+          보유 {itemCount}개
+        </span>
+      </div>
       <p className="mt-2 text-xs-custom text-main-dark-gray/65">
-        보유 엿보기권 {itemCount}개 · 1개를 사용하면 현재 열린 포지션 공개 요약 1개가 저장됩니다.
+        이 랭커의 현재 공개 포지션을 확인하려면 엿보기권을 사용하세요.
       </p>
       <button
         type="button"
@@ -625,13 +756,32 @@ function LockedPeekState({
         onClick={onUse}
         className="mt-4 w-full rounded-main bg-main-blue px-4 py-3 text-sm-custom font-bold text-white transition disabled:cursor-not-allowed disabled:bg-main-light-gray disabled:text-main-dark-gray/50"
       >
-        {isPending ? "사용 중..." : "아이템 사용"}
+        {isPending ? "사용 중..." : itemCount <= 0 ? "엿보기권 없음" : "엿보기권 사용"}
       </button>
       {itemCount <= 0 ? (
         <Link href="/shop" className="mt-3 block text-center text-xs-custom font-semibold text-main-blue hover:underline">
           상점에서 엿보기권 구매하기
         </Link>
       ) : null}
+    </div>
+  );
+}
+
+function LoginRequiredPeekState() {
+  return (
+    <div>
+      <p className="text-sm-custom font-semibold text-main-dark-gray">
+        로그인이 필요합니다.
+      </p>
+      <p className="mt-2 text-xs-custom text-main-dark-gray/65">
+        로그인 후 포지션 엿보기를 사용할 수 있습니다.
+      </p>
+      <Link
+        href="/login"
+        className="mt-4 block w-full rounded-main bg-main-blue px-4 py-3 text-center text-sm-custom font-bold text-white transition hover:bg-main-blue/90"
+      >
+        로그인하기
+      </Link>
     </div>
   );
 }
@@ -651,14 +801,14 @@ function UnlockedPeekState({
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm-custom font-semibold text-main-dark-gray">저장된 스냅샷</p>
+        <p className="text-sm-custom font-semibold text-main-dark-gray">공개 포지션</p>
         <p className="text-xs-custom text-main-dark-gray/55">
-          {createdAt ? new Date(createdAt).toLocaleString("ko-KR") : "생성 시각 없음"}
+          {createdAt ? `확인 ${new Date(createdAt).toLocaleString("ko-KR")}` : "확인 시각 없음"}
         </p>
       </div>
       {snapshot.positions.length === 0 ? (
         <p className="mt-4 rounded-main bg-white/80 p-4 text-sm-custom text-main-dark-gray/70">
-          스냅샷 생성 시점에 열린 포지션이 없습니다.
+          현재 열린 포지션이 없습니다.
         </p>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
@@ -690,7 +840,10 @@ function PeekPositionCard({ position }: { position: PositionPeekPublicPosition }
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 text-xs-custom">
         <PeekMetric label="수량" value={position.positionSize.toLocaleString("ko-KR")} />
-        <PeekMetric label="명목가" value={formatUsd(position.notionalValue)} />
+        <PeekMetric
+          label="진입가"
+          value={position.entryPrice == null ? "-" : formatUsd(position.entryPrice)}
+        />
         <PeekMetric label="미실현 PnL" value={formatUsd(position.unrealizedPnl)} tone={position.unrealizedPnl} />
         <PeekMetric label="ROI" value={formatPercent(position.roi * 100)} tone={position.roi} />
       </div>

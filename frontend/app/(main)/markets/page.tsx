@@ -11,16 +11,18 @@ import {
   formatUsd,
   MARKET_SNAPSHOTS,
 } from "@/lib/markets";
+import { getJwtToken } from "@/utils/auth";
 
 const DEMO_STARTING_BALANCE = 100_000;
 
 export default async function MarketsPage() {
-  const [marketsResult, account, positions, leaderboard, reward] = await Promise.all([
+  const [marketsResult, account, positions, leaderboard, reward, token] = await Promise.all([
     getFuturesMarketsResult(),
     getFuturesAccountSummary(),
     getFuturesPositions(),
     getFuturesLeaderboard(),
     getFuturesReward(),
+    getJwtToken(),
   ]);
   const { markets, isFallback } = marketsResult;
   const [btcMarket = MARKET_SNAPSHOTS.BTCUSDT, ethMarket = MARKET_SNAPSHOTS.ETHUSDT] =
@@ -65,6 +67,7 @@ export default async function MarketsPage() {
         isMarketDataDegraded={isFallback}
         rankingEntries={leaderboard.entries}
         summaryCards={summaryCards}
+        isAuthenticated={Boolean(token)}
       />
     </div>
   );

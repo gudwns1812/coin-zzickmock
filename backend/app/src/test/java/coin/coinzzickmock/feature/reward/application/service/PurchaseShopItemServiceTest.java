@@ -153,7 +153,7 @@ class PurchaseShopItemServiceTest {
         ShopPurchaseResult result = service.purchase(MEMBER_ID, POSITION_PEEK_ITEM_CODE);
 
         assertEquals(POSITION_PEEK_ITEM_CODE, result.itemCode());
-        assertEquals(70, result.rewardPoint());
+        assertEquals(90, result.rewardPoint());
         assertEquals(null, result.refillRemainingCount());
         assertEquals(1, result.positionPeekItemBalance());
         assertEquals(1, shopItemRepository.item().soldQuantity());
@@ -163,8 +163,8 @@ class PurchaseShopItemServiceTest {
         assertTrue(lockOrder.contains("item-balance"));
         assertTrue(lockOrder.indexOf("wallet") < lockOrder.indexOf("item-balance"));
         RewardPointHistory history = historyRepository.histories().get(0);
-        assertEquals(-30, history.amount());
-        assertEquals(70, history.balanceAfter());
+        assertEquals(-10, history.amount());
+        assertEquals(90, history.balanceAfter());
     }
 
     private PurchaseShopItemService service(
@@ -428,7 +428,7 @@ class PurchaseShopItemServiceTest {
                 "포지션 엿보기권",
                 "리더보드에서 선택한 사용자 1명의 현재 포지션 공개 요약을 1회 스냅샷으로 저장합니다.",
                 RewardShopItem.ITEM_TYPE_POSITION_PEEK,
-                30,
+                10,
                 true,
                 null,
                 0,

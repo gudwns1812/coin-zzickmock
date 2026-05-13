@@ -194,6 +194,7 @@ export type PositionPeekPublicPosition = {
   positionSide: "LONG" | "SHORT" | string;
   leverage: number;
   positionSize: number;
+  entryPrice: number | null;
   notionalValue: number;
   unrealizedPnl: number;
   roi: number;

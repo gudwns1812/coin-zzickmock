@@ -10,7 +10,7 @@ Position peek snapshot responses and UI may expose only:
 
 - target display context: nickname/rank context captured at snapshot time
 - snapshot metadata: `peekId`, `createdAt`
-- public position rows: `symbol`, `positionSide`, `leverage`, `positionSize`, `notionalValue`, `unrealizedPnl`, `roi`
+- public position rows: `symbol`, `positionSide`, `leverage`, `positionSize`, `entryPrice`, `notionalValue`, `unrealizedPnl`, `roi`
 - item state: `remainingPeekItemCount`
 
 ## Forbidden fields

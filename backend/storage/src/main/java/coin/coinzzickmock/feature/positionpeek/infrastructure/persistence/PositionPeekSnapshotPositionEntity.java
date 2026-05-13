@@ -35,6 +35,9 @@ public class PositionPeekSnapshotPositionEntity extends AuditableEntity {
     @Column(name = "position_size", nullable = false)
     private double positionSize;
 
+    @Column(name = "entry_price")
+    private Double entryPrice;
+
     @Column(name = "notional_value", nullable = false)
     private double notionalValue;
 
@@ -56,6 +59,7 @@ public class PositionPeekSnapshotPositionEntity extends AuditableEntity {
         this.positionSide = position.positionSide();
         this.leverage = position.leverage();
         this.positionSize = position.positionSize();
+        this.entryPrice = position.entryPrice();
         this.notionalValue = position.notionalValue();
         this.unrealizedPnl = position.unrealizedPnl();
         this.roi = position.roi();
@@ -67,6 +71,7 @@ public class PositionPeekSnapshotPositionEntity extends AuditableEntity {
                 positionSide,
                 leverage,
                 positionSize,
+                entryPrice,
                 notionalValue,
                 unrealizedPnl,
                 roi

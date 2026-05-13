@@ -13,7 +13,6 @@ const FORBIDDEN_POSITION_PEEK_KEYS = new Set([
   "historyId",
   "closeableQuantity",
   "pendingCloseQuantity",
-  "entryPrice",
 ]);
 
 export function getPositionPeekItemCount(

@@ -24,6 +24,7 @@ public class PublicPositionSnapshotReader {
                         snapshot.positionSide(),
                         snapshot.leverage(),
                         snapshot.quantity(),
+                        snapshot.entryPrice(),
                         Math.abs(snapshot.quantity() * snapshot.markPrice()),
                         snapshot.unrealizedPnl(),
                         snapshot.roi()

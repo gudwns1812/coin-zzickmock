@@ -5,6 +5,7 @@ public record PositionPeekPublicPositionResult(
         String positionSide,
         int leverage,
         double positionSize,
+        Double entryPrice,
         double notionalValue,
         double unrealizedPnl,
         double roi

@@ -7,6 +7,7 @@ public record PositionPeekPublicPositionResponse(
         String positionSide,
         int leverage,
         double positionSize,
+        Double entryPrice,
         double notionalValue,
         double unrealizedPnl,
         double roi
@@ -17,6 +18,7 @@ public record PositionPeekPublicPositionResponse(
                 result.positionSide(),
                 result.leverage(),
                 result.positionSize(),
+                result.entryPrice(),
                 result.notionalValue(),
                 result.unrealizedPnl(),
                 result.roi()

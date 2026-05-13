@@ -432,7 +432,7 @@ MVP 1차는 아래 순서로 단순화한다.
 
 - `COFFEE_VOUCHER`: 커피 교환권, 50P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
 - `ACCOUNT_REFILL_COUNT`: 현재 주간 지갑 리필 횟수 추가권, 20P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
-- `POSITION_PEEK`: 포지션 엿보기권, 30P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`, item code `position.peek`
+- `POSITION_PEEK`: 포지션 엿보기권, 10P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`, item code `position.peek`
 - 관리 방식:
   migration/bootstrap/data-admin
 - 관리자 상품 CRUD UI/API:

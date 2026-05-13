@@ -81,7 +81,7 @@ class RewardPersistenceFoundationTest {
 
         assertEquals("포지션 엿보기권", item.name());
         assertEquals(RewardShopItem.ITEM_TYPE_POSITION_PEEK, item.itemType());
-        assertEquals(30, item.price());
+        assertEquals(10, item.price());
         assertTrue(item.active());
         assertTrue(item.positionPeek());
         assertTrue(item.instantConsumable());

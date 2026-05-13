@@ -145,10 +145,10 @@ class RewardRedemptionServiceTest {
         ShopPurchaseResult result = purchaseShopItemService.purchase(MEMBER_ID, POSITION_PEEK_ITEM_CODE);
 
         assertEquals(POSITION_PEEK_ITEM_CODE, result.itemCode());
-        assertEquals(70, result.rewardPoint());
+        assertEquals(90, result.rewardPoint());
         assertEquals(null, result.refillRemainingCount());
         assertEquals(1, result.positionPeekItemBalance());
-        assertEquals(70, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
+        assertEquals(90, rewardPointRepository.findByMemberId(MEMBER_ID).orElseThrow().rewardPoint());
         RewardShopItem item = rewardShopItemRepository.findByCode(POSITION_PEEK_ITEM_CODE).orElseThrow();
         assertEquals(1, item.soldQuantity());
         RewardShopMemberItemUsage usage = rewardShopMemberItemUsageRepository
@@ -161,7 +161,7 @@ class RewardRedemptionServiceTest {
         assertEquals(1, balance.remainingQuantity());
         assertEquals(0, rewardRedemptionRequestRepository.findByStatus(RewardRedemptionStatus.PENDING).size());
         RewardPointHistory history = rewardPointHistoryRepository.findByMemberId(MEMBER_ID).get(0);
-        assertEquals(-30, history.amount());
+        assertEquals(-10, history.amount());
         assertEquals("INSTANT_SHOP_PURCHASE", history.sourceType());
     }
 

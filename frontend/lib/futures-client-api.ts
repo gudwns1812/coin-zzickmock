@@ -18,6 +18,39 @@ type ClientApiResponse<T> = {
   message: string | null;
 };
 
+type ClientApiErrorPayload = {
+  message?: string | null;
+};
+
+export class FuturesClientApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+    this.name = "FuturesClientApiError";
+  }
+}
+
+function readClientApiData<T>(
+  response: Response,
+  payload: ClientApiResponse<T> | ClientApiErrorPayload | null
+): T {
+  if (
+    !response.ok ||
+    !payload ||
+    !("success" in payload) ||
+    !payload.success ||
+    !payload.data
+  ) {
+    throw new FuturesClientApiError(
+      payload?.message ?? "요청을 처리하지 못했습니다.",
+      response.status
+    );
+  }
+
+  return payload.data;
+}
 
 export async function searchFuturesLeaderboardMembers(
   query: string,
@@ -162,13 +195,10 @@ async function readFuturesApi<T>(path: string): Promise<T> {
 
   const payload = (await response.json().catch(() => null)) as
     | ClientApiResponse<T>
+    | ClientApiErrorPayload
     | null;
 
-  if (!response.ok || !payload?.success || !payload.data) {
-    throw new Error(payload?.message ?? "요청을 처리하지 못했습니다.");
-  }
-
-  return payload.data;
+  return readClientApiData(response, payload);
 }
 
 async function writeFuturesApi<T>(
@@ -186,11 +216,8 @@ async function writeFuturesApi<T>(
 
   const payload = (await response.json().catch(() => null)) as
     | ClientApiResponse<T>
+    | ClientApiErrorPayload
     | null;
 
-  if (!response.ok || !payload?.success || !payload.data) {
-    throw new Error(payload?.message ?? "요청을 처리하지 못했습니다.");
-  }
-
-  return payload.data;
+  return readClientApiData(response, payload);
 }

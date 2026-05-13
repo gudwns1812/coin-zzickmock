@@ -4,6 +4,7 @@ WORKDIR /workspace
 
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle ./gradle
+COPY core ./core
 COPY app ./app
 COPY stream ./stream
 COPY storage ./storage

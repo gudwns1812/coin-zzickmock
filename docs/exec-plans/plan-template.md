@@ -57,7 +57,7 @@
 
 | 작업 영역 | 반드시 읽은 원문 문서 | 적용해야 하는 규칙 | 구현 선택 | 금지한 shortcut | 검증 방법 |
 | --- | --- | --- | --- | --- | --- |
-| 예: backend persistence | `docs/design-docs/backend-design/06-persistence-rules.md`, `docs/generated/db-schema.md` | create/update/read 계약 분리, 조회 중 자동 생성 금지 |  | native upsert로 보장 생성 숨기기, generic save로 create/update 섞기 |  |
+| 예: backend persistence | `backend/storage/docs/persistence-rules.md`, `backend/storage/docs/schema-and-migration.md`, `docs/generated/db-schema.md` | create/update/read 계약 분리, 조회 중 자동 생성 금지 |  | native upsert로 보장 생성 숨기기, generic save로 create/update 섞기 |  |
 
 대조표 점검:
 

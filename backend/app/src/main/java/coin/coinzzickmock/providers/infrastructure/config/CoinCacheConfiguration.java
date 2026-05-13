@@ -1,5 +1,6 @@
 package coin.coinzzickmock.providers.infrastructure.config;
 
+import coin.coinzzickmock.common.cache.CoinCacheNames;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

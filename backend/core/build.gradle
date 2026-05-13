@@ -1,0 +1,12 @@
+// Business core library module. Owns common contracts, provider contracts, and feature domain/application code.
+
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api 'org.slf4j:slf4j-api'
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework:spring-tx'
+}

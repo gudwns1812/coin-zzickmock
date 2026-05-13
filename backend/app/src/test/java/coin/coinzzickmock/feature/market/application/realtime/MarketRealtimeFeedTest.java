@@ -22,7 +22,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import jakarta.annotation.PostConstruct;
 import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
+import coin.coinzzickmock.common.cache.CoinCacheNames;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import coin.coinzzickmock.providers.auth.Actor;

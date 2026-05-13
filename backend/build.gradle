@@ -1,4 +1,5 @@
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
 
 plugins {
@@ -59,6 +60,13 @@ subprojects {
             systemProperty 'coin.redis.integration', System.getProperty('coin.redis.integration')
         }
     }
+
+    if (tasks.findByName('prepareKotlinBuildScriptModel') == null) {
+        tasks.register('prepareKotlinBuildScriptModel') {
+            group = 'ide'
+            description = 'No-op compatibility task for IntelliJ Gradle sync in this Groovy-only build.'
+        }
+    }
 }
 
 configure([project(':stream'), project(':storage'), project(':external')]) {
@@ -70,9 +78,12 @@ def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
 def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
 def architectureLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
 def architectureTargetLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
-def architectureBackendModules = ['app', 'stream', 'storage', 'external'] as Set
-def architectureLibraryModules = ['stream', 'storage', 'external'] as Set
+def architectureBackendModules = ['app', 'core', 'stream', 'storage', 'external'] as Set
+def architectureBusinessCoreModules = ['core'] as Set
+def architectureLeafAdapterModules = ['stream', 'storage', 'external'] as Set
+def architectureLibraryModules = ['core', 'stream', 'storage', 'external'] as Set
 def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
+def architectureAllowlistFile = file('architecture-lint-allowlist.json')
 
 def architectureEmit = { Writer writer, String level, String event, Map payload ->
     def record = [
@@ -100,17 +111,49 @@ tasks.register('architectureLint') {
         }
     })
     outputs.file(architectureReport)
+    inputs.file(architectureAllowlistFile).optional()
 
     doLast {
         def reportFile = architectureReport.get().asFile
         reportFile.parentFile.mkdirs()
 
+        def architectureAllowlist = architectureAllowlistFile.exists()
+                ? new JsonSlurper().parse(architectureAllowlistFile)
+                : [:]
+        def requiredAllowlistFields = ['filePath', 'reason', 'ownerPhase', 'targetRemovalPhase']
+        def appResidueAllowlistByFile = ((architectureAllowlist.appApplicationDomainResidue ?: []) as List)
+                .collectEntries { entry -> [(entry.filePath): entry] }
+        def appLeafImportAllowlist = ((architectureAllowlist.appLeafConcreteImports ?: []) as List)
+                .collect { entry -> "${entry.filePath}|${entry.importedType}" }
+                .toSet()
+        def appWebJobNonCoreImportAllowlist = ((architectureAllowlist.appWebJobNonCoreImports ?: []) as List)
+                .collect { entry -> "${entry.filePath}|${entry.importedType}" }
+                .toSet()
+
         int violationCount = 0
         int advisoryCount = 0
         def sourceRoots = mainSourceRoots.get().findAll { it.exists() }
+        def moduleFromRelativePath = { String path ->
+            path.tokenize('/')[0]
+        }
         def sourceFiles = sourceRoots
                 .collectMany { sourceRoot -> fileTree(sourceRoot) { include '**/*.java' }.files }
                 .sort { it.path }
+        def sourceClassOwners = sourceFiles.collectEntries { sourceFile ->
+            def relativePath = rootProject.relativePath(sourceFile).replace('\\', '/')
+            def text = sourceFile.getText('UTF-8')
+            def matcher = text =~ /(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;/
+            if (!matcher.find()) {
+                return [:]
+            }
+            def simpleName = sourceFile.name.replace('.java', '')
+            def fqn = "${matcher.group(1)}.${simpleName}"
+            [(fqn): [
+                    moduleName: moduleFromRelativePath(relativePath),
+                    filePath  : relativePath,
+                    simpleName: simpleName,
+            ]]
+        }
 
         reportFile.withWriter('UTF-8') { writer ->
             architectureEmit(writer, 'INFO', 'architecture_lint_started', [
@@ -137,6 +180,12 @@ tasks.register('architectureLint') {
                             'ENTITY_NAME_NO_TECH_SUFFIX',
                             'PERSISTENCE_NAME_NO_TECH_TERM',
                             'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
+                            'MODULE_CORE_NO_PROJECT_DEPENDENCY',
+                            'MODULE_LEAF_DEPENDS_ONLY_ON_CORE',
+                            'APP_LEAF_IMPORTS_CONFIGURATION_ONLY',
+                            'APP_WEB_JOB_CORE_ONLY',
+                            'APP_FEATURE_APPLICATION_DOMAIN_RESIDUE_ALLOWLIST',
+                            'ARCHITECTURE_ALLOWLIST_ENTRY_VALID',
                     ],
                     targetLayers: architectureTargetLayers,
             ])
@@ -167,16 +216,80 @@ tasks.register('architectureLint') {
                 ] + extras)
             }
 
-            def moduleFromRelativePath = { String path ->
-                path.tokenize('/')[0]
-            }
-
             def moduleBuildLine = { Project project, String needleText ->
                 if (!project.buildFile.exists()) {
                     return 1
                 }
                 def found = project.buildFile.readLines().findIndexOf { it.contains(needleText) }
                 found >= 0 ? found + 1 : 1
+            }
+
+            def allowlistLine = { String needleText ->
+                if (!architectureAllowlistFile.exists() || needleText == null) {
+                    return 1
+                }
+                def found = architectureAllowlistFile.readLines().findIndexOf { it.contains(needleText) }
+                found >= 0 ? found + 1 : 1
+            }
+
+            [
+                    appApplicationDomainResidue: architectureAllowlist.appApplicationDomainResidue ?: [],
+                    appLeafConcreteImports    : architectureAllowlist.appLeafConcreteImports ?: [],
+                    appWebJobNonCoreImports   : architectureAllowlist.appWebJobNonCoreImports ?: [],
+            ].each { sectionName, entries ->
+                entries.each { entry ->
+                    def entryFilePath = entry.filePath?.toString()
+                    def entryImportedType = entry.importedType?.toString()
+                    def entrySourceModule = entry.sourceModule?.toString()
+                    def missingFields = requiredAllowlistFields.findAll { field -> !entry[field] }
+                    if (!missingFields.isEmpty()) {
+                        logViolation(
+                                architectureAllowlistFile,
+                                allowlistLine(entryFilePath ?: sectionName),
+                                'ARCHITECTURE_ALLOWLIST_ENTRY_VALID',
+                                "${sectionName} allowlist entry에 필수 metadata가 없습니다: ${missingFields.join(', ')}.",
+                                '각 entry에 filePath, reason, ownerPhase, targetRemovalPhase를 모두 채우세요.',
+                                [sectionName: sectionName, missingFields: missingFields]
+                        )
+                    }
+                    if (entryFilePath && !file(entryFilePath).exists()) {
+                        logViolation(
+                                architectureAllowlistFile,
+                                allowlistLine(entryFilePath),
+                                'ARCHITECTURE_ALLOWLIST_ENTRY_VALID',
+                                "${sectionName} allowlist entry가 존재하지 않는 파일을 가리킵니다: ${entryFilePath}.",
+                                '이동/삭제된 파일의 allowlist entry를 제거하거나 현재 파일 경로로 갱신하세요.',
+                                [sectionName: sectionName, filePath: entryFilePath]
+                        )
+                    }
+                    if (entryImportedType) {
+                        def actualOwner = sourceClassOwners[entryImportedType]
+                        if (actualOwner == null) {
+                            logViolation(
+                                    architectureAllowlistFile,
+                                    allowlistLine(entryImportedType),
+                                    'ARCHITECTURE_ALLOWLIST_ENTRY_VALID',
+                                    "${sectionName} allowlist entry의 importedType을 현재 backend source에서 찾을 수 없습니다: ${entryImportedType}.",
+                                    '사라지거나 이름이 바뀐 importedType allowlist entry를 제거하거나 갱신하세요.',
+                                    [sectionName: sectionName, importedType: entryImportedType]
+                            )
+                        } else if (entrySourceModule && entrySourceModule != actualOwner.moduleName) {
+                            logViolation(
+                                    architectureAllowlistFile,
+                                    allowlistLine(entryImportedType),
+                                    'ARCHITECTURE_ALLOWLIST_ENTRY_VALID',
+                                    "${sectionName} allowlist entry의 sourceModule이 실제 module과 다릅니다. 기록값: ${entrySourceModule}, 실제값: ${actualOwner.moduleName}.",
+                                    'module 이동 후에는 sourceModule을 갱신하거나 더 이상 필요 없는 allowlist entry를 제거하세요.',
+                                    [
+                                            sectionName : sectionName,
+                                            importedType: entryImportedType,
+                                            sourceModule: entrySourceModule,
+                                            actualModule: actualOwner.moduleName,
+                                    ]
+                            )
+                        }
+                    }
+                }
             }
 
             subprojects.each { moduleProject ->
@@ -204,7 +317,7 @@ tasks.register('architectureLint') {
                                 1,
                                 'MODULE_EXECUTABLE_APP_ONLY',
                                 "${moduleName} module은 executable Spring Boot app이 아니라 library module이어야 합니다.",
-                                'stream/storage/external에는 org.springframework.boot plugin 또는 enabled bootJar task를 두지 마세요.',
+                                'core/stream/storage/external에는 org.springframework.boot plugin 또는 enabled bootJar task를 두지 마세요.',
                                 [moduleName: moduleName]
                         )
                     }
@@ -224,13 +337,22 @@ tasks.register('architectureLint') {
                     moduleProject.configurations.each { configuration ->
                         configuration.dependencies.withType(org.gradle.api.artifacts.ProjectDependency).each { dependency ->
                             def dependencyModuleName = dependency.dependencyProject.name
-                            if (architectureBackendModules.contains(dependencyModuleName) && dependencyModuleName != moduleName) {
+                            if (architectureBackendModules.contains(dependencyModuleName) && dependencyModuleName != moduleName && architectureBusinessCoreModules.contains(moduleName)) {
                                 logViolation(
                                         moduleProject.buildFile,
                                         moduleBuildLine(moduleProject, "project(':${dependencyModuleName}')"),
-                                        'MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY',
-                                        "${moduleName} library module은 ${dependencyModuleName} module에 의존하면 안 됩니다.",
-                                        'stream/storage/external은 서로와 app에 project dependency를 두지 말고, 필요한 계약은 같은 module 내부 또는 app composition으로 이동하세요.',
+                                        'MODULE_CORE_NO_PROJECT_DEPENDENCY',
+                                        'core business module은 다른 backend project module에 의존하면 안 됩니다.',
+                                        'core에는 domain/application/common/provider contracts만 두고 adapter 구현 의존은 app assembly나 leaf module로 옮기세요.',
+                                        [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
+                                )
+                            } else if (architectureBackendModules.contains(dependencyModuleName) && dependencyModuleName != moduleName && architectureLeafAdapterModules.contains(moduleName) && dependencyModuleName != 'core') {
+                                logViolation(
+                                        moduleProject.buildFile,
+                                        moduleBuildLine(moduleProject, "project(':${dependencyModuleName}')"),
+                                        'MODULE_LEAF_DEPENDS_ONLY_ON_CORE',
+                                        "${moduleName} leaf adapter module은 backend project module 중 core에만 의존할 수 있습니다.",
+                                        'stream/storage/external은 서로와 app에 project dependency를 두지 말고 필요한 계약은 core로 이동하세요.',
                                         [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
                                 )
                             }
@@ -364,6 +486,131 @@ tasks.register('architectureLint') {
                 }
 
                 def layer = packageSegments.find { architectureLayers.contains(it) }
+                def isAppSource = relativePath.startsWith('app/src/main/java/')
+                def isAssemblyPath = relativePath.contains('/configuration/') || relativePath.contains('/assembly/') ||
+                        relativePath.contains('/config/') || packageName.contains('.configuration.') ||
+                        packageName.contains('.assembly.') || packageName.contains('.config.')
+                def importTypes = lines.collect { lineText ->
+                    def importMatcher = lineText =~ /^\s*import\s+([A-Za-z0-9_.]+)\s*;/
+                    importMatcher.find() ? importMatcher.group(1) : null
+                }.findAll { it != null }
+
+                if (isAppSource && topLevel == 'feature' && ['application', 'domain'].contains(layer)) {
+                    def residueEntry = appResidueAllowlistByFile[relativePath]
+                    if (residueEntry == null) {
+                        logViolation(
+                                sourceFile,
+                                packageLine,
+                                'APP_FEATURE_APPLICATION_DOMAIN_RESIDUE_ALLOWLIST',
+                                'app module에 새 feature application/domain 구현 residue가 추가되었습니다.',
+                                'business core 구현은 backend/core로 이동하거나 architecture-lint-allowlist.json에 구조화 metadata와 제거 phase를 기록하세요.',
+                                [packageName: packageName, relativePath: relativePath]
+                        )
+                    } else {
+                        def missingFields = requiredAllowlistFields.findAll { field -> !residueEntry[field] }
+                        if (!missingFields.isEmpty()) {
+                            logViolation(
+                                    architectureAllowlistFile,
+                                    1,
+                                    'APP_FEATURE_APPLICATION_DOMAIN_RESIDUE_ALLOWLIST',
+                                    "app residue allowlist entry에 필수 metadata가 없습니다: ${missingFields.join(', ')}.",
+                                    '각 entry에 filePath, reason, ownerPhase, targetRemovalPhase를 모두 채우세요.',
+                                    [relativePath: relativePath, missingFields: missingFields]
+                            )
+                        }
+                    }
+                }
+
+                if (isAppSource) {
+                    importTypes.each { importedType ->
+                        def importedOwner = sourceClassOwners[importedType]
+                        if (importedOwner != null && architectureLeafAdapterModules.contains(importedOwner.moduleName) && !isAssemblyPath) {
+                            def allowKey = "${relativePath}|${importedType}"
+                            if (!appLeafImportAllowlist.contains(allowKey)) {
+                                logViolation(
+                                        sourceFile,
+                                        lines.findIndexOf { it.contains(importedType) } + 1,
+                                        'APP_LEAF_IMPORTS_CONFIGURATION_ONLY',
+                                        'app에서 leaf adapter concrete type import는 configuration/assembly package에서만 허용됩니다.',
+                                        'leaf adapter wiring은 app configuration/assembly로 옮기고 web/job/application은 core contract에 의존하세요.',
+                                        [packageName: packageName, importedType: importedType, sourceModule: importedOwner.moduleName]
+                                )
+                            }
+                        }
+                        if (importedOwner != null && ['web', 'job'].contains(layer) && importedOwner.moduleName != 'core' && importedOwner.moduleName != 'app') {
+                            def allowKey = "${relativePath}|${importedType}"
+                            if (!appWebJobNonCoreImportAllowlist.contains(allowKey)) {
+                                logViolation(
+                                        sourceFile,
+                                        lines.findIndexOf { it.contains(importedType) } + 1,
+                                        'APP_WEB_JOB_CORE_ONLY',
+                                        'app web/job code는 backend project module 중 core contract/use-case만 직접 import해야 합니다.',
+                                        'delivery trigger는 core command/query/result/use-case만 호출하고 leaf adapter 구현은 assembly에서 주입하세요.',
+                                        [packageName: packageName, importedType: importedType, sourceModule: importedOwner.moduleName]
+                                )
+                            }
+                        }
+                    }
+
+                    if (!isAssemblyPath && topLevel == 'feature') {
+                        sourceClassOwners.each { referencedType, referencedOwner ->
+                            if (!architectureLeafAdapterModules.contains(referencedOwner.moduleName)) {
+                                return
+                            }
+                            if (!referencedType.startsWith("${packageName}.")) {
+                                return
+                            }
+                            def simpleName = referencedOwner.simpleName
+                            if (simpleName == sourceFile.name.replace('.java', '') || importTypes.contains(referencedType)) {
+                                return
+                            }
+                            def simpleNamePattern = java.util.regex.Pattern.compile(
+                                    "\\b" + java.util.regex.Pattern.quote(simpleName) + "\\b"
+                            )
+                            def matchIndex = lines.findIndexOf { lineText ->
+                                def trimmed = lineText.trim()
+                                !(trimmed.startsWith('package ') ||
+                                        trimmed.startsWith('import ') ||
+                                        trimmed.startsWith('//') ||
+                                        trimmed.startsWith('*') ||
+                                        trimmed.startsWith('/*')) &&
+                                        simpleNamePattern.matcher(lineText).find()
+                            }
+                            if (matchIndex < 0) {
+                                return
+                            }
+                            if (['web', 'job'].contains(layer)) {
+                                logViolation(
+                                        sourceFile,
+                                        matchIndex + 1,
+                                        'APP_WEB_JOB_CORE_ONLY',
+                                        'app web/job code는 같은 Java package의 simple name으로도 leaf adapter concrete type을 직접 참조하면 안 됩니다.',
+                                        'app web/job은 app-owned gateway 또는 core contract에 의존하고 leaf adapter 구현은 assembly/config 경계에서 연결하세요.',
+                                        [
+                                                packageName : packageName,
+                                                importedType: referencedType,
+                                                sourceModule: referencedOwner.moduleName,
+                                                referenceKind: 'same_package_simple_name',
+                                        ]
+                                )
+                            } else {
+                                logViolation(
+                                        sourceFile,
+                                        matchIndex + 1,
+                                        'APP_LEAF_IMPORTS_CONFIGURATION_ONLY',
+                                        'app에서 leaf adapter concrete type 참조는 같은 Java package의 simple name이어도 configuration/assembly/config package에서만 허용됩니다.',
+                                        'leaf adapter wiring은 app configuration/assembly로 옮기고 나머지 layer는 core contract에 의존하세요.',
+                                        [
+                                                packageName : packageName,
+                                                importedType: referencedType,
+                                                sourceModule: referencedOwner.moduleName,
+                                                referenceKind: 'same_package_simple_name',
+                                        ]
+                                )
+                            }
+                        }
+                    }
+                }
 
                 if (text =~ /(?m)^\s*(public\s+)?interface\s+\w+/) {
                     int lineIndex = 0

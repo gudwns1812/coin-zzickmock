@@ -8,7 +8,7 @@ import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;
-import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
+import coin.coinzzickmock.common.cache.CoinCacheNames;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;

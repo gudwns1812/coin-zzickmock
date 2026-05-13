@@ -5,8 +5,10 @@ import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketConnectionFact
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketLifecycle;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEvent;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEventParser;
+import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketMarketEventTranslator;
 import coin.coinzzickmock.providers.infrastructure.BitgetWebSocketSubscription;
 import coin.coinzzickmock.providers.infrastructure.JavaNetBitgetWebSocketConnectionFactory;
+import coin.coinzzickmock.providers.connector.ProviderMarketRealtimeEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -56,17 +58,26 @@ public class BitgetWebSocketConfiguration {
     }
 
     @Bean
+    Consumer<BitgetWebSocketMarketEvent> bitgetWebSocketMarketEventConsumer(
+            Consumer<ProviderMarketRealtimeEvent> providerMarketRealtimeEventBridge
+    ) {
+        return event -> providerMarketRealtimeEventBridge.accept(
+                BitgetWebSocketMarketEventTranslator.toProviderEvent(event)
+        );
+    }
+
+    @Bean
     BitgetWebSocketLifecycle bitgetWebSocketLifecycle(
             BitgetWebSocketConnectionFactory bitgetWebSocketConnectionFactory,
             BitgetWebSocketMarketEventParser bitgetWebSocketMarketEventParser,
             List<BitgetWebSocketSubscription> bitgetWebSocketSubscriptions,
-            Consumer<BitgetWebSocketMarketEvent> bitgetWebSocketMarketEventBridge
+            Consumer<BitgetWebSocketMarketEvent> bitgetWebSocketMarketEventConsumer
     ) {
         return new BitgetWebSocketLifecycle(
                 bitgetWebSocketConnectionFactory,
                 bitgetWebSocketMarketEventParser,
                 bitgetWebSocketSubscriptions,
-                bitgetWebSocketMarketEventBridge
+                bitgetWebSocketMarketEventConsumer
         );
     }
 

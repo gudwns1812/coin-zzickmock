@@ -1,0 +1,227 @@
+# Backend Architecture Foundations
+
+## Purpose
+
+이 문서는 `coin-zzickmock` 백엔드 상세 설계의 첫 진입 문서다.
+루트의 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)가 작업 기준과 입구 문서라면, 이 문서는 그 뒤에서 백엔드가 어떤 구조를 목표로 하는지와 어떤 세부 문서를 읽어야 하는지를 정리한다.
+
+다른 규칙 문서를 모두 한 파일에 담지 않는다.
+구조, 조립, Provider, DB, 테스트 규칙은 각각 별도 번호 문서에 둔다.
+
+## Architecture Target
+
+백엔드는 다음 세 축을 동시에 만족해야 한다.
+
+- `feature-first`
+- 고정된 레이어 집합
+- `Providers`를 통한 명시적 교차 관심사 접근
+
+기본 철학은 "clean architecture lite"다.
+레이어는 단순하지만 규칙은 엄격해야 한다.
+
+핵심 원칙:
+
+- `core` Gradle module은 business core다. `common`, provider contracts, feature `domain`/`application` 구현과 계약을 소유한다.
+- `app` Gradle module은 executable assembly root다. boot runtime, component scan, configuration, adapter wiring만 소유한다.
+- `stream`, `storage`, `external`은 leaf adapter다. backend project module 중 `core`에만 의존하고 서로 또는 `app`에 의존하지 않는다.
+- `backend/core`는 source-set boundary이지 Java top-level package가 아니다. `coin.coinzzickmock.core..` package는 계속 금지한다.
+
+- 기능은 `feature` 아래에서 수직으로 자른다.
+- 모든 기능은 같은 레이어 집합을 사용한다.
+- 클래스와 메서드는 하나의 변경 이유와 하나의 추상화 수준을 유지한다.
+- 도메인은 프레임워크와 외부 SDK를 모른다.
+- 애플리케이션은 유스케이스를 조합하지만 기술 세부사항을 모른다.
+- 인프라는 영속성, 외부 시스템, outbound technology 연결을 담당한다.
+- HTTP/SSE delivery는 `web`, scheduler/startup/backfill/retry trigger는 `job`에 둔다.
+- 인증, 커넥터, 텔레메트리, 기능 플래그는 개별 기능 곳곳에서 직접 붙이지 않고 `Providers`를 통해서만 접근한다.
+- 계층 분리를 이유로 `port`/`usecase` 인터페이스를 기계적으로 늘리지 않는다.
+- 기본값은 concrete class다. 인터페이스는 실제 경계와 대체 구현이 있을 때만 도입한다.
+- Spring이 관리하는 장기 협력 객체는 concrete class라도 각 클래스 안에서 직접 `new`하지 않고 빈 조립으로 연결한다.
+
+## Fixed Layer Set
+
+모든 기능은 아래 5개 레이어만 사용한다.
+
+1. `web`
+2. `job`
+3. `application`
+4. `domain`
+5. `infrastructure`
+
+이 집합은 고정이다.
+새 기능을 만든다고 `service`, `util`, `helper`, `manager`, `common` 같은 임의 레이어를 추가하지 않는다.
+
+HTTP delivery Java package는 `web`이다.
+예전 `api` package 이름은 더 이상 사용하지 않지만 HTTP URL path의 `/api/futures/**`는 그대로 유지한다.
+
+### `web`
+
+HTTP/SSE delivery, 인증된 요청 컨텍스트 파싱, DTO 검증, 응답 매핑만 담당한다.
+
+- `@RestController`
+- feature가 소유한 `HandlerInterceptor`, `WebMvcConfigurer` 같은 Spring MVC 요청 경계 어댑터와 API 경로 정책
+- SSE broker와 HTTP delivery config
+- request/response DTO
+- request validation
+- application input/result 매핑
+
+금지:
+
+- 엔티티 직접 반환
+- 비즈니스 규칙 구현
+- 리포지토리 직접 호출
+- 외부 SDK 직접 호출
+- JWT signing/parsing 같은 보안 구현 세부 직접 소유
+
+### `job`
+
+feature use case를 시간, 시작 이벤트, retry/backfill tick 같은 런타임 trigger로 실행하는 얇은 진입점이다.
+
+- `@Scheduled`
+- `ApplicationReadyEvent` startup trigger
+- retry/backfill/background trigger
+- application service/coordinator 호출
+
+금지:
+
+- HTTP/SSE type 의존
+- repository/entity/JPA/Redis/SMTP/external SDK 직접 호출
+- business rule 또는 transaction orchestration 직접 소유
+
+`@EventListener`라는 annotation만으로 `job`이 되는 것은 아니다.
+SSE delivery listener는 `web`, domain/application event processor는 `application`, feature use case를 외부 runtime tick으로 실행하는 listener는 `job`에 둔다.
+
+Provider-level technical runtime은 provider 구현 내부 lifecycle일 때만 `providers/infrastructure`에 남을 수 있다.
+feature application service를 호출하는 scheduler/listener라면 provider 데이터에 의해 시작되더라도 feature `job`이다.
+
+### `application`
+
+유스케이스 실행과 트랜잭션 경계의 중심이다.
+
+`application` 구현의 기본 home은 `backend/core`다. `app`에 남아 있는 `feature/*/application`은 migration residue로만 허용하고, 새 유스케이스 구현은 `core`에 둔다.
+
+- command/query 모델
+- use case orchestration
+- domain 호출
+- 필요한 repository/gateway/provider 계약 호출
+- `Providers` 사용
+- 트랜잭션 경계 정의
+- `application/service`는 유스케이스 진입점만 담당
+- 여러 유스케이스가 함께 쓰는 공유 런타임/처리 로직은 `application`의 목적별 하위 패키지로 분리
+
+금지:
+
+- HTTP 세부사항 의존
+- JPA 엔티티 세부 구현에 잠김
+- Spring Security 세부 API 직접 사용
+- 외부 SDK 직접 사용
+- `application/service`가 다른 `application/service`를 직접 주입하거나 호출
+
+### `domain`
+
+가장 오래 살아야 하는 규칙의 자리다.
+
+- aggregate
+- entity
+- value object
+- domain service
+- domain policy
+- domain event
+
+금지:
+
+- Spring annotation
+- JPA repository 의존
+- HTTP 응답 타입 의존
+- 외부 API 클라이언트 의존
+- feature flag SDK, telemetry SDK, security context 직접 사용
+
+### `infrastructure`
+
+프레임워크와 외부 기술을 연결하는 outbound adapter다.
+
+장기적으로 leaf adapter 구현은 `storage`, `external`, `stream` 같은 adapter module에 둔다. `app`의 `infrastructure`는 실행 조립과 migration residue만 허용하며, web/job에서 직접 의존하지 않는다.
+
+- JPA/MyBatis/Redis 구현
+- 외부 API/메시징 구현
+- `Providers` 구현체
+- mapper
+- outbound technology config
+
+Redis를 쓰는 읽기 모델은 DB를 원천으로 둔 파생 인덱스로 취급한다.
+예를 들어 대시보드 실현 수익률 랭킹은 `trading_accounts.wallet_balance`에서 계산하고 Redis ZSET은 top-N 조회를 빠르게 하기 위한 snapshot/store adapter로만 사용한다.
+랭킹 ZSET은 가입과 지갑 잔고 변경 이벤트가 커밋된 뒤 해당 멤버를 즉시 갱신하고, 스케줄러는 기본 1시간 단위 전체 재집계로 누락과 drift를 보정한다.
+랭킹의 의미 있는 순위 기준은 선택된 mode의 score다. 현재 실현 수익률 랭킹의 score는 초기 지급액 대비 수익률이며, 이 값은 `wallet_balance`에서 파생된다.
+동점자는 별도 tie-break로 순위를 세분화하지 않는다. 내 순위는 "나보다 score가 높은 active member 수 + 1"로 계산하는 단순 순위다.
+Redis 경로가 있으면 Redis snapshot을 우선 사용하고, DB fallback은 Redis 장애/미집계 시 쓰는 보정 경로로 둔다.
+따라서 DB fallback은 Redis의 exact ordering을 재현하려 하지 않고, 현재 DB projection에서 내 score보다 큰 멤버 수만 센다.
+랭킹 목록의 동점 표시 순서는 화면 안정성을 위한 보조 정렬일 수 있지만, 내 순위 계산의 제품 의미에는 포함하지 않는다.
+Redis 후보의 member hash가 누락되거나 파싱되지 않으면 해당 snapshot을 부분 성공으로 반환하지 말고 관측 가능한 warning을 남긴 뒤 DB fallback으로 전환한다.
+
+금지:
+
+- 도메인 규칙의 원본 소유
+- 컨트롤러 수준 요청 규칙 처리
+- 유스케이스를 우회한 비즈니스 플로우 조립
+- scheduler/startup trigger 소유
+- HTTP/SSE delivery config 소유
+
+## Reading Guide
+
+이 문서는 "무엇이 백엔드의 공통 구조인가"를 알려 주는 첫 문서다.
+실제 작업에서는 아래처럼 필요한 문서로 내려간다.
+
+### 구조와 패키지, bean 조립 규칙이 필요할 때
+
+1. [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/package-and-wiring.md)
+
+### 유스케이스 경계, Provider, 캐시, 서비스 분리가 필요할 때
+
+1. [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/application-and-providers.md)
+
+### 클래스나 메서드 책임 분리, 클린 코드 기준이 필요할 때
+
+1. [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/code-quality/clean-code-responsibility.md)
+
+### 도메인 모델, 정책, 상태 전이 규칙이 필요할 때
+
+1. [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/domain-modeling-rules.md)
+
+### DB와 영속성 규칙이 필요할 때
+
+1. [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/docs/persistence-rules.md)
+2. DB 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
+
+### 외부 연동, 예외, 기술 중심 네이밍 규칙이 필요할 때
+
+1. 외부 API, SDK, connector는 [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/external/docs/external-integration-rules.md)
+2. 예외 모델과 HTTP error response는 [09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/errors/exception-rules.md)
+3. 기술 세부사항을 클래스명에 드러내지 않는 규칙은 [10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/code-quality/technical-naming-rules.md)
+
+### 테스트 구조와 `architectureLint` 규칙이 필요할 때
+
+1. [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/testing-and-architecture-lint.md)
+
+## Document Boundary Rule
+
+이 디렉터리의 상세 설계는 번호 문서별 개념적 책임을 유지해야 한다.
+새 설계 개념이 들어오면 기존 문서에 섞지 않고 새 번호 문서로 분리한다.
+
+강한 규칙:
+
+- 구조 규칙을 추가한다고 해서 DB/외부 연동/예외/테스트/네이밍 규칙 문서까지 함께 키우지 않는다.
+- 새로운 설계 규칙이 기존 문서의 개념적 책임에 맞지 않으면 새 번호 문서를 추가한다.
+- 상세 설계 문서를 수정하면 [README.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/README.md)도 함께 갱신해 다음 독자가 바로 찾을 수 있게 한다.
+
+## Related Documents
+
+- [README.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/README.md)
+- [02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/package-and-wiring.md)
+- [03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/application-and-providers.md)
+- [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/domain-modeling-rules.md)
+- [05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/testing-and-architecture-lint.md)
+- [06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/docs/persistence-rules.md)
+- [07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/code-quality/clean-code-responsibility.md)
+- [08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/external/docs/external-integration-rules.md)
+- [09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/errors/exception-rules.md)
+- [10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/code-quality/technical-naming-rules.md)

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 class MarketUnifiedStreamTopologyContractTest {
     private static final Path MAIN = Path.of("src/main/java");
     private static final Path APP_MAIN = Path.of("../app/src/main/java");
+    private static final Path CORE_MAIN = Path.of("../core/src/main/java");
     private static final Path MARKET_WEB = MAIN.resolve("coin/coinzzickmock/feature/market/web");
     private static final Path APP_MARKET_WEB = APP_MAIN.resolve("coin/coinzzickmock/feature/market/web");
 
@@ -158,10 +159,8 @@ class MarketUnifiedStreamTopologyContractTest {
         Path fullyClosed = findRequired("PositionFullyClosedEvent.java");
         String openedSource = Files.readString(opened);
         String closedSource = Files.readString(fullyClosed);
-        String openApplier = readRequired(APP_MAIN.resolve(
-                "coin/coinzzickmock/feature/order/application/service/FilledOpenOrderApplier.java"));
-        String closeFinalizer = readRequired(APP_MAIN.resolve(
-                "coin/coinzzickmock/feature/position/application/close/PositionCloseFinalizer.java"));
+        String openApplier = Files.readString(findRequired("FilledOpenOrderApplier.java"));
+        String closeFinalizer = Files.readString(findRequired("PositionCloseFinalizer.java"));
 
         assertTrue(openedSource.contains("memberId") && openedSource.contains("symbol"),
                 "PositionOpenedEvent must carry memberId and symbol");
@@ -190,7 +189,13 @@ class MarketUnifiedStreamTopologyContractTest {
         assertTrue(controller.contains("/{symbol}/stream"), "raw market summary SSE endpoint must remain present");
         assertTrue(controller.contains("/{symbol}/candles/stream"), "raw candle SSE endpoint must remain present");
 
-        try (Stream<Path> files = Stream.concat(Files.walk(MAIN), Files.walk(APP_MAIN))) {
+        try (Stream<Path> files = Stream.of(MAIN, APP_MAIN, CORE_MAIN).flatMap(root -> {
+                try {
+                    return Files.walk(root);
+                } catch (IOException exception) {
+                    throw new RuntimeException(exception);
+                }
+            })) {
             List<Path> offenders = files
                     .filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> {
@@ -212,7 +217,13 @@ class MarketUnifiedStreamTopologyContractTest {
     }
 
     private static Path findRequired(String fileName) throws IOException {
-        try (Stream<Path> files = Stream.concat(Files.walk(MAIN), Files.walk(APP_MAIN))) {
+        try (Stream<Path> files = Stream.of(MAIN, APP_MAIN, CORE_MAIN).flatMap(root -> {
+            try {
+                return Files.walk(root);
+            } catch (IOException exception) {
+                throw new RuntimeException(exception);
+            }
+        })) {
             return files
                     .filter(path -> path.getFileName().toString().equals(fileName))
                     .findFirst()

@@ -185,7 +185,7 @@ Infra/compose 변경은 backend image를 새로 만들지 않고, 분류된 runt
 - 프론트 작업 기준: [FRONTEND.md](FRONTEND.md), [frontend/README.md](frontend/README.md)
 - 백엔드 작업 기준: [BACKEND.md](BACKEND.md)
 - 제품 명세: [docs/product-specs/README.md](docs/product-specs/README.md)
-- 백엔드 상세 설계: [docs/design-docs/backend-design/README.md](docs/design-docs/backend-design/README.md)
+- 백엔드 상세 설계: [backend/AGENTS.md](backend/AGENTS.md), [backend/docs/README.md](backend/docs/README.md)
 - UI 상세 설계: [docs/design-docs/ui-design/README.md](docs/design-docs/ui-design/README.md)
 - 배포/릴리즈 기준: [RELEASE.md](RELEASE.md), [docs/release-docs/README.md](docs/release-docs/README.md)
 - 관측성 기준: [OBSERVABILITY.md](OBSERVABILITY.md)

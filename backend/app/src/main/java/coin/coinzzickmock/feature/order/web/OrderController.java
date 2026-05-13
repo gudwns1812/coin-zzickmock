@@ -1,7 +1,6 @@
 package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
-import coin.coinzzickmock.common.web.SseClientKey;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
@@ -36,7 +35,7 @@ public class OrderController {
     private final GetOrderHistoryService getOrderHistoryService;
     private final CancelOrderService cancelOrderService;
     private final ModifyOrderService modifyOrderService;
-    private final TradingExecutionSseBroker tradingExecutionSseBroker;
+    private final TradingExecutionStreamGateway tradingExecutionStreamGateway;
     private final Providers providers;
     private final long streamTimeoutMs;
 
@@ -46,7 +45,7 @@ public class OrderController {
             GetOrderHistoryService getOrderHistoryService,
             CancelOrderService cancelOrderService,
             ModifyOrderService modifyOrderService,
-            TradingExecutionSseBroker tradingExecutionSseBroker,
+            TradingExecutionStreamGateway tradingExecutionStreamGateway,
             Providers providers,
             @Value("${coin.trading.sse.timeout-ms:300000}") long streamTimeoutMs
     ) {
@@ -55,7 +54,7 @@ public class OrderController {
         this.getOrderHistoryService = getOrderHistoryService;
         this.cancelOrderService = cancelOrderService;
         this.modifyOrderService = modifyOrderService;
-        this.tradingExecutionSseBroker = tradingExecutionSseBroker;
+        this.tradingExecutionStreamGateway = tradingExecutionStreamGateway;
         this.providers = providers;
         this.streamTimeoutMs = streamTimeoutMs;
     }
@@ -85,14 +84,13 @@ public class OrderController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestParam(required = false) String clientKey) {
         Long memberId = providers.auth().currentActor().memberId();
-        String resolvedClientKey = SseClientKey.resolve(clientKey).value();
-        TradingExecutionSseBroker.SseSubscriptionPermit permit = tradingExecutionSseBroker.reserve(memberId, resolvedClientKey);
+        TradingExecutionStreamGateway.SubscriptionPermit permit = tradingExecutionStreamGateway.reserve(memberId, clientKey);
         SseEmitter emitter = createEmitter();
         try {
-            tradingExecutionSseBroker.register(permit, emitter);
+            tradingExecutionStreamGateway.register(permit, emitter);
             return emitter;
         } catch (RuntimeException exception) {
-            tradingExecutionSseBroker.release(permit);
+            tradingExecutionStreamGateway.release(permit);
             throw exception;
         }
     }

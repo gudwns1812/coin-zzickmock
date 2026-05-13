@@ -57,35 +57,45 @@ coin-zzickmock/
 ### Backend Architecture
 
 백엔드는 Gradle multi-project 위에서 `clean architecture lite`를 목표로 한 feature-first 구조다.
-상세 원문은 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)와 [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)에 둔다.
+상세 원문은 [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md), [backend/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/AGENTS.md), [backend/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/README.md)에 둔다.
 
 Gradle module 구조:
 
 ```text
 backend/
-  app/        # 유일한 Spring Boot executable, 현재 feature/application composition
-  stream/     # SSE/realtime library module
-  storage/    # DB/JPA/Flyway library module
-  external/   # external adapter library module
+  core/       # business core library: common contracts, providers contracts, feature domain/application
+  app/        # 유일한 Spring Boot executable; boot, component scan, configuration, assembly
+  stream/     # SSE/realtime leaf adapter module
+  storage/    # DB/JPA/Flyway leaf adapter module
+  external/   # external provider leaf adapter module
 ```
 
-`stream`, `storage`, `external`은 leaf library module이다. 이 세 모듈은 서로 또는 `app`에 Gradle project dependency를 두지 않고,
-다른 backend module이 소유한 Java source를 import하지 않는다. 모듈 간 조립과 실행 runtime wiring은 `app`에서만 수행한다.
+`core`는 Gradle/source-set 경계이며 Java package 이름에 `coin.coinzzickmock.core`를 만들지 않는다.
+`core`는 backend project dependency를 갖지 않고 `coin.coinzzickmock.common`, `coin.coinzzickmock.providers` 계약,
+`coin.coinzzickmock.feature.<feature>.domain`, `coin.coinzzickmock.feature.<feature>.application`을 소유한다.
+`app`은 실행 조립 root다. Spring Boot bootstrapping, component scan, configuration, 그리고 leaf adapter wiring만 맡는다.
+`stream`, `storage`, `external`은 leaf library module이다. backend project dependency는 `core`만 허용하며 서로 또는 `app`에 의존하지 않는다.
+모듈 간 concrete adapter 조립과 실행 runtime wiring은 `app`의 configuration/assembly/config package에서만 수행한다.
 
 현재 Java package 구조:
 
 ```text
+backend/core/src/main/java/coin/coinzzickmock/
+  common/
+  providers/        # provider contracts only
+  feature/
+    <feature-name>/
+      application/
+      domain/
+
 backend/app/src/main/java/coin/coinzzickmock/
   CoinZzickmockApplication.java
-  common/
-  providers/
+  configuration/ 또는 assembly/  # executable wiring only
   feature/
     <feature-name>/
       web/
       job/
-      application/
-      domain/
-      infrastructure/
+      infrastructure/   # migration residue only until moved to leaf adapters
 ```
 
 백엔드의 고정 규칙:
@@ -120,7 +130,7 @@ backend/app/src/main/java/coin/coinzzickmock/
 - 리포트: `backend/build/reports/architecture-lint/violations.jsonl`
 
 린트는 모든 backend subproject의 `src/main/java`를 스캔하며, 패키지 루트, 허용 top-level package, feature layer, domain framework-free, application service 간 직접 의존 금지, web의 persistence 직접 의존 금지 같은 규칙을 확인한다.
-또한 `app`만 Spring Boot executable인지, `stream`/`storage`/`external`이 서로 또는 `app`에 의존하거나 source import를 하지 않는지 확인한다.
+또한 `app`만 Spring Boot executable인지, `core`가 backend project dependency를 갖지 않는지, `stream`/`storage`/`external`이 backend project module 중 `core`에만 의존하는지, `app`의 leaf adapter concrete import가 configuration/assembly/config 경계에만 남는지 확인한다.
 
 ## Top-level Responsibilities
 
@@ -229,7 +239,7 @@ Spring Boot 기반 서비스다.
 - 프론트에는 `stock` 라우트와 컴포넌트가 남아 있으며, `markets` 중심 흐름으로 점진 전환 중이다.
 - 프론트에는 지원 심볼과 fallback market snapshot 같은 임시 제품 규칙이 남아 있다. 영구적인 비즈니스 규칙은 백엔드로 수렴시키는 것이 목표다.
 - `frontend/components/router/`는 레거시 구조가 넓게 남아 있는 영역이다. 새 구조를 강제로 일부만 섞기보다, 관련 기능 단위로 정리한다.
-- 백엔드 상세 규칙은 루트 문서가 아니라 `docs/design-docs/backend-design/` 번호 문서가 원문이다.
+- 백엔드 상세 규칙은 루트 문서가 아니라 `backend/docs/`와 `backend/<module>/docs/`가 원문이다. `docs/design-docs/backend-design/`는 compatibility pointer다.
 
 ## Where To Start
 
@@ -238,7 +248,7 @@ Spring Boot 기반 서비스다.
 - 배포와 릴리즈 운영 기준: [RELEASE.md](/Users/hj.park/projects/coin-zzickmock/RELEASE.md)
 - 프론트 구조와 실제 진입점: [frontend/README.md](/Users/hj.park/projects/coin-zzickmock/frontend/README.md)
 - 백엔드 작업 기준: [BACKEND.md](/Users/hj.park/projects/coin-zzickmock/BACKEND.md)
-- 백엔드 상세 설계: [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
+- 백엔드 상세 설계: [backend/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/README.md)
 - 제품 배경과 구현 맥락: [docs/](/Users/hj.park/projects/coin-zzickmock/docs)
 
 ## Out of Scope

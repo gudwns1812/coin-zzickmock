@@ -5,6 +5,7 @@ plugins {
 }
 
 dependencies {
+    implementation project(':core')
     implementation project(':stream')
     implementation project(':storage')
     implementation project(':external')

@@ -40,7 +40,11 @@ public record CommunityPostImageIntent(
         if (postId == null || postId <= 0) {
             throw invalid();
         }
-        if (status != CommunityPostImageStatus.PRESIGNED && status != CommunityPostImageStatus.ATTACHED) {
+        if (status == CommunityPostImageStatus.ATTACHED && postId.equals(this.postId)) {
+            return new CommunityPostImageIntent(id, postId, uploaderMemberId, objectKey, publicUrl, contentType,
+                    sizeBytes, CommunityPostImageStatus.ATTACHED, createdAt, requireTime(updatedAt));
+        }
+        if (status != CommunityPostImageStatus.PRESIGNED) {
             throw invalid();
         }
         return new CommunityPostImageIntent(id, postId, uploaderMemberId, objectKey, publicUrl, contentType,
@@ -48,7 +52,10 @@ public record CommunityPostImageIntent(
     }
 
     public CommunityPostImageIntent markOrphaned(Instant updatedAt) {
-        return new CommunityPostImageIntent(id, postId, uploaderMemberId, objectKey, publicUrl, contentType,
+        if (status == CommunityPostImageStatus.ORPHANED) {
+            throw invalid();
+        }
+        return new CommunityPostImageIntent(id, null, uploaderMemberId, objectKey, publicUrl, contentType,
                 sizeBytes, CommunityPostImageStatus.ORPHANED, createdAt, requireTime(updatedAt));
     }
 

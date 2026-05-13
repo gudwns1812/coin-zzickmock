@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.community.application.command.DeleteCommunityC
 import coin.coinzzickmock.feature.community.application.command.DeleteCommunityPostCommand;
 import coin.coinzzickmock.feature.community.application.command.ToggleCommunityPostLikeCommand;
 import coin.coinzzickmock.feature.community.application.command.UpdateCommunityPostCommand;
+import coin.coinzzickmock.feature.community.application.command.ValidateCommunityImagesCommand;
 import coin.coinzzickmock.feature.community.application.query.GetCommunityPostQuery;
 import coin.coinzzickmock.feature.community.application.query.ListCommunityCommentsQuery;
 import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
@@ -27,6 +28,7 @@ import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
+import coin.coinzzickmock.feature.community.domain.TiptapJsonDocument;
 import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
 import org.junit.jupiter.api.Test;
 
@@ -159,11 +161,16 @@ class CommunityApplicationServiceRegressionTest {
     @Test
     void queriesRejectInvalidPagingPostIdsAndNoticeListFilter() {
         assertCore(ErrorCode.INVALID_REQUEST, () -> new GetCommunityPostQuery(0L, 1L, false));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new DeleteCommunityCommentCommand(1L, null, 1L, false));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new DeleteCommunityCommentCommand(1L, 1L, 0L, false));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new ValidateCommunityImagesCommand(null, List.of()));
         assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(null, 0, 20));
         assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(1L, -1, 20));
         assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(1L, 0, 101));
         assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityPostsQuery(CommunityCategory.NOTICE, 0, 20));
         assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityPostsQuery(null, 0, 0));
+        assertThatThrownBy(() -> new ListCommunityCommentsService(comments).execute(null, 1L, false))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -175,6 +182,21 @@ class CommunityApplicationServiceRegressionTest {
         assertThatThrownBy(() -> CommunityPostSummaryResult.from(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> CommunityPostListResult.from(null, new CommunityPostPage(List.of(), 0, 20, 0, 0, false)))
                 .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> CommunityPostMutationResult.from(CommunityPost.create(
+                1L,
+                "writer",
+                CommunityCategory.CHAT,
+                "title",
+                TiptapJsonDocument.of(CONTENT),
+                CLOCK.instant()
+        ))).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> CommunityCommentMutationResult.from(CommunityComment.create(
+                1L,
+                1L,
+                "writer",
+                "comment",
+                CLOCK.instant()
+        ))).isInstanceOf(NullPointerException.class);
     }
 
     private static CreateCommunityPostCommand createPost(Long actorId, boolean admin, CommunityCategory category, String content, Set<String> imageKeys, TiptapContentPolicy policy) {

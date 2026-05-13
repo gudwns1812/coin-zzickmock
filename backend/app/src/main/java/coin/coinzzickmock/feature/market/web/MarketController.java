@@ -29,39 +29,39 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class MarketController {
     private final GetMarketSummaryService getMarketSummaryService;
     private final GetMarketCandlesService getMarketCandlesService;
-    private final MarketSseStreamRouter marketSseStreamRouter;
+    private final MarketStreamGateway marketStreamGateway;
     private final long streamTimeoutMs;
 
     @Autowired
     public MarketController(
             GetMarketSummaryService getMarketSummaryService,
             GetMarketCandlesService getMarketCandlesService,
-            MarketSseStreamRouter marketSseStreamRouter,
+            MarketStreamGateway marketStreamGateway,
             @Value("${coin.market.sse.timeout-ms:300000}") long streamTimeoutMs
     ) {
         this.getMarketSummaryService = getMarketSummaryService;
         this.getMarketCandlesService = getMarketCandlesService;
-        this.marketSseStreamRouter = marketSseStreamRouter;
+        this.marketStreamGateway = marketStreamGateway;
         this.streamTimeoutMs = streamTimeoutMs;
     }
 
     @GetMapping
-    public ApiResponse<List<MarketSummaryResponse>> list() {
-        List<MarketSummaryResponse> responses = getMarketSummaryService.getSupportedMarkets().stream()
+    public ApiResponse<List<MarketSummaryHttpResponse>> list() {
+        List<MarketSummaryHttpResponse> responses = getMarketSummaryService.getSupportedMarkets().stream()
                 .map(this::toResponse)
                 .toList();
         return ApiResponse.success(responses);
     }
 
     @GetMapping("/{symbol}")
-    public ApiResponse<MarketSummaryResponse> detail(@PathVariable String symbol) {
+    public ApiResponse<MarketSummaryHttpResponse> detail(@PathVariable String symbol) {
         return ApiResponse.success(toResponse(
                 getMarketSummaryService.getMarket(new GetMarketQuery(symbol))
         ));
     }
 
     @GetMapping("/{symbol}/candles")
-    public ApiResponse<List<MarketCandleResponse>> candles(
+    public ApiResponse<List<MarketCandleHttpResponse>> candles(
             @PathVariable String symbol,
             @RequestParam String interval,
             @RequestParam(required = false) Integer limit,
@@ -80,12 +80,7 @@ public class MarketController {
             @RequestParam(required = false) String clientKey
     ) {
         SseEmitter emitter = createEmitter();
-        marketSseStreamRouter.open(MarketSseStreamRequest.unified(
-                symbol,
-                MarketCandleInterval.from(interval).value(),
-                clientKey,
-                emitter
-        ));
+        marketStreamGateway.openUnified(symbol, MarketCandleInterval.from(interval).value(), clientKey, emitter);
         return emitter;
     }
 
@@ -95,11 +90,7 @@ public class MarketController {
             @RequestParam(required = false) String clientKey
     ) {
         SseEmitter emitter = createEmitter();
-        marketSseStreamRouter.open(MarketSseStreamRequest.summary(
-                parseSummarySymbols(symbols),
-                clientKey,
-                emitter
-        ));
+        marketStreamGateway.openSummary(parseSummarySymbols(symbols), clientKey, emitter);
         return emitter;
     }
 
@@ -113,7 +104,7 @@ public class MarketController {
             @RequestParam(required = false) String clientKey
     ) {
         SseEmitter emitter = createEmitter();
-        marketSseStreamRouter.open(MarketSseStreamRequest.summary(Set.of(symbol), clientKey, emitter));
+        marketStreamGateway.openSummary(Set.of(symbol), clientKey, emitter);
         return emitter;
     }
 
@@ -128,12 +119,7 @@ public class MarketController {
             @RequestParam(required = false) String clientKey
     ) {
         SseEmitter emitter = createEmitter();
-        marketSseStreamRouter.open(MarketSseStreamRequest.candle(
-                symbol,
-                MarketCandleInterval.from(interval).value(),
-                clientKey,
-                emitter
-        ));
+        marketStreamGateway.openCandle(symbol, MarketCandleInterval.from(interval).value(), clientKey, emitter);
         return emitter;
     }
 
@@ -152,12 +138,12 @@ public class MarketController {
         return symbols;
     }
 
-    private MarketSummaryResponse toResponse(MarketSummaryResult result) {
-        return MarketStreamResponseMapper.toResponse(result);
+    private MarketSummaryHttpResponse toResponse(MarketSummaryResult result) {
+        return MarketHttpResponseMapper.toResponse(result);
     }
 
-    private MarketCandleResponse toCandleResponse(MarketCandleResult result) {
-        return MarketStreamResponseMapper.toResponse(result);
+    private MarketCandleHttpResponse toCandleResponse(MarketCandleResult result) {
+        return MarketHttpResponseMapper.toResponse(result);
     }
 
     SseEmitter createEmitter() {

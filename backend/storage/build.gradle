@@ -1,6 +1,7 @@
 // Persistence library module. Shared conventions live in the root backend build.
 
 dependencies {
+    implementation project(':core')
     api "org.springframework.boot:spring-boot-starter-data-jpa"
     api "io.github.openfeign.querydsl:querydsl-jpa:7.1"
 

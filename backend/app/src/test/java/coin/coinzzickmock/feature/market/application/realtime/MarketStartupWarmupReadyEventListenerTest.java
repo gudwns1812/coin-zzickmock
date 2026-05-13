@@ -14,7 +14,7 @@ import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
 import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
-import coin.coinzzickmock.providers.infrastructure.config.CoinCacheNames;
+import coin.coinzzickmock.common.cache.CoinCacheNames;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.util.ArrayList;
 import java.util.List;

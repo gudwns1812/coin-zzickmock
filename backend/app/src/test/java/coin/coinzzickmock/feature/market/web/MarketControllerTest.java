@@ -20,70 +20,52 @@ class MarketControllerTest {
     private static final long SSE_TIMEOUT_MS = 30_000L;
 
     @Test
-    void summaryEndpointRoutesThroughMarketSseRouter() {
-        MarketSseStreamRouter router = mock(MarketSseStreamRouter.class);
-        MarketController controller = controller(router);
+    void summaryEndpointRoutesThroughMarketStreamGateway() {
+        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
+        MarketController controller = controller(gateway);
 
         SseEmitter emitter = controller.summaryStream("BTCUSDT, ETHUSDT", " tab-1 ");
 
-        verify(router).open(argThat(request ->
-                request.kind() == MarketSseStreamKind.SUMMARY
-                        && request.summarySymbols().containsAll(List.of("BTCUSDT", "ETHUSDT"))
-                        && request.clientKey().equals("tab-1")
-                        && request.emitter() == emitter
-        ));
+        verify(gateway).openSummary(
+                argThat(symbols -> symbols.containsAll(List.of("BTCUSDT", "ETHUSDT"))),
+                org.mockito.Mockito.eq(" tab-1 "),
+                org.mockito.Mockito.same(emitter)
+        );
     }
 
     @Test
-    void symbolSummaryEndpointRoutesThroughMarketSseRouter() {
-        MarketSseStreamRouter router = mock(MarketSseStreamRouter.class);
-        MarketController controller = controller(router);
+    void symbolSummaryEndpointRoutesThroughMarketStreamGateway() {
+        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
+        MarketController controller = controller(gateway);
 
         SseEmitter emitter = controller.stream("BTCUSDT", "tab-1");
 
-        verify(router).open(argThat(request ->
-                request.kind() == MarketSseStreamKind.SUMMARY
-                        && request.summarySymbols().equals(Set.of("BTCUSDT"))
-                        && request.clientKey().equals("tab-1")
-                        && request.emitter() == emitter
-        ));
+        verify(gateway).openSummary(Set.of("BTCUSDT"), "tab-1", emitter);
     }
 
     @Test
-    void candleEndpointRoutesThroughMarketSseRouter() {
-        MarketSseStreamRouter router = mock(MarketSseStreamRouter.class);
-        MarketController controller = controller(router);
+    void candleEndpointRoutesThroughMarketStreamGateway() {
+        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
+        MarketController controller = controller(gateway);
 
         SseEmitter emitter = controller.candleStream("BTCUSDT", "1m", "tab-1");
 
-        verify(router).open(argThat(request ->
-                request.kind() == MarketSseStreamKind.CANDLE
-                        && request.activeSymbol().equals("BTCUSDT")
-                        && request.candleInterval().equals("1m")
-                        && request.clientKey().equals("tab-1")
-                        && request.emitter() == emitter
-        ));
+        verify(gateway).openCandle("BTCUSDT", "1m", "tab-1", emitter);
     }
 
     @Test
-    void unifiedEndpointRoutesThroughMarketSseRouter() {
-        MarketSseStreamRouter router = mock(MarketSseStreamRouter.class);
-        MarketController controller = controller(router);
+    void unifiedEndpointRoutesThroughMarketStreamGateway() {
+        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
+        MarketController controller = controller(gateway);
 
         SseEmitter emitter = controller.unifiedStream("BTCUSDT", "1m", "tab-1");
 
-        verify(router).open(argThat(request ->
-                request.kind() == MarketSseStreamKind.UNIFIED
-                        && request.activeSymbol().equals("BTCUSDT")
-                        && request.candleInterval().equals("1m")
-                        && request.clientKey().equals("tab-1")
-                        && request.emitter() == emitter
-        ));
+        verify(gateway).openUnified("BTCUSDT", "1m", "tab-1", emitter);
     }
 
     @Test
     void createsEmitterWithFiniteTimeout() {
-        MarketController controller = controller(mock(MarketSseStreamRouter.class));
+        MarketController controller = controller(mock(MarketStreamGateway.class));
 
         SseEmitter emitter = controller.createEmitter();
 
@@ -111,7 +93,7 @@ class MarketControllerTest {
                 8
         );
 
-        MarketSummaryResponse response = MarketStreamResponseMapper.toResponse(market);
+        MarketSummaryHttpResponse response = MarketHttpResponseMapper.toResponse(market);
 
         assertTrue(response.turnover24hUsdt() == 6_400_000_000d);
         assertTrue(response.volume24h() == 6_400_000_000d);
@@ -127,7 +109,7 @@ class MarketControllerTest {
         MarketController controller = new MarketController(
                 summaryService,
                 candleService,
-                mock(MarketSseStreamRouter.class),
+                mock(MarketStreamGateway.class),
                 SSE_TIMEOUT_MS
         );
         Instant before = Instant.parse("2026-04-21T00:05:00Z");
@@ -144,11 +126,11 @@ class MarketControllerTest {
         ));
     }
 
-    private static MarketController controller(MarketSseStreamRouter router) {
+    private static MarketController controller(MarketStreamGateway gateway) {
         return new MarketController(
                 mock(GetMarketSummaryService.class),
                 mock(GetMarketCandlesService.class),
-                router,
+                gateway,
                 SSE_TIMEOUT_MS
         );
     }

@@ -3,165 +3,117 @@
 ## Purpose
 
 이 문서는 `coin-zzickmock` 백엔드 작업의 입구 문서다.
-상세 설계 원문을 반복하지 않고, 작업 기준과 읽기 순서를 짧게 정리한다.
+상세 규칙을 반복하지 않고, 어떤 문서를 먼저 읽을지와 절대 놓치면 안 되는 기준만 연결한다.
 
-상세 설계는 아래 문서로 분리한다.
+## Authority Order
 
-- [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-- [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
-- [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
-- [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-- [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-- [docs/design-docs/backend-design/05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
-- [docs/design-docs/backend-design/06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
-- [docs/design-docs/backend-design/07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
-- [docs/design-docs/backend-design/08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
-- [docs/design-docs/backend-design/09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
-- [docs/design-docs/backend-design/10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)
+Backend 작업의 문서 권위 순서는 아래와 같다.
 
-## What This File Does
+1. [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)
+2. 이 문서
+3. [backend/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/AGENTS.md)
+4. 변경 module의 `AGENTS.md`
+5. [backend/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/README.md) 또는 각 module `docs/`
 
-이 문서는 아래 역할만 맡는다.
+옛 `docs/design-docs/backend-design/` 경로는 compatibility index다.
+새 규칙의 원문은 `backend/docs`와 `backend/<module>/docs`에 둔다.
 
-- 백엔드 작업 전에 무엇을 읽어야 하는지 알려 준다.
-- 절대 놓치면 안 되는 강한 기준만 짧게 고정한다.
-- DB, 린트, 설계 문서 같은 연관 문서를 연결한다.
+## Backend Modules
 
-즉, "백엔드 작업용 체크인 문서"라고 보면 된다.
+```text
+backend/
+  core/       business core: common contracts, provider contracts, feature domain/application
+  app/        executable Spring Boot app: boot, web/job adapters, assembly and configuration
+  storage/    persistence leaf adapter: JPA, QueryDSL, Flyway, DB resources
+  stream/     realtime leaf adapter: SSE delivery and stream runtime
+  external/   external leaf adapter: Bitget and provider connector implementations
+```
+
+`core`, `app`, `storage`, `stream`, `external`은 Gradle module 이름이다.
+Java top-level package 이름으로 쓰지 않는다.
 
 ## Read Order
 
-### 구조나 새 기능 패키지를 설계할 때
+### Backend 공통 구조, module boundary, lint
 
-1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-2. [docs/design-docs/backend-design/01-architecture-foundations.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/01-architecture-foundations.md)
-3. [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
-4. [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-5. [ARCHITECTURE.md](/Users/hj.park/projects/coin-zzickmock/ARCHITECTURE.md)
+1. [backend/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/AGENTS.md)
+2. [backend/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/README.md)
+3. [backend/docs/architecture/foundations.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/foundations.md)
+4. [backend/docs/architecture/package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/package-and-wiring.md)
+5. [backend/docs/architecture/testing-and-architecture-lint.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/testing-and-architecture-lint.md)
 
-### 도메인 모델이나 정책, 상태 전이를 설계할 때
+### `core`: domain, application, provider contracts
 
-1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-2. [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-3. 애플리케이션 경계가
-   걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-4. bean 조립이
-   걸리면 [docs/design-docs/backend-design/02-package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/02-package-and-wiring.md)
+1. [backend/core/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/core/AGENTS.md)
+2. [backend/core/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/README.md)
+3. [backend/core/docs/domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/domain-modeling-rules.md)
+4. [backend/core/docs/application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/application-and-providers.md)
 
-### 클래스나 메서드 책임 분리, 클린 코드 기준을 확인할 때
+제품 공식이나 사용자 동작이 바뀌면 [docs/product-specs/README.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/README.md)와 관련 명세도 함께 갱신한다.
+거래 계산은 특히 [docs/product-specs/coin-futures-simulation-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-simulation-rules.md)를 본다.
 
-1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-2. [docs/design-docs/backend-design/07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)
-3. 유스케이스 경계가 걸리면 [docs/design-docs/backend-design/03-application-and-providers.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/03-application-and-providers.md)
-4. 도메인 판단이 걸리면 [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
+### `app`: executable app, web/job adapters, runtime assembly
 
-### DB를 읽거나 수정할 때
+1. [backend/app/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/app/AGENTS.md)
+2. [backend/app/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/README.md)
+3. [backend/app/docs/assembly-and-runtime.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/assembly-and-runtime.md)
+4. [backend/app/docs/web-and-job-adapters.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/web-and-job-adapters.md)
 
-1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-2. [docs/design-docs/backend-design/06-persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/06-persistence-rules.md)
-3. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
-4. 스키마를 읽을 때는 항상 `db-schema.md`를 먼저 참고한다.
-5. 스키마를 바꿀 때는 현재 `backend/storage/src/main/resources/db/migration` 아래에 새 `Flyway` 버전 파일을 추가하고, 코드와 `db-schema.md`를 함께 갱신한다.
+### `storage`: DB, persistence, schema
 
-### 외부 연동, 예외, 기술 네이밍을 확인할 때
+1. [backend/storage/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/AGENTS.md)
+2. [backend/storage/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/docs/README.md)
+3. [backend/storage/docs/persistence-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/docs/persistence-rules.md)
+4. [backend/storage/docs/schema-and-migration.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/docs/schema-and-migration.md)
+5. [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)
 
-1. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-2. 외부 API, SDK, connector는 [docs/design-docs/backend-design/08-external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/08-external-integration-rules.md)
-3. 예외 모델과 HTTP error response는 [docs/design-docs/backend-design/09-exception-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/09-exception-rules.md)
-4. 기술 세부사항을 클래스명에 드러내지 않는 규칙은 [docs/design-docs/backend-design/10-technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/10-technical-naming-rules.md)
+### `stream`: SSE/realtime delivery
 
-### 백엔드 품질 게이트나 린트를 확인할 때
+1. [backend/stream/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/stream/AGENTS.md)
+2. [backend/stream/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/stream/docs/README.md)
+3. [backend/stream/docs/realtime-delivery-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/stream/docs/realtime-delivery-rules.md)
 
-1. [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)
-2. `AGENTS.md`에 등록된 review 관련 스킬(`code-review`, `security-review` 등)
-3. [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-4. [docs/design-docs/backend-design/05-testing-and-lint.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/05-testing-and-lint.md)
+### `external`: external adapters, Bitget
+
+1. [backend/external/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/external/AGENTS.md)
+2. [backend/external/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/external/docs/README.md)
+3. [backend/external/docs/external-integration-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/external/docs/external-integration-rules.md)
+4. [backend/external/docs/bitget-reference-map.md](/Users/hj.park/projects/coin-zzickmock/backend/external/docs/bitget-reference-map.md)
+
+### 클린 코드, 네이밍, 예외
+
+- [backend/docs/code-quality/clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/code-quality/clean-code-responsibility.md)
+- [backend/docs/code-quality/technical-naming-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/code-quality/technical-naming-rules.md)
+- [backend/docs/errors/exception-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/errors/exception-rules.md)
 
 ## Non-negotiables
 
-아래는 상세 설계 문서로 내려가지 않더라도 기억해야 하는 핵심 규칙이다.
-
-- 문서의 내용과 다르게 유저의 지시사항으로 변경되거나 추가되면 반드시 문서도 업데이트를 한다.
-- backend 계획과 구현은 제품/DB 문서만으로 시작하지 않는다. 작업이 `domain`, `application`, `infrastructure`,
-  persistence, DB/schema, provider, release 계약을 건드리면 먼저 "문서 원문 대조표"를 만들고, 읽은 원문 문서,
-  적용할 구현 규칙, 선택한 구현 방식, 금지할 shortcut, 검증 방법을 명시한다.
-- 제품 명세와 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)는
-  기능 의미와 데이터 계약을 설명한다. 구현 방식의 원문은 [docs/design-docs/backend-design/](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design)
-  상세 설계 문서다. 제품/DB 문서를 새로 갱신했다는 이유로 기존 backend 설계 규칙을 우회하지 않는다.
-- 제품/DB 계약과 backend 설계 규칙이 충돌하면, 구현을 시작하기 전에 어떤 문서가 원문인지 명시하고 필요한 경우
-  적절한 backend 상세 설계 문서를 함께 갱신한다.
-- 백엔드는 `feature-first`로 자른다.
+- 문서와 다른 동작을 만들면 같은 작업에서 governing document를 갱신한다.
+- Backend 공통 규칙은 `backend/docs`, module-specific 규칙은 `backend/<module>/docs`가 원문이다.
+- Scoped `AGENTS.md`는 상위 규칙을 override하지 않는다.
+- 기능은 `feature/<feature-name>` 아래에서 수직으로 자른다.
 - 레이어는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정한다.
-- `web` package 이름 변경은 Java package 책임을 바꾸는 일이며, HTTP URL path의 `/api/futures/**` 명칭을 바꾸지 않는다.
-- `job`은 scheduler/startup/backfill/retry 같은 feature runtime trigger만 맡고, application service/coordinator 호출만 수행한다.
-- `infrastructure`는 DB/JPA, Redis/cache adapter, 외부 API, SMTP, JWT signing/parsing 구현, provider 구현처럼 outbound/external technology 구현으로 좁힌다.
-- 클래스는 하나의 변경 이유를, 메서드는 한 단계의 추상화 수준에서 한 가지 일을 갖도록 작성한다.
-- 긴 유스케이스 메서드는 흐름만 남기고 검증, 조회, 정책 판단, 저장, 이벤트 발행, 응답 변환을 이름 있는 책임으로 분리한다.
-- 인증, 커넥터, 텔레메트리, 기능 플래그는 `Providers` 뒤로 숨긴다.
-- 계층을 나눈다고 `port`, `usecase` 인터페이스를 기본값처럼 만들지 않는다.
-- 인터페이스는 여러 구현이 실제로 필요하거나, 외부 경계를 격리하는 계약이 꼭 필요할 때만 만든다.
-- 구현체가 하나뿐인데 한 단계 위임만 하는 pass-through 인터페이스는 금지한다.
-- 운영 인터페이스에 `default` 메서드를 두지 않는다. `default`는 하위 호환성 장치이지 설계 기본값이 아니며, 조회, 필터링, fallback, 예외 throw, no-op 같은 구현을 인터페이스에 넣는 것을 금지한다.
-- 테스트에서 일부 메서드만 필요한 fake가 있으면 운영 인터페이스에 `default`를 추가하지 말고 `src/test/java`의 테스트 전용 abstract/stub class를 상속해 필요한 메서드만 오버라이드한다.
-- `application/service`는 API가 호출하는 유스케이스 진입점만 둔다.
-- `application/service`가 다른 `application/service`를 직접 주입하거나 호출하는 것은 금지한다.
-- 여러 유스케이스가 함께 쓰는 런타임/처리 로직은 `application`의 목적별 하위 패키지에 비-Service 협력 객체로 분리한다.
-- 유스케이스 public service는 조회/저장/이벤트/응답 흐름을 보여 주고, 캔들 rollup, historical backfill, fill 적용, telemetry tagging 같은 세부 메커니즘은 이름 있는 협력 객체로 둔다.
-- 즉시 체결 주문과 pending 주문 체결처럼 같은 계정/포지션 상태 전이를 공유하는 흐름은 각 service에 복제하지 않고 `FilledOpenOrderApplier` 같은 application 협력 객체로 모은다.
-- 도메인 모델, 정책, 상태 전이 규칙의
-  원문은 [docs/design-docs/backend-design/04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/04-domain-modeling-rules.md)
-  에만 둔다.
-- `PositionSnapshot`은 새 포지션에는 `open`, persistence rehydration에는 `restore`를 사용한다. 새 domain 동작은 원시 필드 조합보다 `identity()`, `exposure()`, `accounting()` 값 객체를 우선 사용한다.
-- Spring이 관리하는 협력 객체는 concrete class라도 클래스 내부에서 직접 `new`하지 않고 빈으로 조립한다.
-- 운영 클래스에 테스트 편의 생성자나 테스트 fixture 조립 로직을 두지 않는다. 테스트 전용 조립은 test fixture/helper 또는 test configuration으로 옮긴다.
-- 로컬 메모리 캐시는 클래스 내부 `ConcurrentHashMap` 같은 ad-hoc 상태보다 Spring Cache를 기본값으로 사용한다.
-- SSE subscriber lifecycle처럼 cache가 아니라 연결 수명 관리가 목적인 상태는 `common/web/SseSubscriptionRegistry` 같은 공통 메커니즘을 우선 사용하고, feature broker는 payload fan-out과 stream-specific telemetry만 맡는다.
-- 여러 인스턴스가 같은 캐시를 공유해야 하는 분산 캐시는 Redis를 표준 구현으로 사용하고, 기능 코드는 Redis client 대신 Spring Cache 경계를 우선 의존한다.
-- 운영 DB의 기본값은 `MySQL`로 둔다.
-- 테스트 DB의 기본값은 인메모리 `H2`로 둔다.
-- DB 마이그레이션 표준은 `Flyway`로 고정한다.
-- 영속성 기본 스택은 `Spring Data JPA`와 OpenFeign 포크 `QueryDSL`로 통일한다.
-- 복잡한 native query가 필요할 때만 `JdbcTemplate` 사용을 허용한다.
-- 클래스 이름에는 `Jpa`, `SpringData`, `MyBatis`, `Redis` 같은 기술명을 넣지 않고 역할 이름을 먼저 드러낸다.
-- 같은 기능을 구현 기술만 다르게 제공해야 하면 기술명을 클래스명에 붙이지 말고 역할 중심 인터페이스와 bean 조립으로 선택한다.
-- 스프링이 관리하는 클래스가 final 필드 생성자 주입만 필요할 때는 수동 생성자 대신 Lombok `@RequiredArgsConstructor`를 기본값으로 사용한다.
-- DB 구조를 읽을 때는 항상 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
-  본다.
-- DB를 바꾸면 현재 `backend/storage/src/main/resources/db/migration` 아래에 새 버전의 `Flyway` migration 파일을
-  추가하고, [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 같이 갱신한다.
-- 백엔드 변경은 `./gradlew architectureLint`와 `./gradlew check`를 기준으로 검증한다.
-- backend 상세 설계 원문은 책임별 번호 문서로 유지한다.
-- backend 설계 규칙을 수정할 때는 가장 큰 문서 하나에 계속 덧붙이지 않고, 알맞은 번호
-  문서와 [docs/design-docs/backend-design/README.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/README.md)
-  를 함께 갱신한다.
+- `app`만 executable Spring Boot module이다.
+- `core`는 business core이고 backend project dependency를 갖지 않는다.
+- `stream`, `storage`, `external`은 leaf adapter이며 backend project module 중 `core`에만 의존한다.
+- `app`의 leaf adapter concrete import는 configuration/assembly/config 경계에만 둔다.
+- DB 변경은 `backend/storage/src/main/resources/db/migration` 아래 새 Flyway migration과 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md) 갱신을 함께 수행한다.
+- 비즈니스/도메인 실패는 `CoreException`과 구조화된 error type으로 표현한다.
 
-## Architecture Lint
+## Verification
 
-백엔드에는 프로젝트 전용 아키텍처 린터가 있다.
+문서만 바꾼 경우:
 
-- 실행: `./gradlew architectureLint`
-- 통합 검증: `./gradlew check`
-- 리포트: `backend/build/reports/architecture-lint/violations.jsonl`
-- 실행 모듈: `app`만 Spring Boot executable이다.
-- 라이브러리 모듈: `stream`, `storage`, `external`은 서로 또는 `app`에 project dependency/source import를 두지 않는다.
+```bash
+rtk git diff --check
+```
 
-이 린터는 사람이 보는 용도만이 아니라, Codex가 로그를 다시 읽어 수정 루프를 돌리는 용도로도 사용한다.
-로그 형식과 규칙의 상세 의미는 상세 설계 문서를 따른다.
-특히 `application/service`가 다른 `application/service`를 직접 참조하면 `APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY` 위반으로 실패해야 한다.
-모듈 경계 위반은 `MODULE_BOUNDARY_NO_LIBRARY_PROJECT_DEPENDENCY`, `MODULE_BOUNDARY_NO_LIBRARY_SOURCE_IMPORT`,
-`MODULE_EXECUTABLE_APP_ONLY`로 실패해야 한다.
+Backend source, Gradle, lint, runtime wiring을 바꾼 경우:
 
-## Completion Checklist
+```bash
+cd backend
+./gradlew architectureLint --console=plain
+./gradlew check --console=plain
+```
 
-백엔드 작업을 끝냈다고 보기 위한 최소 조건은 아래와 같다.
-
-- 관련 상세 설계를 읽고 반영했다.
-- 클래스/메서드 책임 분리가 필요한 변경이면 [docs/design-docs/backend-design/07-clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/docs/design-docs/backend-design/07-clean-code-responsibility.md)의 계획/구현/검증 체크리스트를 확인했다.
-- 새 인터페이스를 추가했다면 왜 concrete class로 충분하지 않은지 설명할 수 있다.
-- DB를 읽는 작업이면 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 먼저
-  참고했다.
-- DB 변경이 있으면 새 `Flyway` migration 버전을
-  추가하고 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 갱신했다.
-- `./gradlew architectureLint`를 통과했다.
-- `./gradlew check`를 통과했다.
-- 리뷰 게이트와 PR/CI 흐름은 [AGENTS.md](/Users/hj.park/projects/coin-zzickmock/AGENTS.md)와 [.github/workflows/ci.yml](/Users/hj.park/projects/coin-zzickmock/.github/workflows/ci.yml) 기준을 따른다.
+Module-specific targeted tests are listed in each module `AGENTS.md`.

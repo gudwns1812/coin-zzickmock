@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 class MarketUnifiedStreamTopologyContractTest {
     private static final Path MAIN = Path.of("src/main/java");
     private static final Path APP_MAIN = Path.of("../app/src/main/java");
+    private static final Path CORE_MAIN = Path.of("../core/src/main/java");
     private static final Path MARKET_WEB = MAIN.resolve("coin/coinzzickmock/feature/market/web");
     private static final Path APP_MARKET_WEB = APP_MAIN.resolve("coin/coinzzickmock/feature/market/web");
 
@@ -79,19 +80,30 @@ class MarketUnifiedStreamTopologyContractTest {
     @Test
     void controllerAddsAuthenticatedUnifiedEndpointWithoutCouplingToPositionInternals() throws IOException {
         String controller = readRequired(APP_MARKET_WEB.resolve("MarketController.java"));
+        String gateway = readRequired(APP_MARKET_WEB.resolve("MarketStreamGateway.java"));
+        String gatewayAdapter = readRequired(APP_MARKET_WEB.resolve("config/StreamMarketGatewayAdapter.java"));
         String router = readRequired(MARKET_WEB.resolve("MarketSseStreamRouter.java"));
         String strategyContract = readRequired(MARKET_WEB.resolve("MarketSseStreamStrategy.java"));
         String strategy = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamStrategy.java"));
 
         assertTrue(controller.contains("/stream"), "controller must expose unified /api/futures/markets/stream");
-        assertTrue(controller.contains("MarketSseStreamRequest.summary"),
-                "controller must build typed raw summary stream requests");
-        assertTrue(controller.contains("MarketSseStreamRequest.candle"),
-                "controller must build typed raw candle stream requests");
-        assertTrue(controller.contains("MarketSseStreamRequest.unified"),
-                "controller must build typed unified stream requests");
-        assertTrue(controller.contains("MarketSseStreamRouter"),
-                "controller must delegate SSE route selection to the market stream router");
+        assertTrue(controller.contains("MarketStreamGateway"),
+                "controller must delegate SSE route selection to the app-owned stream gateway");
+        assertFalse(controller.contains("MarketSseStreamRequest"),
+                "controller must not import stream-module request details directly");
+        assertFalse(controller.contains("MarketSseStreamRouter"),
+                "controller must not import stream-module router details directly");
+        assertTrue(gateway.contains("openUnified"), "gateway must expose unified stream opening");
+        assertTrue(gateway.contains("openSummary"), "gateway must expose raw summary stream opening");
+        assertTrue(gateway.contains("openCandle"), "gateway must expose raw candle stream opening");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.summary"),
+                "gateway adapter must build typed raw summary stream requests");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.candle"),
+                "gateway adapter must build typed raw candle stream requests");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.unified"),
+                "gateway adapter must build typed unified stream requests");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRouter"),
+                "gateway adapter must delegate SSE route selection to the market stream router");
         assertFalse(controller.contains("UnifiedMarketStreamOpener"),
                 "controller must not depend on the removed unified stream opener");
         assertFalse(Files.exists(MARKET_WEB.resolve("UnifiedMarketStreamOpener.java")),
@@ -158,10 +170,8 @@ class MarketUnifiedStreamTopologyContractTest {
         Path fullyClosed = findRequired("PositionFullyClosedEvent.java");
         String openedSource = Files.readString(opened);
         String closedSource = Files.readString(fullyClosed);
-        String openApplier = readRequired(APP_MAIN.resolve(
-                "coin/coinzzickmock/feature/order/application/service/FilledOpenOrderApplier.java"));
-        String closeFinalizer = readRequired(APP_MAIN.resolve(
-                "coin/coinzzickmock/feature/position/application/close/PositionCloseFinalizer.java"));
+        String openApplier = Files.readString(findRequired("FilledOpenOrderApplier.java"));
+        String closeFinalizer = Files.readString(findRequired("PositionCloseFinalizer.java"));
 
         assertTrue(openedSource.contains("memberId") && openedSource.contains("symbol"),
                 "PositionOpenedEvent must carry memberId and symbol");
@@ -190,7 +200,13 @@ class MarketUnifiedStreamTopologyContractTest {
         assertTrue(controller.contains("/{symbol}/stream"), "raw market summary SSE endpoint must remain present");
         assertTrue(controller.contains("/{symbol}/candles/stream"), "raw candle SSE endpoint must remain present");
 
-        try (Stream<Path> files = Stream.concat(Files.walk(MAIN), Files.walk(APP_MAIN))) {
+        try (Stream<Path> files = Stream.of(MAIN, APP_MAIN, CORE_MAIN).flatMap(root -> {
+                try {
+                    return Files.walk(root);
+                } catch (IOException exception) {
+                    throw new RuntimeException(exception);
+                }
+            })) {
             List<Path> offenders = files
                     .filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> {
@@ -212,7 +228,13 @@ class MarketUnifiedStreamTopologyContractTest {
     }
 
     private static Path findRequired(String fileName) throws IOException {
-        try (Stream<Path> files = Stream.concat(Files.walk(MAIN), Files.walk(APP_MAIN))) {
+        try (Stream<Path> files = Stream.of(MAIN, APP_MAIN, CORE_MAIN).flatMap(root -> {
+            try {
+                return Files.walk(root);
+            } catch (IOException exception) {
+                throw new RuntimeException(exception);
+            }
+        })) {
             return files
                     .filter(path -> path.getFileName().toString().equals(fileName))
                     .findFirst()

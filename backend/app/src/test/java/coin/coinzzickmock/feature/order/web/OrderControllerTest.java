@@ -20,69 +20,72 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 class OrderControllerTest {
     @Test
-    void streamAcceptsExplicitClientKeyAndPassesNormalizedValueToBroker() {
+    void streamPassesExplicitClientKeyToGateway() {
         Providers providers = providers(1L);
-        TradingExecutionSseBroker broker = mock(TradingExecutionSseBroker.class);
-        TradingExecutionSseBroker.SseSubscriptionPermit permit = mock(TradingExecutionSseBroker.SseSubscriptionPermit.class);
-        when(broker.reserve(1L, "tab-1")).thenReturn(permit);
-        OrderController controller = controller(broker, providers);
+        TradingExecutionStreamGateway gateway = mock(TradingExecutionStreamGateway.class);
+        TradingExecutionStreamGateway.SubscriptionPermit permit =
+                mock(TradingExecutionStreamGateway.SubscriptionPermit.class);
+        when(gateway.reserve(1L, " tab-1 ")).thenReturn(permit);
+        OrderController controller = controller(gateway, providers);
 
         controller.stream(" tab-1 ");
 
-        verify(broker).reserve(1L, "tab-1");
-        verify(broker).register(eq(permit), any(SseEmitter.class));
+        verify(gateway).reserve(1L, " tab-1 ");
+        verify(gateway).register(eq(permit), any(SseEmitter.class));
     }
 
     @Test
-    void streamUsesFallbackClientKeyWhenMissing() {
+    void streamPassesMissingClientKeyToGateway() {
         Providers providers = providers(1L);
-        TradingExecutionSseBroker broker = mock(TradingExecutionSseBroker.class);
-        TradingExecutionSseBroker.SseSubscriptionPermit permit = mock(TradingExecutionSseBroker.SseSubscriptionPermit.class);
-        when(broker.reserve(eq(1L), org.mockito.ArgumentMatchers.startsWith("server:"))).thenReturn(permit);
-        OrderController controller = controller(broker, providers);
+        TradingExecutionStreamGateway gateway = mock(TradingExecutionStreamGateway.class);
+        TradingExecutionStreamGateway.SubscriptionPermit permit =
+                mock(TradingExecutionStreamGateway.SubscriptionPermit.class);
+        when(gateway.reserve(1L, null)).thenReturn(permit);
+        OrderController controller = controller(gateway, providers);
 
         controller.stream(null);
 
-        verify(broker).reserve(eq(1L), org.mockito.ArgumentMatchers.startsWith("server:"));
-        verify(broker).register(eq(permit), any(SseEmitter.class));
+        verify(gateway).reserve(1L, null);
+        verify(gateway).register(eq(permit), any(SseEmitter.class));
     }
 
     @Test
     void streamReleasesPermitIfRegistrationFails() {
         Providers providers = providers(1L);
-        TradingExecutionSseBroker broker = mock(TradingExecutionSseBroker.class);
-        TradingExecutionSseBroker.SseSubscriptionPermit permit = mock(TradingExecutionSseBroker.SseSubscriptionPermit.class);
-        when(broker.reserve(1L, "tab-1")).thenReturn(permit);
+        TradingExecutionStreamGateway gateway = mock(TradingExecutionStreamGateway.class);
+        TradingExecutionStreamGateway.SubscriptionPermit permit =
+                mock(TradingExecutionStreamGateway.SubscriptionPermit.class);
+        when(gateway.reserve(1L, "tab-1")).thenReturn(permit);
         org.mockito.Mockito.doThrow(new IllegalStateException("boom"))
-                .when(broker).register(eq(permit), any(SseEmitter.class));
-        OrderController controller = controller(broker, providers);
+                .when(gateway).register(eq(permit), any(SseEmitter.class));
+        OrderController controller = controller(gateway, providers);
 
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> controller.stream("tab-1"));
 
-        verify(broker).release(permit);
+        verify(gateway).release(permit);
     }
 
     @Test
     void streamDoesNotRegisterWhenReserveFails() {
         Providers providers = providers(1L);
-        TradingExecutionSseBroker broker = mock(TradingExecutionSseBroker.class);
+        TradingExecutionStreamGateway gateway = mock(TradingExecutionStreamGateway.class);
         org.mockito.Mockito.doThrow(new IllegalStateException("limit"))
-                .when(broker).reserve(1L, "tab-1");
-        OrderController controller = controller(broker, providers);
+                .when(gateway).reserve(1L, "tab-1");
+        OrderController controller = controller(gateway, providers);
 
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> controller.stream("tab-1"));
 
-        verify(broker, never()).register(any(), any());
+        verify(gateway, never()).register(any(), any());
     }
 
-    private static OrderController controller(TradingExecutionSseBroker broker, Providers providers) {
+    private static OrderController controller(TradingExecutionStreamGateway gateway, Providers providers) {
         return new OrderController(
                 mock(CreateOrderService.class),
                 mock(GetOpenOrdersService.class),
                 mock(GetOrderHistoryService.class),
                 mock(CancelOrderService.class),
                 mock(ModifyOrderService.class),
-                broker,
+                gateway,
                 providers,
                 30_000L
         );

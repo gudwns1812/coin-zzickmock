@@ -16,8 +16,12 @@ public class AccountRefillCreditProcessor {
     private final AccountRefillDatePolicy datePolicy;
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public AccountRefillCreditResult addTodayCount(Long memberId, int count) {
-        AccountRefillState saved = accountRefillStateRepository.grantExtraRefillCount(memberId, datePolicy.today(), count);
+    public AccountRefillCreditResult addCurrentWeekCount(Long memberId, int count) {
+        AccountRefillState saved = accountRefillStateRepository.grantExtraRefillCount(
+                memberId,
+                datePolicy.currentRefillDate(),
+                count
+        );
         return new AccountRefillCreditResult(saved.remainingCount());
     }
 }

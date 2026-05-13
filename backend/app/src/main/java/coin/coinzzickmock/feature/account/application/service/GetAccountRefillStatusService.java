@@ -10,6 +10,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,9 +28,10 @@ public class GetAccountRefillStatusService {
     public AccountRefillStatusResult get(Long memberId) {
         TradingAccount account = accountRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        LocalDate refillDate = datePolicy.currentRefillDate();
         AccountRefillState state = accountRefillStateRepository
-                .findByMemberIdAndRefillDate(memberId, datePolicy.today())
-                .orElse(AccountRefillState.daily(memberId, datePolicy.today()));
+                .findByMemberIdAndRefillDate(memberId, refillDate)
+                .orElse(AccountRefillState.weekly(memberId, refillDate));
         String disabledReason = disabledReason(memberId, account, state);
 
         return new AccountRefillStatusResult(

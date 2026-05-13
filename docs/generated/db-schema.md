@@ -16,7 +16,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ## Status
 
 - 상태: 구현 반영됨
-- 마지막 스키마 동기화: 2026-05-07
+- 마지막 스키마 동기화: 2026-05-13
 - 기준 소스: Flyway migration + JPA entity + Spring Boot datasource 설정
 
 ## Source Of Truth
@@ -69,6 +69,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V23__surrogate_key_member_daily_activity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V23__surrogate_key_member_daily_activity.sql)
   [V24__wallet_history_daily_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V24__wallet_history_daily_snapshots.sql)
   [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V25__add_account_refill_state.sql)
+  [V26__add_market_history_repair_events.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V26__add_market_history_repair_events.sql)
+  [V27__weekly_account_refill_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V27__weekly_account_refill_description.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -124,7 +126,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ### `account_refill_states`
 
 - 목적:
-  KST 기준 회원별 당일 지갑 리필 가능 횟수를 저장한다.
+  KST 기준 회원별 현재 주간 지갑 리필 가능 횟수를 저장한다.
 - PK:
   `id` (auto increment)
 - 유니크:
@@ -132,13 +134,14 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 주요 컬럼:
   `member_id`, `refill_date`, `remaining_count`, `version`, `created_at`, `updated_at`
 - 날짜 기준:
-  `refill_date`는 KST 날짜다. 회원가입 이벤트 처리 시 가입 당일 기본 1회 상태를 생성한다. 이후 새 날짜에는 첫 리필 실행 또는 추가권 구매 시 기본 1회 상태를 새 row로 생성하며, 전날 구매한 추가권은 새 날짜 row로 이월하지 않는다.
+  `refill_date`는 KST 월요일 시작 주간의 시작 날짜다. 회원가입 이벤트 처리 시 가입 시점이 속한 KST 주간 row를 기본 1회로 생성한다. 이후 새 주간에는 첫 리필 실행 또는 추가권 구매 시 기본 1회 상태를 새 row로 생성하며, 이전 주간에 구매한 추가권은 다음 월요일 시작 row로 이월하지 않는다.
 - 동시성:
-  회원가입 이벤트와 리필 실행은 현재 KST 날짜 row를 `insert ignore`로 보장 생성한다. 리필 실행은 같은 날짜 row를 pessimistic write lock으로 잡고 `remaining_count`를 소비한다. 리필 추가권 구매는 reward item/usage/wallet row보다 먼저 `account_refill_states`를 갱신하며, row가 없으면 기본 1회에 추가권 수를 더한 값으로 생성하고 row가 있으면 `on duplicate key update`로 `remaining_count`, `version`, `updated_at`을 함께 증가/갱신한다.
+  회원가입 이벤트와 리필 실행은 현재 KST 주간 row를 `insert ignore`로 보장 생성한다. 리필 실행은 같은 주간 row를 pessimistic write lock으로 잡고 `remaining_count`를 소비한다. 리필 추가권 구매는 reward item/usage/wallet row보다 먼저 `account_refill_states`를 갱신하며, row가 없으면 기본 1회에 추가권 수를 더한 값으로 생성하고 row가 있으면 `on duplicate key update`로 `remaining_count`, `version`, `updated_at`을 함께 증가/갱신한다.
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
   [V25__add_account_refill_state.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V25__add_account_refill_state.sql),
+  [V27__weekly_account_refill_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V27__weekly_account_refill_description.sql),
   [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
 
 ### `reward_point_wallets`
@@ -491,7 +494,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - `trading_accounts.member_id -> member_credentials.id`:
   선물 계정은 내부 회원 surrogate key를 참조한다.
 - `account_refill_states.member_id -> member_credentials.id`:
-  회원별 KST 일자 리필 가능 횟수를 저장한다. 리필 실행 시에는 이 row와 `trading_accounts` row를 함께 잠근다.
+  회원별 KST 월요일 시작 주간 리필 가능 횟수를 저장한다. 리필 실행 시에는 이 row와 `trading_accounts` row를 함께 잠근다.
 - `reward_point_wallets.member_id -> member_credentials.id`:
   회원당 하나의 포인트 지갑을 가진다.
 - `wallet_history.member_id -> trading_accounts.member_id`:
@@ -519,6 +522,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 ## Change Log
 
+- 2026-05-13:
+  `V27__weekly_account_refill_description.sql`로 리필 추가권 운영 데이터 설명을 다음 KST 월요일 00:00 리셋 정책에 맞췄다.
 - 2026-05-07:
   `V26__add_market_history_repair_events.sql`로 realtime market history persistence 실패를 durable repair event와 Redis List wakeup으로 복구하는 테이블을 추가했다.
 - 2026-04-16:

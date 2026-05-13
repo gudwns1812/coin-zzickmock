@@ -30,7 +30,7 @@ public class AccountRefillStatePersistenceRepository implements AccountRefillSta
 
     @Override
     @Transactional
-    public void provisionDailyStateIfAbsent(Long memberId, LocalDate refillDate) {
+    public void provisionWeeklyStateIfAbsent(Long memberId, LocalDate refillDate) {
         jdbcTemplate.update(
                 """
                         INSERT IGNORE INTO account_refill_states (

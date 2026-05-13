@@ -14,6 +14,6 @@ public class MemberRegisteredRefillStateProvisioningListener {
 
     @EventListener
     public void onMemberRegistered(MemberRegisteredEvent event) {
-        accountRefillStateRepository.provisionDailyStateIfAbsent(event.memberId(), datePolicy.today());
+        accountRefillStateRepository.provisionWeeklyStateIfAbsent(event.memberId(), datePolicy.currentRefillDate());
     }
 }

@@ -67,7 +67,7 @@ class RegisterMemberServiceIntegrationTest {
         assertThat(account.availableMargin()).isEqualTo(TradingAccount.INITIAL_WALLET_BALANCE);
         assertThat(accountRefillStateRepository.findByMemberIdAndRefillDate(
                 result.memberId(),
-                accountRefillDatePolicy.today()
+                accountRefillDatePolicy.currentRefillDate()
         ))
                 .get()
                 .extracting(state -> state.remainingCount())

@@ -6,16 +6,19 @@ import java.time.Instant;
 
 public record CommunityPostSummaryResult(
         Long id,
+        Long authorMemberId,
+        String authorNickname,
         CommunityCategory category,
         String title,
-        String authorNickname,
         long viewCount,
         long likeCount,
         long commentCount,
         Instant createdAt
 ) {
     public static CommunityPostSummaryResult from(CommunityPost post) {
-        return new CommunityPostSummaryResult(post.id(), post.category(), post.title(), post.authorNickname(),
-                post.viewCount(), post.likeCount(), post.commentCount(), post.createdAt());
+        return new CommunityPostSummaryResult(
+                post.id(), post.authorMemberId(), post.authorNickname(), post.category(), post.title(),
+                post.viewCount(), post.likeCount(), post.commentCount(), post.createdAt()
+        );
     }
 }

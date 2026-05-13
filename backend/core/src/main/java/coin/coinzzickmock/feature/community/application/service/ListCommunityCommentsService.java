@@ -13,8 +13,8 @@ public class ListCommunityCommentsService {
     private final CommunityCommentRepository communityCommentRepository;
 
     @Transactional(readOnly = true)
-    public CommunityCommentListResult execute(ListCommunityCommentsQuery query, Long actorMemberId, boolean actorAdmin) {
+    public CommunityCommentListResult execute(ListCommunityCommentsQuery query, Long actorMemberId, boolean isActorAdmin) {
         var page = communityCommentRepository.findActiveByPostId(query.postId(), query.page(), query.size());
-        return CommunityCommentListResult.from(page, actorMemberId, actorAdmin);
+        return CommunityCommentListResult.from(page, actorMemberId, isActorAdmin);
     }
 }

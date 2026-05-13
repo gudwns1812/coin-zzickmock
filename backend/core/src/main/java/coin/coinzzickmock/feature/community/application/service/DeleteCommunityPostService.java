@@ -22,7 +22,7 @@ public class DeleteCommunityPostService {
     public void execute(DeleteCommunityPostCommand command) {
         CommunityPost post = communityPostRepository.findActiveById(command.postId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        if (!CommunityPermissionPolicy.canDeletePost(command.actorAdmin(), post.authorMemberId().equals(command.actorMemberId()))) {
+        if (!CommunityPermissionPolicy.canDeletePost(command.isActorAdmin(), post.authorMemberId().equals(command.actorMemberId()))) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         communityPostRepository.softDelete(command.postId(), Instant.now(clock));

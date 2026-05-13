@@ -21,7 +21,7 @@ public class GetCommunityPostService {
     public CommunityPostDetailResult execute(GetCommunityPostQuery query) {
         CommunityPost post = communityPostRepository.findActiveById(query.postId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        boolean liked = communityPostLikeRepository.exists(query.postId(), query.actorMemberId());
-        return CommunityPostDetailResult.from(post, query.actorMemberId(), query.actorAdmin(), liked);
+        boolean isLiked = communityPostLikeRepository.exists(query.postId(), query.actorMemberId());
+        return CommunityPostDetailResult.from(post, query.actorMemberId(), query.isActorAdmin(), isLiked);
     }
 }

@@ -7,7 +7,7 @@ import java.util.Set;
 public record UpdateCommunityPostCommand(
         Long postId,
         Long actorMemberId,
-        boolean actorAdmin,
+        boolean isActorAdmin,
         CommunityCategory category,
         String title,
         String contentJson,

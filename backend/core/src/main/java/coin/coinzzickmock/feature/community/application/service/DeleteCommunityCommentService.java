@@ -22,7 +22,7 @@ public class DeleteCommunityCommentService {
     public void execute(DeleteCommunityCommentCommand command) {
         CommunityComment comment = communityCommentRepository.findActiveById(command.commentId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        if (!CommunityPermissionPolicy.canDeleteComment(command.actorAdmin(), comment.authorMemberId().equals(command.actorMemberId()))) {
+        if (!CommunityPermissionPolicy.canDeleteComment(command.isActorAdmin(), comment.authorMemberId().equals(command.actorMemberId()))) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         communityCommentRepository.softDelete(command.commentId(), Instant.now(clock));

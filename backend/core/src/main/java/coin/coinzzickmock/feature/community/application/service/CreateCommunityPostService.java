@@ -30,7 +30,7 @@ public class CreateCommunityPostService {
     @Transactional
     public CommunityPostMutationResult execute(CreateCommunityPostCommand command) {
         CommunityCategory category = command.category();
-        if (!CommunityPermissionPolicy.canCreatePost(command.actorAdmin(), category)) {
+        if (!CommunityPermissionPolicy.canCreatePost(command.isActorAdmin(), category)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         validateImageOwnership(command.actorMemberId(), Set.copyOf(command.imageObjectKeys()));

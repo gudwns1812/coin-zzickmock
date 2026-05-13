@@ -7,7 +7,7 @@ import java.util.Set;
 public record CreateCommunityPostCommand(
         Long actorMemberId,
         String actorNickname,
-        boolean actorAdmin,
+        boolean isActorAdmin,
         CommunityCategory category,
         String title,
         String contentJson,

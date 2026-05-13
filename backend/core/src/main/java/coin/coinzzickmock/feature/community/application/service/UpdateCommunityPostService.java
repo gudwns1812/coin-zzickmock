@@ -30,8 +30,8 @@ public class UpdateCommunityPostService {
     public CommunityPostMutationResult execute(UpdateCommunityPostCommand command) {
         CommunityPost existing = communityPostRepository.findActiveById(command.postId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        boolean author = existing.authorMemberId().equals(command.actorMemberId());
-        if (!CommunityPermissionPolicy.canEditPost(command.actorAdmin(), author, existing.category(), command.category())) {
+        boolean isAuthor = existing.authorMemberId().equals(command.actorMemberId());
+        if (!CommunityPermissionPolicy.canEditPost(command.isActorAdmin(), isAuthor, existing.category(), command.category())) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         validateImageOwnership(command.actorMemberId(), Set.copyOf(command.imageObjectKeys()));

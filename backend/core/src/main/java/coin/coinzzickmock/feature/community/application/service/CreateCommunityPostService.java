@@ -59,11 +59,4 @@ public class CreateCommunityPostService {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }
-
-    private TiptapJsonDocument content(Long actorMemberId, String contentJson, java.util.Set<String> imageObjectKeys, java.util.List<String> allowedImageSrcPrefixes) {
-        if (imageObjectKeys == null || imageObjectKeys.isEmpty()) {
-            return TiptapJsonDocument.of(contentJson);
-        }
-        return TiptapJsonDocument.of(contentJson, new TiptapJsonImagePolicy("community/" + actorMemberId + "/", allowedImageSrcPrefixes));
-    }
 }

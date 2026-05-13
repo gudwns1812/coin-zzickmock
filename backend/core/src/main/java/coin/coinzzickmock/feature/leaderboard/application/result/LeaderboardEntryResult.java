@@ -4,6 +4,7 @@ public record LeaderboardEntryResult(
         int rank,
         String nickname,
         double walletBalance,
-        double profitRate
+        double profitRate,
+        String targetToken
 ) {
 }

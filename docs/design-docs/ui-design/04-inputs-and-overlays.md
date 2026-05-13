@@ -40,6 +40,16 @@
 - 결과 리스트는 종목 행 패턴을 그대로 따른다.
 - 키보드 단축키, 모달 진입, 결과 클릭 흐름이 끊기지 않아야 한다.
 - 검색 결과의 hover/active 상태는 명확해야 한다.
+- markets 랭킹 검색은 ranked member만 대상으로 하고 결과 row에는 닉네임/rank/실현 수익률 맥락만 표시한다. raw id는 보이지 않으며 선택은 opaque target token으로 처리한다.
+
+## 랭커 포지션 엿보기 popover
+
+- 랭킹 행 또는 검색 결과 선택으로 오른쪽 popover를 연다. 열림 후 focus는 popover 제목 또는 첫 CTA로 이동하고 닫을 때 원래 행/검색 결과로 복귀한다.
+- locked 상태는 position 정보를 가리지 않고 아예 렌더링하지 않는다. 보유 `POSITION_PEEK` item 수량, `아이템 사용` CTA, item 0개일 때 `/shop` 이동 링크만 보여준다.
+- consuming 상태는 CTA pending, 중복 클릭 방지, 실패 메시지를 같은 popover 안에서 처리한다. 실패 후 item count는 최신 값으로 갱신한다.
+- unlocked 상태는 저장 snapshot의 `createdAt`, rank/nickname context, public position rows를 보여준다. 무료 `새로고침` 버튼은 두지 않고 `다시 사용`만 새 snapshot 생성 CTA로 제공한다.
+- empty snapshot은 성공 상태로 보이며 "열린 포지션이 없습니다"처럼 명확히 설명한다.
+- forbidden field: TP/SL, close/edit/order action, history, raw member id는 locked/unlocked 어느 상태에도 표시하지 않는다.
 
 ## 모달과 오버레이
 

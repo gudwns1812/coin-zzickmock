@@ -87,7 +87,8 @@ public class RewardController {
         return ApiResponse.success(new ShopPurchaseResponse(
                 result.itemCode(),
                 result.rewardPoint(),
-                result.refillRemainingCount()
+                result.refillRemainingCount(),
+                result.positionPeekItemBalance()
         ));
     }
 

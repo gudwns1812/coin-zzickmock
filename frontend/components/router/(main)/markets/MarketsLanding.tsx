@@ -14,13 +14,27 @@ import {
 } from "@/lib/markets";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import {
+  consumePositionPeek,
+  getPositionPeekLatest,
+  searchFuturesLeaderboardMembers,
+} from "@/lib/futures-client-api";
+import type {
+  PositionPeekPublicPosition,
+  PositionPeekSnapshot,
+  PositionPeekTarget,
+} from "@/lib/futures-api";
+import { getPositionPeekItemCount, getPositionPeekSnapshotCreatedAt } from "@/lib/position-peek-ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
   Trophy,
+  Search,
   TrendingUp,
   WalletCards,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export type DashboardSummaryCard = {
   title: string;
@@ -75,6 +89,7 @@ export default function MarketsLanding({
   priceFlashBySymbol,
 }: MarketsLandingProps) {
   const [sortKey, setSortKey] = useState<MarketSortKey>("default");
+  const [selectedPeekTarget, setSelectedPeekTarget] = useState<PositionPeekTarget | null>(null);
   const sortedMarkets = [...markets].sort((left, right) => {
     if (sortKey === "default") {
       return 0;
@@ -183,6 +198,12 @@ export default function MarketsLanding({
           </Link>
         </div>
 
+        <LeaderboardPeekSearch
+          entries={rankingEntries}
+          selectedTarget={selectedPeekTarget}
+          onSelect={setSelectedPeekTarget}
+        />
+
         {rankingEntries.length === 0 ? (
           <div className="px-main-2 py-8 text-sm-custom text-main-dark-gray">
             데이터 집계 중
@@ -190,11 +211,20 @@ export default function MarketsLanding({
         ) : (
           <div className="divide-y divide-main-light-gray/30">
             {rankingEntries.map((entry) => (
-              <RankingRow key={entry.rank} entry={entry} />
+              <RankingRow
+                key={entry.rank}
+                entry={entry}
+                onSelect={entry.targetToken ? setSelectedPeekTarget : undefined}
+              />
             ))}
           </div>
         )}
       </section>
+
+      <PositionPeekPanel
+        target={selectedPeekTarget}
+        onClose={() => setSelectedPeekTarget(null)}
+      />
     </div>
   );
 }
@@ -336,9 +366,15 @@ function MarketTableRow({
   );
 }
 
-function RankingRow({ entry }: { entry: MarketRankingEntry }) {
-  return (
-    <div className="grid grid-cols-[120px_1fr_220px_180px] items-center gap-main px-main-2 py-6 transition-colors duration-200 hover:bg-main-blue/5">
+function RankingRow({
+  entry,
+  onSelect,
+}: {
+  entry: MarketRankingEntry;
+  onSelect?: (target: PositionPeekTarget) => void;
+}) {
+  const content = (
+    <>
       <div className="flex items-center gap-3">
         <RankBadge rank={entry.rank} />
         <span className="text-sm-custom font-semibold text-main-dark-gray/80">
@@ -356,7 +392,32 @@ function RankingRow({ entry }: { entry: MarketRankingEntry }) {
       >
         {formatPercent(entry.profitRate * 100)}
       </p>
-    </div>
+    </>
+  );
+
+  const className =
+    "grid w-full grid-cols-[120px_1fr_220px_180px] items-center gap-main px-main-2 py-6 text-left transition-colors duration-200 hover:bg-main-blue/5";
+
+  if (!onSelect || !entry.targetToken) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <button
+      type="button"
+      className={`${className} cursor-pointer focus:outline-none focus:ring-2 focus:ring-main-blue/40`}
+      onClick={() =>
+        onSelect({
+          rank: entry.rank,
+          nickname: entry.nickname,
+          walletBalance: entry.walletBalance,
+          profitRate: entry.profitRate,
+          targetToken: entry.targetToken ?? "",
+        })
+      }
+    >
+      {content}
+    </button>
   );
 }
 
@@ -391,5 +452,259 @@ function RankBadge({ rank }: { rank: number }) {
     >
       {rank}
     </span>
+  );
+}
+
+function LeaderboardPeekSearch({
+  entries,
+  selectedTarget,
+  onSelect,
+}: {
+  entries: MarketRankingEntry[];
+  selectedTarget: PositionPeekTarget | null;
+  onSelect: (target: PositionPeekTarget) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const trimmedQuery = query.trim();
+  const fallbackTargets = useMemo(
+    () => entries.filter((entry) => entry.targetToken),
+    [entries]
+  );
+  const searchQuery = useQuery({
+    queryKey: ["leaderboard-peek-search", trimmedQuery],
+    queryFn: () => searchFuturesLeaderboardMembers(trimmedQuery),
+    enabled: trimmedQuery.length >= 1,
+    staleTime: 20_000,
+  });
+  const results = trimmedQuery.length > 0 ? searchQuery.data ?? [] : fallbackTargets;
+
+  return (
+    <div className="border-b border-main-light-gray/40 bg-white/40 px-main-2 py-5">
+      <label className="text-xs-custom font-semibold text-main-dark-gray" htmlFor="leaderboard-peek-search">
+        랭킹 사용자 검색
+      </label>
+      <div className="mt-2 flex items-center gap-3 rounded-main border border-main-light-gray bg-white/80 px-4 py-3 shadow-sm focus-within:border-main-blue">
+        <Search className="h-4 w-4 text-main-dark-gray/50" aria-hidden="true" />
+        <input
+          id="leaderboard-peek-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="닉네임으로 전체 랭킹 검색"
+          className="w-full bg-transparent text-sm-custom text-main-dark-gray outline-none placeholder:text-main-dark-gray/40"
+        />
+      </div>
+      {searchQuery.isError ? (
+        <p className="mt-3 text-xs-custom text-main-red">검색 결과를 불러오지 못했습니다.</p>
+      ) : null}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {results.slice(0, 8).map((result) => (
+          <button
+            key={`${result.rank}-${result.nickname}-${result.targetToken}`}
+            type="button"
+            className={`rounded-main border px-3 py-2 text-xs-custom font-semibold transition-all ${
+              selectedTarget?.targetToken === result.targetToken
+                ? "border-main-blue bg-main-blue text-white"
+                : "border-main-light-gray bg-white/70 text-main-dark-gray hover:border-main-blue hover:text-main-blue"
+            }`}
+            onClick={() =>
+              onSelect({
+                rank: result.rank,
+                nickname: result.nickname,
+                walletBalance: result.walletBalance,
+                profitRate: result.profitRate,
+                targetToken: result.targetToken ?? "",
+              })
+            }
+          >
+            {result.rank}위 · {result.nickname}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PositionPeekPanel({
+  target,
+  onClose,
+}: {
+  target: PositionPeekTarget | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const latestQuery = useQuery({
+    queryKey: ["position-peek-latest", target?.targetToken],
+    queryFn: () => getPositionPeekLatest(target?.targetToken ?? ""),
+    enabled: Boolean(target?.targetToken),
+  });
+  const consumeMutation = useMutation({
+    mutationFn: () => consumePositionPeek(target?.targetToken ?? "", crypto.randomUUID()),
+    onSuccess: (status) => {
+      const targetToken = target?.targetToken;
+      if (!targetToken) {
+        return;
+      }
+      queryClient.setQueryData(["position-peek-latest", targetToken], status);
+      void queryClient.invalidateQueries({ queryKey: ["position-peek-latest", targetToken] });
+    },
+  });
+
+  if (!target) {
+    return null;
+  }
+
+  const status = consumeMutation.data ?? latestQuery.data ?? null;
+  const snapshot = status?.latestSnapshot ?? null;
+  const itemCount = getPositionPeekItemCount(status);
+  const isLoading = latestQuery.isLoading || consumeMutation.isPending;
+  const errorMessage = latestQuery.isError || consumeMutation.isError
+    ? "엿보기 정보를 불러오지 못했습니다. 보유 수량 또는 대상 선택을 다시 확인해 주세요."
+    : null;
+
+  return (
+    <aside className="fixed right-8 top-28 z-40 w-[380px] rounded-main border border-white/60 bg-white/95 p-6 shadow-2xl backdrop-blur-xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs-custom font-semibold text-main-blue">포지션 엿보기</p>
+          <h3 className="mt-2 text-xl-custom font-bold text-main-dark-gray">{target.nickname}</h3>
+          <p className="mt-1 text-xs-custom text-main-dark-gray/60">
+            {target.rank ? `${target.rank}위 · ` : ""}저장된 공개 스냅샷만 표시합니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full p-2 text-main-dark-gray/60 transition-colors hover:bg-main-light-gray/50 hover:text-main-dark-gray"
+          aria-label="포지션 엿보기 닫기"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-5 rounded-main border border-main-light-gray/50 bg-main-light-gray/20 p-4">
+        {isLoading ? <p className="text-sm-custom text-main-dark-gray">처리 중...</p> : null}
+        {errorMessage ? <p className="text-sm-custom text-main-red">{errorMessage}</p> : null}
+        {!isLoading && !snapshot ? (
+          <LockedPeekState
+            itemCount={itemCount}
+            onUse={() => consumeMutation.mutate()}
+            isPending={consumeMutation.isPending}
+          />
+        ) : null}
+        {snapshot ? (
+          <UnlockedPeekState
+            snapshot={snapshot}
+            itemCount={itemCount}
+            onUseAgain={() => consumeMutation.mutate()}
+            isPending={consumeMutation.isPending}
+          />
+        ) : null}
+      </div>
+    </aside>
+  );
+}
+
+function LockedPeekState({
+  itemCount,
+  onUse,
+  isPending,
+}: {
+  itemCount: number;
+  onUse: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-sm-custom font-semibold text-main-dark-gray">아직 저장된 스냅샷이 없습니다.</p>
+      <p className="mt-2 text-xs-custom text-main-dark-gray/65">
+        보유 엿보기권 {itemCount}개 · 1개를 사용하면 현재 열린 포지션 공개 요약 1개가 저장됩니다.
+      </p>
+      <button
+        type="button"
+        disabled={itemCount <= 0 || isPending}
+        onClick={onUse}
+        className="mt-4 w-full rounded-main bg-main-blue px-4 py-3 text-sm-custom font-bold text-white transition disabled:cursor-not-allowed disabled:bg-main-light-gray disabled:text-main-dark-gray/50"
+      >
+        {isPending ? "사용 중..." : "아이템 사용"}
+      </button>
+      {itemCount <= 0 ? (
+        <Link href="/shop" className="mt-3 block text-center text-xs-custom font-semibold text-main-blue hover:underline">
+          상점에서 엿보기권 구매하기
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function UnlockedPeekState({
+  snapshot,
+  itemCount,
+  onUseAgain,
+  isPending,
+}: {
+  snapshot: PositionPeekSnapshot;
+  itemCount: number;
+  onUseAgain: () => void;
+  isPending: boolean;
+}) {
+  const createdAt = getPositionPeekSnapshotCreatedAt(snapshot);
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm-custom font-semibold text-main-dark-gray">저장된 스냅샷</p>
+        <p className="text-xs-custom text-main-dark-gray/55">
+          {createdAt ? new Date(createdAt).toLocaleString("ko-KR") : "생성 시각 없음"}
+        </p>
+      </div>
+      {snapshot.positions.length === 0 ? (
+        <p className="mt-4 rounded-main bg-white/80 p-4 text-sm-custom text-main-dark-gray/70">
+          스냅샷 생성 시점에 열린 포지션이 없습니다.
+        </p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3">
+          {snapshot.positions.map((position) => (
+            <PeekPositionCard key={`${position.symbol}-${position.positionSide}`} position={position} />
+          ))}
+        </div>
+      )}
+      <button
+        type="button"
+        disabled={itemCount <= 0 || isPending}
+        onClick={onUseAgain}
+        className="mt-4 w-full rounded-main border border-main-blue px-4 py-3 text-sm-custom font-bold text-main-blue transition hover:bg-main-blue hover:text-white disabled:cursor-not-allowed disabled:border-main-light-gray disabled:text-main-dark-gray/45 disabled:hover:bg-transparent"
+      >
+        {isPending ? "다시 사용 중..." : `다시 사용 (${itemCount}개 보유)`}
+      </button>
+    </div>
+  );
+}
+
+function PeekPositionCard({ position }: { position: PositionPeekPublicPosition }) {
+  return (
+    <article className="rounded-main border border-main-light-gray/50 bg-white/85 p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm-custom font-bold text-main-dark-gray">{position.symbol}</p>
+        <span className={`rounded-full px-2 py-1 text-xs-custom font-bold ${position.positionSide === "LONG" ? "bg-[#21a453]/10 text-[#16a34a]" : "bg-main-red/10 text-main-red"}`}>
+          {position.positionSide} · {position.leverage}x
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 text-xs-custom">
+        <PeekMetric label="수량" value={position.positionSize.toLocaleString("ko-KR")} />
+        <PeekMetric label="명목가" value={formatUsd(position.notionalValue)} />
+        <PeekMetric label="미실현 PnL" value={formatUsd(position.unrealizedPnl)} tone={position.unrealizedPnl} />
+        <PeekMetric label="ROI" value={formatPercent(position.roi * 100)} tone={position.roi} />
+      </div>
+    </article>
+  );
+}
+
+function PeekMetric({ label, value, tone }: { label: string; value: string; tone?: number }) {
+  return (
+    <div>
+      <p className="text-main-dark-gray/50">{label}</p>
+      <p className={`mt-1 font-bold ${typeof tone === "number" ? getSignedFinancialTextClassName(tone) : "text-main-dark-gray"}`}>
+        {value}
+      </p>
+    </div>
   );
 }

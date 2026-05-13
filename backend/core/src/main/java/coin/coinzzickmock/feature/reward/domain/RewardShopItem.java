@@ -18,6 +18,7 @@ public record RewardShopItem(
 ) {
     public static final String ITEM_TYPE_COFFEE_VOUCHER = "COFFEE_VOUCHER";
     public static final String ITEM_TYPE_ACCOUNT_REFILL_COUNT = "ACCOUNT_REFILL_COUNT";
+    public static final String ITEM_TYPE_POSITION_PEEK = "POSITION_PEEK";
 
     public RewardShopItem {
         if (price <= 0) {
@@ -60,6 +61,14 @@ public record RewardShopItem(
 
     public boolean accountRefillCount() {
         return ITEM_TYPE_ACCOUNT_REFILL_COUNT.equals(itemType);
+    }
+
+    public boolean positionPeek() {
+        return ITEM_TYPE_POSITION_PEEK.equals(itemType);
+    }
+
+    public boolean instantConsumable() {
+        return accountRefillCount() || positionPeek();
     }
 
     public Integer remainingStock() {

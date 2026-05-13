@@ -14,6 +14,8 @@ import {
   getShopItemImagePath,
   getShopItemAvailabilityLabel,
   isAccountRefillShopItem,
+  isInstantPurchaseShopItem,
+  isPositionPeekShopItem,
   isShopItemLimitReached,
   isShopItemSoldOut,
   normalizeVoucherPhoneNumber,
@@ -27,6 +29,7 @@ import {
   Phone,
   Send,
   WalletCards,
+  Eye,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -72,7 +75,7 @@ export default function ShopRedemptionClient({
   const submitRedemption = async () => {
     if (!selectedItem) return;
 
-    if (isAccountRefillShopItem(selectedItem)) {
+    if (isInstantPurchaseShopItem(selectedItem)) {
       await submitInstantPurchase(selectedItem);
       return;
     }
@@ -107,9 +110,17 @@ export default function ShopRedemptionClient({
 
     try {
       const result = await purchaseShopItem(item.code);
-      toast.success(
-        `리필 가능 횟수가 ${result.refillRemainingCount.toLocaleString("ko-KR")}회가 되었습니다.`
-      );
+      if (isPositionPeekShopItem(item)) {
+        const balance = result.positionPeekItemBalance ?? 0;
+        toast.success(
+          `포지션 엿보기권이 ${balance.toLocaleString("ko-KR")}개가 되었습니다.`
+        );
+      } else {
+        const refillCount = result.refillRemainingCount ?? 0;
+        toast.success(
+          `리필 가능 횟수가 ${refillCount.toLocaleString("ko-KR")}회가 되었습니다.`
+        );
+      }
       setSelectedItem(null);
       router.refresh();
     } catch (error) {
@@ -157,6 +168,10 @@ export default function ShopRedemptionClient({
                 {isAccountRefillShopItem(item) ? (
                   <div className="flex size-20 items-center justify-center rounded-main bg-main-blue text-white">
                     <WalletCards size={38} />
+                  </div>
+                ) : isPositionPeekShopItem(item) ? (
+                  <div className="flex size-20 items-center justify-center rounded-main bg-main-blue text-white">
+                    <Eye size={38} />
                   </div>
                 ) : (
                   <Image
@@ -218,17 +233,19 @@ export default function ShopRedemptionClient({
       >
         <div className="w-[min(460px,calc(100vw-48px))] pr-6">
           <p className="text-lg-custom font-bold text-main-dark-gray">
-            {selectedItem && isAccountRefillShopItem(selectedItem)
-              ? "리필 횟수 추가권 구매"
+            {selectedItem && isInstantPurchaseShopItem(selectedItem)
+              ? `${selectedItem.name} 구매`
               : "커피 교환권 신청"}
           </p>
           <p className="mt-2 text-sm-custom text-main-dark-gray/60 break-keep">
             {selectedItem?.name} · {selectedItem?.price.toLocaleString("ko-KR")} P
           </p>
 
-          {selectedItem && isAccountRefillShopItem(selectedItem) ? (
+          {selectedItem && isInstantPurchaseShopItem(selectedItem) ? (
             <div className="mt-5 rounded-main bg-main-light-gray/45 p-main text-sm-custom leading-6 text-main-dark-gray/70 break-keep">
-              구매 즉시 이번 주 사용 가능한 리필 횟수가 1회 추가됩니다. 사용하지 않은 추가 횟수는 다음 KST 월요일 리셋 때 사라집니다.
+              {isPositionPeekShopItem(selectedItem)
+                ? "구매 즉시 보유 엿보기권이 1개 추가됩니다. 리더보드에서 사용자를 선택해 현재 열린 포지션 공개 요약을 저장할 수 있습니다."
+                : "구매 즉시 이번 주 사용 가능한 리필 횟수가 1회 추가됩니다. 사용하지 않은 추가 횟수는 다음 KST 월요일 리셋 때 사라집니다."}
             </div>
           ) : (
             <>
@@ -276,7 +293,7 @@ export default function ShopRedemptionClient({
               className="flex items-center gap-2 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white disabled:bg-main-light-gray disabled:text-main-dark-gray/40"
               disabled={
                 isSubmitting ||
-                (!selectedItem || !isAccountRefillShopItem(selectedItem)
+                (!selectedItem || !isInstantPurchaseShopItem(selectedItem)
                   ? !!phoneError || !phoneNumber
                   : false)
               }
@@ -284,7 +301,7 @@ export default function ShopRedemptionClient({
               type="button"
             >
               {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-              {selectedItem && isAccountRefillShopItem(selectedItem)
+              {selectedItem && isInstantPurchaseShopItem(selectedItem)
                 ? "구매하기"
                 : "신청하기"}
             </button>

@@ -2,7 +2,12 @@ import type {
   AccountRefillResult,
   AdminShopItem,
   AdminShopItemInput,
+  LeaderboardMode,
+  LeaderboardSearchResult,
   ModifyFuturesOrderResult,
+  PeekItemBalance,
+  PositionPeekSnapshot,
+  PositionPeekStatus,
   RewardRedemption,
   ShopPurchaseResult,
 } from "@/lib/futures-api";
@@ -12,6 +17,57 @@ type ClientApiResponse<T> = {
   data: T | null;
   message: string | null;
 };
+
+
+export async function searchFuturesLeaderboardMembers(
+  query: string,
+  options: { mode?: LeaderboardMode; limit?: number } = {}
+): Promise<LeaderboardSearchResult[]> {
+  const trimmedQuery = query.trim();
+
+  if (trimmedQuery.length === 0) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    mode: options.mode ?? "profitRate",
+    query: trimmedQuery,
+    limit: String(options.limit ?? 10),
+  });
+  return readFuturesApi<LeaderboardSearchResult[]>(
+    `/leaderboard/search?${params.toString()}`
+  );
+}
+
+export async function getPositionPeekLatest(
+  targetToken: string
+): Promise<PositionPeekStatus> {
+  return writeFuturesApi<PositionPeekStatus>("/position-peeks/latest", {
+    targetToken,
+  });
+}
+
+export async function getPositionPeekSnapshot(
+  peekId: string
+): Promise<PositionPeekSnapshot> {
+  return readFuturesApi<PositionPeekSnapshot>(
+    `/position-peeks/${encodeURIComponent(peekId)}`
+  );
+}
+
+export async function getPositionPeekItemBalance(): Promise<PeekItemBalance> {
+  return readFuturesApi<PeekItemBalance>("/position-peeks/item-balance");
+}
+
+export async function consumePositionPeek(
+  targetToken: string,
+  idempotencyKey: string
+): Promise<PositionPeekStatus> {
+  return writeFuturesApi<PositionPeekStatus>("/position-peeks", {
+    targetToken,
+    idempotencyKey,
+  });
+}
 
 export async function createRewardRedemption(
   itemCode: string,
@@ -96,6 +152,23 @@ export async function deactivateAdminShopItem(
     `/admin/shop-items/${encodeURIComponent(code)}/deactivate`,
     {}
   );
+}
+
+async function readFuturesApi<T>(path: string): Promise<T> {
+  const response = await fetch(`/proxy-futures${path}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | ClientApiResponse<T>
+    | null;
+
+  if (!response.ok || !payload?.success || !payload.data) {
+    throw new Error(payload?.message ?? "요청을 처리하지 못했습니다.");
+  }
+
+  return payload.data;
 }
 
 async function writeFuturesApi<T>(

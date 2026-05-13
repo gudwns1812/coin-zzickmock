@@ -142,6 +142,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 1. **상단 요약 카드 (3종)**: 총 자산, 총 수익, 오늘 수익
 2. **코인 시세 테이블**: 코인명(번들 로고 포함), 가격, 24h 변동, Mark Price, Funding Rate, Index Price, 24h 거래대금
 3. **실현 수익률 랭킹 리스트**: 순위, 닉네임, 지갑 자산, 실현 수익률
+4. **랭커 포지션 엿보기 패널**: 랭킹 검색, 잠금/아이템 사용 상태, 저장 snapshot 표시
 
 ### 필요한 데이터
 
@@ -150,12 +151,18 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 실현 수익률 랭킹 데이터 (상위 랭커 닉네임, `wallet_balance`, 초기 지급액 대비 수익률)
 - 로그인 사용자의 전체 실현 수익률 랭킹 순위. 헤더 닉네임 팝업과 마이페이지 계정 요약에만 작게 표시하고, 헤더의 상시 노출 닉네임에는 표시하지 않는다.
 - 랭킹 데이터는 가입 직후와 지갑 잔고 변경 이벤트 이후 Redis ZSET의 해당 멤버를 즉시 갱신하고, 1시간 단위 전체 재집계로 보정한다.
+- ranked member 검색 결과와 각 행의 short-lived opaque `targetToken`. 브라우저와 public API는 raw `memberId`를 받지 않는다.
+- 선택 target에 대한 viewer-owned position peek 상태: 보유 `POSITION_PEEK` item 수량, 최신 snapshot metadata, 저장된 공개 position rows.
 
 ### 핵심 상호작용
 
 - 심볼 클릭 시 `/markets/[symbol]` 이동
 - 가격 실시간 업데이트 시 해당 가격 컴포넌트의 사각형 영역(Boundary)에 일시적인 플래시 효과 적용
 - 정렬 기준 변경 (가격, 변동률 등)
+- 랭킹 검색 입력은 현재 보이는 top list 밖의 ranked member도 찾는다. 결과와 랭킹 행을 선택하면 오른쪽 popover가 열린다.
+- item을 사용하지 않은 target의 popover는 position 정보를 렌더링하지 않고 보유 엿보기 item 개수와 `아이템 사용` 버튼만 보여준다.
+- `아이템 사용`은 item 1개를 소비해 선택 target의 현재 열린 포지션 공개 summary snapshot 1개를 저장한다. 이후 조회는 live position refresh가 아니라 저장된 snapshot을 보여준다.
+- 이미 snapshot이 있는 target은 `snapshot createdAt`, rank/nickname context, 저장된 public position rows를 보여준다. `다시 사용`은 item 1개를 추가 소비해 새 snapshot을 만든다.
 - BTC/ETH 로고는 `frontend/public/images/logo`의 번들 이미지를 사용한다.
 
 ### 빈 상태
@@ -178,6 +185,12 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 로그인 사용자의 내 순위는 선택된 랭킹 mode의 score 기준으로 "나보다 높은 점수의 active member 수 + 1"을 표시한다. 같은 score의 동점자는 별도 tie-break로 순위를 세분화하지 않는다.
 - Redis 랭킹 인덱스는 빠른 조회용 파생 snapshot이다. Redis를 사용할 수 있으면 Redis snapshot 기준으로 계산하고, DB fallback은 현재 DB projection에서 더 높은 score를 가진 사람 수만 세는 단순 보정 경로로 둔다.
 - Redis snapshot이 불완전하면 부분 랭킹을 표시하지 않고 DB fallback 결과를 사용한다.
+- 랭킹 행/검색 결과는 raw `memberId` 없이 `targetToken`만으로 선택 가능하다. `targetToken`은 URL query string에 오래 남기지 않고 request body 또는 server-side lookup key로 전달한다.
+- locked popover는 target의 symbol, side, leverage, size, notional, PnL, ROI 같은 position field를 전혀 보여주지 않는다. item 수량이 0이면 `아이템 사용`은 비활성화되고 `/shop` 이동 경로를 제공한다.
+- unlocked snapshot은 `symbol`, `LONG/SHORT`, `leverage`, `size/notional`, exact `unrealizedPnl`, `ROI/ROE`, `snapshot createdAt`만 표시한다. no-open-position target은 item을 소비한 empty snapshot으로 표시한다.
+- response와 UI는 TP/SL(`takeProfitPrice`, `stopLossPrice`), close/edit/order action, order id, position history id, raw `memberId`, `targetMemberId`, `viewerMemberId`를 position peek surface에 노출하지 않는다.
+- snapshot read는 `viewer + peekId` ownership만 확인하며 item을 추가 소비하지 않는다. target이 이후 leaderboard에서 사라져도 기존 snapshot 조회는 유지된다.
+- 리더보드 score는 계속 정산된 `wallet_balance` 기준이며 open unrealized PnL이나 position peek 사용 이력으로 변하지 않는다.
 
 ## 화면 4. 심볼 상세 `/markets/[symbol]`
 

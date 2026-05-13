@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnaps
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
+import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenCodec;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -28,6 +29,7 @@ public class GetLeaderboardService {
 
     private final LeaderboardProjectionRepository projectionRepository;
     private final List<LeaderboardSnapshotStore> snapshotStores;
+    private final PositionPeekTargetTokenCodec targetTokenService;
 
     @Transactional(readOnly = true)
     public LeaderboardResult get(String modeValue, String limitValue) {
@@ -102,31 +104,17 @@ public class GetLeaderboardService {
             int limit,
             Optional<LeaderboardMemberRankResult> myRank
     ) {
-        List<LeaderboardEntryResult> entries = snapshot.entries().stream()
+        List<LeaderboardEntry> sortedEntries = snapshot.entries().stream()
                 .sorted(comparator(mode))
                 .limit(limit)
-                .map(entry -> new LeaderboardEntryResult(
-                        0,
-                        entry.nickname(),
-                        entry.walletBalance(),
-                        entry.profitRate()
-                ))
                 .toList();
 
         return new LeaderboardResult(
                 mode.value(),
                 source,
                 snapshot.refreshedAt(),
-                IntStream.range(0, entries.size())
-                        .mapToObj(index -> {
-                            LeaderboardEntryResult entry = entries.get(index);
-                            return new LeaderboardEntryResult(
-                                    index + 1,
-                                    entry.nickname(),
-                                    entry.walletBalance(),
-                                    entry.profitRate()
-                            );
-                        })
+                IntStream.range(0, sortedEntries.size())
+                        .mapToObj(index -> toEntryResult(mode, index + 1, sortedEntries.get(index)))
                         .toList(),
                 myRank
         );
@@ -151,6 +139,24 @@ public class GetLeaderboardService {
                             .count();
                     return new LeaderboardMemberRankResult(Math.toIntExact(higherRankedMemberCount + 1));
                 });
+    }
+
+    private LeaderboardEntryResult toEntryResult(LeaderboardMode mode, int rank, LeaderboardEntry entry) {
+        String targetToken = targetTokenService.issue(new PositionPeekTargetTokenCodec.TargetTokenPayload(
+                entry.memberId(),
+                rank,
+                entry.nickname(),
+                entry.walletBalance(),
+                entry.profitRate(),
+                mode.value()
+        ));
+        return new LeaderboardEntryResult(
+                rank,
+                entry.nickname(),
+                entry.walletBalance(),
+                entry.profitRate(),
+                targetToken
+        );
     }
 
     private Comparator<LeaderboardEntry> comparator(LeaderboardMode mode) {

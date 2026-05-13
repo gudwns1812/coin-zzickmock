@@ -6,13 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
-import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
+import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
+import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenCodec;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,14 +23,11 @@ import org.junit.jupiter.api.Test;
 class GetLeaderboardServiceTest {
     @Test
     void ranksProfitRateFromRealizedWalletBalance() {
-        GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(
-                        entry(1L, "Flat", 100_000),
-                        entry(2L, "Winner", 124_580),
-                        entry(3L, "Loss", 95_000)
-                )),
-                List.of()
-        );
+        GetLeaderboardService service = service(List.of(
+                entry(1L, "Flat", 100_000),
+                entry(2L, "Winner", 124_580),
+                entry(3L, "Loss", 95_000)
+        ));
 
         LeaderboardResult result = service.get("profitRate", "3");
 
@@ -44,13 +42,10 @@ class GetLeaderboardServiceTest {
 
     @Test
     void ranksWalletBalanceModeByWalletUsdt() {
-        GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(
-                        entry(1L, "SmallProfitRate", 120_000),
-                        entry(2L, "LargestWallet", 150_000)
-                )),
-                List.of()
-        );
+        GetLeaderboardService service = service(List.of(
+                entry(1L, "SmallProfitRate", 120_000),
+                entry(2L, "LargestWallet", 150_000)
+        ));
 
         LeaderboardResult result = service.get("walletBalance", "1");
 
@@ -62,8 +57,8 @@ class GetLeaderboardServiceTest {
 
     @Test
     void usesRedisStoreWhenSnapshotExists() {
-        GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(entry(10L, "Database", 200_000))),
+        GetLeaderboardService service = service(
+                List.of(entry(10L, "Database", 200_000)),
                 List.of(new InMemorySnapshotStore(List.of(entry(11L, "Redis", 130_000))))
         );
 
@@ -75,8 +70,8 @@ class GetLeaderboardServiceTest {
 
     @Test
     void fallsBackToDatabaseWhenRedisSnapshotIsEmpty() {
-        GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(entry(10L, "Database", 200_000))),
+        GetLeaderboardService service = service(
+                List.of(entry(10L, "Database", 200_000)),
                 List.of(new InMemorySnapshotStore(List.of()))
         );
 
@@ -88,15 +83,12 @@ class GetLeaderboardServiceTest {
 
     @Test
     void calculatesMyRankFromDatabaseByCountingHigherScoresOnly() {
-        GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(
-                        entry(1L, "First", 150_000),
-                        entry(2L, "TieLowerMemberId", 120_000),
-                        entry(3L, "TieHigherMemberId", 120_000),
-                        entry(4L, "Loss", 90_000)
-                )),
-                List.of()
-        );
+        GetLeaderboardService service = service(List.of(
+                entry(1L, "First", 150_000),
+                entry(2L, "TieLowerMemberId", 120_000),
+                entry(3L, "TieHigherMemberId", 120_000),
+                entry(4L, "Loss", 90_000)
+        ));
 
         LeaderboardResult result = service.get("profitRate", "2", 3L);
 
@@ -107,8 +99,8 @@ class GetLeaderboardServiceTest {
 
     @Test
     void returnsMyRankFromRedisSnapshotWithoutDatabaseFallback() {
-        GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of(entry(10L, "Database", 200_000))),
+        GetLeaderboardService service = service(
+                List.of(entry(10L, "Database", 200_000)),
                 List.of(new InMemorySnapshotStore(
                         List.of(entry(11L, "Redis", 130_000)),
                         Optional.of(7)
@@ -123,10 +115,7 @@ class GetLeaderboardServiceTest {
 
     @Test
     void rejectsInvalidModeAndLimit() {
-        GetLeaderboardService service = new GetLeaderboardService(
-                new InMemoryProjectionRepository(List.of()),
-                List.of()
-        );
+        GetLeaderboardService service = service(List.of(), List.of());
 
         CoreException invalidMode = assertThrows(CoreException.class, () -> service.get("unrealizedPnl", "5"));
         assertEquals(ErrorCode.INVALID_REQUEST, invalidMode.errorCode());
@@ -136,6 +125,18 @@ class GetLeaderboardServiceTest {
 
         CoreException nonNumericLimit = assertThrows(CoreException.class, () -> service.get("profitRate", "many"));
         assertEquals(ErrorCode.INVALID_REQUEST, nonNumericLimit.errorCode());
+    }
+
+    private GetLeaderboardService service(List<LeaderboardEntry> entries) {
+        return service(entries, List.of());
+    }
+
+    private GetLeaderboardService service(List<LeaderboardEntry> entries, List<LeaderboardSnapshotStore> stores) {
+        return new GetLeaderboardService(
+                new InMemoryProjectionRepository(entries),
+                stores,
+                new PositionPeekTargetTokenCodec()
+        );
     }
 
     private static LeaderboardEntry entry(Long memberId, String nickname, double walletBalance) {

@@ -32,6 +32,10 @@ dependencies {
     testRuntimeOnly 'com.h2database:h2'
 }
 
+tasks.named('bootJar') {
+    archiveFileName = 'app.jar'
+}
+
 tasks.register('verifyBootJarStorageMigrations') {
     group = 'verification'
     description = 'Verifies the executable app jar carries Flyway migrations from the storage module.'

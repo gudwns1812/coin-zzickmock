@@ -199,10 +199,30 @@ jobs:
         working-directory: backend
         run: chmod +x gradlew
 
-      - name: Run backend check
+      - name: Run backend check and package jar
         if: ${{ needs.classify.outputs.backend_image == 'true' }}
         working-directory: backend
-        run: ./gradlew check --console=plain
+        run: ./gradlew check :app:bootJar --console=plain
+
+      - name: Prepare backend jar artifact
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f app/build/libs/app.jar ]]; then
+            printf 'Expected executable jar at app/build/libs/app.jar.\n' >&2
+            exit 1
+          fi
+
+      - name: Upload backend jar artifact
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-boot-jar
+          path: backend/app/build/libs/app.jar
+          if-no-files-found: error
+          retention-days: 1
 
   publish_backend_image:
     name: Publish Backend Image To Docker Hub
@@ -218,6 +238,13 @@ jobs:
       - name: Checkout
         if: ${{ needs.classify.outputs.backend_image == 'true' }}
         uses: actions/checkout@v5
+
+      - name: Download backend jar artifact
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-boot-jar
+          path: backend/app/build/libs
 
       - name: Setup QEMU for ARM64 build
         if: ${{ needs.classify.outputs.backend_image == 'true' }}
@@ -241,6 +268,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ./backend
+          target: jar-runtime
           platforms: linux/arm64
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ needs.classify.outputs.image_tag }}

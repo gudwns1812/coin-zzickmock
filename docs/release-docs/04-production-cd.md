@@ -32,8 +32,8 @@ Nginx는 source에 따라 분리한다.
 ## Steps
 
 1. `classify`가 배포 효과, `deploy`, `image_tag`를 계산한다.
-2. `verify_backend_candidate`는 항상 job graph에 존재하지만, `backend_image=true`일 때만 backend `./gradlew check`를 실행한다.
-3. `publish_backend_image`도 항상 job graph에 존재하지만, `backend_image=true`일 때만 Docker Hub login/build/push를 실행한다.
+2. `verify_backend_candidate`는 항상 job graph에 존재하지만, `backend_image=true`일 때만 backend `./gradlew check :app:bootJar`를 실행하고 executable jar를 workflow artifact로 업로드한다.
+3. `publish_backend_image`도 항상 job graph에 존재하지만, `backend_image=true`일 때만 jar artifact를 `backend/app/build/libs/`에 내려받아 runtime Docker image로 포장한 뒤 Docker Hub login/build/push를 실행한다.
 4. `deploy_to_ec2`는 `deploy=false` 또는 no-effect면 SSH, remote mutation, service operation, health check 없이 성공 summary만 남긴다.
 5. 실제 deploy에서는 repo의 candidate compose/infra를 EC2 temp directory에 stage한다.
 6. Live `.env.prod`에서 temp env를 만들고, `backend_image=true`일 때만 temp env의 `BACKEND_IMAGE`를 candidate image로 바꾼다.
@@ -49,6 +49,9 @@ CD는 아래 이미지를 발행한다.
 
 운영 EC2는 Amazon Linux `aarch64` 기준이므로 backend 이미지는 `linux/arm64` 플랫폼으로 build/push한다.
 GitHub Actions의 amd64 runner에서도 같은 플랫폼 산출물을 만들기 위해 QEMU와 Docker Buildx를 사용한다.
+Executable jar는 Docker build 내부가 아니라 GitHub Actions Gradle 환경에서 먼저 만든다.
+CD는 Dockerfile의 `jar-runtime` target을 사용해 `backend/app/build/libs/app.jar`를 runtime image에 복사하는 포장 단계만 수행하며, Docker build 안에서 Gradle을 실행하지 않는다.
+로컬 Compose는 개발 편의를 위해 `source-runtime` target을 사용하고 Docker build 안에서 source jar를 만든다.
 
 이미지 tag는 수동 입력 `image_tag`가 있으면 그 값을 사용한다.
 없으면 commit SHA 앞 7자리를 사용한다.

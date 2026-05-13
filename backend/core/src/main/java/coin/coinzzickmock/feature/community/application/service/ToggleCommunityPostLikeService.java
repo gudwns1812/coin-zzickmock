@@ -18,27 +18,26 @@ public class ToggleCommunityPostLikeService {
 
     @Transactional
     public CommunityLikeResult like(ToggleCommunityPostLikeCommand command) {
-        long likeCount = currentLikeCount(command.postId());
+        ensurePostExists(command.postId());
         boolean inserted = communityPostLikeRepository.addIfAbsent(command.postId(), command.actorMemberId());
         if (inserted) {
-            likeCount = communityPostRepository.incrementLikeCount(command.postId());
+            communityPostRepository.incrementLikeCount(command.postId());
         }
-        return new CommunityLikeResult(command.postId(), true, likeCount);
+        return new CommunityLikeResult(command.postId(), true);
     }
 
     @Transactional
     public CommunityLikeResult unlike(ToggleCommunityPostLikeCommand command) {
-        long likeCount = currentLikeCount(command.postId());
+        ensurePostExists(command.postId());
         boolean removed = communityPostLikeRepository.removeIfPresent(command.postId(), command.actorMemberId());
         if (removed) {
-            likeCount = communityPostRepository.decrementLikeCount(command.postId());
+            communityPostRepository.decrementLikeCount(command.postId());
         }
-        return new CommunityLikeResult(command.postId(), false, likeCount);
+        return new CommunityLikeResult(command.postId(), false);
     }
 
-    private long currentLikeCount(Long postId) {
-        return communityPostRepository.findActiveById(postId)
-                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST))
-                .likeCount();
+    private void ensurePostExists(Long postId) {
+        communityPostRepository.findActiveById(postId)
+                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
     }
 }

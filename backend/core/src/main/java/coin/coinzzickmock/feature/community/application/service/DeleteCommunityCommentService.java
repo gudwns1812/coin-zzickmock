@@ -25,6 +25,6 @@ public class DeleteCommunityCommentService {
         if (!CommunityPermissionPolicy.canDeleteComment(command.actorAdmin(), comment.authorMemberId().equals(command.actorMemberId()))) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
-        communityCommentRepository.softDelete(comment.id(), Instant.now(clock));
+        communityCommentRepository.softDelete(command.commentId(), Instant.now(clock));
     }
 }

@@ -14,10 +14,7 @@ public class ListCommunityCommentsService {
 
     @Transactional(readOnly = true)
     public CommunityCommentListResult execute(ListCommunityCommentsQuery query, Long actorMemberId, boolean actorAdmin) {
-        return CommunityCommentListResult.from(
-                communityCommentRepository.findActiveByPostId(query.postId(), query.page(), query.size()),
-                actorMemberId,
-                actorAdmin
-        );
+        var page = communityCommentRepository.findActiveByPostId(query.postId(), query.page(), query.size());
+        return CommunityCommentListResult.from(page, actorMemberId, actorAdmin);
     }
 }

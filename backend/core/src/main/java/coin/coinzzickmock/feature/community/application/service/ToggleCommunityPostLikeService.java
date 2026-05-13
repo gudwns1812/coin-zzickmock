@@ -14,13 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ToggleCommunityPostLikeService {
     private final CommunityPostRepository communityPostRepository;
-    private final CommunityPostLikeRepository communityLikeRepository;
+    private final CommunityPostLikeRepository communityPostLikeRepository;
 
     @Transactional
     public CommunityLikeResult like(ToggleCommunityPostLikeCommand command) {
         ensurePostExists(command.postId());
-        boolean inserted = communityLikeRepository.addIfAbsent(command.postId(), command.actorMemberId());
-        if (inserted) {
+        if (communityPostLikeRepository.addIfAbsent(command.postId(), command.actorMemberId())) {
             communityPostRepository.incrementLikeCount(command.postId());
         }
         return new CommunityLikeResult(command.postId(), true);
@@ -29,8 +28,7 @@ public class ToggleCommunityPostLikeService {
     @Transactional
     public CommunityLikeResult unlike(ToggleCommunityPostLikeCommand command) {
         ensurePostExists(command.postId());
-        boolean removed = communityLikeRepository.removeIfPresent(command.postId(), command.actorMemberId());
-        if (removed) {
+        if (communityPostLikeRepository.removeIfPresent(command.postId(), command.actorMemberId())) {
             communityPostRepository.decrementLikeCount(command.postId());
         }
         return new CommunityLikeResult(command.postId(), false);

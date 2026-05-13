@@ -66,6 +66,6 @@ class CommunityDomainValueObjectTest {
 
         assertThat(actor.sameMember(9L)).isTrue();
         assertThrows(CoreException.class, () -> new CommunityActor(0L, false));
-        assertThrows(IllegalArgumentException.class, () -> new CommunityLike(0L, 1L, Instant.now()));
+        assertThrows(CoreException.class, () -> new CommunityLike(0L, 1L, Instant.now()));
     }
 }

@@ -16,6 +16,12 @@ public interface CommunityPostRepository {
 
     CommunityPost save(CommunityPost post);
 
+    long incrementCommentCount(Long postId);
+
+    long incrementLikeCount(Long postId);
+
+    long decrementLikeCount(Long postId);
+
     record CommunityPostPage(List<CommunityPost> posts, boolean hasNext) {
         public CommunityPostPage {
             posts = posts == null ? List.of() : List.copyOf(posts);

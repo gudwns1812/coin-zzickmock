@@ -22,9 +22,6 @@ public class DeleteCommunityCommentService {
     public void execute(DeleteCommunityCommentCommand command) {
         CommunityComment comment = communityCommentRepository.findActiveById(command.commentId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        if (!comment.postId().equals(command.postId())) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
         if (!CommunityPermissionPolicy.canDeleteComment(command.actorAdmin(), comment.authorMemberId().equals(command.actorMemberId()))) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }

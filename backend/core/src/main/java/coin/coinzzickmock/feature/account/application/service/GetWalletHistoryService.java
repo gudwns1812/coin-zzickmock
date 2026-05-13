@@ -38,12 +38,12 @@ public class GetWalletHistoryService {
 
         List<WalletHistoryResult> results = new ArrayList<>(walletHistoryRepository
                 .findByMemberIdBetween(query.memberId(), from, to).stream()
-                .map(GetWalletHistoryService::toResult)
+                .map(WalletHistoryResult::from)
                 .toList());
         if (!from.isAfter(today)
                 && !to.isBefore(today)
                 && results.stream().noneMatch(result -> result.snapshotDate().equals(today))) {
-            results.add(toResult(currentAccountSnapshot(query.memberId(), today, now)));
+            results.add(WalletHistoryResult.from(currentAccountSnapshot(query.memberId(), today, now)));
         }
         if (!results.isEmpty()) {
             return results;
@@ -69,12 +69,4 @@ public class GetWalletHistoryService {
         );
     }
 
-    private static WalletHistoryResult toResult(WalletHistorySnapshot snapshot) {
-        return new WalletHistoryResult(
-                snapshot.snapshotDate(),
-                snapshot.walletBalance(),
-                snapshot.dailyWalletChange(),
-                snapshot.recordedAt()
-        );
-    }
 }

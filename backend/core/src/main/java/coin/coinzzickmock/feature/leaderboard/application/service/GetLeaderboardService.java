@@ -6,11 +6,11 @@ import coin.coinzzickmock.feature.leaderboard.application.repository.Leaderboard
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardEntryResult;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
+import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenCodec;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -28,6 +28,7 @@ public class GetLeaderboardService {
 
     private final LeaderboardProjectionRepository projectionRepository;
     private final List<LeaderboardSnapshotStore> snapshotStores;
+    private final PositionPeekTargetTokenCodec targetTokenService;
 
     @Transactional(readOnly = true)
     public LeaderboardResult get(String modeValue, String limitValue) {
@@ -42,7 +43,13 @@ public class GetLeaderboardService {
         for (LeaderboardSnapshotStore snapshotStore : snapshotStores) {
             LeaderboardResult result = snapshotStore.findSnapshot(mode, limit, currentMemberId)
                     .filter(snapshot -> !snapshot.entries().isEmpty())
-                    .map(snapshot -> toResult(mode, "redis", snapshot, limit))
+                    .map(snapshot -> LeaderboardResult.from(
+                            mode,
+                            "redis",
+                            new LeaderboardSnapshot(snapshot.entries(), snapshot.refreshedAt()),
+                            toEntryResults(mode, snapshot.entries(), limit),
+                            snapshot.myRank()
+                    ))
                     .orElse(null);
             if (result != null) {
                 return result;
@@ -50,11 +57,11 @@ public class GetLeaderboardService {
         }
 
         List<LeaderboardEntry> entries = projectionRepository.findAll();
-        return toResult(
+        return LeaderboardResult.from(
                 mode,
                 "database",
                 new LeaderboardSnapshot(entries, Instant.now()),
-                limit,
+                toEntryResults(mode, entries, limit),
                 findDatabaseMyRank(mode, entries, currentMemberId)
         );
     }
@@ -80,58 +87,6 @@ public class GetLeaderboardService {
         }
     }
 
-    private LeaderboardResult toResult(
-            LeaderboardMode mode,
-            String source,
-            LeaderboardSnapshotResult snapshot,
-            int limit
-    ) {
-        return toResult(
-                mode,
-                source,
-                new LeaderboardSnapshot(snapshot.entries(), snapshot.refreshedAt()),
-                limit,
-                snapshot.myRank()
-        );
-    }
-
-    private LeaderboardResult toResult(
-            LeaderboardMode mode,
-            String source,
-            LeaderboardSnapshot snapshot,
-            int limit,
-            Optional<LeaderboardMemberRankResult> myRank
-    ) {
-        List<LeaderboardEntryResult> entries = snapshot.entries().stream()
-                .sorted(comparator(mode))
-                .limit(limit)
-                .map(entry -> new LeaderboardEntryResult(
-                        0,
-                        entry.nickname(),
-                        entry.walletBalance(),
-                        entry.profitRate()
-                ))
-                .toList();
-
-        return new LeaderboardResult(
-                mode.value(),
-                source,
-                snapshot.refreshedAt(),
-                IntStream.range(0, entries.size())
-                        .mapToObj(index -> {
-                            LeaderboardEntryResult entry = entries.get(index);
-                            return new LeaderboardEntryResult(
-                                    index + 1,
-                                    entry.nickname(),
-                                    entry.walletBalance(),
-                                    entry.profitRate()
-                            );
-                        })
-                        .toList(),
-                myRank
-        );
-    }
-
     private Optional<LeaderboardMemberRankResult> findDatabaseMyRank(
             LeaderboardMode mode,
             List<LeaderboardEntry> entries,
@@ -149,8 +104,33 @@ public class GetLeaderboardService {
                     long higherRankedMemberCount = entries.stream()
                             .filter(entry -> mode.score(entry) > currentScore)
                             .count();
-                    return new LeaderboardMemberRankResult(Math.toIntExact(higherRankedMemberCount + 1));
+                    return LeaderboardMemberRankResult.fromRank(higherRankedMemberCount + 1);
                 });
+    }
+
+    private List<LeaderboardEntryResult> toEntryResults(LeaderboardMode mode, List<LeaderboardEntry> entries, int limit) {
+        List<LeaderboardEntry> sortedEntries = entries.stream()
+                .sorted(comparator(mode))
+                .limit(limit)
+                .toList();
+        return IntStream.range(0, sortedEntries.size())
+                .mapToObj(index -> {
+                    int rank = index + 1;
+                    LeaderboardEntry entry = sortedEntries.get(index);
+                    return LeaderboardEntryResult.from(entry, rank, issueTargetToken(mode, rank, entry));
+                })
+                .toList();
+    }
+
+    private String issueTargetToken(LeaderboardMode mode, int rank, LeaderboardEntry entry) {
+        return targetTokenService.issue(new PositionPeekTargetTokenCodec.TargetTokenPayload(
+                entry.memberId(),
+                rank,
+                entry.nickname(),
+                entry.walletBalance(),
+                entry.profitRate(),
+                mode.value()
+        ));
     }
 
     private Comparator<LeaderboardEntry> comparator(LeaderboardMode mode) {

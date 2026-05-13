@@ -38,26 +38,7 @@ public class GetAccountSummaryService {
         List<PositionSnapshot> positions = positionRepository.findOpenPositions(query.memberId()).stream()
                 .map(this::markToMarketForRead)
                 .toList();
-        double totalUnrealizedPnl = positions.stream()
-                .mapToDouble(PositionSnapshot::unrealizedPnl)
-                .sum();
-        double totalOpenInitialMargin = positions.stream()
-                .mapToDouble(PositionSnapshot::initialMargin)
-                .sum();
-        double roi = totalOpenInitialMargin == 0 ? 0 : totalUnrealizedPnl / totalOpenInitialMargin;
-
-        return new AccountSummaryResult(
-                account.memberId(),
-                member.account(),
-                account.memberName(),
-                member.nickname(),
-                account.walletBalance() + totalUnrealizedPnl,
-                account.walletBalance(),
-                account.availableMargin(),
-                totalUnrealizedPnl,
-                roi,
-                rewardPointWallet.rewardPoint()
-        );
+        return AccountSummaryResult.from(account, member, rewardPointWallet, positions);
     }
 
     private PositionSnapshot markToMarketForRead(PositionSnapshot snapshot) {

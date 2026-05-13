@@ -40,6 +40,19 @@
 - 결과 리스트는 종목 행 패턴을 그대로 따른다.
 - 키보드 단축키, 모달 진입, 결과 클릭 흐름이 끊기지 않아야 한다.
 - 검색 결과의 hover/active 상태는 명확해야 한다.
+- markets 랭킹 검색은 ranked member만 대상으로 하고, 검색 결과를 입력창 아래 별도 칩/리스트로 끼워 넣지 않는다. 검색어가 있으면 기존 1~4위 리더보드 row 영역을 검색 결과 row로 교체한다.
+- markets 랭킹/검색 row에는 닉네임/rank/실현 수익률 맥락만 표시한다. raw id는 보이지 않으며 선택은 opaque target token으로 처리한다.
+
+## 랭커 포지션 엿보기 popover
+
+- 랭킹 행 또는 검색 결과 선택으로 선택한 row 높이에 맞춰 리더보드 오른쪽에 말풍선형 popover를 연다. 1위 row를 선택하면 1위 row 옆, 2위 row를 선택하면 2위 row 옆처럼 anchor가 따라가야 한다. 3~4위처럼 아래쪽 row를 선택해도 popover 카드 전체를 아래로 밀지 않고, 위쪽 빈 공간을 활용한 상태에서 말풍선 꼬리 위치만 선택 row에 맞춘다. 공간이 부족하면 기존 랭킹 리스트는 압축/좌측 이동으로 popover 자리를 만든다. 열림 후 focus는 popover 제목 또는 첫 CTA로 이동하고 닫을 때 원래 행/검색 결과로 복귀한다.
+- popover와 row의 등수 copy는 `1위`, `2위`처럼 순위만 사용한다. "왕좌", "최상위 수익률", "실버", "포디움" 같은 장식 수식어는 사용하지 않는다.
+- locked 상태는 position 정보를 가리지 않고 아예 렌더링하지 않는다. 보유 `POSITION_PEEK` item 수량, `아이템 사용` CTA, item 0개일 때 `/shop` 이동 링크만 보여준다.
+- unauthenticated 상태는 `position-peeks/latest`를 호출하지 않고 "로그인 후 포지션 엿보기를 사용할 수 있습니다" 안내와 `/login` CTA만 보여준다.
+- consuming 상태는 CTA pending, 중복 클릭 방지, 실패 메시지를 같은 popover 안에서 처리한다. 실패 후 item count는 최신 값으로 갱신한다.
+- unlocked 상태는 `createdAt`, rank/nickname context, public position rows를 보여준다. 사용자-facing copy에는 "저장된 스냅샷" 같은 내부 저장 모델 용어를 노출하지 않고 "공개 포지션", "확인 시각"처럼 행위 중심 표현을 쓴다. public position row는 수량, 진입가, 미실현 PnL, ROI를 표시하고 명목가는 표시하지 않는다. 무료 `새로고침` 버튼은 두지 않고 `다시 사용`만 새 snapshot 생성 CTA로 제공한다.
+- empty snapshot은 성공 상태로 보이며 "열린 포지션이 없습니다"처럼 명확히 설명한다.
+- forbidden field: TP/SL, close/edit/order action, history, raw member id는 locked/unlocked 어느 상태에도 표시하지 않는다.
 
 ## 모달과 오버레이
 

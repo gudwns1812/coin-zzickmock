@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.order.application.result;
 
+import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.time.Instant;
 
 public record OrderHistoryResult(
@@ -22,4 +23,26 @@ public record OrderHistoryResult(
         String triggerSource,
         String ocoGroupId
 ) {
+    public static OrderHistoryResult from(FuturesOrder order) {
+        return new OrderHistoryResult(
+                order.orderId(),
+                order.symbol(),
+                order.positionSide(),
+                order.orderType(),
+                order.orderPurpose(),
+                order.marginMode(),
+                order.leverage(),
+                order.quantity(),
+                order.limitPrice(),
+                order.status(),
+                order.feeType(),
+                order.estimatedFee(),
+                order.executionPrice(),
+                order.orderTime(),
+                order.triggerPrice(),
+                order.triggerType(),
+                order.triggerSource(),
+                order.ocoGroupId()
+        );
+    }
 }

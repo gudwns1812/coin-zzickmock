@@ -5,9 +5,11 @@ import coin.coinzzickmock.feature.member.application.repository.MemberCredential
 import coin.coinzzickmock.feature.member.domain.MemberRole;
 import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
+import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
+import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.domain.RewardPhoneNumber;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
@@ -42,6 +44,9 @@ class RewardPersistenceFoundationTest {
     private RewardPointRepository rewardPointRepository;
 
     @Autowired
+    private RewardItemBalanceRepository rewardItemBalanceRepository;
+
+    @Autowired
     private RewardRedemptionRequestRepository rewardRedemptionRequestRepository;
 
     @Autowired
@@ -67,6 +72,39 @@ class RewardPersistenceFoundationTest {
         assertFalse(item.soldOut());
         assertTrue(rewardShopItemRepository.findActiveItems().stream()
                 .anyMatch(activeItem -> activeItem.code().equals("voucher.coffee")));
+    }
+
+
+    @Test
+    void seedsPositionPeekAsActiveConsumableShopItem() {
+        RewardShopItem item = rewardShopItemRepository.findByCode("position.peek").orElseThrow();
+
+        assertEquals("포지션 엿보기권", item.name());
+        assertEquals(RewardShopItem.ITEM_TYPE_POSITION_PEEK, item.itemType());
+        assertEquals(10, item.price());
+        assertTrue(item.active());
+        assertTrue(item.positionPeek());
+        assertTrue(item.instantConsumable());
+        assertTrue(rewardShopItemRepository.findActiveItems().stream()
+                .anyMatch(activeItem -> activeItem.code().equals("position.peek")));
+    }
+
+    @Test
+    void rewardItemBalancePersistsNonNegativeRemainingQuantity() {
+        Long memberId = demoMemberId();
+        RewardShopItem item = rewardShopItemRepository.findByCode("position.peek").orElseThrow();
+
+        RewardItemBalance saved = rewardItemBalanceRepository.save(
+                RewardItemBalance.empty(memberId, item.id()).addOne()
+        );
+
+        RewardItemBalance locked = rewardItemBalanceRepository
+                .findByMemberIdAndShopItemIdForUpdate(memberId, item.id())
+                .orElseThrow();
+        assertEquals(saved.remainingQuantity(), locked.remainingQuantity());
+        assertEquals(1, locked.remainingQuantity());
+        RewardItemBalance consumed = rewardItemBalanceRepository.save(locked.consumeOne());
+        assertEquals(0, consumed.remainingQuantity());
     }
 
     @Test

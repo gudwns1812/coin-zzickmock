@@ -48,11 +48,7 @@ public class ModifyOrderService {
         ).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
         FuturesOrder result = fillIfMarketable(command.memberId(), updated);
 
-        return result(result);
-    }
-
-    private BigDecimal toBigDecimal(double value) {
-        return BigDecimal.valueOf(value);
+        return ModifyOrderResult.from(result);
     }
 
     private double validatedLimitPrice(BigDecimal limitPrice) {
@@ -110,15 +106,4 @@ public class ModifyOrderService {
         return marketableEditedOrderFiller.fill(memberId, updated, latestMarket, latestDecision);
     }
 
-    private ModifyOrderResult result(FuturesOrder order) {
-        return new ModifyOrderResult(
-                order.orderId(),
-                order.symbol(),
-                order.status(),
-                toBigDecimal(order.limitPrice()),
-                order.feeType(),
-                toBigDecimal(order.estimatedFee()),
-                toBigDecimal(order.executionPrice())
-        );
-    }
 }

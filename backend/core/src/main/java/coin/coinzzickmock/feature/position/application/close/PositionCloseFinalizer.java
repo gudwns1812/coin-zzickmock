@@ -73,12 +73,7 @@ public class PositionCloseFinalizer {
                 new GrantProfitPointCommand(memberId, closeOutcome.netRealizedPnl())
         );
 
-        return new ClosePositionResult(
-                position.symbol(),
-                closeOutcome.closedQuantity(),
-                closeOutcome.netRealizedPnl(),
-                rewardPointResult.rewardPoint()
-        );
+        return ClosePositionResult.from(position, closeOutcome, rewardPointResult);
     }
 
     private TradingAccount validateAccountMutation(AccountMutationResult mutationResult) {

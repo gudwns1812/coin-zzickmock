@@ -24,10 +24,6 @@ public class CancelOrderService {
         }
 
         FuturesOrder cancelledOrder = orderRepository.updateStatus(memberId, orderId, "CANCELLED");
-        return new CancelOrderResult(
-                cancelledOrder.orderId(),
-                cancelledOrder.symbol(),
-                cancelledOrder.status()
-        );
+        return CancelOrderResult.from(cancelledOrder);
     }
 }

@@ -12,11 +12,13 @@ import coin.coinzzickmock.feature.account.application.repository.AccountRefillSt
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository.LockedAccountRefillState;
 import coin.coinzzickmock.feature.account.application.service.AccountRefillDatePolicy;
 import coin.coinzzickmock.feature.account.domain.AccountRefillState;
+import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
+import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
@@ -31,6 +33,7 @@ class PurchaseShopItemServiceTest {
     private static final Long MEMBER_ID = 1L;
     private static final String REFILL_ITEM_CODE = "account.refill-count";
     private static final String COFFEE_ITEM_CODE = "voucher.coffee";
+    private static final String POSITION_PEEK_ITEM_CODE = "position.peek";
 
     @Test
     void validatesRewardRowsBeforeCreditingRefillState() {
@@ -46,7 +49,8 @@ class PurchaseShopItemServiceTest {
                         return history;
                     }
                 },
-                new AccountRefillCreditProcessor(refillStateRepository, new AccountRefillDatePolicy())
+                new AccountRefillCreditProcessor(refillStateRepository, new AccountRefillDatePolicy()),
+                new RecordingItemBalanceRepository(lockOrder)
         );
 
         ShopPurchaseResult result = service.purchase(1L, "account.refill-count");
@@ -70,12 +74,14 @@ class PurchaseShopItemServiceTest {
         RecordingPointRepository pointRepository = new RecordingPointRepository(lockOrder);
         RecordingPointHistoryRepository historyRepository = new RecordingPointHistoryRepository();
         RecordingRefillStateRepository refillStateRepository = new RecordingRefillStateRepository(lockOrder);
+        RecordingItemBalanceRepository itemBalanceRepository = new RecordingItemBalanceRepository(lockOrder);
         PurchaseShopItemService service = service(
                 shopItemRepository,
                 usageRepository,
                 pointRepository,
                 historyRepository,
-                refillStateRepository
+                refillStateRepository,
+                itemBalanceRepository
         );
 
         ShopPurchaseResult result = service.purchase(MEMBER_ID, REFILL_ITEM_CODE);
@@ -87,6 +93,7 @@ class PurchaseShopItemServiceTest {
         assertEquals(1, usageRepository.usage().purchaseCount());
         assertEquals(80, pointRepository.wallet().rewardPoint());
         assertEquals(2, refillStateRepository.state().remainingCount());
+        assertFalse(itemBalanceRepository.hasBalance());
         RewardPointHistory history = historyRepository.histories().get(0);
         assertEquals(-20, history.amount());
         assertEquals(80, history.balanceAfter());
@@ -101,12 +108,14 @@ class PurchaseShopItemServiceTest {
         RecordingPointRepository pointRepository = new RecordingPointRepository(lockOrder);
         RecordingPointHistoryRepository historyRepository = new RecordingPointHistoryRepository();
         RecordingRefillStateRepository refillStateRepository = new RecordingRefillStateRepository(lockOrder);
+        RecordingItemBalanceRepository itemBalanceRepository = new RecordingItemBalanceRepository(lockOrder);
         PurchaseShopItemService service = service(
                 shopItemRepository,
                 usageRepository,
                 pointRepository,
                 historyRepository,
-                refillStateRepository
+                refillStateRepository,
+                itemBalanceRepository
         );
 
         CoreException thrown = assertThrows(CoreException.class,
@@ -117,9 +126,45 @@ class PurchaseShopItemServiceTest {
         assertEquals(0, shopItemRepository.item().soldQuantity());
         assertFalse(refillStateRepository.hasState());
         assertFalse(usageRepository.hasUsage());
+        assertFalse(itemBalanceRepository.hasBalance());
         assertEquals(0, historyRepository.histories().size());
         assertFalse(lockOrder.contains("refill-state"));
         assertFalse(lockOrder.contains("wallet"));
+    }
+
+    @Test
+    void positionPeekPurchaseDeductsWalletAndIncreasesItemBalanceWithoutRefillCredit() {
+        List<String> lockOrder = new ArrayList<>();
+        RecordingShopItemRepository shopItemRepository = new RecordingShopItemRepository(lockOrder, positionPeekItem());
+        RecordingUsageRepository usageRepository = new RecordingUsageRepository(lockOrder);
+        RecordingPointRepository pointRepository = new RecordingPointRepository(lockOrder);
+        RecordingPointHistoryRepository historyRepository = new RecordingPointHistoryRepository();
+        RecordingRefillStateRepository refillStateRepository = new RecordingRefillStateRepository(lockOrder);
+        RecordingItemBalanceRepository itemBalanceRepository = new RecordingItemBalanceRepository(lockOrder);
+        PurchaseShopItemService service = service(
+                shopItemRepository,
+                usageRepository,
+                pointRepository,
+                historyRepository,
+                refillStateRepository,
+                itemBalanceRepository
+        );
+
+        ShopPurchaseResult result = service.purchase(MEMBER_ID, POSITION_PEEK_ITEM_CODE);
+
+        assertEquals(POSITION_PEEK_ITEM_CODE, result.itemCode());
+        assertEquals(90, result.rewardPoint());
+        assertEquals(null, result.refillRemainingCount());
+        assertEquals(1, result.positionPeekItemBalance());
+        assertEquals(1, shopItemRepository.item().soldQuantity());
+        assertEquals(1, usageRepository.usage().purchaseCount());
+        assertEquals(1, itemBalanceRepository.balance().remainingQuantity());
+        assertFalse(refillStateRepository.hasState());
+        assertTrue(lockOrder.contains("item-balance"));
+        assertTrue(lockOrder.indexOf("wallet") < lockOrder.indexOf("item-balance"));
+        RewardPointHistory history = historyRepository.histories().get(0);
+        assertEquals(-10, history.amount());
+        assertEquals(90, history.balanceAfter());
     }
 
     private PurchaseShopItemService service(
@@ -127,14 +172,16 @@ class PurchaseShopItemServiceTest {
             RecordingUsageRepository usageRepository,
             RecordingPointRepository pointRepository,
             RecordingPointHistoryRepository historyRepository,
-            RecordingRefillStateRepository refillStateRepository
+            RecordingRefillStateRepository refillStateRepository,
+            RecordingItemBalanceRepository itemBalanceRepository
     ) {
         return new PurchaseShopItemService(
                 shopItemRepository,
                 usageRepository,
                 pointRepository,
                 historyRepository,
-                new AccountRefillCreditProcessor(refillStateRepository, new AccountRefillDatePolicy())
+                new AccountRefillCreditProcessor(refillStateRepository, new AccountRefillDatePolicy()),
+                itemBalanceRepository
         );
     }
 
@@ -280,6 +327,40 @@ class PurchaseShopItemServiceTest {
         }
     }
 
+    private static class RecordingItemBalanceRepository implements RewardItemBalanceRepository {
+        private final List<String> lockOrder;
+        private RewardItemBalance balance;
+
+        private RecordingItemBalanceRepository(List<String> lockOrder) {
+            this.lockOrder = lockOrder;
+        }
+
+        @Override
+        public Optional<RewardItemBalance> findByMemberIdAndShopItemId(Long memberId, Long shopItemId) {
+            return Optional.ofNullable(balance);
+        }
+
+        @Override
+        public Optional<RewardItemBalance> findByMemberIdAndShopItemIdForUpdate(Long memberId, Long shopItemId) {
+            lockOrder.add("item-balance");
+            return Optional.ofNullable(balance);
+        }
+
+        @Override
+        public RewardItemBalance save(RewardItemBalance balance) {
+            this.balance = balance;
+            return balance;
+        }
+
+        private boolean hasBalance() {
+            return balance != null;
+        }
+
+        private RewardItemBalance balance() {
+            return balance;
+        }
+    }
+
     private static class RecordingPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
         private final List<String> lockOrder;
         private RewardPointWallet wallet = new RewardPointWallet(1L, 100);
@@ -337,6 +418,22 @@ class PurchaseShopItemServiceTest {
                 0,
                 null,
                 20
+        );
+    }
+
+    private static RewardShopItem positionPeekItem() {
+        return new RewardShopItem(
+                3L,
+                POSITION_PEEK_ITEM_CODE,
+                "포지션 엿보기권",
+                "리더보드에서 선택한 사용자 1명의 현재 포지션 공개 요약을 1회 스냅샷으로 저장합니다.",
+                RewardShopItem.ITEM_TYPE_POSITION_PEEK,
+                10,
+                true,
+                null,
+                0,
+                null,
+                30
         );
     }
 

@@ -33,6 +33,8 @@ class CommunityPostTest {
         CommunityPost post = CommunityPost.create(1L, "writer", CommunityCategory.CHAT, "title", content, Instant.parse("2026-05-13T00:00:00Z"));
 
         assertThrows(CoreException.class, () -> post.decrementLikeCount(Instant.now()));
+        assertThrows(CoreException.class, () -> post.withId(0L));
+        assertThrows(CoreException.class, () -> CommunityComment.create(1L, 1L, "writer", "comment", Instant.now()).withId(0L));
         assertThrows(CoreException.class, () -> CommunityComment.create(1L, 1L, "writer", "   ", Instant.now()));
     }
 }

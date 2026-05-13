@@ -65,6 +65,19 @@ class TiptapContentValidatorTest {
     }
 
     @Test
+    void acceptsOnlyDocumentedHttpAndHttpsLinkProtocols() {
+        assertThatCode(() -> TiptapContentValidator.validate(
+                doc(paragraphTextWithMarks("http", "[{\"type\":\"link\",\"attrs\":{\"href\":\"http://example.com/post\"}}]")),
+                TiptapContentPolicy.withoutImages()
+        )).doesNotThrowAnyException();
+        assertThatCode(() -> TiptapContentValidator.validate(
+                doc(paragraphTextWithMarks("https", "[{\"type\":\"link\",\"attrs\":{\"href\":\"https://example.com/post\"}}]")),
+                TiptapContentPolicy.withoutImages()
+        )).doesNotThrowAnyException();
+        assertInvalid(doc(paragraphTextWithMarks("ftp", "[{\"type\":\"link\",\"attrs\":{\"href\":\"ftp://example.com/post\"}}]")));
+    }
+
+    @Test
     void rejectsExternalOrUnapprovedImageObjectKey() {
         assertInvalid(doc("{\"type\":\"image\",\"attrs\":{\"objectKey\":\"https://evil.example/a.webp\",\"src\":\"https://evil.example/a.webp\"}}"),
                 TiptapContentPolicy.withImages(java.util.Set.of("https://evil.example/a.webp"), java.util.List.of("https://evil.example/")));
@@ -102,6 +115,24 @@ class TiptapContentValidatorTest {
                 .collect(Collectors.toSet());
         assertInvalid("{\"type\":\"doc\",\"content\":[" + images + "]}",
                 TiptapContentPolicy.withImages(approvedKeys, java.util.List.of("https://cdn.example/community/")));
+    }
+
+    @Test
+    void rejectsInvalidUnicodeSurrogatesAndAcceptsValidPairs() {
+        assertThatCode(() -> TiptapContentValidator.validate(
+                doc(paragraphText("\\uD83D\\uDE80")),
+                TiptapContentPolicy.withoutImages()
+        )).doesNotThrowAnyException();
+        assertInvalid(doc(paragraphText("\\uD83D")));
+        assertInvalid(doc(paragraphText("\\uDE80")));
+    }
+
+    @Test
+    void validationResultRejectsImpossibleMetrics() {
+        assertThatThrownBy(() -> new TiptapContentValidationResult(-1, 0, java.util.Set.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new TiptapContentValidationResult(0, 0, java.util.Set.of("community/7/chart.webp")))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private static String doc(String child) {

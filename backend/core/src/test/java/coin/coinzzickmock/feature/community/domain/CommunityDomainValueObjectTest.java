@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +42,7 @@ class CommunityDomainValueObjectTest {
                 Instant.parse("2026-05-13T00:00:00Z")
         );
 
-        assertThat(image.attachableBy(7L)).isTrue();
+        assertThat(image.canAttachBy(7L)).isTrue();
         assertThat(image.attachTo(10L, Instant.parse("2026-05-13T00:01:00Z")).status())
                 .isEqualTo(CommunityPostImageStatus.ATTACHED);
         assertThat(image.markOrphaned(Instant.parse("2026-05-13T00:02:00Z")).status())
@@ -58,14 +59,45 @@ class CommunityDomainValueObjectTest {
                 Instant.parse("2026-05-13T00:00:00Z"),
                 null
         ));
+        assertThrows(CoreException.class, () -> new CommunityPostImageIntent(
+                0L,
+                null,
+                7L,
+                "community/7/image.webp",
+                "https://cdn.example/community/7/image.webp",
+                "image/webp",
+                1234L,
+                CommunityPostImageStatus.PRESIGNED,
+                Instant.parse("2026-05-13T00:00:00Z"),
+                Instant.parse("2026-05-13T00:00:00Z")
+        ));
+        assertThrows(CoreException.class, () -> new CommunityPostImageIntent(
+                1L,
+                0L,
+                7L,
+                "community/7/image.webp",
+                "https://cdn.example/community/7/image.webp",
+                "image/webp",
+                1234L,
+                CommunityPostImageStatus.ATTACHED,
+                Instant.parse("2026-05-13T00:00:00Z"),
+                Instant.parse("2026-05-13T00:00:00Z")
+        ));
     }
 
     @Test
     void validatesActorAndLikeIdentifiers() {
         CommunityActor actor = new CommunityActor(9L, true);
 
-        assertThat(actor.sameMember(9L)).isTrue();
-        assertThrows(CoreException.class, () -> new CommunityActor(0L, false));
+        assertThat(actor.isAdmin()).isTrue();
+        assertThat(actor.isSameMember(9L)).isTrue();
+        assertThat(actor.isSameMember(null)).isFalse();
+        assertThatThrownErrorCode(() -> new CommunityActor(0L, false), ErrorCode.INVALID_REQUEST);
         assertThrows(CoreException.class, () -> new CommunityLike(0L, 1L, Instant.now()));
+    }
+
+    private static void assertThatThrownErrorCode(Runnable runnable, ErrorCode errorCode) {
+        CoreException exception = assertThrows(CoreException.class, runnable::run);
+        assertThat(exception.errorCode()).isEqualTo(errorCode);
     }
 }

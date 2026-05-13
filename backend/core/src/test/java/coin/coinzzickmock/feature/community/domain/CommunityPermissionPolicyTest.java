@@ -20,9 +20,15 @@ class CommunityPermissionPolicyTest {
     }
 
     @Test
-    void allowsDeletingCommentsAndLikesOnlyForAuthenticatedUsersOrOwners() {
+    void allowsCommentsLikesAndDeletesOnlyForAuthenticatedUsersOrOwners() {
         assertThat(CommunityPermissionPolicy.canCreateComment(false)).isFalse();
+        assertThat(CommunityPermissionPolicy.canCreateComment(true)).isTrue();
         assertThat(CommunityPermissionPolicy.canToggleLike(false)).isFalse();
+        assertThat(CommunityPermissionPolicy.canToggleLike(true)).isTrue();
+        assertThat(CommunityPermissionPolicy.canDeleteComment(false, false)).isFalse();
         assertThat(CommunityPermissionPolicy.canDeleteComment(false, true)).isTrue();
+        assertThat(CommunityPermissionPolicy.canDeleteComment(true, false)).isTrue();
+        assertThat(CommunityPermissionPolicy.canDeletePost(false, true)).isTrue();
+        assertThat(CommunityPermissionPolicy.canDeletePost(true, false)).isTrue();
     }
 }

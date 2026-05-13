@@ -78,6 +78,9 @@ public final class CommunityComment {
     }
 
     public CommunityComment withId(Long id) {
+        if (id == null || id <= 0) {
+            throw invalid();
+        }
         return new CommunityComment(id, postId, authorMemberId, authorNickname, content, deletedAt, createdAt, updatedAt);
     }
 

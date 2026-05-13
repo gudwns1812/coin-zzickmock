@@ -17,6 +17,9 @@ public record CommunityPostImageIntent(
         Instant updatedAt
 ) {
     public CommunityPostImageIntent {
+        if ((id != null && id <= 0) || (postId != null && postId <= 0)) {
+            throw invalid();
+        }
         if (uploaderMemberId == null || uploaderMemberId <= 0 || objectKey == null || objectKey.isBlank()
                 || publicUrl == null || publicUrl.isBlank() || contentType == null || contentType.isBlank()
                 || sizeBytes <= 0 || status == null || createdAt == null || updatedAt == null) {
@@ -27,7 +30,7 @@ public record CommunityPostImageIntent(
         contentType = contentType.trim();
     }
 
-    public boolean attachableBy(Long memberId) {
+    public boolean canAttachBy(Long memberId) {
         return uploaderMemberId.equals(memberId)
                 && objectKey.startsWith("community/" + memberId + "/")
                 && (status == CommunityPostImageStatus.PRESIGNED || status == CommunityPostImageStatus.ATTACHED);

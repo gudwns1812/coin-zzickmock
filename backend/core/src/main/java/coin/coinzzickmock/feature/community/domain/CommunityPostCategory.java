@@ -6,11 +6,11 @@ public enum CommunityPostCategory {
     COIN_INFORMATION,
     CHAT;
 
-    public boolean notice() {
+    public boolean isNotice() {
         return this == NOTICE;
     }
 
-    public boolean normalPost() {
+    public boolean isNormalPost() {
         return this != NOTICE;
     }
 }

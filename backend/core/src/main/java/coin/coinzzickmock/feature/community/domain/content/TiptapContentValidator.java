@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public final class TiptapContentValidator {
@@ -23,17 +24,17 @@ public final class TiptapContentValidator {
     private TiptapContentValidator() {
     }
 
-    public static Validation validate(String json, TiptapContentPolicy policy) {
-        if (json == null || json.isBlank() || json.getBytes(StandardCharsets.UTF_8).length > MAX_JSON_BYTES) {
+    public static Validation validate(String contentJson, TiptapContentPolicy policy) {
+        if (contentJson == null || contentJson.isBlank() || contentJson.getBytes(StandardCharsets.UTF_8).length > MAX_JSON_BYTES) {
             throw invalid();
         }
-        Object parsed = new TiptapJsonReader(json).read();
+        Object parsed = new TiptapJsonReader(contentJson).read();
         if (!(parsed instanceof Map<?, ?> document)) {
             throw invalid();
         }
         State state = new State(policy == null ? TiptapContentPolicy.withoutImages() : policy);
         validateNode(document, "doc", 1, state);
-        return new Validation(json, new TiptapContentValidationResult(state.textLength, state.imageCount, state.imageObjectKeys));
+        return new Validation(contentJson, new TiptapContentValidationResult(state.textLength, state.imageCount, state.imageObjectKeys));
     }
 
     private static void validateNode(Map<?, ?> node, String expectedType, int depth, State state) {
@@ -208,6 +209,12 @@ public final class TiptapContentValidator {
     }
 
     public record Validation(String json, TiptapContentValidationResult result) {
+        public Validation {
+            if (json == null || json.isBlank()) {
+                throw invalid();
+            }
+            Objects.requireNonNull(result, "result");
+        }
     }
 
     private static final class State {

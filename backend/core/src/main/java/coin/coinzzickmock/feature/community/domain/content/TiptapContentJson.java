@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.community.domain.content;
 
+import java.util.Objects;
+
 public final class TiptapContentJson {
     private final String value;
     private final TiptapContentValidationResult validationResult;
@@ -9,6 +11,7 @@ public final class TiptapContentJson {
     }
 
     private TiptapContentJson(TiptapContentValidator.Validation validation) {
+        Objects.requireNonNull(validation, "validation");
         this.value = validation.json();
         this.validationResult = validation.result();
     }

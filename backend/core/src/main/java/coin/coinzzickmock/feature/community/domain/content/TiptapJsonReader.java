@@ -102,6 +102,9 @@ final class TiptapJsonReader {
                 builder.append(readEscapedCharacter());
                 continue;
             }
+            if (Character.isSurrogate(current)) {
+                throw invalid();
+            }
             if (current < 0x20) {
                 throw invalid();
             }
@@ -110,26 +113,44 @@ final class TiptapJsonReader {
         throw invalid();
     }
 
-    private char readEscapedCharacter() {
+    private String readEscapedCharacter() {
         if (index >= source.length()) {
             throw invalid();
         }
         char escaped = source.charAt(index++);
         return switch (escaped) {
-            case '"' -> '"';
-            case '\\' -> '\\';
-            case '/' -> '/';
-            case 'b' -> '\b';
-            case 'f' -> '\f';
-            case 'n' -> '\n';
-            case 'r' -> '\r';
-            case 't' -> '\t';
+            case '"' -> "\"";
+            case '\\' -> "\\";
+            case '/' -> "/";
+            case 'b' -> "\b";
+            case 'f' -> "\f";
+            case 'n' -> "\n";
+            case 'r' -> "\r";
+            case 't' -> "\t";
             case 'u' -> readUnicodeEscape();
             default -> throw invalid();
         };
     }
 
-    private char readUnicodeEscape() {
+    private String readUnicodeEscape() {
+        char first = readUnicodeUnit();
+        if (Character.isLowSurrogate(first)) {
+            throw invalid();
+        }
+        if (!Character.isHighSurrogate(first)) {
+            return String.valueOf(first);
+        }
+        if (index + 2 > source.length() || source.charAt(index++) != '\\' || source.charAt(index++) != 'u') {
+            throw invalid();
+        }
+        char second = readUnicodeUnit();
+        if (!Character.isLowSurrogate(second)) {
+            throw invalid();
+        }
+        return new String(new char[]{first, second});
+    }
+
+    private char readUnicodeUnit() {
         if (index + 4 > source.length()) {
             throw invalid();
         }

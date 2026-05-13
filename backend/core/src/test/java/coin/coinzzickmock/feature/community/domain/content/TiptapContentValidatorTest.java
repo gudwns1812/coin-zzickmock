@@ -35,7 +35,7 @@ class TiptapContentValidatorTest {
                 }
                 """;
 
-        assertThatCode(() -> TiptapContentJson.of(json, TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://cdn.example/community/")))).doesNotThrowAnyException();
+        assertThatCode(() -> TiptapContentValidator.validate(json, TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://cdn.example/community/")))).doesNotThrowAnyException();
     }
 
     @Test
@@ -66,8 +66,10 @@ class TiptapContentValidatorTest {
 
     @Test
     void rejectsExternalOrUnapprovedImageObjectKey() {
-        assertInvalid(doc("{\"type\":\"image\",\"attrs\":{\"objectKey\":\"https://evil.example/a.webp\",\"src\":\"https://evil.example/a.webp\"}}"));
-        assertInvalid(doc("{\"type\":\"image\",\"attrs\":{\"objectKey\":\"community/7/chart.webp\",\"src\":\"https://evil.example/other/chart.webp\"}}"));
+        assertInvalid(doc("{\"type\":\"image\",\"attrs\":{\"objectKey\":\"https://evil.example/a.webp\",\"src\":\"https://evil.example/a.webp\"}}"),
+                TiptapContentPolicy.withImages(java.util.Set.of("https://evil.example/a.webp"), java.util.List.of("https://evil.example/")));
+        assertInvalid(doc("{\"type\":\"image\",\"attrs\":{\"objectKey\":\"community/7/chart.webp\",\"src\":\"https://evil.example/other/chart.webp\"}}"),
+                TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://cdn.example/community/")));
     }
 
     @Test
@@ -95,7 +97,11 @@ class TiptapContentValidatorTest {
         String images = IntStream.rangeClosed(1, TiptapContentValidator.MAX_IMAGE_COUNT + 1)
                 .mapToObj(index -> "{\"type\":\"image\",\"attrs\":{\"objectKey\":\"community/7/chart" + index + ".webp\",\"src\":\"https://cdn.example/community/7/chart" + index + ".webp\"}}")
                 .collect(Collectors.joining(","));
-        assertInvalid("{\"type\":\"doc\",\"content\":[" + images + "]}");
+        java.util.Set<String> approvedKeys = IntStream.rangeClosed(1, TiptapContentValidator.MAX_IMAGE_COUNT + 1)
+                .mapToObj(index -> "community/7/chart" + index + ".webp")
+                .collect(Collectors.toSet());
+        assertInvalid("{\"type\":\"doc\",\"content\":[" + images + "]}",
+                TiptapContentPolicy.withImages(approvedKeys, java.util.List.of("https://cdn.example/community/")));
     }
 
     private static String doc(String child) {
@@ -111,7 +117,11 @@ class TiptapContentValidatorTest {
     }
 
     private static void assertInvalid(String json) {
-        assertThatThrownBy(() -> TiptapContentValidator.validate(json, TiptapContentPolicy.withoutImages()))
+        assertInvalid(json, TiptapContentPolicy.withoutImages());
+    }
+
+    private static void assertInvalid(String json, TiptapContentPolicy policy) {
+        assertThatThrownBy(() -> TiptapContentValidator.validate(json, policy))
                 .isInstanceOf(CoreException.class)
                 .satisfies(exception -> assertThat(((CoreException) exception).errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
     }

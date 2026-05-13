@@ -59,8 +59,6 @@ public class CommunityCommentEntity extends AuditableEntity {
     }
 
     public void apply(CommunityComment comment) {
-        this.postId = comment.postId();
-        this.authorMemberId = comment.authorMemberId();
         this.authorNickname = comment.authorNickname();
         this.content = comment.content();
         this.deletedAt = comment.deletedAt();

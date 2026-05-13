@@ -14,4 +14,7 @@ public interface CommunityCommentEntityRepository extends JpaRepository<Communit
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CommunityCommentEntity> findWithLockingById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<CommunityCommentEntity> findWithLockingByIdAndDeletedAtIsNull(Long id);
 }

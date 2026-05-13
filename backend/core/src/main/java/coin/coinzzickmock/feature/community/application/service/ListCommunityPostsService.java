@@ -1,9 +1,11 @@
 package coin.coinzzickmock.feature.community.application.service;
 
-import coin.coinzzickmock.feature.community.application.query.CommunityPostListQuery;
+import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
+import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
 import coin.coinzzickmock.feature.community.application.result.CommunityPostListResult;
-import coin.coinzzickmock.feature.community.application.result.CommunityPostSummaryResult;
+import coin.coinzzickmock.feature.community.domain.CommunityPost;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,17 +18,9 @@ public class ListCommunityPostsService {
     private final CommunityPostRepository communityPostRepository;
 
     @Transactional(readOnly = true)
-    public CommunityPostListResult list(CommunityPostListQuery query) {
-        var notices = communityPostRepository.findLatestNotices(NOTICE_LIMIT).stream()
-                .map(CommunityPostSummaryResult::from)
-                .toList();
-        var page = communityPostRepository.findNormalPosts(query);
-        return new CommunityPostListResult(
-                notices,
-                page.posts().stream().map(CommunityPostSummaryResult::from).toList(),
-                query.page(),
-                query.size(),
-                page.hasNext()
-        );
+    public CommunityPostListResult execute(ListCommunityPostsQuery query) {
+        List<CommunityPost> notices = communityPostRepository.findLatestNotices(NOTICE_LIMIT);
+        CommunityPostPage posts = communityPostRepository.findPosts(query);
+        return CommunityPostListResult.from(notices, posts);
     }
 }

@@ -1,7 +1,8 @@
 package coin.coinzzickmock.feature.community.application.command;
 
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
-import java.util.List;
+import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
+import java.util.Set;
 
 public record UpdateCommunityPostCommand(
         Long postId,
@@ -10,11 +11,10 @@ public record UpdateCommunityPostCommand(
         CommunityCategory category,
         String title,
         String contentJson,
-        List<String> imageObjectKeys,
-        List<String> allowedImageSrcPrefixes
+        Set<String> imageObjectKeys,
+        TiptapContentPolicy contentPolicy
 ) {
     public UpdateCommunityPostCommand {
-        imageObjectKeys = imageObjectKeys == null ? List.of() : List.copyOf(imageObjectKeys);
-        allowedImageSrcPrefixes = allowedImageSrcPrefixes == null ? List.of() : List.copyOf(allowedImageSrcPrefixes);
+        imageObjectKeys = imageObjectKeys == null ? Set.of() : Set.copyOf(imageObjectKeys);
     }
 }

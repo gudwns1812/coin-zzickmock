@@ -1,20 +1,20 @@
 package coin.coinzzickmock.feature.community.application.command;
 
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
-import java.util.List;
+import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
+import java.util.Set;
 
 public record CreateCommunityPostCommand(
         Long actorMemberId,
+        String actorNickname,
         boolean actorAdmin,
-        String authorNickname,
         CommunityCategory category,
         String title,
         String contentJson,
-        List<String> imageObjectKeys,
-        List<String> allowedImageSrcPrefixes
+        Set<String> imageObjectKeys,
+        TiptapContentPolicy contentPolicy
 ) {
     public CreateCommunityPostCommand {
-        imageObjectKeys = imageObjectKeys == null ? List.of() : List.copyOf(imageObjectKeys);
-        allowedImageSrcPrefixes = allowedImageSrcPrefixes == null ? List.of() : List.copyOf(allowedImageSrcPrefixes);
+        imageObjectKeys = imageObjectKeys == null ? Set.of() : Set.copyOf(imageObjectKeys);
     }
 }

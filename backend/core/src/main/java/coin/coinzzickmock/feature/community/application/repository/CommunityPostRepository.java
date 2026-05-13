@@ -1,24 +1,27 @@
 package coin.coinzzickmock.feature.community.application.repository;
 
-import coin.coinzzickmock.feature.community.application.query.CommunityPostListQuery;
+import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 public interface CommunityPostRepository {
     List<CommunityPost> findLatestNotices(int limit);
 
-    CommunityPostPage findNormalPosts(CommunityPostListQuery query);
+    CommunityPostPage findPosts(ListCommunityPostsQuery query);
 
     Optional<CommunityPost> findActiveById(Long postId);
 
-    Optional<CommunityPost> findActiveByIdForUpdate(Long postId);
-
     CommunityPost save(CommunityPost post);
 
-    record CommunityPostPage(List<CommunityPost> posts, boolean hasNext) {
-        public CommunityPostPage {
-            posts = posts == null ? List.of() : List.copyOf(posts);
-        }
-    }
+    CommunityPost update(CommunityPost post);
+
+    void softDelete(Long postId, Instant deletedAt);
+
+    void incrementLikeCount(Long postId);
+
+    void decrementLikeCount(Long postId);
+
+    void incrementCommentCount(Long postId);
 }

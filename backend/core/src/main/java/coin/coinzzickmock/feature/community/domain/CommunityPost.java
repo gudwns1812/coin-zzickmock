@@ -2,111 +2,312 @@ package coin.coinzzickmock.feature.community.domain;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.community.domain.content.TiptapContentJson;
 import java.time.Instant;
+import java.util.Objects;
 
-public record CommunityPost(
-        Long id,
-        CommunityAuthor author,
-        CommunityPostCategory category,
-        CommunityPostTitle title,
-        TiptapContentJson content,
-        CommunityPostCounts counts,
-        Instant createdAt,
-        Instant updatedAt,
-        Instant deletedAt
-) {
-    public CommunityPost {
-        if (author == null || category == null || title == null || content == null || counts == null || createdAt == null) {
-            throw invalid();
-        }
+public final class CommunityPost {
+    private static final int MAX_TITLE_LENGTH = 200;
+
+    private final Long id;
+    private final Long authorMemberId;
+    private final String authorNickname;
+    private final CommunityCategory category;
+    private final String title;
+    private final TiptapJsonDocument content;
+    private final long viewCount;
+    private final long likeCount;
+    private final long commentCount;
+    private final Instant deletedAt;
+    private final Instant createdAt;
+    private final Instant updatedAt;
+    private final long version;
+
+    private CommunityPost(
+            Long id,
+            Long authorMemberId,
+            String authorNickname,
+            CommunityCategory category,
+            String title,
+            TiptapJsonDocument content,
+            long viewCount,
+            long likeCount,
+            long commentCount,
+            Instant deletedAt,
+            Instant createdAt,
+            Instant updatedAt,
+            long version
+    ) {
+        this.id = id;
+        this.authorMemberId = authorMemberId;
+        this.authorNickname = authorNickname;
+        this.category = category;
+        this.title = title;
+        this.content = content;
+        this.viewCount = viewCount;
+        this.likeCount = likeCount;
+        this.commentCount = commentCount;
+        this.deletedAt = deletedAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.version = version;
     }
 
     public static CommunityPost create(
-            CommunityAuthor author,
-            CommunityPostCategory category,
-            CommunityPostTitle title,
-            TiptapContentJson content,
-            Instant createdAt
+            Long authorMemberId,
+            String authorNickname,
+            CommunityCategory category,
+            String title,
+            TiptapJsonDocument content,
+            Instant now
     ) {
-        return new CommunityPost(null, author, category, title, content, CommunityPostCounts.zero(), createdAt, createdAt, null);
+        requireAuthor(authorMemberId, authorNickname);
+        requireCategory(category);
+        return new CommunityPost(
+                null,
+                authorMemberId,
+                authorNickname.trim(),
+                category,
+                requireTitle(title),
+                Objects.requireNonNull(content, "content"),
+                0,
+                0,
+                0,
+                null,
+                Objects.requireNonNull(now, "now"),
+                now,
+                0
+        );
     }
 
-    public static CommunityPost restore(
-            Long id,
-            CommunityAuthor author,
-            CommunityPostCategory category,
-            CommunityPostTitle title,
-            TiptapContentJson content,
-            CommunityPostCounts counts,
-            Instant createdAt,
-            Instant updatedAt,
-            Instant deletedAt
-    ) {
-        if (id == null || id <= 0) {
+    public CommunityPost withId(Long id) {
+        return new CommunityPost(
+                id,
+                authorMemberId,
+                authorNickname,
+                category,
+                title,
+                content,
+                viewCount,
+                likeCount,
+                commentCount,
+                deletedAt,
+                createdAt,
+                updatedAt,
+                version
+        );
+    }
+
+    public CommunityPost rename(String nextTitle, Instant now) {
+        return new CommunityPost(
+                id,
+                authorMemberId,
+                authorNickname,
+                category,
+                requireTitle(nextTitle),
+                content,
+                viewCount,
+                likeCount,
+                commentCount,
+                deletedAt,
+                createdAt,
+                Objects.requireNonNull(now, "now"),
+                version
+        );
+    }
+
+    public CommunityPost recategorize(CommunityCategory nextCategory, Instant now) {
+        requireCategory(nextCategory);
+        return new CommunityPost(
+                id,
+                authorMemberId,
+                authorNickname,
+                nextCategory,
+                title,
+                content,
+                viewCount,
+                likeCount,
+                commentCount,
+                deletedAt,
+                createdAt,
+                Objects.requireNonNull(now, "now"),
+                version
+        );
+    }
+
+    public CommunityPost rewriteContent(TiptapJsonDocument nextContent, Instant now) {
+        return new CommunityPost(
+                id,
+                authorMemberId,
+                authorNickname,
+                category,
+                title,
+                Objects.requireNonNull(nextContent, "nextContent"),
+                viewCount,
+                likeCount,
+                commentCount,
+                deletedAt,
+                createdAt,
+                Objects.requireNonNull(now, "now"),
+                version
+        );
+    }
+
+    public CommunityPost incrementViewCount(Instant now) {
+        return counted(viewCount + 1, likeCount, commentCount, now);
+    }
+
+    public CommunityPost incrementLikeCount(Instant now) {
+        return counted(viewCount, likeCount + 1, commentCount, now);
+    }
+
+    public CommunityPost decrementLikeCount(Instant now) {
+        if (likeCount == 0) {
             throw invalid();
         }
-        return new CommunityPost(id, author, category, title, content, counts, createdAt, updatedAt, deletedAt);
+        return counted(viewCount, likeCount - 1, commentCount, now);
     }
 
-    public CommunityPost revise(CommunityPostCategory category, CommunityPostTitle title, TiptapContentJson content, Instant updatedAt) {
-        requireActive();
-        return new CommunityPost(id, author, category, title, content, counts, createdAt, requireTime(updatedAt), deletedAt);
+    public CommunityPost incrementCommentCount(Instant now) {
+        return counted(viewCount, likeCount, commentCount + 1, now);
     }
 
-    public CommunityPost softDelete(Instant deletedAt) {
-        requireActive();
-        Instant occurredAt = requireTime(deletedAt);
-        return new CommunityPost(id, author, category, title, content, counts, createdAt, occurredAt, occurredAt);
+    public CommunityPost decrementCommentCount(Instant now) {
+        if (commentCount == 0) {
+            throw invalid();
+        }
+        return counted(viewCount, likeCount, commentCount - 1, now);
     }
 
-    public CommunityPost increaseViewCount() {
-        requireActive();
-        return new CommunityPost(id, author, category, title, content, counts.viewed(), createdAt, updatedAt, deletedAt);
+    public CommunityPost softDelete(Instant now) {
+        return new CommunityPost(
+                id,
+                authorMemberId,
+                authorNickname,
+                category,
+                title,
+                content,
+                viewCount,
+                likeCount,
+                commentCount,
+                Objects.requireNonNull(now, "now"),
+                createdAt,
+                now,
+                version
+        );
     }
 
-    public CommunityPost increaseLikeCount() {
-        requireActive();
-        return new CommunityPost(id, author, category, title, content, counts.liked(), createdAt, updatedAt, deletedAt);
+    public CommunityPost withVersion(long nextVersion) {
+        return new CommunityPost(
+                id,
+                authorMemberId,
+                authorNickname,
+                category,
+                title,
+                content,
+                viewCount,
+                likeCount,
+                commentCount,
+                deletedAt,
+                createdAt,
+                updatedAt,
+                nextVersion
+        );
     }
 
-    public CommunityPost decreaseLikeCount() {
-        requireActive();
-        return new CommunityPost(id, author, category, title, content, counts.unliked(), createdAt, updatedAt, deletedAt);
+    private CommunityPost counted(long nextViewCount, long nextLikeCount, long nextCommentCount, Instant now) {
+        return new CommunityPost(
+                id,
+                authorMemberId,
+                authorNickname,
+                category,
+                title,
+                content,
+                nextViewCount,
+                nextLikeCount,
+                nextCommentCount,
+                deletedAt,
+                createdAt,
+                Objects.requireNonNull(now, "now"),
+                version
+        );
     }
 
-    public CommunityPost increaseCommentCount() {
-        requireActive();
-        return new CommunityPost(id, author, category, title, content, counts.commented(), createdAt, updatedAt, deletedAt);
+    private static String requireTitle(String title) {
+        if (title == null) {
+            throw invalid();
+        }
+        String trimmed = title.trim();
+        if (trimmed.isEmpty() || trimmed.length() > MAX_TITLE_LENGTH) {
+            throw invalid();
+        }
+        return trimmed;
     }
 
-    public CommunityPost decreaseCommentCount() {
-        requireActive();
-        return new CommunityPost(id, author, category, title, content, counts.uncommented(), createdAt, updatedAt, deletedAt);
-    }
-
-    public boolean authoredBy(Long memberId) {
-        return author.memberId().equals(memberId);
-    }
-
-    public boolean deleted() {
-        return deletedAt != null;
-    }
-
-    private void requireActive() {
-        if (deleted()) {
+    private static void requireAuthor(Long authorMemberId, String authorNickname) {
+        if (authorMemberId == null || authorMemberId <= 0 || authorNickname == null || authorNickname.isBlank()) {
             throw invalid();
         }
     }
 
-    private static Instant requireTime(Instant value) {
-        if (value == null) {
+    private static void requireCategory(CommunityCategory category) {
+        if (category == null) {
             throw invalid();
         }
-        return value;
     }
 
     private static CoreException invalid() {
         return new CoreException(ErrorCode.INVALID_REQUEST);
+    }
+
+    public Long id() {
+        return id;
+    }
+
+    public Long authorMemberId() {
+        return authorMemberId;
+    }
+
+    public String authorNickname() {
+        return authorNickname;
+    }
+
+    public CommunityCategory category() {
+        return category;
+    }
+
+    public String title() {
+        return title;
+    }
+
+    public TiptapJsonDocument content() {
+        return content;
+    }
+
+    public long viewCount() {
+        return viewCount;
+    }
+
+    public long likeCount() {
+        return likeCount;
+    }
+
+    public long commentCount() {
+        return commentCount;
+    }
+
+    public Instant deletedAt() {
+        return deletedAt;
+    }
+
+    public Instant createdAt() {
+        return createdAt;
+    }
+
+    public Instant updatedAt() {
+        return updatedAt;
+    }
+
+    public long version() {
+        return version;
     }
 }

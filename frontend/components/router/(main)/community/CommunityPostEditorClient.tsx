@@ -4,6 +4,7 @@ import type { TiptapJson } from "@/lib/community-content";
 import {
   extractImageObjectKeys,
   extractTiptapText,
+  normalizeTiptapDocumentForSubmit,
   parseTiptapDocument,
 } from "@/lib/community-content";
 import type { CommunityCategory, CommunityPostDetail } from "@/lib/futures-api";
@@ -71,6 +72,10 @@ export default function CommunityPostEditorClient({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4] },
+        horizontalRule: false,
+        link: false,
+        strike: false,
+        underline: false,
       }),
       LinkExtension.configure({
         autolink: false,
@@ -132,7 +137,7 @@ export default function CommunityPostEditorClient({
     if (!editor) {
       return;
     }
-    const document = editor.getJSON() as TiptapJson;
+    const document = normalizeTiptapDocumentForSubmit(editor.getJSON() as TiptapJson);
     const trimmedTitle = title.trim();
     const extractedText = extractTiptapText(document);
 

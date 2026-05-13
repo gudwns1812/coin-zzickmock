@@ -9,6 +9,7 @@ import coin.coinzzickmock.feature.community.application.command.DeleteCommunityP
 import coin.coinzzickmock.feature.community.application.command.ToggleCommunityPostLikeCommand;
 import coin.coinzzickmock.feature.community.application.command.UpdateCommunityPostCommand;
 import coin.coinzzickmock.feature.community.application.query.GetCommunityPostQuery;
+import coin.coinzzickmock.feature.community.application.query.ListCommunityCommentsQuery;
 import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentPage;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentRepository;
@@ -16,6 +17,9 @@ import coin.coinzzickmock.feature.community.application.repository.CommunityPost
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
+import coin.coinzzickmock.feature.community.application.result.CommunityCommentMutationResult;
+import coin.coinzzickmock.feature.community.application.result.CommunityCommentResult;
+import coin.coinzzickmock.feature.community.application.result.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityPostListResult;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
@@ -148,6 +152,23 @@ class CommunityApplicationServiceRegressionTest {
 
         assertThat(result.pinnedNotices()).extracting("id").containsExactly(notice3, notice2, notice1);
         assertThat(result.posts()).extracting("id").containsExactly(chat);
+    }
+
+    @Test
+    void queriesRejectInvalidPagingPostIdsAndNoticeListFilter() {
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new GetCommunityPostQuery(0L, 1L, false));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(null, 0, 20));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(1L, -1, 20));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(1L, 0, 101));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityPostsQuery(CommunityCategory.NOTICE, 0, 20));
+        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityPostsQuery(null, 0, 0));
+    }
+
+    @Test
+    void resultFactoriesFailFastForNullDomainInputs() {
+        assertThatThrownBy(() -> CommunityCommentMutationResult.from(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> CommunityCommentResult.from(null, 1L, false)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> CommunityPostDetailResult.from(null, 1L, false, false)).isInstanceOf(NullPointerException.class);
     }
 
     private static CreateCommunityPostCommand createPost(Long actorId, boolean admin, CommunityCategory category, String content, Set<String> imageKeys, TiptapContentPolicy policy) {

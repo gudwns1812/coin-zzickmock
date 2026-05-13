@@ -23,7 +23,7 @@ public class ToggleCommunityPostLikeService {
         if (inserted) {
             communityPostRepository.incrementLikeCount(command.postId());
         }
-        return new CommunityLikeResult(command.postId(), true);
+        return new CommunityLikeResult(command.postId(), true, -1);
     }
 
     @Transactional
@@ -33,7 +33,7 @@ public class ToggleCommunityPostLikeService {
         if (removed) {
             communityPostRepository.decrementLikeCount(command.postId());
         }
-        return new CommunityLikeResult(command.postId(), false);
+        return new CommunityLikeResult(command.postId(), false, -1);
     }
 
     private void ensurePostExists(Long postId) {

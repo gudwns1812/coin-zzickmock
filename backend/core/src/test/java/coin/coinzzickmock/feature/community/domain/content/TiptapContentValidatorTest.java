@@ -35,7 +35,7 @@ class TiptapContentValidatorTest {
                 }
                 """;
 
-        assertThatCode(() -> TiptapContentValidator.validate(json, TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://cdn.example/community/")))).doesNotThrowAnyException();
+        assertThatCode(() -> TiptapContentJson.of(json, TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://cdn.example/community/")))).doesNotThrowAnyException();
     }
 
     @Test

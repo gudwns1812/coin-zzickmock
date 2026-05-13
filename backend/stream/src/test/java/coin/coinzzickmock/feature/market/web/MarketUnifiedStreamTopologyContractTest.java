@@ -80,19 +80,30 @@ class MarketUnifiedStreamTopologyContractTest {
     @Test
     void controllerAddsAuthenticatedUnifiedEndpointWithoutCouplingToPositionInternals() throws IOException {
         String controller = readRequired(APP_MARKET_WEB.resolve("MarketController.java"));
+        String gateway = readRequired(APP_MARKET_WEB.resolve("MarketStreamGateway.java"));
+        String gatewayAdapter = readRequired(APP_MARKET_WEB.resolve("config/StreamMarketGatewayAdapter.java"));
         String router = readRequired(MARKET_WEB.resolve("MarketSseStreamRouter.java"));
         String strategyContract = readRequired(MARKET_WEB.resolve("MarketSseStreamStrategy.java"));
         String strategy = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamStrategy.java"));
 
         assertTrue(controller.contains("/stream"), "controller must expose unified /api/futures/markets/stream");
-        assertTrue(controller.contains("MarketSseStreamRequest.summary"),
-                "controller must build typed raw summary stream requests");
-        assertTrue(controller.contains("MarketSseStreamRequest.candle"),
-                "controller must build typed raw candle stream requests");
-        assertTrue(controller.contains("MarketSseStreamRequest.unified"),
-                "controller must build typed unified stream requests");
-        assertTrue(controller.contains("MarketSseStreamRouter"),
-                "controller must delegate SSE route selection to the market stream router");
+        assertTrue(controller.contains("MarketStreamGateway"),
+                "controller must delegate SSE route selection to the app-owned stream gateway");
+        assertFalse(controller.contains("MarketSseStreamRequest"),
+                "controller must not import stream-module request details directly");
+        assertFalse(controller.contains("MarketSseStreamRouter"),
+                "controller must not import stream-module router details directly");
+        assertTrue(gateway.contains("openUnified"), "gateway must expose unified stream opening");
+        assertTrue(gateway.contains("openSummary"), "gateway must expose raw summary stream opening");
+        assertTrue(gateway.contains("openCandle"), "gateway must expose raw candle stream opening");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.summary"),
+                "gateway adapter must build typed raw summary stream requests");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.candle"),
+                "gateway adapter must build typed raw candle stream requests");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.unified"),
+                "gateway adapter must build typed unified stream requests");
+        assertTrue(gatewayAdapter.contains("MarketSseStreamRouter"),
+                "gateway adapter must delegate SSE route selection to the market stream router");
         assertFalse(controller.contains("UnifiedMarketStreamOpener"),
                 "controller must not depend on the removed unified stream opener");
         assertFalse(Files.exists(MARKET_WEB.resolve("UnifiedMarketStreamOpener.java")),

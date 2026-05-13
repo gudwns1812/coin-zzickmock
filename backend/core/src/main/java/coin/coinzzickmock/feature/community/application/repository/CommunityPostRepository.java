@@ -19,6 +19,8 @@ public interface CommunityPostRepository {
 
     void softDelete(Long postId, Instant deletedAt);
 
+    void incrementViewCount(Long postId);
+
     void incrementLikeCount(Long postId);
 
     void decrementLikeCount(Long postId);

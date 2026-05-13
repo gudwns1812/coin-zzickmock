@@ -27,6 +27,7 @@ import coin.coinzzickmock.feature.community.application.result.CommunityPostSumm
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
+import coin.coinzzickmock.feature.community.domain.CommunityPostImageIntent;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import coin.coinzzickmock.feature.community.domain.TiptapJsonDocument;
 import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
@@ -79,7 +80,7 @@ class CommunityApplicationServiceRegressionTest {
     void postDeleteAllowsAuthorOrAdminAndHidesSoftDeletedPostFromUseCases() {
         CreateCommunityPostService create = new CreateCommunityPostService(posts, images, CLOCK);
         DeleteCommunityPostService delete = new DeleteCommunityPostService(posts, CLOCK);
-        GetCommunityPostService get = new GetCommunityPostService(posts, likes);
+        GetCommunityPostService get = new GetCommunityPostService(posts, likes, CLOCK);
         ListCommunityPostsService list = new ListCommunityPostsService(posts);
 
         Long authorPostId = create.execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages())).postId();
@@ -262,6 +263,11 @@ class CommunityApplicationServiceRegressionTest {
         }
 
         @Override
+        public void incrementViewCount(Long postId) {
+            posts.computeIfPresent(postId, (id, post) -> post.incrementViewCount(CLOCK.instant()));
+        }
+
+        @Override
         public void incrementLikeCount(Long postId) {
             posts.computeIfPresent(postId, (id, post) -> post.incrementLikeCount(CLOCK.instant()));
         }
@@ -361,6 +367,12 @@ class CommunityApplicationServiceRegressionTest {
                 keys.retainAll(retainedObjectKeys);
                 return keys;
             });
+        }
+
+        @Override
+        public void saveImageIntent(CommunityPostImageIntent intent) {
+            allowedByMember.computeIfAbsent(intent.uploaderMemberId(), ignored -> new HashSet<>())
+                    .add(intent.objectKey());
         }
     }
 }

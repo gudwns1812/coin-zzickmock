@@ -89,7 +89,7 @@
 - object key는 서버가 생성하며 예시는 `community/{memberId}/{uuid}.{ext}`이다. client가 최종 URL을 임의 지정할 수 없다.
 - frontend는 presign에 사용한 `Content-Type`과 동일한 header로 PUT한다.
 - presigned URL, credentials, secret 값은 로그/응답 저장소에 남기지 않는다.
-- S3 bucket(`S3_BUCKET`), region(`S3_REGION`), public/CDN base URL(`PUBLIC_CDN_BASE_URL` 또는 `CDN_BASE_URL`), key prefix(`S3_KEY_PREFIX`), presign TTL(`PRESIGN_TTL`), allowed MIME(`ALLOWED_MIME`), max bytes(`MAX_BYTES`)는 환경변수로 구성한다.
+- S3 bucket(`S3_BUCKET`), region(`S3_REGION`), public/CDN base URL(`PUBLIC_CDN_BASE_URL` 또는 `CDN_BASE_URL`), key prefix(`S3_KEY_PREFIX`), presign TTL(`COMMUNITY_IMAGE_PRESIGN_TTL`), allowed MIME(`COMMUNITY_IMAGE_ALLOWED_MIME`), allowed public image URL prefixes(`COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES`), max bytes(`COMMUNITY_IMAGE_MAX_BYTES`)는 환경변수로 구성한다.
 - 애플리케이션은 시작 시 필수 S3 환경변수의 존재와 기본 형식을 검증한다. 예: region pattern, numeric TTL/bytes, comma-separated MIME list, CDN base URL 형식. 누락/오류가 있으면 어떤 값이 잘못됐는지 명확한 메시지로 fail fast한다. 로컬 safe-mode를 제공한다면 presign endpoint를 비활성화하고 사용자에게 업로드 설정 필요 오류를 반환해야 한다.
 - S3 CORS는 커뮤니티 에디터 origin을 AllowedOrigin으로 두고 `PUT`, `OPTIONS`를 허용해야 한다. AllowedHeaders는 최소 `Content-Type`, `Content-MD5`, `x-amz-*` 및 client가 보내는 custom `x-*` headers를 포함한다. 임시 credential header를 쓰는 구성은 `x-amz-security-token`도 허용한다. OPTIONS preflight가 성공해야 한다.
 

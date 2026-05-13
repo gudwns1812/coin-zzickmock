@@ -17,6 +17,10 @@ public interface CommunityPostEntityRepository extends JpaRepository<CommunityPo
 
     Optional<CommunityPostEntity> findByIdAndDeletedAtIsNull(Long id);
 
+    /**
+     * Locks by physical row id including soft-deleted posts. Prefer
+     * {@link #findWithLockingByIdAndDeletedAtIsNull(Long)} for community mutations.
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CommunityPostEntity> findWithLockingById(Long id);
 

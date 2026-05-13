@@ -36,7 +36,7 @@ public class CommunityCommentPersistenceRepository implements CommunityCommentRe
     @Transactional
     public CommunityComment save(CommunityComment comment) {
         CommunityCommentEntity entity = comment.id() == null ? CommunityCommentEntity.from(comment)
-                : commentEntityRepository.findById(comment.id()).map(existing -> {
+                : commentEntityRepository.findByIdAndDeletedAtIsNull(comment.id()).map(existing -> {
                     existing.apply(comment);
                     return existing;
                 }).orElseThrow(CommunityCommentPersistenceRepository::invalidRequest);

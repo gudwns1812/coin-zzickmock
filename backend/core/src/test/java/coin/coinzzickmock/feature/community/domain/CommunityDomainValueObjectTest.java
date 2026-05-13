@@ -43,10 +43,18 @@ class CommunityDomainValueObjectTest {
         );
 
         assertThat(image.canBeAttachedBy(7L)).isTrue();
-        assertThat(image.attachTo(10L, Instant.parse("2026-05-13T00:01:00Z")).status())
+        CommunityPostImageIntent attached = image.attachTo(10L, Instant.parse("2026-05-13T00:01:00Z"));
+        assertThat(attached.status())
                 .isEqualTo(CommunityPostImageStatus.ATTACHED);
-        assertThat(image.markOrphaned(Instant.parse("2026-05-13T00:02:00Z")).status())
+        CommunityPostImageIntent reattached = attached.attachTo(10L, Instant.parse("2026-05-13T00:02:00Z"));
+        assertThat(reattached.postId()).isEqualTo(10L);
+        assertThat(reattached.status()).isEqualTo(CommunityPostImageStatus.ATTACHED);
+        assertThrows(CoreException.class, () -> attached.attachTo(11L, Instant.parse("2026-05-13T00:02:00Z")));
+        CommunityPostImageIntent orphaned = attached.markOrphaned(Instant.parse("2026-05-13T00:03:00Z"));
+        assertThat(orphaned.status())
                 .isEqualTo(CommunityPostImageStatus.ORPHANED);
+        assertThat(orphaned.postId()).isNull();
+        assertThrows(CoreException.class, () -> orphaned.markOrphaned(Instant.parse("2026-05-13T00:04:00Z")));
         assertThrows(CoreException.class, () -> new CommunityPostImageIntent(
                 1L,
                 null,

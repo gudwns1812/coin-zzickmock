@@ -158,6 +158,14 @@
 - 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
 - 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며
   `application-prod.yml`, `docker-compose.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.
+- 커뮤니티 이미지 업로드는 backend-only S3 presign 설정으로 관리한다. `S3_BUCKET`, `S3_REGION`, `PUBLIC_CDN_BASE_URL`
+  또는 `CDN_BASE_URL`, `S3_KEY_PREFIX`, `COMMUNITY_IMAGE_ALLOWED_MIME`, `COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES`,
+  `COMMUNITY_IMAGE_MAX_BYTES`, `COMMUNITY_IMAGE_PRESIGN_TTL`을 서버 환경에 주입하고,
+  AWS 접근 권한은 인스턴스 역할이나 AWS SDK credential provider chain으로 공급한다. AWS access key/secret, presigned URL,
+  업로드 credential 원문은 예시 파일·로그·릴리즈 기록에 남기지 않는다.
+- 커뮤니티 이미지 bucket/CORS는 프론트 배포 origin에서 `PUT`, `OPTIONS` preflight가 성공하도록 구성해야 한다.
+  최소 허용 header는 `Content-Type`, `Content-MD5`, `x-amz-*`이며 임시 credential 구성이면 `x-amz-security-token`도 허용한다.
+  CDN을 쓰면 `COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES`는 실제 public/CDN prefix와 일치해야 한다.
 
 ### Production Docker Host
 

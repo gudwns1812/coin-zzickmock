@@ -155,6 +155,11 @@ export default function MarketsLanding({
     enabled: isSearchingLeaderboard,
     staleTime: 20_000,
   });
+  const togglePeekTarget = (target: PositionPeekTarget) => {
+    setSelectedPeekTarget((currentTarget) =>
+      currentTarget?.targetToken === target.targetToken ? null : target
+    );
+  };
   const displayedRankingEntries = isSearchingLeaderboard
     ? leaderboardSearch.data ?? []
     : rankingEntries;
@@ -316,7 +321,7 @@ export default function MarketsLanding({
                       selectedPeekTarget?.targetToken &&
                         selectedPeekTarget.targetToken === entry.targetToken
                     )}
-                    onSelect={entry.targetToken ? setSelectedPeekTarget : undefined}
+                    onSelect={entry.targetToken ? togglePeekTarget : undefined}
                   />
                 ))}
               </div>

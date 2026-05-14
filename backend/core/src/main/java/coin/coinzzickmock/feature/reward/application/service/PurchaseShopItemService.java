@@ -7,14 +7,17 @@ import coin.coinzzickmock.feature.account.application.result.AccountRefillCredit
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import coin.coinzzickmock.feature.reward.application.repository.RewardShopPurchaseRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
 import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import coin.coinzzickmock.feature.reward.domain.RewardShopPurchase;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import coin.coinzzickmock.feature.reward.domain.RewardShopMemberItemUsage;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,7 @@ public class PurchaseShopItemService {
     private final RewardPointHistoryRepository rewardPointHistoryRepository;
     private final AccountRefillCreditProcessor accountRefillCreditProcessor;
     private final RewardItemBalanceRepository rewardItemBalanceRepository;
+    private final RewardShopPurchaseRepository rewardShopPurchaseRepository;
 
     @Transactional
     public ShopPurchaseResult purchase(Long memberId, String itemCode) {
@@ -36,6 +40,8 @@ public class PurchaseShopItemService {
         RewardShopItem item = loadPurchasableInstantItemForUpdate(normalizedItemCode);
         RewardShopMemberItemUsage usage = loadUsageForUpdate(memberId, item);
         validatePurchase(item, usage);
+        String purchaseId = UUID.randomUUID().toString();
+        Instant purchasedAt = Instant.now();
 
         RewardPointWallet deductedWallet = deductWallet(memberId, item.price());
         ReservedShopPurchase reservedPurchase = reserveItemAndUsage(item, usage);
@@ -43,7 +49,8 @@ public class PurchaseShopItemService {
 
         persistReservation(reservedPurchase);
         RewardPointWallet savedWallet = rewardPointRepository.save(deductedWallet);
-        recordHistory(memberId, item.price(), savedWallet.rewardPoint());
+        recordPurchase(purchaseId, memberId, item, purchasedAt);
+        recordHistory(memberId, item.price(), savedWallet.rewardPoint(), purchaseId);
 
         return effect.toResult(normalizedItemCode, savedWallet.rewardPoint());
     }
@@ -101,12 +108,16 @@ public class PurchaseShopItemService {
         rewardShopMemberItemUsageRepository.save(reservedPurchase.usage());
     }
 
-    private void recordHistory(Long memberId, int price, int balanceAfter) {
+    private void recordPurchase(String purchaseId, Long memberId, RewardShopItem item, Instant purchasedAt) {
+        rewardShopPurchaseRepository.create(RewardShopPurchase.instant(purchaseId, memberId, item, purchasedAt));
+    }
+
+    private void recordHistory(Long memberId, int price, int balanceAfter, String purchaseId) {
         rewardPointHistoryRepository.save(RewardPointHistory.instantShopPurchaseDeduct(
                 memberId,
                 price,
                 balanceAfter,
-                UUID.randomUUID().toString()
+                purchaseId
         ));
     }
 

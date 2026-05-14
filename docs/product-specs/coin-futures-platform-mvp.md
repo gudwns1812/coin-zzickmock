@@ -277,7 +277,7 @@ MVP에서는 기본 리스트와 요약 카드 중심으로 시작한다.
 - `FeeLedger`
 - `BalanceHistory`
 - `PointLedger`
-- `ShopPurchase`
+- `ShopPurchase`: 교환권 신청과 분리된 즉시 구매 성공 원장. `ACCOUNT_REFILL_COUNT`, `POSITION_PEEK`처럼 요청 lifecycle이 없는 상품은 구매 시점의 item snapshot과 `purchaseId`를 남긴다.
 
 ## 시뮬레이션 규칙 기준
 

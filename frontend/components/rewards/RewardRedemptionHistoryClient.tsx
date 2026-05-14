@@ -2,33 +2,33 @@
 
 import { cancelOwnRewardRedemption } from "@/lib/futures-client-api";
 import type {
-  RewardRedemption,
-  RewardRedemptionsResult,
+  RewardShopHistoryResult,
+  RewardShopHistoryRow,
 } from "@/lib/futures-api";
-import { Clock3, Loader2, RotateCcw } from "lucide-react";
+import { CheckCircle2, Clock3, Loader2, RotateCcw, ShoppingBag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
-  redemptions: RewardRedemptionsResult;
+  history: RewardShopHistoryResult;
 };
 
 export default function RewardRedemptionHistoryClient({
-  redemptions,
+  history,
 }: Props) {
   const router = useRouter();
   const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(
     null
   );
 
-  const cancelRedemption = async (request: RewardRedemption) => {
-    if (request.status !== "PENDING") return;
+  const cancelRedemption = async (row: RewardShopHistoryRow) => {
+    if (row.kind !== "REDEMPTION_REQUEST" || row.status !== "PENDING") return;
 
-    setCancellingRequestId(request.requestId);
+    setCancellingRequestId(row.entryId);
 
     try {
-      await cancelOwnRewardRedemption(request.requestId);
+      await cancelOwnRewardRedemption(row.entryId);
       toast.success("교환 신청을 취소했습니다.");
       router.refresh();
     } catch (error) {
@@ -40,68 +40,60 @@ export default function RewardRedemptionHistoryClient({
     }
   };
 
-  if (redemptions.unavailable) {
+  if (history.unavailable) {
     return (
       <div className="rounded-main bg-main-light-gray/45 p-main text-sm-custom text-main-dark-gray/60">
-        {redemptions.message ?? "교환 내역을 불러오지 못했습니다."}
+        {history.message ?? "구매/교환 내역을 불러오지 못했습니다."}
       </div>
     );
   }
 
-  if (redemptions.redemptions.length === 0) {
+  if (history.rows.length === 0) {
     return (
       <div className="rounded-main bg-main-light-gray/45 p-main text-sm-custom text-main-dark-gray/60">
-        아직 교환 내역이 없습니다.
+        아직 구매/교환 내역이 없습니다.
       </div>
     );
   }
 
   return (
     <div className="overflow-x-auto rounded-main border border-main-light-gray">
-      <div className="grid min-w-[760px] grid-cols-[1.2fr_0.8fr_1fr_1fr_0.8fr] gap-main bg-main-light-gray/35 px-main py-3 text-xs-custom font-semibold text-main-dark-gray/55">
+      <div className="grid min-w-[760px] grid-cols-[1.2fr_0.85fr_1fr_1fr_0.8fr] gap-main bg-main-light-gray/35 px-main py-3 text-xs-custom font-semibold text-main-dark-gray/55">
         <span>상품</span>
         <span>상태</span>
         <span>연락처</span>
-        <span>신청 시각</span>
+        <span>시각</span>
         <span>처리</span>
       </div>
-      {redemptions.redemptions.map((request) => (
+      {history.rows.map((row) => (
         <div
-          className="grid min-w-[760px] grid-cols-[1.2fr_0.8fr_1fr_1fr_0.8fr] items-center gap-main border-t border-main-light-gray px-main py-4 text-sm-custom"
-          key={request.requestId}
+          className="grid min-w-[760px] grid-cols-[1.2fr_0.85fr_1fr_1fr_0.8fr] items-center gap-main border-t border-main-light-gray px-main py-4 text-sm-custom"
+          key={`${row.kind}-${row.entryId}`}
         >
           <div>
             <p className="font-semibold text-main-dark-gray">
-              {request.itemName}
+              {row.itemName}
             </p>
             <p className="mt-1 text-xs-custom text-main-dark-gray/50">
-              {request.pointAmount.toLocaleString("ko-KR")} P ·{" "}
-              {request.requestId}
+              {row.pointAmount.toLocaleString("ko-KR")} P ·{" "}
+              {getItemTypeLabel(row.itemType)}
             </p>
           </div>
-          <span
-            className={[
-              "inline-flex w-fit items-center gap-1 rounded-main px-2 py-1 text-xs-custom font-semibold",
-              getRedemptionStatusClassName(request.status),
-            ].join(" ")}
-          >
-            {request.status === "PENDING" && <Clock3 size={13} />}
-            {getRedemptionStatusLabel(request.status)}
-          </span>
+          <HistoryBadge row={row} />
           <span className="font-semibold text-main-dark-gray">
-            {request.submittedPhoneNumber}
+            {row.submittedPhoneNumber ?? "-"}
           </span>
           <span className="text-main-dark-gray/60">
-            {formatDateTime(request.requestedAt)}
+            {formatDateTime(row.eventAt)}
           </span>
-          {request.status === "PENDING" ? (
+          {row.kind === "REDEMPTION_REQUEST" && row.status === "PENDING" ? (
             <button
               className="flex w-fit items-center gap-1 rounded-main border border-main-light-gray px-3 py-2 text-xs-custom font-semibold text-main-dark-gray/65 transition-colors hover:border-main-blue hover:text-main-blue disabled:text-main-dark-gray/35"
               disabled={cancellingRequestId !== null}
-              onClick={() => cancelRedemption(request)}
+              onClick={() => cancelRedemption(row)}
               type="button"
             >
-              {cancellingRequestId === request.requestId ? (
+              {cancellingRequestId === row.entryId ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 <RotateCcw size={14} />
@@ -109,7 +101,9 @@ export default function RewardRedemptionHistoryClient({
               취소
             </button>
           ) : (
-            <span className="text-xs-custom text-main-dark-gray/45">완료</span>
+            <span className="text-xs-custom text-main-dark-gray/45">
+              {row.kind === "INSTANT_PURCHASE" ? "완료" : "처리 완료"}
+            </span>
           )}
         </div>
       ))}
@@ -117,7 +111,33 @@ export default function RewardRedemptionHistoryClient({
   );
 }
 
-function getRedemptionStatusLabel(status: RewardRedemption["status"]): string {
+function HistoryBadge({ row }: { row: RewardShopHistoryRow }) {
+  if (row.kind === "INSTANT_PURCHASE") {
+    return (
+      <span className="inline-flex w-fit items-center gap-1 rounded-main bg-main-blue/10 px-2 py-1 text-xs-custom font-semibold text-main-blue">
+        <ShoppingBag size={13} />
+        즉시 구매
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={[
+        "inline-flex w-fit items-center gap-1 rounded-main px-2 py-1 text-xs-custom font-semibold",
+        getRedemptionStatusClassName(row.status),
+      ].join(" ")}
+    >
+      {row.status === "PENDING" && <Clock3 size={13} />}
+      {row.status === "APPROVED" && <CheckCircle2 size={13} />}
+      {getRedemptionStatusLabel(row.status)}
+    </span>
+  );
+}
+
+function getRedemptionStatusLabel(
+  status: RewardShopHistoryRow["status"]
+): string {
   if (status === "APPROVED" || status === "SENT") return "승인 완료";
   if (status === "REJECTED" || status === "CANCELLED_REFUNDED") return "반려";
   if (status === "CANCELLED") return "취소";
@@ -125,7 +145,7 @@ function getRedemptionStatusLabel(status: RewardRedemption["status"]): string {
 }
 
 function getRedemptionStatusClassName(
-  status: RewardRedemption["status"]
+  status: RewardShopHistoryRow["status"]
 ): string {
   if (status === "APPROVED" || status === "SENT") {
     return "bg-main-blue/10 text-main-blue";
@@ -137,6 +157,13 @@ function getRedemptionStatusClassName(
     return "bg-main-light-gray text-main-dark-gray/55";
   }
   return "bg-amber-50 text-amber-700";
+}
+
+function getItemTypeLabel(itemType: string): string {
+  if (itemType === "POSITION_PEEK") return "포지션 엿보기권";
+  if (itemType === "ACCOUNT_REFILL_COUNT") return "리필 추가권";
+  if (itemType === "COFFEE_VOUCHER") return "교환권";
+  return "상점 상품";
 }
 
 function formatDateTime(value: string): string {

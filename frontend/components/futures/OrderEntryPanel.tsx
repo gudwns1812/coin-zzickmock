@@ -164,6 +164,11 @@ export default function OrderEntryPanel({
 
   const effectivePrice =
     orderType === "LIMIT" ? Number.parseFloat(limitPrice) : currentPrice;
+  const openOrderAffordabilityPrice = resolveOpenOrderAffordabilityPrice({
+    orderType,
+    limitPrice,
+    currentPrice,
+  });
   const baseAsset = symbol.replace("USDT", "");
   const liveAccountSummary = useMemo(
     () => deriveLiveAccountSummaryDisplay(accountSummary, positions),
@@ -180,8 +185,13 @@ export default function OrderEntryPanel({
   );
   const isMarginModeLocked = selectedSidePosition !== null;
   const maxOpenQuantity =
-    Number.isFinite(effectivePrice) && effectivePrice > 0
-      ? calculateMaxOpenOrderQuantity(availableBalance, leverage, effectivePrice)
+    Number.isFinite(openOrderAffordabilityPrice) &&
+    openOrderAffordabilityPrice > 0
+      ? calculateMaxOpenOrderQuantity(
+          availableBalance,
+          leverage,
+          openOrderAffordabilityPrice
+        )
       : 0;
   const maxCloseQuantity = matchingPosition?.quantity ?? 0;
   const quantityControlMax =
@@ -219,9 +229,11 @@ export default function OrderEntryPanel({
     ]
   );
   const hasValidOrder = orderPayload !== null;
+  const orderNotionalPrice =
+    ticketMode === "OPEN" ? openOrderAffordabilityPrice : effectivePrice;
   const orderNotional =
-    Number.isFinite(parsedQuantity) && Number.isFinite(effectivePrice)
-      ? parsedQuantity * effectivePrice
+    Number.isFinite(parsedQuantity) && Number.isFinite(orderNotionalPrice)
+      ? parsedQuantity * orderNotionalPrice
       : 0;
   const costEstimate = leverage > 0 ? orderNotional / leverage : 0;
   const valueSummaryLabel =
@@ -810,6 +822,31 @@ function formatLimitPriceInput(price: number) {
     .toFixed(4)
     .replace(/(\.\d*?)0+$/, "$1")
     .replace(/\.$/, ".0");
+}
+
+function resolveOpenOrderAffordabilityPrice({
+  orderType,
+  limitPrice,
+  currentPrice,
+}: {
+  orderType: OrderType;
+  limitPrice: string;
+  currentPrice: number;
+}): number {
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+    return 0;
+  }
+
+  if (orderType === "MARKET") {
+    return currentPrice;
+  }
+
+  const parsedLimitPrice = Number.parseFloat(limitPrice);
+  if (!Number.isFinite(parsedLimitPrice) || parsedLimitPrice <= 0) {
+    return 0;
+  }
+
+  return Math.max(parsedLimitPrice, currentPrice);
 }
 
 function buildOrderPayload({

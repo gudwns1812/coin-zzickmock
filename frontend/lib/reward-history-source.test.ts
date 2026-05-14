@@ -48,3 +48,14 @@ test("point history maps internal source references to user-facing labels", () =
   assert.match(pointsPageSource, /상점 즉시 구매/);
   assert.match(pointsPageSource, /상점 상품 구매/);
 });
+
+test("voucher redemption modal closes after submission without exposing request ids", () => {
+  const shopClientSource = readFrontendSource(
+    "components/rewards/ShopRedemptionClient.tsx"
+  );
+
+  assert.doesNotMatch(shopClientSource, /lastRequestId/);
+  assert.doesNotMatch(shopClientSource, /신청번호/);
+  assert.match(shopClientSource, /await createRewardRedemption/);
+  assert.match(shopClientSource, /setSelectedItem\(null\);/);
+});

@@ -47,6 +47,25 @@ test("open order max quantity uses fee-aware floored helper while close mode rem
   assert.equal(source.includes("toFixed(3)"), false);
 });
 
+test("open limit helper and summary use conservative affordability price", () => {
+  assert.equal(source.includes("resolveOpenOrderAffordabilityPrice"), true);
+  assert.equal(source.includes("openOrderAffordabilityPrice"), true);
+  assert.equal(source.includes("Math.max(parsedLimitPrice, currentPrice)"), true);
+  assert.equal(
+    source.includes(
+      "calculateMaxOpenOrderQuantity(\n          availableBalance,\n          leverage,\n          openOrderAffordabilityPrice"
+    ),
+    true
+  );
+  assert.equal(
+    source.includes(
+      'ticketMode === "OPEN" ? openOrderAffordabilityPrice : effectivePrice'
+    ),
+    true
+  );
+  assert.equal(source.includes("parsedQuantity * orderNotionalPrice"), true);
+});
+
 test("order ticket exposes current side so leverage edits target the intended position", () => {
   assert.equal(source.includes('onClick={() => handleSubmit("LONG")}'), true);
   assert.equal(source.includes('onClick={() => handleSubmit("SHORT")}'), true);

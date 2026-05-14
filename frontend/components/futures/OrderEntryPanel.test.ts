@@ -50,7 +50,10 @@ test("open order max quantity uses fee-aware floored helper while close mode rem
 test("open limit helper and summary use conservative affordability price", () => {
   assert.equal(source.includes("resolveOpenOrderAffordabilityPrice"), true);
   assert.equal(source.includes("openOrderAffordabilityPrice"), true);
-  assert.equal(source.includes("Math.max(parsedLimitPrice, currentPrice)"), true);
+  assert.equal(
+    source.includes("resolveOpenOrderAffordabilityPrice(\n    orderType,\n    currentPrice,\n    parsedLimitPrice"),
+    true
+  );
   assert.equal(
     source.includes(
       "calculateMaxOpenOrderQuantity(\n          availableBalance,\n          leverage,\n          openOrderAffordabilityPrice"

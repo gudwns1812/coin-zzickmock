@@ -17,6 +17,7 @@ import {
 import {
   calculateMaxOpenOrderQuantity,
   formatFlooredQuantity,
+  resolveOpenOrderAffordabilityPrice,
 } from "@/lib/order-entry-quantity";
 import { deriveLiveAccountSummaryDisplay } from "@/components/futures/livePositionDisplay";
 import Modal from "@/components/ui/Modal";
@@ -164,11 +165,12 @@ export default function OrderEntryPanel({
 
   const effectivePrice =
     orderType === "LIMIT" ? Number.parseFloat(limitPrice) : currentPrice;
-  const openOrderAffordabilityPrice = resolveOpenOrderAffordabilityPrice({
+  const parsedLimitPrice = Number.parseFloat(limitPrice);
+  const openOrderAffordabilityPrice = resolveOpenOrderAffordabilityPrice(
     orderType,
-    limitPrice,
     currentPrice,
-  });
+    parsedLimitPrice
+  );
   const baseAsset = symbol.replace("USDT", "");
   const liveAccountSummary = useMemo(
     () => deriveLiveAccountSummaryDisplay(accountSummary, positions),
@@ -822,31 +824,6 @@ function formatLimitPriceInput(price: number) {
     .toFixed(4)
     .replace(/(\.\d*?)0+$/, "$1")
     .replace(/\.$/, ".0");
-}
-
-function resolveOpenOrderAffordabilityPrice({
-  orderType,
-  limitPrice,
-  currentPrice,
-}: {
-  orderType: OrderType;
-  limitPrice: string;
-  currentPrice: number;
-}): number {
-  if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
-    return 0;
-  }
-
-  if (orderType === "MARKET") {
-    return currentPrice;
-  }
-
-  const parsedLimitPrice = Number.parseFloat(limitPrice);
-  if (!Number.isFinite(parsedLimitPrice) || parsedLimitPrice <= 0) {
-    return 0;
-  }
-
-  return Math.max(parsedLimitPrice, currentPrice);
 }
 
 function buildOrderPayload({

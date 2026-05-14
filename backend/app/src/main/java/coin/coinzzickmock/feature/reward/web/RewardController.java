@@ -6,8 +6,8 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.reward.application.result.RewardPointHistoryResult;
 import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
 import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
-import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
 import coin.coinzzickmock.feature.reward.application.result.ShopItemResult;
+import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
 import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
 import coin.coinzzickmock.feature.reward.application.service.AdminRewardShopItemService;
 import coin.coinzzickmock.feature.reward.application.service.AdminRewardRedemptionService;
@@ -16,6 +16,7 @@ import coin.coinzzickmock.feature.reward.application.service.CreateRewardRedempt
 import coin.coinzzickmock.feature.reward.application.service.GetRewardPointHistoryService;
 import coin.coinzzickmock.feature.reward.application.service.GetRewardPointService;
 import coin.coinzzickmock.feature.reward.application.service.GetRewardRedemptionHistoryService;
+import coin.coinzzickmock.feature.reward.application.service.GetRewardShopHistoryService;
 import coin.coinzzickmock.feature.reward.application.service.GetShopItemsService;
 import coin.coinzzickmock.feature.reward.application.service.PurchaseShopItemService;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
@@ -41,6 +42,7 @@ public class RewardController {
     private final GetShopItemsService getShopItemsService;
     private final CreateRewardRedemptionService createRewardRedemptionService;
     private final GetRewardRedemptionHistoryService getRewardRedemptionHistoryService;
+    private final GetRewardShopHistoryService getRewardShopHistoryService;
     private final CancelRewardRedemptionService cancelRewardRedemptionService;
     private final PurchaseShopItemService purchaseShopItemService;
     private final AdminRewardRedemptionService adminRewardRedemptionService;
@@ -97,6 +99,14 @@ public class RewardController {
         Actor actor = providers.auth().currentActor();
         return ApiResponse.success(getRewardRedemptionHistoryService.get(actor.memberId()).stream()
                 .map(RewardRedemptionResponse::from)
+                .toList());
+    }
+
+    @GetMapping("/shop/history")
+    public ApiResponse<List<RewardShopHistoryResponse>> shopHistory() {
+        Actor actor = providers.auth().currentActor();
+        return ApiResponse.success(getRewardShopHistoryService.get(actor.memberId()).stream()
+                .map(RewardShopHistoryResponse::from)
                 .toList());
     }
 

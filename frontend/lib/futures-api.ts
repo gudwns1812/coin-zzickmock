@@ -310,6 +310,33 @@ export type RewardRedemptionsResult = {
   message: string | null;
 };
 
+export type RewardShopHistoryKind =
+  | "INSTANT_PURCHASE"
+  | "REDEMPTION_REQUEST";
+
+export type RewardShopHistoryRow = {
+  kind: RewardShopHistoryKind;
+  entryId: string;
+  itemCode: string;
+  itemName: string;
+  itemType: string;
+  pointAmount: number;
+  quantity: number;
+  eventAt: string;
+  submittedPhoneNumber: string | null;
+  status: RewardRedemptionStatus | null;
+  purchasedAt: string | null;
+  requestedAt: string | null;
+  sentAt: string | null;
+  cancelledAt: string | null;
+};
+
+export type RewardShopHistoryResult = {
+  rows: RewardShopHistoryRow[];
+  unavailable: boolean;
+  message: string | null;
+};
+
 export type ShopPurchaseResult = {
   itemCode: string;
   rewardPoint: number;
@@ -578,6 +605,18 @@ export async function getRewardRedemptions(): Promise<RewardRedemptionsResult> {
 
   return {
     redemptions: response.data ?? [],
+    unavailable: !response.ok,
+    message: response.message,
+  };
+}
+
+export async function getRewardShopHistory(): Promise<RewardShopHistoryResult> {
+  const response = await readApiResult<RewardShopHistoryRow[]>(
+    "/api/futures/shop/history"
+  );
+
+  return {
+    rows: response.data ?? [],
     unavailable: !response.ok,
     message: response.message,
   };

@@ -10,6 +10,8 @@ import coin.coinzzickmock.feature.reward.application.repository.RewardRedemption
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
+import coin.coinzzickmock.feature.reward.application.result.RewardShopHistoryKind;
+import coin.coinzzickmock.feature.reward.application.result.RewardShopHistoryResult;
 import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
 import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
@@ -54,6 +56,9 @@ class RewardRedemptionServiceTest {
 
     @Autowired
     private GetRewardRedemptionHistoryService getRewardRedemptionHistoryService;
+
+    @Autowired
+    private GetRewardShopHistoryService getRewardShopHistoryService;
 
     @Autowired
     private CancelRewardRedemptionService cancelRewardRedemptionService;
@@ -135,6 +140,11 @@ class RewardRedemptionServiceTest {
         assertEquals(RewardPointHistoryType.REDEMPTION_DEDUCT, history.historyType());
         assertEquals(-20, history.amount());
         assertEquals("INSTANT_SHOP_PURCHASE", history.sourceType());
+        List<RewardShopHistoryResult> shopHistory = getRewardShopHistoryService.get(MEMBER_ID);
+        assertEquals(1, shopHistory.size());
+        assertEquals(RewardShopHistoryKind.INSTANT_PURCHASE, shopHistory.get(0).kind());
+        assertEquals(history.sourceReference(), shopHistory.get(0).entryId());
+        assertEquals(REFILL_ITEM_CODE, shopHistory.get(0).itemCode());
     }
 
 
@@ -163,6 +173,30 @@ class RewardRedemptionServiceTest {
         RewardPointHistory history = rewardPointHistoryRepository.findByMemberId(MEMBER_ID).get(0);
         assertEquals(-10, history.amount());
         assertEquals("INSTANT_SHOP_PURCHASE", history.sourceType());
+        List<RewardShopHistoryResult> shopHistory = getRewardShopHistoryService.get(MEMBER_ID);
+        assertEquals(1, shopHistory.size());
+        assertEquals(RewardShopHistoryKind.INSTANT_PURCHASE, shopHistory.get(0).kind());
+        assertEquals(history.sourceReference(), shopHistory.get(0).entryId());
+        assertEquals(POSITION_PEEK_ITEM_CODE, shopHistory.get(0).itemCode());
+    }
+
+    @Test
+    void shopHistoryCombinesInstantPurchasesAndRedemptionRequests() {
+        rewardPointRepository.save(new RewardPointWallet(MEMBER_ID, 300));
+        RewardRedemptionResult redemption = createRewardRedemptionService.create(MEMBER_ID, ITEM_CODE, "010-1234-5678");
+        ShopPurchaseResult purchase = purchaseShopItemService.purchase(MEMBER_ID, POSITION_PEEK_ITEM_CODE);
+
+        List<RewardShopHistoryResult> history = getRewardShopHistoryService.get(MEMBER_ID);
+
+        assertEquals(2, history.size());
+        assertEquals(RewardShopHistoryKind.INSTANT_PURCHASE, history.get(0).kind());
+        assertEquals(purchase.itemCode(), history.get(0).itemCode());
+        assertEquals(null, history.get(0).submittedPhoneNumber());
+        assertEquals(null, history.get(0).status());
+        assertEquals(RewardShopHistoryKind.REDEMPTION_REQUEST, history.get(1).kind());
+        assertEquals(redemption.requestId(), history.get(1).entryId());
+        assertEquals("010-1234-5678", history.get(1).submittedPhoneNumber());
+        assertEquals(RewardRedemptionStatus.PENDING, history.get(1).status());
     }
 
     @Test

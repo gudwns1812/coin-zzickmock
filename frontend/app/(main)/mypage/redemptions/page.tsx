@@ -1,10 +1,10 @@
 import RewardRedemptionHistoryClient from "@/components/rewards/RewardRedemptionHistoryClient";
-import { getRewardRedemptions } from "@/lib/futures-api";
+import { getRewardShopHistory } from "@/lib/futures-api";
 import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
 export default async function MyPageRedemptionsPage() {
-  const redemptions = await getRewardRedemptions();
+  const history = await getRewardShopHistory();
 
   return (
     <div className="flex flex-col gap-main-2">
@@ -34,10 +34,10 @@ export default async function MyPageRedemptionsPage() {
             구매/교환 내역
           </h2>
           <span className="rounded-main bg-main-light-gray/55 px-3 py-1 text-xs-custom font-semibold text-main-dark-gray/60">
-            최근 신청순
+            최근 활동순
           </span>
         </div>
-        <RewardRedemptionHistoryClient redemptions={redemptions} />
+        <RewardRedemptionHistoryClient history={history} />
       </section>
     </div>
   );

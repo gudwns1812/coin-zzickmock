@@ -430,7 +430,7 @@ MVP 1차는 아래 순서로 단순화한다.
 
 ### MVP 1차 상품
 
-- `COFFEE_VOUCHER`: 커피 교환권, 50P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
+- `COFFEE_VOUCHER`: 커피 교환권, 100P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
 - `ACCOUNT_REFILL_COUNT`: 현재 주간 지갑 리필 횟수 추가권, 20P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
 - `POSITION_PEEK`: 포지션 엿보기권, 10P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`, item code `position.peek`
 - 관리 방식:
@@ -438,9 +438,11 @@ MVP 1차는 아래 순서로 단순화한다.
 - 관리자 상품 CRUD UI/API:
   MVP 범위 밖
 
-`ACCOUNT_REFILL_COUNT`는 교환권 요청을 만들지 않는 즉시 구매 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 현재 KST 주간 지갑 리필 가능 횟수를 1회 늘린다. 늘어난 횟수는 무료 주간 횟수와 같은 카운터에 합산되며, 지갑 리필 규칙에 따라 사용되고 다음 KST 월요일 00:00 리셋 때 이월되지 않는다.
+`ACCOUNT_REFILL_COUNT`는 교환권 요청을 만들지 않는 즉시 구매 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 현재 KST 주간 지갑 리필 가능 횟수를 1회 늘린다. 늘어난 횟수는 무료 주간 횟수와 같은 카운터에 합산되며, 지갑 리필 규칙에 따라 사용되고 다음 KST 월요일 00:00 리셋 때 이월되지 않는다. 성공한 구매는 `reward_shop_purchases`에 status 없는 terminal event로 저장하며, `purchase_id`는 같은 구매의 `reward_point_histories.source_reference`와 일치한다.
 
-`POSITION_PEEK`는 교환권 요청을 만들지 않는 즉시 소비형 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 `reward_item_balances.remaining_quantity`를 1 증가시킨다. 사용 시에는 리더보드에서 선택한 target 1명의 현재 열린 포지션 공개 요약 snapshot 1개를 생성하는 transaction이 성공한 경우에만 수량을 1 감소시킨다. snapshot 생성 실패, target token 위조/만료, target 삭제/차단, 서버 오류는 수량을 차감하지 않는다. 사용된 엿보기권은 환불하지 않으며, 같은 target을 다시 보려면 새 엿보기권 1개를 추가 소비해 새 snapshot을 만든다. 엿보기권 구매/사용은 리더보드 점수와 포인트 적립 공식에 영향을 주지 않는다.
+`POSITION_PEEK`는 교환권 요청을 만들지 않는 즉시 소비형 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 `reward_item_balances.remaining_quantity`를 1 증가시킨다. 성공한 구매는 `reward_shop_purchases`에 구매 시점의 item code/name/type/price/point snapshot과 함께 저장한다. 사용 시에는 리더보드에서 선택한 target 1명의 현재 열린 포지션 공개 요약 snapshot 1개를 생성하는 transaction이 성공한 경우에만 수량을 1 감소시킨다. snapshot 생성 실패, target token 위조/만료, target 삭제/차단, 서버 오류는 수량을 차감하지 않는다. 사용된 엿보기권은 환불하지 않으며, 같은 target을 다시 보려면 새 엿보기권 1개를 추가 소비해 새 snapshot을 만든다. 엿보기권 구매/사용은 리더보드 점수와 포인트 적립 공식에 영향을 주지 않는다.
+
+과거 `INSTANT_SHOP_PURCHASE` 포인트 이력은 item snapshot이 없어 구매 원장으로 백필하지 않는다. 통합 구매/교환 내역은 새 원장 도입 이후의 즉시 구매와 기존/신규 교환권 신청을 합쳐 보여주며, 포인트 내역 화면은 내부 UUID형 `source_reference`를 사용자에게 직접 노출하지 않는다.
 
 ### 판매 가능성
 
@@ -452,7 +454,7 @@ MVP 1차는 아래 순서로 단순화한다.
 - 사용자의 포인트 잔액이 상품 가격 이상
 
 `sold_quantity`는 item-level 재고 소진 수량이다.
-유저별 제한은 `purchase_count`로 추적하며, `PENDING`과 `APPROVED` 요청만 카운트한다.
+유저별 제한은 `purchase_count`로 추적하며, 즉시 구매 성공과 `PENDING`/`APPROVED` 교환 요청을 카운트한다.
 `REJECTED`와 `CANCELLED` 요청은 재고와 유저 구매 카운트를 정확히 한 번 복구한다.
 판매 가능성 검증과 재고/구매 카운트/포인트 차감은 같은 트랜잭션에서 수행해 검증 시점과 저장 시점이 갈라지지 않게 한다.
 
@@ -497,6 +499,8 @@ MVP 1차는 아래 순서로 단순화한다.
 - 포지션 종료
 - 포인트 적립
 - 상점 구매
+
+상점 구매/교환 내역 API는 즉시 구매 원장과 교환권 요청을 합친 read model을 반환한다. 정렬은 public UUID나 request id 문자열이 아니라 `eventAt DESC`, 내부 `sortSequence DESC` 기준으로 수행한다.
 
 ## 프론트 계산과 서버 계산의 책임 분리
 

@@ -15,12 +15,14 @@ import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
+import coin.coinzzickmock.feature.reward.application.repository.RewardShopPurchaseRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
 import coin.coinzzickmock.feature.reward.application.result.ShopPurchaseResult;
 import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
+import coin.coinzzickmock.feature.reward.domain.RewardShopPurchase;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import coin.coinzzickmock.feature.reward.domain.RewardShopMemberItemUsage;
 import java.time.LocalDate;
@@ -50,7 +52,8 @@ class PurchaseShopItemServiceTest {
                     }
                 },
                 new AccountRefillCreditProcessor(refillStateRepository, new AccountRefillDatePolicy()),
-                new RecordingItemBalanceRepository(lockOrder)
+                new RecordingItemBalanceRepository(lockOrder),
+                new RecordingShopPurchaseRepository()
         );
 
         ShopPurchaseResult result = service.purchase(1L, "account.refill-count");
@@ -75,13 +78,15 @@ class PurchaseShopItemServiceTest {
         RecordingPointHistoryRepository historyRepository = new RecordingPointHistoryRepository();
         RecordingRefillStateRepository refillStateRepository = new RecordingRefillStateRepository(lockOrder);
         RecordingItemBalanceRepository itemBalanceRepository = new RecordingItemBalanceRepository(lockOrder);
+        RecordingShopPurchaseRepository shopPurchaseRepository = new RecordingShopPurchaseRepository();
         PurchaseShopItemService service = service(
                 shopItemRepository,
                 usageRepository,
                 pointRepository,
                 historyRepository,
                 refillStateRepository,
-                itemBalanceRepository
+                itemBalanceRepository,
+                shopPurchaseRepository
         );
 
         ShopPurchaseResult result = service.purchase(MEMBER_ID, REFILL_ITEM_CODE);
@@ -98,6 +103,9 @@ class PurchaseShopItemServiceTest {
         assertEquals(-20, history.amount());
         assertEquals(80, history.balanceAfter());
         assertEquals("INSTANT_SHOP_PURCHASE", history.sourceType());
+        assertEquals(history.sourceReference(), shopPurchaseRepository.purchase().purchaseId());
+        assertEquals(REFILL_ITEM_CODE, shopPurchaseRepository.purchase().itemCode());
+        assertEquals(RewardShopItem.ITEM_TYPE_ACCOUNT_REFILL_COUNT, shopPurchaseRepository.purchase().itemType());
     }
 
     @Test
@@ -109,13 +117,15 @@ class PurchaseShopItemServiceTest {
         RecordingPointHistoryRepository historyRepository = new RecordingPointHistoryRepository();
         RecordingRefillStateRepository refillStateRepository = new RecordingRefillStateRepository(lockOrder);
         RecordingItemBalanceRepository itemBalanceRepository = new RecordingItemBalanceRepository(lockOrder);
+        RecordingShopPurchaseRepository shopPurchaseRepository = new RecordingShopPurchaseRepository();
         PurchaseShopItemService service = service(
                 shopItemRepository,
                 usageRepository,
                 pointRepository,
                 historyRepository,
                 refillStateRepository,
-                itemBalanceRepository
+                itemBalanceRepository,
+                shopPurchaseRepository
         );
 
         CoreException thrown = assertThrows(CoreException.class,
@@ -141,13 +151,15 @@ class PurchaseShopItemServiceTest {
         RecordingPointHistoryRepository historyRepository = new RecordingPointHistoryRepository();
         RecordingRefillStateRepository refillStateRepository = new RecordingRefillStateRepository(lockOrder);
         RecordingItemBalanceRepository itemBalanceRepository = new RecordingItemBalanceRepository(lockOrder);
+        RecordingShopPurchaseRepository shopPurchaseRepository = new RecordingShopPurchaseRepository();
         PurchaseShopItemService service = service(
                 shopItemRepository,
                 usageRepository,
                 pointRepository,
                 historyRepository,
                 refillStateRepository,
-                itemBalanceRepository
+                itemBalanceRepository,
+                shopPurchaseRepository
         );
 
         ShopPurchaseResult result = service.purchase(MEMBER_ID, POSITION_PEEK_ITEM_CODE);
@@ -165,6 +177,9 @@ class PurchaseShopItemServiceTest {
         RewardPointHistory history = historyRepository.histories().get(0);
         assertEquals(-10, history.amount());
         assertEquals(90, history.balanceAfter());
+        assertEquals(history.sourceReference(), shopPurchaseRepository.purchase().purchaseId());
+        assertEquals(POSITION_PEEK_ITEM_CODE, shopPurchaseRepository.purchase().itemCode());
+        assertEquals(RewardShopItem.ITEM_TYPE_POSITION_PEEK, shopPurchaseRepository.purchase().itemType());
     }
 
     private PurchaseShopItemService service(
@@ -173,7 +188,8 @@ class PurchaseShopItemServiceTest {
             RecordingPointRepository pointRepository,
             RecordingPointHistoryRepository historyRepository,
             RecordingRefillStateRepository refillStateRepository,
-            RecordingItemBalanceRepository itemBalanceRepository
+            RecordingItemBalanceRepository itemBalanceRepository,
+            RecordingShopPurchaseRepository shopPurchaseRepository
     ) {
         return new PurchaseShopItemService(
                 shopItemRepository,
@@ -181,7 +197,8 @@ class PurchaseShopItemServiceTest {
                 pointRepository,
                 historyRepository,
                 new AccountRefillCreditProcessor(refillStateRepository, new AccountRefillDatePolicy()),
-                itemBalanceRepository
+                itemBalanceRepository,
+                shopPurchaseRepository
         );
     }
 
@@ -402,6 +419,20 @@ class PurchaseShopItemServiceTest {
 
         private List<RewardPointHistory> histories() {
             return histories;
+        }
+    }
+
+    private static class RecordingShopPurchaseRepository implements RewardShopPurchaseRepository {
+        private RewardShopPurchase purchase;
+
+        @Override
+        public RewardShopPurchase create(RewardShopPurchase purchase) {
+            this.purchase = purchase;
+            return purchase;
+        }
+
+        private RewardShopPurchase purchase() {
+            return purchase;
         }
     }
 

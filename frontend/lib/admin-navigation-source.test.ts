@@ -59,6 +59,8 @@ test("exchange history uses user-facing labels and routes", () => {
 
   assert.match(shopClientSource, /href="\/mypage\/redemptions"/);
   assert.match(shopClientSource, /교환 내역/);
+  assert.match(redemptionsPageSource, /getRewardShopHistory/);
+  assert.doesNotMatch(redemptionsPageSource, /getRewardRedemptions/);
   assert.match(redemptionsPageSource, /교환 내역/);
   assert.match(redemptionsPageSource, /구매\/교환 내역/);
 });

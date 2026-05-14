@@ -22,7 +22,6 @@ import {
   validateVoucherPhoneNumber,
 } from "@/lib/reward-shop-ui";
 import {
-  CheckCircle2,
   ClipboardList,
   Loader2,
   Lock,
@@ -50,7 +49,6 @@ export default function ShopRedemptionClient({
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const phoneError = useMemo(
     () => (phoneNumber ? validateVoucherPhoneNumber(phoneNumber) : null),
     [phoneNumber]
@@ -64,7 +62,6 @@ export default function ShopRedemptionClient({
 
     setSelectedItem(item);
     setPhoneNumber("");
-    setLastRequestId(null);
   };
 
   const closeModal = () => {
@@ -89,11 +86,12 @@ export default function ShopRedemptionClient({
     setIsSubmitting(true);
 
     try {
-      const redemption = await createRewardRedemption(
+      await createRewardRedemption(
         selectedItem.code,
         normalizeVoucherPhoneNumber(phoneNumber)
       );
-      setLastRequestId(redemption.requestId);
+      setSelectedItem(null);
+      setPhoneNumber("");
       toast.success("교환권 신청이 접수되었습니다.");
       router.refresh();
     } catch (error) {
@@ -271,13 +269,6 @@ export default function ShopRedemptionClient({
                 </p>
               )}
             </>
-          )}
-
-          {lastRequestId && (
-            <div className="mt-4 flex items-start gap-2 rounded-main bg-main-light-gray/50 p-main text-sm-custom text-main-dark-gray/70">
-              <CheckCircle2 size={18} className="mt-0.5 text-main-blue" />
-              <span>신청번호 {lastRequestId} 접수 완료</span>
-            </div>
           )}
 
           <div className="mt-6 flex justify-end gap-2">

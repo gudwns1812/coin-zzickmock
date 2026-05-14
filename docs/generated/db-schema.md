@@ -547,92 +547,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - Redis wakeup:
   Redis List는 repair event id만 담는 wakeup queue이며, durable 상태와 idempotency는 이 테이블이 소유한다.
 
-
-### `community_posts`
-
-- 목적:
-  로그인 회원이 작성한 커뮤니티 게시글과 관리자 공지사항의 source of truth를 저장한다. 삭제는 `deleted_at` 기반 soft delete로 처리한다.
-- PK:
-  `id` (auto increment)
-- 주요 컬럼:
-  `author_member_id`, `author_nickname`, `category`, `title`, `content_json`, `view_count`, `like_count`, `comment_count`, `deleted_at`, `version`, `created_at`, `updated_at`
-- 카테고리:
-  `NOTICE`, `CHART_ANALYSIS`, `COIN_INFORMATION`, `CHAT`
-- 관련 엔티티/모듈:
-  [CommunityPostEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostEntity.java),
-  [CommunityPostEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostEntityRepository.java)
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `idx_community_posts_category_deleted_created`로 카테고리별 삭제 제외 최신 목록과 공지 조회를 지원하고,
-  `idx_community_posts_deleted_created`로 일반 최신 목록을 지원하며,
-  `idx_community_posts_author_created`로 작성자별 운영 조회를 지원한다.
-
-### `community_comments`
-
-- 목적:
-  커뮤니티 게시글의 댓글을 저장한다. 삭제는 `deleted_at` 기반 soft delete로 처리한다.
-- PK:
-  `id` (auto increment)
-- 주요 컬럼:
-  `post_id`, `author_member_id`, `author_nickname`, `content`, `deleted_at`, `created_at`, `updated_at`
-- 관련 엔티티/모듈:
-  [CommunityCommentEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityCommentEntity.java),
-  [CommunityCommentEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityCommentEntityRepository.java)
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `idx_community_comments_post_deleted_created`로 게시글별 삭제 제외 댓글 페이지를 지원하고,
-  `idx_community_comments_author_created`로 작성자별 운영 조회를 지원한다.
-
-### `community_post_likes`
-
-- 목적:
-  회원별 게시글 좋아요 상태를 저장한다. `(post_id, member_id)` 복합 PK로 POST/DELETE idempotency의 저장소 기준을 제공한다.
-- PK:
-  `(post_id, member_id)`
-- 주요 컬럼:
-  `post_id`, `member_id`, `created_at`
-- 관련 엔티티/모듈:
-  [CommunityPostLikeEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostLikeEntity.java),
-  [CommunityPostLikeEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostLikeEntityRepository.java)
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `idx_community_post_likes_member_created`로 회원별 좋아요 이력 조회를 지원한다.
-
-### `community_post_images`
-
-- 목적:
-  S3 presigned upload로 생성된 커뮤니티 이미지 intent와 게시글 attach 상태를 저장한다. `object_key`는 서버 생성 key의 유일성 기준이다.
-- PK:
-  `id` (auto increment)
-- 주요 컬럼:
-  `post_id`, `uploader_member_id`, `object_key`, `public_url`, `content_type`, `size_bytes`, `status`, `created_at`, `updated_at`
-- 상태:
-  `PRESIGNED`, `ATTACHED`, `ORPHANED`
-- 관련 엔티티/모듈:
-  [CommunityPostImageEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostImageEntity.java),
-  [CommunityPostImageEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostImageEntityRepository.java)
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `uk_community_post_images_object_key`로 object key 중복을 막고,
-  `idx_community_post_images_post_status`로 게시글별 attached 이미지 조회를 지원하며,
-  `idx_community_post_images_uploader_status_created`로 uploader ownership/status 검증과 orphan cleanup 후보 조회를 지원한다.
-
 ## Relationships
 
-- `community_posts.author_member_id -> member_credentials.id`:
-  게시글 작성자는 내부 회원 surrogate key를 참조하며, `author_nickname`은 작성 시점 표시명 snapshot이다.
-- `community_comments.post_id -> community_posts.id`:
-  댓글은 게시글에 속하며, 댓글과 게시글 삭제는 soft delete로 일반 조회에서 숨긴다.
-- `community_comments.author_member_id -> member_credentials.id`:
-  댓글 작성자는 내부 회원 surrogate key를 참조하며, `author_nickname`은 작성 시점 표시명 snapshot이다.
-- `community_post_likes.post_id -> community_posts.id`, `community_post_likes.member_id -> member_credentials.id`:
-  한 회원의 한 게시글 좋아요는 `(post_id, member_id)`로 하나만 존재한다.
-- `community_post_images.post_id -> community_posts.id`, `community_post_images.uploader_member_id -> member_credentials.id`:
-  이미지는 업로더 회원에 속하며, 게시글 저장 전에는 `post_id`가 비어 있을 수 있다.
 - `trading_accounts.member_id -> member_credentials.id`:
   선물 계정은 내부 회원 surrogate key를 참조한다.
 - `account_refill_states.member_id -> member_credentials.id`:
@@ -664,8 +580,6 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 ## Change Log
 
-- 2026-05-14:
-  `V31__add_community_posts.sql`로 커뮤니티 게시글, 댓글, 좋아요, 이미지 intent 저장 테이블과 soft-delete/list/ownership 검증 인덱스를 추가했다.
 - 2026-05-13:
   `V27__weekly_account_refill_description.sql`로 리필 추가권 운영 데이터 설명을 다음 KST 월요일 00:00 리셋 정책에 맞췄다.
 - 2026-05-07:

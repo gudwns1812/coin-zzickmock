@@ -11,11 +11,11 @@ class StorageMigrationResourceTest {
         URL initialMigration = Thread.currentThread()
                 .getContextClassLoader()
                 .getResource("db/migration/V1__initial_schema.sql");
-        URL latestCommunityMigration = Thread.currentThread()
+        URL latestRepairMigration = Thread.currentThread()
                 .getContextClassLoader()
-                .getResource("db/migration/V31__add_community_posts.sql");
+                .getResource("db/migration/V28__add_position_peek_inventory_and_snapshots.sql");
 
         assertThat(initialMigration).isNotNull();
-        assertThat(latestCommunityMigration).isNotNull();
+        assertThat(latestRepairMigration).isNotNull();
     }
 }

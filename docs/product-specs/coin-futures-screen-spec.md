@@ -66,10 +66,6 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `/mypage/redemptions`
 - `/watchlist`
 - `/shop`
-- `/community`
-- `/community/[postId]`
-- `/community/write`
-- `/community/[postId]/edit`
 - `/admin`
 - `/admin/reward-redemptions`
 - `/admin/shop-items`
@@ -478,65 +474,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - Discord 등 추가 채널은 같은 notification boundary에 붙이는 후속 확장으로 둔다.
 - 구매/교환 내역 테이블과 사용자 취소 액션은 상점이 아니라 `/mypage/redemptions`에서 제공한다.
 
-## 화면 8. 커뮤니티 `/community`
-
-### 목표
-
-로그인 사용자가 공지사항과 일반 커뮤니티 글을 읽고, 자기 글/댓글/좋아요로 소통할 수 있게 한다. 상세 제품/계약 기준은 [community-feature.md](./community-feature.md)를 따른다.
-
-### 권한
-
-- 모든 커뮤니티 라우트는 로그인 필요.
-- 일반 사용자는 `차트분석`, `코인정보`, `잡담` 글만 작성/수정할 수 있다.
-- `공지사항` 생성/수정은 관리자만 가능하다.
-- 게시글 삭제는 작성자 또는 관리자만 가능하다.
-- 댓글 삭제는 댓글 작성자 또는 관리자만 가능하다.
-
-### `/community` 목록
-
-- 최신 `공지사항` 3개를 상단 pinned 영역에 표시한다.
-- 일반 글 목록은 최신순이며, `차트분석`/`코인정보`/`잡담` 카테고리 필터를 제공한다.
-- 1차 범위에는 키워드 검색 UI를 넣지 않는다.
-- 각 행/카드는 카테고리, 제목, 작성자, 작성 시각, 조회수, 좋아요 수, 댓글 수를 보여준다.
-- loading, empty, error, unauthenticated 상태를 명시한다.
-
-### `/community/[postId]` 상세
-
-- 제목, 카테고리, 작성자, 작성/수정 시각, 조회수, 좋아요 수, 댓글 수를 보여준다.
-- 본문은 저장된 Tiptap JSON을 허용 node/mark 기반 renderer로 표시한다.
-- 작성자 또는 관리자에게만 삭제 액션을 노출한다.
-- 작성자에게만 일반 게시글 수정 액션을 노출한다. 공지사항 유지 목적의 공지 수정은 관리자만 가능하다.
-- 댓글 목록, 댓글 작성, 자기 댓글 삭제, 관리자 댓글 삭제를 지원한다.
-- 좋아요/좋아요 취소와 count 갱신을 지원한다.
-- 상세 진입 시 backend가 정한 단순 조회수 정책에 따라 view count를 증가시킨다.
-
-### `/community/write` 작성
-
-- 큰 제목 입력, 카테고리 선택, Tiptap toolbar, 본문 placeholder를 제공한다.
-- 에디터 방향은 `docs/design-docs/ui-design/image/post_ex.png`를 참고하되 기존 카드/입력/포커스 규칙을 우선한다.
-- 일반 사용자는 `공지사항` 선택지를 볼 수 없거나 선택 시 서버에서 거절된다.
-- 이미지는 backend presign 요청 후 S3 direct PUT으로 업로드하고, backend-approved `objectKey`/`publicUrl`만 image node에 삽입한다.
-- 저장 payload는 raw HTML이 아니라 Tiptap JSON이다.
-
-### `/community/[postId]/edit` 수정
-
-- 기존 title/category/contentJson을 불러와 editor draft로 표시한다.
-- 자기 게시글이 아니면 forbidden 상태를 보여준다.
-- 일반 사용자는 수정 중 `공지사항`으로 변경할 수 없다.
-- 저장 시 backend가 title, category permission, content JSON whitelist, image key ownership/prefix를 다시 검증한다.
-
-### 수용 기준
-
-- 로그인 사용자는 최신 공지 3개와 일반 글 목록을 볼 수 있다.
-- 비로그인 사용자는 커뮤니티 화면에 접근할 수 없다.
-- 일반 사용자는 공지사항을 생성/변경할 수 없다.
-- 관리자는 공지사항을 생성/수정할 수 있고 최신 3개 pinned 노출이 유지된다.
-- 작성자는 자기 글을 수정/삭제할 수 있고 타인 글은 수정/삭제할 수 없다.
-- 관리자는 모든 게시글과 댓글을 삭제할 수 있다.
-- Tiptap JSON 본문과 이미지가 저장/재조회/렌더링 round trip을 통과한다.
-- 댓글 작성/삭제, 좋아요/취소, 조회수 증가가 화면 count와 일치한다.
-
-## 화면 9. 관리자 허브 `/admin`
+## 화면 8. 관리자 허브 `/admin`
 
 ### 목표
 
@@ -560,7 +498,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 비관리자 사용자는 `/admin`에서 관리자 권한 필요 상태를 보고 세부 작업 링크를 보지 않는다.
 - 계정 사이드바는 `/admin/reward-redemptions`, `/admin/shop-items`를 직접 나열하지 않는다.
 
-## 화면 10. 관리자 교환권 처리 `/admin/reward-redemptions`
+## 화면 9. 관리자 교환권 처리 `/admin/reward-redemptions`
 
 ### 목표
 
@@ -606,7 +544,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 신청 결과가 즉시 계정과 관리자 페이지에 반영된다
 - 환불은 정확히 한 번만 발생한다
 
-## 화면 11. 관리자 상품 관리 `/admin/shop-items`
+## 화면 10. 관리자 상품 관리 `/admin/shop-items`
 
 ### 목표
 
@@ -646,10 +584,6 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `MyPageShell`
 - `DailyPnlCalendar`
 - `RiskWarningBanner`
-- `CommunityCategoryBadge`
-- `CommunityPostList`
-- `CommunityContentRenderer`
-- `CommunityEditorShell`
 
 ## 현재 프론트 구조에서의 매핑 전략
 

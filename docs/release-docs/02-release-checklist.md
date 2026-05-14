@@ -18,8 +18,6 @@
 - 백엔드 변경이 있으면 `./gradlew check` 결과를 확인했다.
 - 구조 변경이 있으면 `./gradlew architectureLint` 결과를 확인했다.
 - 환경 변수 또는 비밀값 변경 여부를 확인했다.
-- 커뮤니티 이미지 업로드가 배포 범위에 포함되면 S3 bucket/region/public base URL/key prefix/업로드 제한 환경 변수와
-  S3 CORS(`PUT`, `OPTIONS`, `Content-Type`, `x-amz-*`) 설정이 대상 프론트 origin과 맞는지 확인했다.
 - DB 스키마나 API 계약 변화가 있는지 확인했다.
 - 롤백할 기준점과 담당자를 정했다.
 

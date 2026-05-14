@@ -317,62 +317,6 @@ export type ShopPurchaseResult = {
   positionPeekItemBalance: number | null;
 };
 
-export type CommunityCategory = "NOTICE" | "CHART_ANALYSIS" | "COIN_INFORMATION" | "CHAT";
-
-export type CommunityPostSummary = {
-  id: number;
-  category: CommunityCategory;
-  title: string;
-  authorNickname: string;
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
-  createdAt: string;
-};
-
-export type CommunityPage = {
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  hasNext: boolean;
-};
-
-export type CommunityPostList = {
-  pinnedNotices: CommunityPostSummary[];
-  posts: CommunityPostSummary[];
-  page: CommunityPage;
-};
-
-export type CommunityPostDetail = CommunityPostSummary & {
-  contentJson: string;
-  canEdit: boolean;
-  canDelete: boolean;
-  likedByMe: boolean;
-  updatedAt: string;
-};
-
-export type CommunityComment = {
-  id: number;
-  postId: number;
-  authorNickname: string;
-  content: string;
-  canDelete: boolean;
-  createdAt: string;
-};
-
-export type CommunityCommentList = {
-  comments: CommunityComment[];
-  page: CommunityPage;
-};
-
-export type CommunityApiResult<T> = {
-  data: T | null;
-  unavailable: boolean;
-  status: number | null;
-  message: string | null;
-};
-
 export type OrderPreviewRequest = {
   symbol: MarketSymbol;
   positionSide: "LONG" | "SHORT";
@@ -668,61 +612,6 @@ export async function getAdminShopItems(): Promise<AdminShopItemsResult> {
 export async function getAuthUser(): Promise<AuthUser | null> {
   const response = await readApiResult<AuthUser>("/api/futures/auth/me");
   return response.ok ? response.data : null;
-}
-
-export async function getCommunityPosts(options: {
-  category?: Exclude<CommunityCategory, "NOTICE"> | null;
-  page?: number;
-  size?: number;
-} = {}): Promise<CommunityApiResult<CommunityPostList>> {
-  const params = new URLSearchParams({
-    page: String(options.page ?? 0),
-    size: String(options.size ?? 20),
-  });
-  if (options.category) {
-    params.set("category", options.category);
-  }
-  const response = await readApiResult<CommunityPostList>(
-    `/api/futures/community/posts?${params.toString()}`
-  );
-  return toCommunityApiResult(response);
-}
-
-export async function getCommunityPost(
-  postId: number
-): Promise<CommunityApiResult<CommunityPostDetail>> {
-  const response = await readApiResult<CommunityPostDetail>(
-    `/api/futures/community/posts/${encodeURIComponent(String(postId))}`
-  );
-  return toCommunityApiResult(response);
-}
-
-export async function getCommunityComments(
-  postId: number,
-  options: { page?: number; size?: number } = {}
-): Promise<CommunityApiResult<CommunityCommentList>> {
-  const params = new URLSearchParams({
-    page: String(options.page ?? 0),
-    size: String(options.size ?? 20),
-  });
-  const response = await readApiResult<CommunityCommentList>(
-    `/api/futures/community/posts/${encodeURIComponent(String(postId))}/comments?${params.toString()}`
-  );
-  return toCommunityApiResult(response);
-}
-
-function toCommunityApiResult<T>(response: {
-  data: T | null;
-  ok: boolean;
-  status: number | null;
-  message: string | null;
-}): CommunityApiResult<T> {
-  return {
-    data: response.data,
-    unavailable: !response.ok,
-    status: response.status,
-    message: response.message,
-  };
 }
 
 function filterSupportedOrderHistory(

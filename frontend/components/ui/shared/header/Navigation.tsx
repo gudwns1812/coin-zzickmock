@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { href: "/markets", label: "마켓" },
   { href: "/mypage", label: "계정" },
   { href: "/markets/BTCUSDT", label: "트레이딩" },
-  { href: "/community", label: "커뮤니티" },
   { href: "/shop", label: "상점" },
 ];
 

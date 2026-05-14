@@ -37,10 +37,6 @@
 - `/mypage/points`
 - `/mypage/redemptions`
 - `/watchlist`
-- `/community`
-- `/community/[postId]`
-- `/community/write`
-- `/community/[postId]/edit`
 - `/shop`
 - `/admin`
 - `/admin/reward-redemptions`
@@ -70,7 +66,6 @@
 - `app/(main)/portfolio/`: `/mypage`로 보내는 호환성 리다이렉트
 - `app/(main)/mypage/`: 계정 정보, 자산, 포인트, 교환 내역 흐름
 - `app/(main)/watchlist/`: 관심 심볼 흐름
-- `app/(main)/community/`: 커뮤니티 목록과 게시글 읽기 흐름
 - `app/(main)/shop/`: 포인트 상점 흐름
 - `app/(main)/admin/`: 관리자 허브, 상점 아이템, 교환권 처리 흐름
 - `app/login/`: 로그인 페이지

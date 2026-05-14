@@ -120,8 +120,13 @@ non-conditional 주문으로 제한한다. TP/SL 조건부 주문은 포지션 T
 
 #### Pending limit 체결 순서
 
+WebSocket trade tick에서 accepted 된 최신 체결가 이동이 pending limit 체결의 primary trigger다.
 시세 수집부는 처리부에 이전 가격, 현재 가격, 이동 방향(`UP`/`DOWN`/`UNCHANGED`)을 함께 전달한다.
 첫 시세처럼 이전 가격이 없거나 가격이 변하지 않은 이벤트는 pending limit 체결을 시도하지 않는다.
+WebSocket 수신 thread는 가격 이동 이벤트를 application worker에 넘기는 역할만 하며, 체결 대상 후보는 in-memory pending order book에서 좁힌다.
+이 in-memory order book은 권위 저장소가 아니며 최종 체결 여부는 DB의 pending limit guarded claim과 claim 직전 주문 재조회로 확정한다.
+pending 지정가가 수정되면 수정 commit 이후의 가격 이동부터 새 지정가 체결 후보가 될 수 있으며, 수정 전 이미 큐에 들어간 과거 trade movement로 새 지정가를 체결하지 않는다.
+WebSocket trade movement가 없는 REST/provider fallback 환경에서는 coarse market summary refresh가 pending limit 체결을 보조로 깨울 수 있지만, 빠르게 찍고 되돌아온 중간 가격 경로 보장은 WebSocket trade movement 기준으로만 제공한다.
 
 - 가격 상승(`UP`) 이벤트는 매도 성격 주문인 `open short`, `close long`만 후보로 본다
 - 가격 하락(`DOWN`) 이벤트는 매수 성격 주문인 `open long`, `close short`만 후보로 본다

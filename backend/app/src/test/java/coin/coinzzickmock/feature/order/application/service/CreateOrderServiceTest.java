@@ -13,6 +13,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTick
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -576,7 +577,8 @@ class CreateOrderServiceTest {
                 accountRepository,
                 new LiquidationPolicy(),
                 new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
-                new AccountOrderMutationLock(accountRepository)
+                new AccountOrderMutationLock(accountRepository),
+                new PendingLimitOrderBook()
         );
     }
 

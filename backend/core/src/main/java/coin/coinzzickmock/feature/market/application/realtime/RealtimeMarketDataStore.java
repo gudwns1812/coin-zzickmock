@@ -20,9 +20,13 @@ public class RealtimeMarketDataStore {
     private final Map<SourceKey, MarketRealtimeSourceSnapshot> fallbackSources = new ConcurrentHashMap<>();
 
     public boolean acceptTrade(RealtimeMarketTradeTick tick) {
+        return acceptTradeUpdate(tick).accepted();
+    }
+
+    public AcceptedTradeUpdate acceptTradeUpdate(RealtimeMarketTradeTick tick) {
         long sequence = receiveSequence.incrementAndGet();
         if (tick.tradeId() != null && !tick.tradeId().isBlank() && isDuplicateTradeId(tick)) {
-            return false;
+            return AcceptedTradeUpdate.rejected();
         }
 
         RealtimeMarketTradeState next = new RealtimeMarketTradeState(
@@ -41,8 +45,31 @@ public class RealtimeMarketDataStore {
                         null
                 )
         );
-        trades.compute(tick.symbol(), (symbol, previous) -> shouldReplaceTrade(previous, next) ? next : previous);
-        return trades.get(tick.symbol()) == next;
+        java.util.concurrent.atomic.AtomicReference<MarketTradePriceMovedEvent> movement = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicBoolean accepted = new java.util.concurrent.atomic.AtomicBoolean(false);
+        trades.compute(tick.symbol(), (symbol, previous) -> {
+            if (!shouldReplaceTimestamped(previous, next)) {
+                return previous;
+            }
+            accepted.set(true);
+            if (previous != null) {
+                double previousPrice = previous.price().doubleValue();
+                double currentPrice = next.price().doubleValue();
+                MarketPriceMovementDirection direction = MarketPriceMovementDirection.between(previousPrice, currentPrice);
+                if (direction != MarketPriceMovementDirection.UNCHANGED) {
+                    movement.set(new MarketTradePriceMovedEvent(
+                            symbol,
+                            previousPrice,
+                            currentPrice,
+                            direction,
+                            tick.sourceEventTime(),
+                            tick.receivedAt()
+                    ));
+                }
+            }
+            return next;
+        });
+        return new AcceptedTradeUpdate(accepted.get(), Optional.ofNullable(movement.get()));
     }
 
     public boolean acceptTicker(RealtimeMarketTickerUpdate update) {
@@ -199,16 +226,6 @@ public class RealtimeMarketDataStore {
         return !tradeIds.add(tick.tradeId());
     }
 
-    private boolean shouldReplaceTrade(RealtimeMarketTradeState previous, RealtimeMarketTradeState next) {
-        if (previous == null) {
-            return true;
-        }
-        if (next.tradeId() != null && !next.tradeId().isBlank()) {
-            return true;
-        }
-        return shouldReplaceTimestamped(previous, next);
-    }
-
     private boolean shouldReplaceTimestamped(TimestampedRealtimeState previous, TimestampedRealtimeState next) {
         if (previous == null) {
             return true;
@@ -256,6 +273,12 @@ public class RealtimeMarketDataStore {
             long receiveSequence,
             MarketRealtimeSourceSnapshot source
     ) implements TimestampedRealtimeState {
+    }
+
+    public record AcceptedTradeUpdate(boolean accepted, Optional<MarketTradePriceMovedEvent> movement) {
+        private static AcceptedTradeUpdate rejected() {
+            return new AcceptedTradeUpdate(false, Optional.empty());
+        }
     }
 
     public record RealtimeMarketTickerState(

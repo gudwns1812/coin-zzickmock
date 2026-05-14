@@ -11,6 +11,7 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
@@ -132,7 +133,8 @@ class ModifyOrderServiceTransactionTest {
                 new SequencedMarketPriceReader(firstLastPrice, secondLastPrice),
                 orderPlacementPolicy,
                 new AccountOrderMutationLock(accountRepository),
-                marketableEditedOrderFiller
+                marketableEditedOrderFiller,
+                new PendingLimitOrderBook()
         );
     }
 

@@ -3,12 +3,101 @@ package coin.coinzzickmock.feature.order.application.realtime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
+import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 class PendingOrderFillProcessorTest {
+    @Test
+    void fillsPendingLimitFromTradeMovementOrderBookWithoutRangeQuery() {
+        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        FuturesOrder order = scenario.pendingOpenOrderAt(
+                "open-long",
+                "LONG",
+                99,
+                Instant.parse("2026-04-27T00:00:00Z")
+        );
+        scenario.orders.save(1L, order);
+        scenario.pendingLimitOrderBook.add(1L, order);
+        scenario.orders = new RangeQueryFailingOrderRepository(scenario.orders);
+        scenario.market(98, 98);
+
+        scenario.pendingFillProcessor()
+                .fillExecutablePendingOrders(new MarketTradePriceMovedEvent(
+                        "BTCUSDT",
+                        101,
+                        98,
+                        MarketPriceMovementDirection.DOWN,
+                        Instant.parse("2026-04-27T00:00:01Z"),
+                        Instant.parse("2026-04-27T00:00:01Z")
+                ));
+
+        FuturesOrder filled = scenario.orders.findByMemberIdAndOrderId(1L, "open-long").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_FILLED, filled.status());
+        assertEquals(99, filled.executionPrice(), 0.0001);
+        assertEquals(1, scenario.orders.limitClaimAttempts().size());
+    }
+
+    @Test
+    void doesNotFillOrderCreatedAfterQueuedTradeMovementWasReceived() {
+        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        FuturesOrder order = scenario.pendingOpenOrderAt(
+                "late-order",
+                "LONG",
+                99,
+                Instant.parse("2026-04-27T00:00:02Z")
+        );
+        scenario.orders.save(1L, order);
+        scenario.pendingLimitOrderBook.add(1L, order);
+        scenario.market(98, 98);
+
+        scenario.pendingFillProcessor()
+                .fillExecutablePendingOrders(new MarketTradePriceMovedEvent(
+                        "BTCUSDT",
+                        101,
+                        98,
+                        MarketPriceMovementDirection.DOWN,
+                        Instant.parse("2026-04-27T00:00:00Z"),
+                        Instant.parse("2026-04-27T00:00:01Z")
+                ));
+
+        FuturesOrder pending = scenario.orders.findByMemberIdAndOrderId(1L, "late-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, pending.status());
+        assertTrue(scenario.orders.limitClaimAttempts().isEmpty());
+    }
+
+    @Test
+    void doesNotFillOrderEditedAfterQueuedTradeMovementWasReceived() {
+        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        FuturesOrder edited = scenario.pendingOpenOrderAt(
+                "edited-order",
+                "LONG",
+                99,
+                Instant.parse("2026-04-27T00:00:00Z")
+        );
+        scenario.orders.save(1L, edited);
+        scenario.pendingLimitOrderBook.replaceAfterCommit(1L, edited);
+        scenario.market(98, 98);
+
+        scenario.pendingFillProcessor()
+                .fillExecutablePendingOrders(new MarketTradePriceMovedEvent(
+                        "BTCUSDT",
+                        101,
+                        98,
+                        MarketPriceMovementDirection.DOWN,
+                        Instant.parse("2026-04-27T00:00:00Z"),
+                        Instant.parse("2026-04-27T00:00:01Z")
+                ));
+
+        FuturesOrder pending = scenario.orders.findByMemberIdAndOrderId(1L, "edited-order").orElseThrow();
+        assertEquals(FuturesOrder.STATUS_PENDING, pending.status());
+        assertTrue(scenario.orders.limitClaimAttempts().isEmpty());
+    }
+
     @Test
     void claimsPendingLimitFillEvictsCacheOpensPositionAndPublishesOnce() {
         OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
@@ -158,6 +247,82 @@ class PendingOrderFillProcessorTest {
                 return java.util.Optional.empty();
             }
             return delegate.findByMemberIdAndOrderId(memberId, orderId);
+        }
+
+        @Override
+        java.util.List<String> limitClaimAttempts() {
+            return delegate.limitClaimAttempts();
+        }
+    }
+
+    private static final class RangeQueryFailingOrderRepository extends OrderRealtimeProcessorFixtures.InMemoryOrderRepository {
+        private final OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate;
+
+        private RangeQueryFailingOrderRepository(OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public java.util.List<PendingOrderCandidate> findExecutablePendingLimitOrders(
+                String symbol,
+                double lowerPrice,
+                double upperPrice,
+                boolean sellSide
+        ) {
+            throw new AssertionError("trade movement path must not query DB candidates by price range");
+        }
+
+        @Override
+        public FuturesOrder save(Long memberId, FuturesOrder futuresOrder) {
+            return delegate.save(memberId, futuresOrder);
+        }
+
+        @Override
+        public java.util.List<FuturesOrder> findByMemberId(Long memberId) {
+            return delegate.findByMemberId(memberId);
+        }
+
+        @Override
+        public java.util.Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
+            return delegate.findByMemberIdAndOrderId(memberId, orderId);
+        }
+
+        @Override
+        public java.util.List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
+            return delegate.findPendingBySymbol(symbol);
+        }
+
+        @Override
+        public java.util.Optional<FuturesOrder> claimPendingFill(
+                Long memberId,
+                String orderId,
+                double executionPrice,
+                String feeType,
+                double estimatedFee
+        ) {
+            return delegate.claimPendingFill(memberId, orderId, executionPrice, feeType, estimatedFee);
+        }
+
+        @Override
+        public java.util.Optional<FuturesOrder> claimPendingLimitFill(
+                Long memberId,
+                String orderId,
+                double expectedLimitPrice,
+                double executionPrice,
+                String feeType,
+                double estimatedFee
+        ) {
+            return delegate.claimPendingLimitFill(memberId, orderId, expectedLimitPrice, executionPrice, feeType, estimatedFee);
+        }
+
+        @Override
+        public FuturesOrder updateStatus(Long memberId, String orderId, String status) {
+            return delegate.updateStatus(memberId, orderId, status);
+        }
+
+        @Override
+        public FuturesOrder updateQuantityAndStatus(Long memberId, String orderId, double quantity, String status) {
+            return delegate.updateQuantityAndStatus(memberId, orderId, quantity, status);
         }
 
         @Override

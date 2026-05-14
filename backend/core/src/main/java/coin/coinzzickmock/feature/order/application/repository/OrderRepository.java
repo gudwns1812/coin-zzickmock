@@ -15,6 +15,8 @@ public interface OrderRepository {
 
     List<PendingOrderCandidate> findPendingBySymbol(String symbol);
 
+    List<PendingOrderCandidate> findPendingNonConditionalLimitOrders();
+
     boolean existsPendingByMemberId(Long memberId);
 
     List<PendingOrderCandidate> findExecutablePendingLimitOrders(

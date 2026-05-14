@@ -7,23 +7,29 @@ import coin.coinzzickmock.providers.connector.ProviderMarketRealtimeEvent;
 import coin.coinzzickmock.providers.connector.ProviderMarketTickerEvent;
 import coin.coinzzickmock.providers.connector.ProviderMarketTradeEvent;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProviderMarketRealtimeEventBridge implements Consumer<ProviderMarketRealtimeEvent> {
+    private static final Logger log = LoggerFactory.getLogger(ProviderMarketRealtimeEventBridge.class);
     private final RealtimeMarketDataStore realtimeMarketDataStore;
     private final RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService;
+    private final MarketTradePriceMovementPublisher marketTradePriceMovementPublisher;
 
     public ProviderMarketRealtimeEventBridge(
             RealtimeMarketDataStore realtimeMarketDataStore,
-            RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService
+            RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService,
+            MarketTradePriceMovementPublisher marketTradePriceMovementPublisher
     ) {
         this.realtimeMarketDataStore = realtimeMarketDataStore;
         this.realtimeMarketCandleUpdateService = realtimeMarketCandleUpdateService;
+        this.marketTradePriceMovementPublisher = marketTradePriceMovementPublisher;
     }
 
     @Override
     public void accept(ProviderMarketRealtimeEvent event) {
         if (event instanceof ProviderMarketTradeEvent trade) {
-            realtimeMarketDataStore.acceptTrade(new RealtimeMarketTradeTick(
+            realtimeMarketDataStore.acceptTradeUpdate(new RealtimeMarketTradeTick(
                     trade.symbol(),
                     trade.tradeId(),
                     trade.price(),
@@ -31,7 +37,14 @@ public class ProviderMarketRealtimeEventBridge implements Consumer<ProviderMarke
                     trade.side(),
                     trade.sourceEventTime(),
                     trade.receivedAt()
-            ));
+            )).movement().ifPresent(movement -> {
+                boolean published = marketTradePriceMovementPublisher.publish(movement);
+                if (!published) {
+                    log.warn("Market trade movement queue rejected event. symbol={} sourceEventTime={}",
+                            movement.symbol(),
+                            movement.sourceEventTime());
+                }
+            });
             return;
         }
 

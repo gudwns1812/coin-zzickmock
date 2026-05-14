@@ -36,6 +36,31 @@ class RealtimeMarketDataStoreTest {
     }
 
     @Test
+    void rejectsOlderTradeWithDifferentTradeIdAndReturnsAcceptedMovement() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+
+        RealtimeMarketDataStore.AcceptedTradeUpdate first = store.acceptTradeUpdate(
+                trade("111", "27000", "2026-04-30T04:00:01Z")
+        );
+        RealtimeMarketDataStore.AcceptedTradeUpdate older = store.acceptTradeUpdate(
+                trade("112", "26000", "2026-04-30T04:00:00Z")
+        );
+        RealtimeMarketDataStore.AcceptedTradeUpdate next = store.acceptTradeUpdate(
+                trade("113", "26900", "2026-04-30T04:00:02Z")
+        );
+
+        assertThat(first.accepted()).isTrue();
+        assertThat(first.movement()).isEmpty();
+        assertThat(older.accepted()).isFalse();
+        assertThat(older.movement()).isEmpty();
+        assertThat(next.accepted()).isTrue();
+        assertThat(next.movement()).get()
+                .extracting(MarketTradePriceMovedEvent::previousLastPrice, MarketTradePriceMovedEvent::currentLastPrice,
+                        MarketTradePriceMovedEvent::direction)
+                .containsExactly(27000.0, 26900.0, MarketPriceMovementDirection.DOWN);
+    }
+
+    @Test
     void ordersTickerUpdatesBySourceTimeAndReceiveSequence() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
 

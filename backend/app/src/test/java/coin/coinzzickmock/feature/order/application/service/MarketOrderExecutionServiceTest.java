@@ -16,6 +16,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTrad
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
+import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.PositionTakeProfitStopLossProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
@@ -1166,6 +1167,7 @@ class MarketOrderExecutionServiceTest {
                         orderRepository,
                         positionRepository,
                         new PendingOrderExecutionCache(),
+                        new PendingLimitOrderBook(),
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
                         staleProtectiveCloseOrderCanceller,

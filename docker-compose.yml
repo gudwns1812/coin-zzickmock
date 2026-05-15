@@ -15,7 +15,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} --silent" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -24,13 +24,13 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -55,6 +55,13 @@ services:
       REDIS_PORT: 6379
       REDIS_DATABASE: 0
       REDIS_PASSWORD: ""
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      S3_BUCKET: ${S3_BUCKET:-coin-zzickmock-image-672420933257-ap-southeast-2-an}
+      S3_REGION: ${S3_REGION:-ap-southeast-2}
+      PUBLIC_CDN_BASE_URL: ${PUBLIC_CDN_BASE_URL:-https://coin-zzickmock-image-672420933257-ap-southeast-2-an.s3.ap-southeast-2.amazonaws.com}
+      COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES: ${COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES:-https://coin-zzickmock-image-672420933257-ap-southeast-2-an.s3.ap-southeast-2.amazonaws.com}
       JWT_SECRET: ${JWT_SECRET:-dGhlLXF1aWNrLWJyb3duLWZveC1qdW1wcy1vdmVyLXRoZS1sYXp5LWRvZy1hbmQtc29tZS1vdGhlci1zZWNyZXQtc3R1ZmY=}
       BITGET_WEBSOCKET_ENABLED: ${BITGET_WEBSOCKET_ENABLED:-true}
       MARKET_HISTORY_REPAIR_QUEUE_KEY: ${MARKET_HISTORY_REPAIR_QUEUE_KEY:-coin:market:history-repair:events}
@@ -75,7 +82,7 @@ services:
     expose:
       - "8080"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      test: [ "CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'" ]
       interval: 10s
       timeout: 5s
       retries: 18
@@ -92,7 +99,7 @@ services:
     volumes:
       - ./infra/nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/nginx_status | grep -q 'Active connections'"]
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1/nginx_status | grep -q 'Active connections'" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -144,7 +151,7 @@ services:
 
   loki:
     image: grafana/loki:3.4.2
-    command: ["-config.file=/etc/loki/loki.yml"]
+    command: [ "-config.file=/etc/loki/loki.yml" ]
     ports:
       - "${LOKI_PORT:-3100}:3100"
     volumes:
@@ -155,7 +162,7 @@ services:
 
   promtail:
     image: grafana/promtail:3.4.2
-    command: ["-config.file=/etc/promtail/promtail.yml"]
+    command: [ "-config.file=/etc/promtail/promtail.yml" ]
     depends_on:
       - loki
     volumes:

@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.infrastructure.config;
 
 import coin.coinzzickmock.feature.market.application.realtime.ProviderMarketRealtimeEventBridge;
+import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovementPublisher;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdateService;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.providers.connector.ProviderMarketRealtimeEvent;
@@ -13,11 +14,13 @@ public class ProviderMarketRealtimeEventBridgeConfiguration {
     @Bean
     Consumer<ProviderMarketRealtimeEvent> providerMarketRealtimeEventBridge(
             RealtimeMarketDataStore realtimeMarketDataStore,
-            RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService
+            RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService,
+            MarketTradePriceMovementPublisher marketTradePriceMovementPublisher
     ) {
         return new ProviderMarketRealtimeEventBridge(
                 realtimeMarketDataStore,
-                realtimeMarketCandleUpdateService
+                realtimeMarketCandleUpdateService,
+                marketTradePriceMovementPublisher
         );
     }
 }

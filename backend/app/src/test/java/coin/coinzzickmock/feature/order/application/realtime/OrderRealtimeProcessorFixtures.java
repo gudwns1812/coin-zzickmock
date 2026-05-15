@@ -52,6 +52,7 @@ final class OrderRealtimeProcessorFixtures {
         final InMemoryAccountRepository accounts = new InMemoryAccountRepository();
         final CapturingEventPublisher events = new CapturingEventPublisher();
         final RealtimeMarketDataStore realtimeMarketDataStore = new RealtimeMarketDataStore();
+        final PendingLimitOrderBook pendingLimitOrderBook = new PendingLimitOrderBook();
         private final AtomicInteger tradeSequence = new AtomicInteger();
 
         PendingOrderFillProcessor pendingFillProcessor() {
@@ -64,6 +65,7 @@ final class OrderRealtimeProcessorFixtures {
                     orders,
                     positions,
                     cache,
+                    pendingLimitOrderBook,
                     positionCloseFinalizer(afterCommitEventPublisher),
                     pendingCloseOrderCapReconciler(),
                     new StaleProtectiveCloseOrderCanceller(orders),
@@ -296,6 +298,16 @@ final class OrderRealtimeProcessorFixtures {
             return orders.values().stream()
                     .filter(candidate -> candidate.symbol().equalsIgnoreCase(symbol))
                     .filter(candidate -> candidate.order().isPending())
+                    .toList();
+        }
+
+        @Override
+        public List<PendingOrderCandidate> findPendingNonConditionalLimitOrders() {
+            return orders.values().stream()
+                    .filter(candidate -> candidate.order().isPending())
+                    .filter(candidate -> !candidate.order().isConditionalOrder())
+                    .filter(candidate -> FuturesOrder.TYPE_LIMIT.equalsIgnoreCase(candidate.order().orderType()))
+                    .filter(candidate -> candidate.order().limitPrice() != null)
                     .toList();
         }
 

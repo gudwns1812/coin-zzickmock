@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPric
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
 import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -47,6 +48,7 @@ public class CreateOrderService {
     private final LiquidationPolicy liquidationPolicy;
     private final FilledOpenOrderApplier filledOpenOrderApplier;
     private final AccountOrderMutationLock accountOrderMutationLock;
+    private final PendingLimitOrderBook pendingLimitOrderBook;
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
@@ -95,6 +97,8 @@ public class CreateOrderService {
                 PostSaveLimitFill fill = postSaveFill.orElseThrow();
                 resultOrder = fill.order();
                 resultPreview = fill.preview();
+            } else {
+                pendingLimitOrderBook.addAfterCommit(command.memberId(), futuresOrder);
             }
         }
 

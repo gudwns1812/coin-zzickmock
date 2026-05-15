@@ -7,6 +7,7 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
@@ -27,6 +28,7 @@ public class ModifyOrderService {
     private final OrderPlacementPolicy orderPlacementPolicy;
     private final AccountOrderMutationLock accountOrderMutationLock;
     private final MarketableEditedOrderFiller marketableEditedOrderFiller;
+    private final PendingLimitOrderBook pendingLimitOrderBook;
 
     @Transactional
     public ModifyOrderResult modify(ModifyOrderCommand command) {
@@ -47,6 +49,11 @@ public class ModifyOrderService {
                 nextLimitPrice
         ).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
         FuturesOrder result = fillIfMarketable(command.memberId(), updated);
+        if (result.isPending()) {
+            pendingLimitOrderBook.replaceAfterCommit(command.memberId(), result);
+        } else {
+            pendingLimitOrderBook.removeAfterCommit(command.memberId(), result.orderId());
+        }
 
         return ModifyOrderResult.from(result);
     }

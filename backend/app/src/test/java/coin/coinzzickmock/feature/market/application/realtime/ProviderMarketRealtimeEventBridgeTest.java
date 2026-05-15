@@ -19,10 +19,15 @@ class ProviderMarketRealtimeEventBridgeTest {
     void routesParsedTradeTickerAndCandleEventsIntoRealtimeState() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         List<Object> publishedEvents = new ArrayList<>();
+        List<MarketTradePriceMovedEvent> movements = new ArrayList<>();
         ApplicationEventPublisher publisher = publishedEvents::add;
         ProviderMarketRealtimeEventBridge bridge = new ProviderMarketRealtimeEventBridge(
                 store,
-                new RealtimeMarketCandleUpdateService(store, publisher)
+                new RealtimeMarketCandleUpdateService(store, publisher),
+                event -> {
+                    movements.add(event);
+                    return true;
+                }
         );
         Instant sourceEventTime = Instant.parse("2026-04-30T05:30:00Z");
         Instant receivedAt = Instant.parse("2026-04-30T05:30:01Z");
@@ -34,6 +39,15 @@ class ProviderMarketRealtimeEventBridgeTest {
                 new BigDecimal("0.01"),
                 "buy",
                 sourceEventTime,
+                receivedAt
+        ));
+        bridge.accept(new ProviderMarketTradeEvent(
+                "BTCUSDT",
+                "trade-2",
+                new BigDecimal("75299.1"),
+                new BigDecimal("0.01"),
+                "sell",
+                sourceEventTime.plusMillis(1),
                 receivedAt
         ));
         bridge.accept(new ProviderMarketTickerEvent(
@@ -62,7 +76,7 @@ class ProviderMarketRealtimeEventBridgeTest {
         ));
 
         assertThat(store.latestTrade("BTCUSDT")).hasValueSatisfying(trade ->
-                assertThat(trade.price()).isEqualByComparingTo("75300.1")
+                assertThat(trade.price()).isEqualByComparingTo("75299.1")
         );
         assertThat(store.latestTicker("BTCUSDT")).hasValueSatisfying(ticker ->
                 assertThat(ticker.markPrice()).isEqualByComparingTo("75302.3")
@@ -71,5 +85,13 @@ class ProviderMarketRealtimeEventBridgeTest {
                 assertThat(candle.closePrice()).isEqualByComparingTo("75305")
         );
         assertThat(publishedEvents).containsExactly(new MarketCandleUpdatedEvent("BTCUSDT"));
+        assertThat(movements).containsExactly(new MarketTradePriceMovedEvent(
+                "BTCUSDT",
+                75300.1,
+                75299.1,
+                MarketPriceMovementDirection.DOWN,
+                sourceEventTime.plusMillis(1),
+                receivedAt
+        ));
     }
 }

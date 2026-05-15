@@ -55,6 +55,26 @@ public class OrderPersistenceRepository implements OrderRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PendingOrderCandidate> findPendingNonConditionalLimitOrders() {
+        return jpaQueryFactory.selectFrom(futuresOrderEntity)
+                .where(
+                        futuresOrderEntity.status.eq(FuturesOrder.STATUS_PENDING),
+                        futuresOrderEntity.orderType.eq(FuturesOrder.TYPE_LIMIT),
+                        futuresOrderEntity.limitPrice.isNotNull(),
+                        futuresOrderEntity.triggerPrice.isNull(),
+                        futuresOrderEntity.triggerType.isNull(),
+                        futuresOrderEntity.triggerSource.isNull(),
+                        futuresOrderEntity.ocoGroupId.isNull()
+                )
+                .orderBy(futuresOrderEntity.createdAt.asc())
+                .fetch()
+                .stream()
+                .map(entity -> new PendingOrderCandidate(entity.memberId(), entity.toDomain()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean existsPendingByMemberId(Long memberId) {
         return futuresOrderEntityRepository.existsByMemberIdAndStatus(memberId, FuturesOrder.STATUS_PENDING);
     }

@@ -273,6 +273,11 @@ class RefillTradingAccountServiceTest {
         }
 
         @Override
+        public List<PendingOrderCandidate> findPendingNonConditionalLimitOrders() {
+            return List.of();
+        }
+
+        @Override
         public List<PendingOrderCandidate> findExecutablePendingLimitOrders(
                 String symbol,
                 double lowerPrice,

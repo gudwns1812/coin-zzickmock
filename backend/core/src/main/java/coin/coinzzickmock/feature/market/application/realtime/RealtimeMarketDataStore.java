@@ -1,28 +1,56 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RealtimeMarketDataStore {
+    private static final int DEFAULT_ACCEPTED_TRADE_IDS_PER_SYMBOL = 10_000;
+
     private final AtomicLong receiveSequence = new AtomicLong();
     private final Map<String, RealtimeMarketTradeState> trades = new ConcurrentHashMap<>();
-    private final Map<String, Set<String>> acceptedTradeIds = new ConcurrentHashMap<>();
+    private final Map<String, BoundedTradeIdSet> acceptedTradeIds = new ConcurrentHashMap<>();
     private final Map<String, RealtimeMarketTickerState> tickers = new ConcurrentHashMap<>();
     private final Map<CandleKey, RealtimeMarketCandleState> candles = new ConcurrentHashMap<>();
     private final Map<SourceKey, MarketRealtimeSourceSnapshot> fallbackSources = new ConcurrentHashMap<>();
+    private final int acceptedTradeIdLimit;
+
+    public RealtimeMarketDataStore() {
+        this(DEFAULT_ACCEPTED_TRADE_IDS_PER_SYMBOL);
+    }
+
+    RealtimeMarketDataStore(int acceptedTradeIdLimit) {
+        if (acceptedTradeIdLimit <= 0) {
+            throw new IllegalArgumentException("acceptedTradeIdLimit must be positive");
+        }
+        this.acceptedTradeIdLimit = acceptedTradeIdLimit;
+    }
 
     public boolean acceptTrade(RealtimeMarketTradeTick tick) {
+        return acceptTradeUpdate(tick).accepted();
+    }
+
+    public AcceptedTradeUpdate acceptTradeUpdate(RealtimeMarketTradeTick tick) {
         long sequence = receiveSequence.incrementAndGet();
-        if (tick.tradeId() != null && !tick.tradeId().isBlank() && isDuplicateTradeId(tick)) {
-            return false;
+        BoundedTradeIdSet tradeIds = null;
+        boolean reservedTradeId = false;
+        if (tick.tradeId() != null && !tick.tradeId().isBlank()) {
+            tradeIds = tradeIds(tick.symbol());
+            reservedTradeId = tradeIds.reserve(tick.tradeId());
+            if (!reservedTradeId) {
+                return AcceptedTradeUpdate.rejected();
+            }
         }
 
         RealtimeMarketTradeState next = new RealtimeMarketTradeState(
@@ -41,8 +69,39 @@ public class RealtimeMarketDataStore {
                         null
                 )
         );
-        trades.compute(tick.symbol(), (symbol, previous) -> shouldReplaceTrade(previous, next) ? next : previous);
-        return trades.get(tick.symbol()) == next;
+        AtomicReference<MarketTradePriceMovedEvent> movement = new AtomicReference<>();
+        AtomicBoolean accepted = new AtomicBoolean(false);
+        trades.compute(tick.symbol(), (symbol, previous) -> {
+            if (!shouldReplaceTimestamped(previous, next)) {
+                return previous;
+            }
+            accepted.set(true);
+            if (previous != null) {
+                double previousPrice = previous.price().doubleValue();
+                double currentPrice = next.price().doubleValue();
+                MarketPriceMovementDirection direction = MarketPriceMovementDirection.between(previousPrice,
+                        currentPrice);
+                if (direction != MarketPriceMovementDirection.UNCHANGED) {
+                    movement.set(new MarketTradePriceMovedEvent(
+                            symbol,
+                            previousPrice,
+                            currentPrice,
+                            direction,
+                            tick.sourceEventTime(),
+                            tick.receivedAt()
+                    ));
+                }
+            }
+            return next;
+        });
+        if (reservedTradeId) {
+            if (accepted.get()) {
+                tradeIds.commit();
+            } else {
+                tradeIds.remove(tick.tradeId());
+            }
+        }
+        return new AcceptedTradeUpdate(accepted.get(), Optional.ofNullable(movement.get()));
     }
 
     public boolean acceptTicker(RealtimeMarketTickerUpdate update) {
@@ -64,7 +123,8 @@ public class RealtimeMarketDataStore {
                         null
                 )
         );
-        tickers.compute(update.symbol(), (symbol, previous) -> shouldReplaceTimestamped(previous, next) ? next : previous);
+        tickers.compute(update.symbol(),
+                (symbol, previous) -> shouldReplaceTimestamped(previous, next) ? next : previous);
         return tickers.get(update.symbol()) == next;
     }
 
@@ -194,19 +254,9 @@ public class RealtimeMarketDataStore {
         return Optional.ofNullable(fallbackSources.get(new SourceKey(symbol, sourceType)));
     }
 
-    private boolean isDuplicateTradeId(RealtimeMarketTradeTick tick) {
-        Set<String> tradeIds = acceptedTradeIds.computeIfAbsent(tick.symbol(), ignored -> ConcurrentHashMap.newKeySet());
-        return !tradeIds.add(tick.tradeId());
-    }
-
-    private boolean shouldReplaceTrade(RealtimeMarketTradeState previous, RealtimeMarketTradeState next) {
-        if (previous == null) {
-            return true;
-        }
-        if (next.tradeId() != null && !next.tradeId().isBlank()) {
-            return true;
-        }
-        return shouldReplaceTimestamped(previous, next);
+    private BoundedTradeIdSet tradeIds(String symbol) {
+        return acceptedTradeIds.computeIfAbsent(symbol,
+                ignored -> new BoundedTradeIdSet(acceptedTradeIdLimit));
     }
 
     private boolean shouldReplaceTimestamped(TimestampedRealtimeState previous, TimestampedRealtimeState next) {
@@ -241,6 +291,43 @@ public class RealtimeMarketDataStore {
     private record SourceKey(String symbol, MarketRealtimeSourceType sourceType) {
     }
 
+    private static final class BoundedTradeIdSet {
+        private final int limit;
+        private final Set<String> ids = ConcurrentHashMap.newKeySet();
+        private final Queue<String> insertionOrder = new ConcurrentLinkedQueue<>();
+
+        private BoundedTradeIdSet(int limit) {
+            this.limit = limit;
+        }
+
+        private boolean reserve(String tradeId) {
+            boolean added = ids.add(tradeId);
+            if (added) {
+                insertionOrder.add(tradeId);
+            }
+            return added;
+        }
+
+        private void commit() {
+            trim();
+        }
+
+        private void remove(String tradeId) {
+            ids.remove(tradeId);
+            insertionOrder.remove(tradeId);
+        }
+
+        private void trim() {
+            while (ids.size() > limit) {
+                String oldest = insertionOrder.poll();
+                if (oldest == null) {
+                    return;
+                }
+                ids.remove(oldest);
+            }
+        }
+    }
+
     private interface TimestampedRealtimeState {
         long receiveSequence();
 
@@ -250,20 +337,26 @@ public class RealtimeMarketDataStore {
     public record RealtimeMarketTradeState(
             String symbol,
             String tradeId,
-            java.math.BigDecimal price,
-            java.math.BigDecimal size,
+            BigDecimal price,
+            BigDecimal size,
             String side,
             long receiveSequence,
             MarketRealtimeSourceSnapshot source
     ) implements TimestampedRealtimeState {
     }
 
+    public record AcceptedTradeUpdate(boolean accepted, Optional<MarketTradePriceMovedEvent> movement) {
+        private static AcceptedTradeUpdate rejected() {
+            return new AcceptedTradeUpdate(false, Optional.empty());
+        }
+    }
+
     public record RealtimeMarketTickerState(
             String symbol,
-            java.math.BigDecimal lastPrice,
-            java.math.BigDecimal markPrice,
-            java.math.BigDecimal indexPrice,
-            java.math.BigDecimal fundingRate,
+            BigDecimal lastPrice,
+            BigDecimal markPrice,
+            BigDecimal indexPrice,
+            BigDecimal fundingRate,
             Instant nextFundingTime,
             long receiveSequence,
             MarketRealtimeSourceSnapshot source

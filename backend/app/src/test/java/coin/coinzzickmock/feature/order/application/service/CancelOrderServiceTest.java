@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
+import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -32,7 +33,10 @@ class CancelOrderServiceTest {
                 99000.0
         ));
 
-        CancelOrderService service = new CancelOrderService(repository);
+        CancelOrderService service = new CancelOrderService(
+                repository,
+                new PendingLimitOrderBook()
+        );
         CancelOrderResult result = service.cancel(1L, "1");
 
         assertEquals("CANCELLED", result.status());
@@ -57,7 +61,10 @@ class CancelOrderServiceTest {
                 99000.0
         ));
 
-        CancelOrderService service = new CancelOrderService(repository);
+        CancelOrderService service = new CancelOrderService(
+                repository,
+                new PendingLimitOrderBook()
+        );
 
         assertThrows(CoreException.class, () -> service.cancel(1L, "1"));
     }

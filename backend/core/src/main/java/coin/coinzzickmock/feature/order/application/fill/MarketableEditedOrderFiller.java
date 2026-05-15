@@ -5,6 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier;
 import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
@@ -31,6 +32,7 @@ public class MarketableEditedOrderFiller {
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final PendingLimitOrderBook pendingLimitOrderBook;
 
     public FuturesOrder fill(Long memberId, FuturesOrder order, MarketSnapshot market, OrderPlacementDecision decision) {
         double estimatedFee = decision.estimatedFee(order.quantity());
@@ -48,6 +50,7 @@ public class MarketableEditedOrderFiller {
         } else {
             applyFilledOpenOrder(memberId, filledOrder, market, estimatedFee);
         }
+        pendingLimitOrderBook.removeAfterCommit(memberId, filledOrder.orderId());
         publishFilledEvent(memberId, filledOrder, decision.executionPrice());
         return filledOrder;
     }

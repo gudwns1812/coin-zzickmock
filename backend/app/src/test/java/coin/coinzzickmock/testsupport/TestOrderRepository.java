@@ -28,6 +28,11 @@ public abstract class TestOrderRepository implements OrderRepository {
     }
 
     @Override
+    public List<PendingOrderCandidate> findPendingNonConditionalLimitOrders() {
+        return List.of();
+    }
+
+    @Override
     public boolean existsPendingByMemberId(Long memberId) {
         return findByMemberId(memberId).stream().anyMatch(FuturesOrder::isPending);
     }

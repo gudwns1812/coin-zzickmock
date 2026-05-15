@@ -136,18 +136,35 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 
 `feature/<name>/application/service`는 컨트롤러나 다른 진입점이 호출하는 유스케이스 클래스만 둔다.
 여러 유스케이스가 같이 쓰는 실시간 캐시, 적립 처리기, 조합기 같은 객체는 `application/<purpose>` 하위 패키지의 비-Service 협력 객체로 둔다.
+주문/포지션/계정처럼 큰 쓰기 흐름에서 service의 목차를 흐리는 실행 세부사항은 단일 `application/implement` 하위 패키지에 둘 수 있다.
 
 강한 규칙:
 
 - `application/service`는 다른 `application/service`를 직접 참조하지 않는다.
 - 공유 로직이 필요하면 먼저 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/domain-modeling-rules.md) 기준으로 `domain` 후보인지 본다.
-- `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 하위 패키지로 분리한다.
+- `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 또는 `application/implement` 하위 패키지로 분리한다.
+- `application/implement` is not a sixth layer. It contains concrete application execution-detail collaborators, and every class name must start with the owning domain/use-case domain prefix such as `Order`, `Position`, or `Account`.
+- `application/implement`는 feature별 `application` 안에 하나만 둔다. `application/implement/common`, `application/implement/util`, `application/implement/helper` 같은 하위 잡동사니 package를 만들지 않는다.
 - `application/service`는 "무슨 일을 시작하는가"를, 목적형 협력 객체는 "그 일을 어떤 메커니즘으로 지원하는가"를 드러내야 한다.
+
+### Application Subpackage Placement
+
+| 위치 | 책임 | 이름 규칙 | 두지 말 것 |
+| --- | --- | --- | --- |
+| `application/service` | public use-case entrypoint, transaction boundary, top-level orchestration | `CreateOrderService`, `ClosePositionService`처럼 사용자가 시작하는 흐름 | 다른 service 직접 호출, repository/provider/domain 세부 조합을 모두 품는 giant method |
+| `application/implement` | service 흐름을 흐리는 application 실행 절차/계산/조합에 이름을 붙인 concrete collaborator | `OrderFillApplier`, `OrderPlacementFactory`, `PositionCloseProjector`, `AccountBalanceReconciler`처럼 소유 domain/use-case prefix + concise role | 새 layer, generic bucket, interface-first port, `Manager`/`Helper`/`Util`/`CommonService`, prefix 없는 class |
+| `application/<purpose>` | 이미 존재하거나 feature 전반에서 공유되는 명확한 mechanism package | `realtime`, `grant`, `placement`처럼 package 자체가 목적을 설명하고 class도 concrete role을 드러냄 | 새 convention이 필요한 큰 service refactor에서 목적 없는 ad-hoc package 증식 |
+| `domain` | storage-free이고 오래 살아야 하는 제품 규칙, 불변식, 상태 전이 | 도메인 언어의 model/policy/service/value object | repository/provider 조회, transaction 실행, 외부 시스템/프레임워크 세부사항 |
+
+`application/implement` 추출의 1순위 판단 기준은 service flow readability다.
+여러 유스케이스에서 반복될 수 있는 절차/계산/조합이면 내부 private method보다 이름 있는 implement collaborator를 우선한다.
+반대로 단순 field 전달이나 한 번 쓰이고 service 흐름을 흐리지 않는 세부 구현은 premature commonization을 피하고 private method 또는 result/domain factory에 남긴다.
+한 번만 쓰이더라도 repository/provider/domain orchestration이 섞여 public service의 목차를 흐리면 `application/implement`로 분리할 수 있다.
 
 현재 코드에서 지켜야 하는 대표 패턴:
 
 - `GetMarketCandlesService`는 query orchestration에 집중한다. persisted range read는 `MarketPersistedCandleReader`, interval rollup은 `MarketCandleRollupProjector`, historical cache/provider 보충은 `MarketHistoricalCandleAppender`, lookup tagging은 `MarketHistoryLookupTelemetry`가 맡는다.
-- 즉시 체결 주문과 pending open-order fill은 계정 예약, 포지션 생성/증가, mutation result 해석을 각각 구현하지 않는다. 두 진입점은 filled order request를 만들고, 상태 적용은 `FilledOpenOrderApplier`가 맡는다.
+- 즉시 체결 주문과 pending open-order fill은 계정 예약, 포지션 생성/증가, mutation result 해석을 각각 구현하지 않는다. 두 진입점은 filled order request를 만들고, 상태 적용은 concise role naming을 따르는 `OrderFillApplier` 같은 `application/implement` collaborator가 맡는다.
 - application 협력 객체는 `*Service` 이름을 남발하지 않는다. 예를 들어 `Applier`, `Projector`, `Appender`, `Reader`, `Telemetry`처럼 책임의 결과나 메커니즘을 드러낸다.
 - 협력 객체가 telemetry를 기록하더라도 business flow의 원본 판단을 숨기면 안 된다. public service에서는 어떤 단계가 실행되는지 읽혀야 한다.
 

@@ -9,7 +9,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketData
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
-import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
+import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -39,7 +39,7 @@ class ModifyOrderServiceTransactionTest {
     private PositionRepository positionRepository;
 
     @Autowired
-    private MarketableEditedOrderFiller marketableEditedOrderFiller;
+    private OrderEditFillHandler orderEditFillHandler;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -133,7 +133,7 @@ class ModifyOrderServiceTransactionTest {
                 new SequencedMarketPriceReader(firstLastPrice, secondLastPrice),
                 orderPlacementPolicy,
                 new AccountOrderMutationLock(accountRepository),
-                marketableEditedOrderFiller,
+                orderEditFillHandler,
                 new PendingLimitOrderBook()
         );
     }

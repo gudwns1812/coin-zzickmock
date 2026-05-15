@@ -5,7 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
-import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
+import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
@@ -27,7 +27,7 @@ public class ModifyOrderService {
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final OrderPlacementPolicy orderPlacementPolicy;
     private final AccountOrderMutationLock accountOrderMutationLock;
-    private final MarketableEditedOrderFiller marketableEditedOrderFiller;
+    private final OrderEditFillHandler orderEditFillHandler;
     private final PendingLimitOrderBook pendingLimitOrderBook;
 
     @Transactional
@@ -110,7 +110,7 @@ public class ModifyOrderService {
             return updated;
         }
 
-        return marketableEditedOrderFiller.fill(memberId, updated, latestMarket, latestDecision);
+        return orderEditFillHandler.fill(memberId, updated, latestMarket, latestDecision);
     }
 
 }

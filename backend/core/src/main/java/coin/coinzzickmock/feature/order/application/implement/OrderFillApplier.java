@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.service;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class FilledOpenOrderApplier {
+public class OrderFillApplier {
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
     private final AfterCommitEventPublisher afterCommitEventPublisher;

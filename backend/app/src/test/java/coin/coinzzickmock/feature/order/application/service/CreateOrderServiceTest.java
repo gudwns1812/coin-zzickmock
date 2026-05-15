@@ -12,6 +12,11 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPric
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
+import coin.coinzzickmock.feature.order.application.implement.OrderPostSaveFillHandler;
+import coin.coinzzickmock.feature.order.application.implement.OrderPositionInvariantValidator;
+import coin.coinzzickmock.feature.order.application.implement.OrderPlacementFactory;
+import coin.coinzzickmock.feature.order.application.implement.OrderCrossMarginPreviewProjector;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
@@ -568,21 +573,40 @@ class CreateOrderServiceTest {
             ApplicationEventPublisher eventPublisher
     ) {
         AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
+        OrderPreviewPolicy orderPreviewPolicy = new OrderPreviewPolicy();
+        OrderPlacementPolicy orderPlacementPolicy = new OrderPlacementPolicy();
+        OrderPlacementFactory orderPlacementFactory = new OrderPlacementFactory();
+        OrderCrossMarginPreviewProjector orderCrossMarginPreviewProjector = new OrderCrossMarginPreviewProjector(
+                accountRepository,
+                positionRepository,
+                realtimeMarketPriceReader,
+                new LiquidationPolicy()
+        );
+        OrderFillApplier orderFillApplier = new OrderFillApplier(
+                accountRepository,
+                positionRepository,
+                afterCommitEventPublisher,
+                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()
+                )
+        );
         return new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+                orderPreviewPolicy,
+                orderPlacementPolicy,
                 realtimeMarketPriceReader,
                 orderRepository,
-                positionRepository,
-                accountRepository,
-                new LiquidationPolicy(),
-                new FilledOpenOrderApplier(
-                        accountRepository,
-                        positionRepository,
-                        afterCommitEventPublisher,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(
-                                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()
-                        )
+                orderPlacementFactory,
+                new OrderPositionInvariantValidator(positionRepository),
+                orderCrossMarginPreviewProjector,
+                orderFillApplier,
+                new OrderPostSaveFillHandler(
+                        realtimeMarketPriceReader,
+                        orderPlacementPolicy,
+                        orderPreviewPolicy,
+                        orderRepository,
+                        orderPlacementFactory,
+                        orderCrossMarginPreviewProjector,
+                        orderFillApplier
                 ),
                 new AccountOrderMutationLock(accountRepository),
                 new PendingLimitOrderBook()

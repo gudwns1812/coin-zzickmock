@@ -15,6 +15,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTick
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
+import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
 import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
@@ -1180,7 +1181,7 @@ class MarketOrderExecutionServiceTest {
                         staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
-                        new FilledOpenOrderApplier(
+                        new OrderFillApplier(
                                 accountRepository,
                                 positionRepository,
                                 afterCommitEventPublisher,

@@ -204,6 +204,10 @@ public record FuturesOrder(
         );
     }
 
+    public static boolean isOpenOrderType(String orderType) {
+        return TYPE_MARKET.equalsIgnoreCase(orderType) || TYPE_LIMIT.equalsIgnoreCase(orderType);
+    }
+
     public boolean isPending() {
         return STATUS_PENDING.equalsIgnoreCase(status);
     }

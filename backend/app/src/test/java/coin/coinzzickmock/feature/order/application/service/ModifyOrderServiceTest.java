@@ -11,7 +11,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPric
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
-import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
+import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;
 import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -224,7 +224,7 @@ class ModifyOrderServiceTest {
                 new RealtimeMarketPriceReader(realtimeMarketDataStore),
                 orderPlacementPolicy,
                 new AccountOrderMutationLock(new LockingAccountRepository()),
-                new ClaimOnlyMarketableEditedOrderFiller(orderRepository),
+                new ClaimOnlyOrderEditFillHandler(orderRepository),
                 new PendingLimitOrderBook()
         );
     }
@@ -335,10 +335,10 @@ class ModifyOrderServiceTest {
         }
     }
 
-    private static class ClaimOnlyMarketableEditedOrderFiller extends MarketableEditedOrderFiller {
+    private static class ClaimOnlyOrderEditFillHandler extends OrderEditFillHandler {
         private final InMemoryOrderRepository orderRepository;
 
-        private ClaimOnlyMarketableEditedOrderFiller(InMemoryOrderRepository orderRepository) {
+        private ClaimOnlyOrderEditFillHandler(InMemoryOrderRepository orderRepository) {
             super(null, null, null, null, null, null, null, new PendingLimitOrderBook());
             this.orderRepository = orderRepository;
         }

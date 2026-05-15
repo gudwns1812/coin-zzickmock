@@ -12,8 +12,8 @@ import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
-import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier;
-import coin.coinzzickmock.feature.order.application.service.FilledOpenOrderApplier.FilledOpenOrder;
+import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
+import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
@@ -44,7 +44,7 @@ public class PendingOrderFillProcessor {
     private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
-    private final FilledOpenOrderApplier filledOpenOrderApplier;
+    private final OrderFillApplier orderFillApplier;
     private final AccountOrderMutationLock accountOrderMutationLock;
 
     @Transactional
@@ -383,7 +383,7 @@ public class PendingOrderFillProcessor {
     }
 
     private void applyFilledOpenOrder(Long memberId, FuturesOrder order, double executionPrice, double markPrice) {
-        filledOpenOrderApplier.apply(new FilledOpenOrder(
+        orderFillApplier.apply(new FilledOpenOrder(
                 memberId,
                 order.orderId(),
                 order.symbol(),

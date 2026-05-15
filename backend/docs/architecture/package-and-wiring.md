@@ -32,6 +32,7 @@ backend/core/src/main/java/coin/coinzzickmock/
       application/
         command/
         query/
+        implement/
         realtime/
         result/
         service/
@@ -61,9 +62,12 @@ backend/app/src/main/java/coin/coinzzickmock/
   [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/domain-modeling-rules.md)의
   `common/trading` 순수 산식 예외를 따른다. 이 예외는 feature-first 원칙의 우회로가 아니며, 2개 이상의 feature domain에서 같은 산식이 필요하고 문서/PR에서 근거가 확인된 경우에만 사용한다.
 - 최종 feature layer는 `web`, `job`, `application`, `domain`, `infrastructure`만 사용한다.
+- `application/implement`는 최종 feature layer가 아니라 `application` 내부의 단일 subpackage다. service 흐름을 흐리는 concrete execution-detail collaborator를 둘 때만 사용한다.
+- `application/implement` 아래에는 추가 subpackage를 만들지 않는다. class 이름은 `OrderFillApplier`, `PositionCloseProjector`, `AccountBalanceReconciler`처럼 owning domain/use-case prefix로 시작하고, prefix 뒤에는 package context를 반복하지 않는 짧은 role을 쓴다.
 - HTTP delivery Java package는 `web`이다. Java package 이름과 HTTP URL path는 별개이며 `/api/futures/**` path는 유지한다.
 - `support`, `extern`, `storage`처럼 기술/성격 기준의 광역 패키지는 새로 만들지 않는다. `backend/core` Gradle module은 허용하지만 `coin.coinzzickmock.core..` Java package는 만들지 않는다.
 - `application/usecase`, `application/port`는 기본 골격이 아니다. 실제로 필요한 경우에만 추가한다.
+- `application/implement/common`, `application/implement/util`, `application/implement/helper`와 도메인 prefix 없는 `implement` class는 금지한다.
 
 ## Concrete Class First
 

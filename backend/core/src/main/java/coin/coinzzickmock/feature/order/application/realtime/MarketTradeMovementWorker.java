@@ -14,6 +14,7 @@ public class MarketTradeMovementWorker implements SmartLifecycle {
 
     private final MarketTradeMovementQueue queue;
     private final PendingOrderFillProcessor pendingOrderFillProcessor;
+    private final MarketTradeMovementTelemetry telemetry;
     private volatile boolean running;
     private Thread workerThread;
 
@@ -71,7 +72,12 @@ public class MarketTradeMovementWorker implements SmartLifecycle {
     }
 
     private boolean process(MarketTradePriceMovedEvent event) {
-        pendingOrderFillProcessor.fillExecutablePendingOrders(event);
+        try {
+            pendingOrderFillProcessor.fillExecutablePendingOrders(event);
+        } catch (RuntimeException exception) {
+            telemetry.recordWorkerFailure();
+            throw exception;
+        }
         return true;
     }
 }

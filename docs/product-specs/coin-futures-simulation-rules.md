@@ -125,7 +125,9 @@ WebSocket trade tick에서 accepted 된 최신 체결가 이동이 pending limit
 첫 시세처럼 이전 가격이 없거나 가격이 변하지 않은 이벤트는 pending limit 체결을 시도하지 않는다.
 WebSocket 수신 thread는 가격 이동 이벤트를 application worker에 넘기는 역할만 하며, 체결 대상 후보는 in-memory pending order book에서 좁힌다.
 이 in-memory order book은 권위 저장소가 아니며 최종 체결 여부는 DB의 pending limit guarded claim과 claim 직전 주문 재조회로 확정한다.
+이 경로는 단일 애플리케이션 인스턴스를 전제로 하며, in-memory pending order book은 인스턴스 간에 공유하거나 복제하지 않는다.
 서버 재시작 시에는 DB의 pending non-conditional limit 주문을 worker 시작 전 in-memory order book에 적재해 재시작 전 대기 주문도 이후 WebSocket price movement 후보가 되도록 한다.
+서버 재시작 또는 워커 재기동 동안 누락된 WebSocket trade movement는 replay되지 않는다. DB에서 pending 주문을 재적재해 다음 accepted movement부터 후보로 삼을 수는 있지만, 다운타임 동안 지나간 중간 가격 경로는 보장하지 않는다.
 pending 지정가가 수정되면 수정 commit 이후의 가격 이동부터 새 지정가 체결 후보가 될 수 있으며, 수정 전 이미 큐에 들어간 과거 trade movement로 새 지정가를 체결하지 않는다.
 WebSocket trade movement가 없는 REST/provider fallback 환경에서는 coarse market summary refresh가 pending limit 체결을 보조로 깨울 수 있지만, 빠르게 찍고 되돌아온 중간 가격 경로 보장은 WebSocket trade movement 기준으로만 제공한다.
 

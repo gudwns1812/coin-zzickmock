@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class MicrometerTelemetryProviderTest {
@@ -77,5 +78,18 @@ class MicrometerTelemetryProviderTest {
                 "result",
                 "hit"
         ).count()).isEqualTo(1);
+    }
+
+    @Test
+    void registersGaugeWithGuardedTags() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MicrometerTelemetryProvider provider = new MicrometerTelemetryProvider(registry);
+        AtomicInteger queueSize = new AtomicInteger(2);
+
+        provider.registerGauge("market.trade.movement.queue.size.current", Map.of(), queueSize::get);
+
+        assertThat(registry.get("market.trade.movement.queue.size.current").gauge().value()).isEqualTo(2);
+        queueSize.set(1);
+        assertThat(registry.get("market.trade.movement.queue.size.current").gauge().value()).isEqualTo(1);
     }
 }

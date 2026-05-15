@@ -23,6 +23,35 @@ class RealtimeMarketDataStoreTest {
     }
 
     @Test
+    void evictsOldAcceptedTradeIdsAfterBoundedRetention() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore(2);
+
+        assertThat(store.acceptTrade(trade("111", "27000", "2026-04-30T04:00:00Z"))).isTrue();
+        assertThat(store.acceptTrade(trade("222", "27001", "2026-04-30T04:00:01Z"))).isTrue();
+        assertThat(store.acceptTrade(trade("333", "27002", "2026-04-30T04:00:02Z"))).isTrue();
+
+        assertThat(store.acceptTrade(trade("111", "27003", "2026-04-30T04:00:03Z"))).isTrue();
+        assertThat(store.latestTrade("BTCUSDT")).get()
+                .extracting(state -> state.price())
+                .isEqualTo(new BigDecimal("27003"));
+    }
+
+    @Test
+    void rejectedStaleTradeIdsDoNotEvictAcceptedTradeIds() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore(2);
+
+        assertThat(store.acceptTrade(trade("111", "27000", "2026-04-30T04:00:02Z"))).isTrue();
+        assertThat(store.acceptTrade(trade("222", "27001", "2026-04-30T04:00:03Z"))).isTrue();
+        assertThat(store.acceptTrade(trade("333", "26999", "2026-04-30T04:00:00Z"))).isFalse();
+        assertThat(store.acceptTrade(trade("444", "26998", "2026-04-30T04:00:01Z"))).isFalse();
+
+        assertThat(store.acceptTrade(trade("111", "27002", "2026-04-30T04:00:04Z"))).isFalse();
+        assertThat(store.latestTrade("BTCUSDT")).get()
+                .extracting(state -> state.price())
+                .isEqualTo(new BigDecimal("27001"));
+    }
+
+    @Test
     void ordersTradesWithoutTradeIdBySourceTimeAndReceiveSequence() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
 

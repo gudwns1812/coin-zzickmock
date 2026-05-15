@@ -8,7 +8,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
@@ -42,7 +42,7 @@ public class PositionLiquidationProcessor {
     private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
-    private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OrderMutationLock orderMutationLock;
     private final OpenPositionBook openPositionBook;
     private final OpenPositionBookHydrator openPositionBookHydrator;
 
@@ -156,7 +156,7 @@ public class PositionLiquidationProcessor {
     }
 
     private void liquidate(Long memberId, PositionSnapshot position, double executionPrice, double markPrice) {
-        accountOrderMutationLock.lock(memberId);
+        orderMutationLock.lock(memberId);
         try {
             var result = positionCloseFinalizer.liquidate(memberId, position, markPrice, TAKER_FEE_RATE);
             pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);

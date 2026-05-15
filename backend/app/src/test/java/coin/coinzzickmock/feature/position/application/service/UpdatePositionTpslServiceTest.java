@@ -14,7 +14,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTick
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
@@ -426,7 +426,7 @@ class UpdatePositionTpslServiceTest {
                 orderRepository,
                 new PendingCloseOrderCapReconciler(orderRepository),
                 realtimePriceReader(markPrice),
-                new AccountOrderMutationLock(accountRepository),
+                new OrderMutationLock(accountRepository),
                 accountRepository,
                 new PositionSnapshotResultAssembler(
                         positionRepository,

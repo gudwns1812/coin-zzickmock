@@ -13,6 +13,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTick
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.application.implement.OrderPostSaveFillHandler;
 import coin.coinzzickmock.feature.order.application.implement.OrderPositionInvariantValidator;
 import coin.coinzzickmock.feature.order.application.implement.OrderPlacementFactory;
@@ -608,7 +609,7 @@ class CreateOrderServiceTest {
                         orderCrossMarginPreviewProjector,
                         orderFillApplier
                 ),
-                new AccountOrderMutationLock(accountRepository),
+                new OrderMutationLock(accountRepository),
                 new PendingLimitOrderBook()
         );
     }

@@ -23,7 +23,7 @@ import coin.coinzzickmock.feature.order.application.realtime.PositionTakeProfitS
 import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
@@ -1169,7 +1169,7 @@ class MarketOrderExecutionServiceTest {
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
         RealtimeMarketPriceReader realtimeMarketPriceReader = new RealtimeMarketPriceReader(realtimeMarketDataStore);
-        AccountOrderMutationLock accountOrderMutationLock = new AccountOrderMutationLock(accountRepository);
+        OrderMutationLock orderMutationLock = new OrderMutationLock(accountRepository);
         return new MarketOrderExecutionService(
                 new PendingOrderFillProcessor(
                         orderRepository,
@@ -1187,7 +1187,7 @@ class MarketOrderExecutionServiceTest {
                                 afterCommitEventPublisher,
                                 openPositionBookWriter
                         ),
-                        accountOrderMutationLock
+                        orderMutationLock
                 ),
                 new PositionLiquidationProcessor(
                         positionRepository,
@@ -1198,7 +1198,7 @@ class MarketOrderExecutionServiceTest {
                         staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
-                        accountOrderMutationLock,
+                        orderMutationLock,
                         openPositionBook,
                         openPositionBookHydrator
                 ),
@@ -1210,7 +1210,7 @@ class MarketOrderExecutionServiceTest {
                         staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
-                        accountOrderMutationLock
+                        orderMutationLock
                 )
         );
     }
@@ -1243,7 +1243,7 @@ class MarketOrderExecutionServiceTest {
                 staleProtectiveCloseOrderCanceller,
                 afterCommitEventPublisher,
                 realtimeMarketPriceReader,
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
     }
 

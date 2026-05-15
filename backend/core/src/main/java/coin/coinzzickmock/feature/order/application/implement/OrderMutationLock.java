@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.service;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class AccountOrderMutationLock {
+public class OrderMutationLock {
     private final AccountRepository accountRepository;
 
     public void lock(Long memberId) {

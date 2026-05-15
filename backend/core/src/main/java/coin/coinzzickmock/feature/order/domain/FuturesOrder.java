@@ -208,6 +208,10 @@ public record FuturesOrder(
         return TYPE_MARKET.equalsIgnoreCase(orderType) || TYPE_LIMIT.equalsIgnoreCase(orderType);
     }
 
+    public boolean isEditableLimitOrder() {
+        return isPending() && TYPE_LIMIT.equalsIgnoreCase(orderType) && limitPrice != null && !isConditionalOrder();
+    }
+
     public boolean isPending() {
         return STATUS_PENDING.equalsIgnoreCase(status);
     }

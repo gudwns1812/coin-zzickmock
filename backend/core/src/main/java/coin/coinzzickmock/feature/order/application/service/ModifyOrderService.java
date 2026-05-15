@@ -6,13 +6,14 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPric
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;
+import coin.coinzzickmock.feature.order.application.implement.OrderEditPlanner;
+import coin.coinzzickmock.feature.order.application.implement.OrderEditPlanner.EditPlan;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
 import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
-import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
-import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,35 +21,30 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ModifyOrderService {
-    private static final String ORDER_TYPE_LIMIT = "LIMIT";
-    private static final String FEE_TYPE_MAKER = "MAKER";
-
     private final OrderRepository orderRepository;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final OrderPlacementPolicy orderPlacementPolicy;
-    private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OrderMutationLock orderMutationLock;
+    private final OrderEditPlanner orderEditPlanner;
     private final OrderEditFillHandler orderEditFillHandler;
     private final PendingLimitOrderBook pendingLimitOrderBook;
 
     @Transactional
     public ModifyOrderResult modify(ModifyOrderCommand command) {
-        double nextLimitPrice = validatedLimitPrice(command.limitPrice());
-        accountOrderMutationLock.lock(command.memberId());
-
+        orderMutationLock.lock(command.memberId());
         FuturesOrder order = orderRepository.findByMemberIdAndOrderId(command.memberId(), command.orderId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        validateEditable(order);
+        EditPlan editPlan = orderEditPlanner.plan(order, command.limitPrice());
 
-        double estimatedFee = pendingMakerEstimatedFee(order, nextLimitPrice);
         FuturesOrder updated = orderRepository.updatePendingLimitPrice(
                 command.memberId(),
                 order.orderId(),
-                nextLimitPrice,
-                FEE_TYPE_MAKER,
-                estimatedFee,
-                nextLimitPrice
+                editPlan.limitPrice(),
+                editPlan.feeType(),
+                editPlan.estimatedFee(),
+                editPlan.limitPrice()
         ).orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-        FuturesOrder result = fillIfMarketable(command.memberId(), updated);
+        FuturesOrder result = fillIfMarketable(command.memberId(), updated, editPlan);
         if (result.isPending()) {
             pendingLimitOrderBook.replaceAfterCommit(command.memberId(), result);
         } else {
@@ -58,59 +54,13 @@ public class ModifyOrderService {
         return ModifyOrderResult.from(result);
     }
 
-    private double validatedLimitPrice(BigDecimal limitPrice) {
-        if (limitPrice == null || limitPrice.signum() <= 0) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        double limitPriceValue = limitPrice.doubleValue();
-        if (!Double.isFinite(limitPriceValue) || limitPriceValue <= 0) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        return limitPriceValue;
-    }
-
-    private void validateEditable(FuturesOrder order) {
-        if (!order.isPending()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        if (!ORDER_TYPE_LIMIT.equalsIgnoreCase(order.orderType()) || order.limitPrice() == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        if (order.isConditionalOrder()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    private OrderPlacementRequest placementRequest(FuturesOrder order, double limitPrice) {
-        return new OrderPlacementRequest(
-                order.orderPurpose(),
-                order.positionSide(),
-                ORDER_TYPE_LIMIT,
-                order.marginMode(),
-                limitPrice,
-                order.quantity(),
-                order.leverage()
-        );
-    }
-
-    private double pendingMakerEstimatedFee(FuturesOrder order, double nextLimitPrice) {
-        if (order.isClosePositionOrder()) {
-            return 0;
-        }
-        return nextLimitPrice * order.quantity() * OrderPlacementPolicy.MAKER_FEE_RATE;
-    }
-
-    private FuturesOrder fillIfMarketable(Long memberId, FuturesOrder updated) {
+    private FuturesOrder fillIfMarketable(Long memberId, FuturesOrder updated, EditPlan editPlan) {
         MarketSnapshot latestMarket = realtimeMarketPriceReader.requireFreshMarket(updated.symbol());
-        var latestDecision = orderPlacementPolicy.decide(
-                placementRequest(updated, updated.limitPrice()),
-                latestMarket.lastPrice()
-        );
+        var latestDecision = orderPlacementPolicy.decide(editPlan.placementRequest(), latestMarket.lastPrice());
         if (!latestDecision.executable()) {
             return updated;
         }
 
         return orderEditFillHandler.fill(memberId, updated, latestMarket, latestDecision);
     }
-
 }

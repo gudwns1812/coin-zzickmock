@@ -5,7 +5,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPric
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
@@ -33,7 +33,7 @@ public class PositionTakeProfitStopLossProcessor {
     private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
-    private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OrderMutationLock orderMutationLock;
 
     @Transactional
     public void closeTriggeredPositions(MarketSummaryResult market) {
@@ -111,8 +111,8 @@ public class PositionTakeProfitStopLossProcessor {
     }
 
     private void lockAccountOrderMutation(Long memberId) {
-        // AccountOrderMutationLock obtains a transactional row lock; Spring releases it when this transaction ends.
-        accountOrderMutationLock.lock(memberId);
+        // OrderMutationLock obtains a transactional row lock; Spring releases it when this transaction ends.
+        orderMutationLock.lock(memberId);
     }
 
     private Optional<FuturesOrder> reloadOrder(Long memberId, FuturesOrder candidate) {

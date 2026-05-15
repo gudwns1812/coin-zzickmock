@@ -8,6 +8,7 @@ import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderCrossMarginPreviewProjector;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier.FilledOpenOrder;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.application.implement.OrderPlacementFactory;
 import coin.coinzzickmock.feature.order.application.implement.OrderPositionInvariantValidator;
 import coin.coinzzickmock.feature.order.application.implement.OrderPostSaveFillHandler;
@@ -39,7 +40,7 @@ public class CreateOrderService {
     private final OrderCrossMarginPreviewProjector orderCrossMarginPreviewProjector;
     private final OrderFillApplier orderFillApplier;
     private final OrderPostSaveFillHandler orderPostSaveFillHandler;
-    private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OrderMutationLock orderMutationLock;
     private final PendingLimitOrderBook pendingLimitOrderBook;
 
     @Transactional(readOnly = true)
@@ -51,7 +52,7 @@ public class CreateOrderService {
 
     @Transactional
     public CreateOrderResult execute(CreateOrderCommand command) {
-        accountOrderMutationLock.lock(command.memberId());
+        orderMutationLock.lock(command.memberId());
         validateOrderType(command.orderType());
         orderPositionInvariantValidator.validateOpenPositionCompatibility(command);
 

@@ -12,7 +12,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTrad
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
@@ -234,8 +234,8 @@ final class OrderRealtimeProcessorFixtures {
             return new PendingCloseOrderCapReconciler(orders);
         }
 
-        private AccountOrderMutationLock mutationLock() {
-            return new AccountOrderMutationLock(accounts);
+        private OrderMutationLock mutationLock() {
+            return new OrderMutationLock(accounts);
         }
 
         private RealtimeMarketPriceReader realtimePriceReader() {

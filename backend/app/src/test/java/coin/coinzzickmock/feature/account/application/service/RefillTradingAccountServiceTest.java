@@ -218,6 +218,11 @@ class RefillTradingAccountServiceTest {
         }
 
         @Override
+        public List<OpenPositionCandidate> findAllOpenCandidates() {
+            return List.of();
+        }
+
+        @Override
         public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             return positionSnapshot;
         }

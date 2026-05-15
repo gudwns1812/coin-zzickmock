@@ -9,6 +9,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
+import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
@@ -31,6 +32,8 @@ public class UpdatePositionLeverageService {
     private final AccountRepository accountRepository;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final PositionSnapshotResultAssembler positionSnapshotResultAssembler;
+    private final OpenPositionBookWriter openPositionBookWriter;
+
 
     @Transactional
     public PositionSnapshotResult update(
@@ -78,6 +81,7 @@ public class UpdatePositionLeverageService {
             if (!mutation.succeeded()) {
                 throw new CoreException(ErrorCode.POSITION_CHANGED);
             }
+            openPositionBookWriter.replaceAfterCommit(memberId, mutation.updatedSnapshot());
             if (samePosition(mutation.updatedSnapshot(), responseTarget)) {
                 updatedResponseTarget = mutation.updatedSnapshot();
             }

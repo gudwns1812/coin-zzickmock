@@ -75,7 +75,8 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -134,7 +135,8 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -192,7 +194,8 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -375,7 +378,8 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -429,7 +433,8 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -486,7 +491,8 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -764,7 +770,8 @@ class ClosePositionServiceTest {
                 new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                 new AfterCommitEventPublisher(event -> {
                 })
-        );
+        ,
+                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()));
 
         CoreException thrown = assertThrows(CoreException.class, () -> finalizer.close(
                 1L,
@@ -825,7 +832,8 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),

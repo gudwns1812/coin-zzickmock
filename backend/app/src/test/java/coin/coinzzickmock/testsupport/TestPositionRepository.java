@@ -46,6 +46,11 @@ public abstract class TestPositionRepository implements PositionRepository {
     }
 
     @Override
+    public List<OpenPositionCandidate> findAllOpenCandidates() {
+        return List.of();
+    }
+
+    @Override
     public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
         throw new UnsupportedOperationException("save is not implemented for this test fake");
     }

@@ -167,6 +167,7 @@ WebSocket trade movement가 없는 REST/provider fallback 환경에서는 coarse
 
 포지션 종료, pending 종료 주문 체결, 청산 종료는 열린 포지션의 `version`을 조건으로 하는 낙관적 잠금 mutation이다.
 이미 다른 요청이 포지션을 변경했다면 계정 정산, 포지션 이력, 리워드 지급, 응답용 체결 이벤트 발행 전에 충돌로 중단한다.
+일반 포지션 종료는 정산 이후 `walletBalance` 또는 `availableMargin`이 음수가 되는 요청을 거절해 DB의 계정 non-negative invariant를 위반하지 않는다. 청산 종료만 별도 정산 모델로 손실을 cap하고 0으로 floor 처리한다.
 
 ### 포지션 TP/SL
 
@@ -345,6 +346,9 @@ TP/SL로 종료된 포지션은 종료 사유를 각각 `TAKE_PROFIT`, `STOP_LOS
 - 청산 평가는 `mark price` 기준이다
 - `maintenance margin`을 밑돌면 청산 대상으로 본다
 - 유지 증거금률은 MVP 1차에서 심볼 공통 고정값으로 시작한다
+- 청산 raw close outcome, 청산 체결 이벤트의 `executionPrice`, 포지션 히스토리 `averageExitPrice`와 실현 손익은 모두 `markPrice` 기준이다. 최신 체결가(`lastPrice`)는 manual pending close cap reconciliation의 실행 가능성 정렬에만 사용할 수 있고 청산 정산가로 전달하지 않는다.
+- 청산 계정 반영은 일반 종료와 분리된 `LiquidationSettlement` 모델을 사용한다. raw 손실이 계정 잔고를 초과하면 계정 반영 손실을 cap하고 `walletBalance`, `availableMargin`은 각각 `max(0, rawAfter)`로 floor 처리한다.
+- `lossCappedAmount`는 raw 청산 손실 중 계정에 더 이상 반영하지 못한 금액을 나타내며, 리워드 포인트나 실현 수익으로 보지 않는다. 청산 종료는 raw outcome이 양수여도 포인트 적립 대상이 아니다.
 - 청산 체결 이벤트는 DB transaction commit 이후에만 발행한다
 
 ### 유지 증거금률
@@ -379,6 +383,20 @@ MVP 1차는 아래 순서로 단순화한다.
 위험도 정렬 기준은 `riskRatio = max(0, initialMargin + unrealizedPnl) / maintenanceRequirement`가 낮은 순서다. `maintenanceRequirement <= 0`이면 해당 포지션의 `riskRatio`는 `Infinity`로 두어 0분모를 만들지 않는다. 같은 값이면 절대 미실현 손실이 큰 포지션을 먼저 보고, 그래도 같으면 `symbol + positionSide + marginMode` 안정 키 순서로 결정한다. 이 MVP는 largest absolute loss, margin usage ratio, liquidation price proximity 같은 다른 후보 지표를 사용하지 않는다.
 
 교차 마진의 청산 후보 선정은 MVP 근사 휴리스틱이다. 실제 거래소의 부분청산, 위험한도, ADL 모델과 동일하다고 보지 않는다.
+
+
+### 청산 후보 메모리 캐시
+
+실시간 market tick의 청산 후보 조회는 `OpenPositionBook` 단일 인스턴스 in-memory candidate cache로 좁힌다.
+이 book은 청산 판단의 source of truth가 아니며, 최종 청산 여부와 mutation 성공은 account lock, 최신 market 재조회, mark-to-market 재평가, DB version guarded mutation으로 확정한다.
+
+- startup 시 DB의 모든 open position 후보를 hydrate한다.
+- open/increase/update/delete/liquidate close 성공 commit 이후 afterCommit write-through로 add/replace/remove한다.
+- book 상태가 `UNHYDRATED`이면 전체 hydrate를 수행하고, symbol 상태가 `DIRTY`이면 해당 tick 시작 시 symbol-level rehydrate를 수행한 뒤 평가한다.
+- symbol-level rehydrate는 dirty generation을 관찰한 뒤 reload하고, reload 중 더 최신 evict 또는 afterCommit write-through가 발생했으면 이전 reload가 symbol을 clean으로 되돌리거나 최신 candidate를 덮어쓰지 않는다. 이 경우 해당 tick은 partial dirty book을 source로 쓰지 않고 DB symbol scan으로 fallback한다.
+- stale guarded mutation 실패나 not found는 해당 symbol을 evict하고 symbol-level rehydrate를 유발한다.
+- 이 cache는 단일 애플리케이션 인스턴스 후보 최적화용이다. 인스턴스 간 공유/복제와 다운타임 동안의 완전성은 보장하지 않는다.
+- 사용자 read API와 교차마진 member portfolio 조회는 이 book을 source로 사용하지 않는다.
 
 교차 `liquidationPrice`와 주문 `estimatedLiquidationPrice`는 저장 컬럼의 원천값이 아니라 응답 시점의 계정/포지션 상태로 계산한 동적 값이다. 응답은 아래 정확도 타입을 함께 제공한다.
 

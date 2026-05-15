@@ -19,6 +19,9 @@ import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCa
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
+import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook;
+import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookHydrator;
+import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
@@ -51,8 +54,13 @@ final class OrderRealtimeProcessorFixtures {
         final InMemoryPositionRepository positions = new InMemoryPositionRepository();
         final InMemoryAccountRepository accounts = new InMemoryAccountRepository();
         final CapturingEventPublisher events = new CapturingEventPublisher();
+        final InMemoryPositionHistoryRepository histories = new InMemoryPositionHistoryRepository();
+        final InMemoryRewardPointRepository rewardPoints = new InMemoryRewardPointRepository();
         final RealtimeMarketDataStore realtimeMarketDataStore = new RealtimeMarketDataStore();
         final PendingLimitOrderBook pendingLimitOrderBook = new PendingLimitOrderBook();
+        final OpenPositionBook openPositionBook = new OpenPositionBook();
+        final OpenPositionBookHydrator openPositionBookHydrator = new OpenPositionBookHydrator(positions, openPositionBook);
+        final OpenPositionBookWriter openPositionBookWriter = new OpenPositionBookWriter(openPositionBook);
         private final AtomicInteger tradeSequence = new AtomicInteger();
 
         PendingOrderFillProcessor pendingFillProcessor() {
@@ -71,7 +79,7 @@ final class OrderRealtimeProcessorFixtures {
                     new StaleProtectiveCloseOrderCanceller(orders),
                     afterCommitEventPublisher,
                     realtimePriceReader(),
-                    new FilledOpenOrderApplier(ordersAwareAccountRepository(), positions, afterCommitEventPublisher),
+                    new FilledOpenOrderApplier(ordersAwareAccountRepository(), positions, afterCommitEventPublisher, openPositionBookWriter),
                     mutationLock()
             );
         }
@@ -81,6 +89,17 @@ final class OrderRealtimeProcessorFixtures {
         }
 
         PositionLiquidationProcessor liquidationProcessor(StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller) {
+            return liquidationProcessor(staleProtectiveCloseOrderCanceller, openPositionBookHydrator);
+        }
+
+        PositionLiquidationProcessor liquidationProcessor(OpenPositionBookHydrator openPositionBookHydrator) {
+            return liquidationProcessor(new StaleProtectiveCloseOrderCanceller(orders), openPositionBookHydrator);
+        }
+
+        private PositionLiquidationProcessor liquidationProcessor(
+                StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller,
+                OpenPositionBookHydrator openPositionBookHydrator
+        ) {
             AfterCommitEventPublisher afterCommitEventPublisher = afterCommitEventPublisher();
             return new PositionLiquidationProcessor(
                     positions,
@@ -91,7 +110,9 @@ final class OrderRealtimeProcessorFixtures {
                     staleProtectiveCloseOrderCanceller,
                     afterCommitEventPublisher,
                     realtimePriceReader(),
-                    mutationLock()
+                    mutationLock(),
+                    openPositionBook,
+                    openPositionBookHydrator
             );
         }
 
@@ -194,13 +215,18 @@ final class OrderRealtimeProcessorFixtures {
             return new AfterCommitEventPublisher(events);
         }
 
+        PositionCloseFinalizer positionCloseFinalizerForTest() {
+            return positionCloseFinalizer(afterCommitEventPublisher());
+        }
+
         private PositionCloseFinalizer positionCloseFinalizer(AfterCommitEventPublisher afterCommitEventPublisher) {
             return new PositionCloseFinalizer(
                     positions,
                     accounts,
-                    new InMemoryPositionHistoryRepository(),
-                    new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
-                    afterCommitEventPublisher
+                    histories,
+                    new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPoints),
+                    afterCommitEventPublisher,
+                    openPositionBookWriter
             );
         }
 
@@ -392,6 +418,8 @@ final class OrderRealtimeProcessorFixtures {
 
     static final class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {
         private final Map<String, OpenPositionCandidate> positions = new LinkedHashMap<>();
+        int findOpenBySymbolCalls;
+
 
         @Override
         public List<PositionSnapshot> findOpenPositions(Long memberId) {
@@ -414,9 +442,19 @@ final class OrderRealtimeProcessorFixtures {
 
         @Override
         public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
+            findOpenBySymbolCalls++;
             return positions.values().stream()
                     .filter(candidate -> candidate.symbol().equalsIgnoreCase(symbol))
                     .toList();
+        }
+
+        @Override
+        public List<OpenPositionCandidate> findAllOpenCandidates() {
+            return List.copyOf(positions.values());
+        }
+
+        int findOpenBySymbolCalls() {
+            return findOpenBySymbolCalls;
         }
 
         @Override
@@ -449,6 +487,10 @@ final class OrderRealtimeProcessorFixtures {
                     100000,
                     100000
             ));
+        }
+
+        void put(Long memberId, TradingAccount account) {
+            accounts.put(memberId, account);
         }
 
         @Override
@@ -485,7 +527,7 @@ final class OrderRealtimeProcessorFixtures {
         }
     }
 
-    private static final class InMemoryPositionHistoryRepository implements PositionHistoryRepository {
+    static final class InMemoryPositionHistoryRepository implements PositionHistoryRepository {
         private final Map<Long, List<PositionHistory>> histories = new LinkedHashMap<>();
 
         @Override
@@ -502,7 +544,7 @@ final class OrderRealtimeProcessorFixtures {
         }
     }
 
-    private static final class InMemoryRewardPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
+    static final class InMemoryRewardPointRepository extends coin.coinzzickmock.testsupport.TestRewardPointRepository {
         private RewardPointWallet wallet = new RewardPointWallet(1L, 0);
 
         @Override
@@ -514,6 +556,10 @@ final class OrderRealtimeProcessorFixtures {
         public RewardPointWallet save(RewardPointWallet rewardPointWallet) {
             wallet = rewardPointWallet;
             return rewardPointWallet;
+        }
+
+        RewardPointWallet wallet() {
+            return wallet;
         }
     }
 }

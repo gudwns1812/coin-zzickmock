@@ -122,6 +122,58 @@ private PlaceOrderResult toResult(Order order) {
 
 위 예처럼 위쪽은 이야기의 목차처럼 읽히고, 아래쪽은 목차의 각 장을 펼쳐 보는 순서가 된다.
 
+## Method Paragraphs And Blank Lines
+
+메서드 안에도 문단이 있다.
+빈 줄은 장식이 아니라, 같은 추상화 수준의 단계가 바뀌는 지점을 보여 주는 읽기 장치다.
+검증, 조회, 정책 판단, 상태 변경, 저장, 응답 변환이 한 덩어리로 붙어 있으면 코드가 맞아도 다음 사람이 흐름을 놓친다.
+
+규칙:
+
+- 서로 다른 개념적 단계 사이에는 빈 줄을 둔다.
+- 같은 하위 책임을 이루는 statement들은 붙여서 한 문단으로 읽히게 한다.
+- 짧은 guard clause는 붙여도 되지만, guard 이후 본 흐름이 시작되면 빈 줄로 구분한다.
+- 반복문이나 조건문 안에서도 조회, 판단, mutation, side effect가 단계로 바뀌면 빈 줄로 문단을 나눈다.
+- 빈 줄이 네 덩어리 이상 계속 필요해지면 메서드 추출이나 협력 객체 분리를 먼저 검토한다.
+- 빈 줄로 낮은 추상화 수준의 세부 구현을 숨기려 하지 않는다. 문단을 나눠도 한 메서드가 여러 책임을 품고 있으면 분리한다.
+
+권장 예:
+
+```java
+private OrderDecision decideOrder(TradingAccount account, PlaceOrderCommand command) {
+    OrderRequest request = orderRequestFactory.create(command);
+    MarketPrice price = marketPriceReader.currentPrice(command.symbol());
+
+    if (account.cannotTrade(command.symbol())) {
+        throw new CoreException(OrderErrorType.TRADING_NOT_ALLOWED);
+    }
+
+    RiskSnapshot risk = riskPolicy.evaluate(account, request, price);
+
+    return orderPolicy.decide(account, request, risk);
+}
+```
+
+위 예에서 요청/시세 준비, guard, 위험 평가, 최종 판단은 각각 다른 읽기 단위다.
+빈 줄은 이 단위가 바뀌는 곳에만 둔다.
+
+피해야 할 예:
+
+```java
+private OrderDecision decideOrder(TradingAccount account, PlaceOrderCommand command) {
+    OrderRequest request = orderRequestFactory.create(command);
+    MarketPrice price = marketPriceReader.currentPrice(command.symbol());
+    if (account.cannotTrade(command.symbol())) {
+        throw new CoreException(OrderErrorType.TRADING_NOT_ALLOWED);
+    }
+    RiskSnapshot risk = riskPolicy.evaluate(account, request, price);
+    return orderPolicy.decide(account, request, risk);
+}
+```
+
+위 코드는 모든 statement가 붙어 있어 단계 전환이 눈에 들어오지 않는다.
+작은 메서드라도 읽기 단위가 바뀌면 문단을 나눈다.
+
 ## Class Responsibility
 
 클래스는 "무엇을 시작하는가"와 "어떤 메커니즘으로 돕는가"를 섞지 않는다.
@@ -229,6 +281,7 @@ private PlaceOrderResult toResult(Order order) {
 구현 중 아래 신호가 보이면 멈추고 구조를 다시 나눈다.
 
 - 한 메서드가 화면에 한 번에 읽히지 않을 정도로 길어진다.
+- 서로 다른 개념적 단계가 빈 줄 없이 한 덩어리로 붙어 흐름이 잘 보이지 않는다.
 - `and`가 붙은 메서드명이나 클래스명이 필요해진다.
 - 메서드를 한 문장으로 설명할 수 없거나, 설명에 서로 다른 개념적 책임이 섞인다.
 - 한 private method가 다시 여러 private method를 끌고 다닌다.
@@ -252,6 +305,7 @@ private PlaceOrderResult toResult(Order order) {
 백엔드 변경 검증에는 기능 테스트뿐 아니라 책임 분리 확인도 포함한다.
 
 - 변경한 public 유스케이스 메서드를 읽었을 때 흐름이 위에서 아래로 설명되는가?
+- 메서드 내부의 검증, 조회, 판단, mutation, 저장, 변환 단계가 빈 줄로 자연스럽게 구분되는가?
 - private method 위치가 호출 흐름을 따라 top-down으로 읽히는가?
 - 새 클래스마다 한 문장으로 책임을 설명할 수 있는가?
 - 테스트가 도메인 규칙, application orchestration, infrastructure adapter를 구분해서 검증하는가?

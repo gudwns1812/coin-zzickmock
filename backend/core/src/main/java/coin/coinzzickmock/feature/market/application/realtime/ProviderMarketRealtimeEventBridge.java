@@ -1,30 +1,21 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
-import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import coin.coinzzickmock.providers.connector.ProviderMarketCandleEvent;
+import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import coin.coinzzickmock.providers.connector.ProviderMarketRealtimeEvent;
 import coin.coinzzickmock.providers.connector.ProviderMarketTickerEvent;
 import coin.coinzzickmock.providers.connector.ProviderMarketTradeEvent;
 import java.util.function.Consumer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
+@RequiredArgsConstructor
 public class ProviderMarketRealtimeEventBridge implements Consumer<ProviderMarketRealtimeEvent> {
-    private static final Logger log = LoggerFactory.getLogger(ProviderMarketRealtimeEventBridge.class);
     private final RealtimeMarketDataStore realtimeMarketDataStore;
     private final RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService;
     private final MarketTradePriceMovementPublisher marketTradePriceMovementPublisher;
-
-    public ProviderMarketRealtimeEventBridge(
-            RealtimeMarketDataStore realtimeMarketDataStore,
-            RealtimeMarketCandleUpdateService realtimeMarketCandleUpdateService,
-            MarketTradePriceMovementPublisher marketTradePriceMovementPublisher
-    ) {
-        this.realtimeMarketDataStore = realtimeMarketDataStore;
-        this.realtimeMarketCandleUpdateService = realtimeMarketCandleUpdateService;
-        this.marketTradePriceMovementPublisher = marketTradePriceMovementPublisher;
-    }
 
     @Override
     public void accept(ProviderMarketRealtimeEvent event) {

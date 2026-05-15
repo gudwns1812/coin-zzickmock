@@ -1,13 +1,15 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -45,8 +47,8 @@ public class RealtimeMarketDataStore {
                         null
                 )
         );
-        java.util.concurrent.atomic.AtomicReference<MarketTradePriceMovedEvent> movement = new java.util.concurrent.atomic.AtomicReference<>();
-        java.util.concurrent.atomic.AtomicBoolean accepted = new java.util.concurrent.atomic.AtomicBoolean(false);
+        AtomicReference<MarketTradePriceMovedEvent> movement = new java.util.concurrent.atomic.AtomicReference<>();
+        AtomicBoolean accepted = new AtomicBoolean(false);
         trades.compute(tick.symbol(), (symbol, previous) -> {
             if (!shouldReplaceTimestamped(previous, next)) {
                 return previous;
@@ -55,7 +57,8 @@ public class RealtimeMarketDataStore {
             if (previous != null) {
                 double previousPrice = previous.price().doubleValue();
                 double currentPrice = next.price().doubleValue();
-                MarketPriceMovementDirection direction = MarketPriceMovementDirection.between(previousPrice, currentPrice);
+                MarketPriceMovementDirection direction = MarketPriceMovementDirection.between(previousPrice,
+                        currentPrice);
                 if (direction != MarketPriceMovementDirection.UNCHANGED) {
                     movement.set(new MarketTradePriceMovedEvent(
                             symbol,
@@ -91,7 +94,8 @@ public class RealtimeMarketDataStore {
                         null
                 )
         );
-        tickers.compute(update.symbol(), (symbol, previous) -> shouldReplaceTimestamped(previous, next) ? next : previous);
+        tickers.compute(update.symbol(),
+                (symbol, previous) -> shouldReplaceTimestamped(previous, next) ? next : previous);
         return tickers.get(update.symbol()) == next;
     }
 
@@ -222,7 +226,8 @@ public class RealtimeMarketDataStore {
     }
 
     private boolean isDuplicateTradeId(RealtimeMarketTradeTick tick) {
-        Set<String> tradeIds = acceptedTradeIds.computeIfAbsent(tick.symbol(), ignored -> ConcurrentHashMap.newKeySet());
+        Set<String> tradeIds = acceptedTradeIds.computeIfAbsent(tick.symbol(),
+                ignored -> ConcurrentHashMap.newKeySet());
         return !tradeIds.add(tick.tradeId());
     }
 
@@ -267,8 +272,8 @@ public class RealtimeMarketDataStore {
     public record RealtimeMarketTradeState(
             String symbol,
             String tradeId,
-            java.math.BigDecimal price,
-            java.math.BigDecimal size,
+            BigDecimal price,
+            BigDecimal size,
             String side,
             long receiveSequence,
             MarketRealtimeSourceSnapshot source
@@ -283,10 +288,10 @@ public class RealtimeMarketDataStore {
 
     public record RealtimeMarketTickerState(
             String symbol,
-            java.math.BigDecimal lastPrice,
-            java.math.BigDecimal markPrice,
-            java.math.BigDecimal indexPrice,
-            java.math.BigDecimal fundingRate,
+            BigDecimal lastPrice,
+            BigDecimal markPrice,
+            BigDecimal indexPrice,
+            BigDecimal fundingRate,
             Instant nextFundingTime,
             long receiveSequence,
             MarketRealtimeSourceSnapshot source

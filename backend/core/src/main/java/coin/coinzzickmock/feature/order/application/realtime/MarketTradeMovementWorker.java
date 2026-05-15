@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class MarketTradeMovementWorker implements SmartLifecycle {
+    public static final int PHASE = PendingLimitOrderBookHydrator.PHASE + 100;
+
     private final MarketTradeMovementQueue queue;
     private final PendingOrderFillProcessor pendingOrderFillProcessor;
     private volatile boolean running;
@@ -37,6 +39,11 @@ public class MarketTradeMovementWorker implements SmartLifecycle {
     @Override
     public boolean isRunning() {
         return running;
+    }
+
+    @Override
+    public int getPhase() {
+        return PHASE;
     }
 
     public int processAvailable() {

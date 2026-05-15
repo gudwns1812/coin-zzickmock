@@ -14,12 +14,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class OpenPositionBook {
     private final Map<PositionKey, OpenPositionCandidate> candidates = new HashMap<>();
+    private final Map<String, Map<PositionKey, OpenPositionCandidate>> candidatesBySymbol = new HashMap<>();
     private final Map<String, Long> dirtySymbolGenerations = new HashMap<>();
     private final AtomicLong dirtyGenerationSequence = new AtomicLong();
     private volatile boolean hydrated;
 
     public synchronized void hydrate(Collection<OpenPositionCandidate> openPositions) {
         candidates.clear();
+        candidatesBySymbol.clear();
         openPositions.forEach(this::putCandidate);
         dirtySymbolGenerations.clear();
         hydrated = true;
@@ -28,10 +30,11 @@ public class OpenPositionBook {
     public synchronized Candidates candidatesBySymbol(String symbol) {
         String normalizedSymbol = normalize(symbol);
         State state = stateOf(normalizedSymbol);
-        List<OpenPositionCandidate> symbolCandidates = candidates.values().stream()
-                .filter(candidate -> normalize(candidate.symbol()).equals(normalizedSymbol))
-                .toList();
-        return new Candidates(state, symbolCandidates);
+        Map<PositionKey, OpenPositionCandidate> symbolCandidates = candidatesBySymbol.get(normalizedSymbol);
+        List<OpenPositionCandidate> values = symbolCandidates == null
+                ? List.of()
+                : List.copyOf(symbolCandidates.values());
+        return new Candidates(state, values);
     }
 
     public synchronized void add(Long memberId, PositionSnapshot position) {
@@ -45,7 +48,7 @@ public class OpenPositionBook {
 
     public synchronized void replace(Long memberId, PositionSnapshot position) {
         String normalizedSymbol = normalize(position.symbol());
-        candidates.remove(new PositionKey(memberId, normalizedSymbol, normalize(position.positionSide()), normalize(position.marginMode())));
+        removeCandidate(new PositionKey(memberId, normalizedSymbol, normalize(position.positionSide()), normalize(position.marginMode())));
         putCandidate(new OpenPositionCandidate(memberId, position));
         bumpDirtyGenerationIfPresent(normalizedSymbol);
     }
@@ -56,7 +59,7 @@ public class OpenPositionBook {
 
     public synchronized void remove(Long memberId, String symbol, String positionSide, String marginMode) {
         String normalizedSymbol = normalize(symbol);
-        candidates.remove(new PositionKey(memberId, normalizedSymbol, normalize(positionSide), normalize(marginMode)));
+        removeCandidate(new PositionKey(memberId, normalizedSymbol, normalize(positionSide), normalize(marginMode)));
         bumpDirtyGenerationIfPresent(normalizedSymbol);
     }
 
@@ -90,7 +93,10 @@ public class OpenPositionBook {
     }
 
     private void putCandidate(OpenPositionCandidate candidate) {
-        candidates.put(PositionKey.from(candidate), candidate);
+        PositionKey key = PositionKey.from(candidate);
+        candidates.put(key, candidate);
+        candidatesBySymbol.computeIfAbsent(key.symbol(), ignored -> new HashMap<>())
+                .put(key, candidate);
     }
 
     private void bumpDirtyGenerationIfPresent(String symbol) {
@@ -101,7 +107,23 @@ public class OpenPositionBook {
     }
 
     private void removeSymbolCandidates(String normalizedSymbol) {
-        candidates.keySet().removeIf(key -> key.symbol().equals(normalizedSymbol));
+        Map<PositionKey, OpenPositionCandidate> removedCandidates = candidatesBySymbol.remove(normalizedSymbol);
+        if (removedCandidates == null) {
+            return;
+        }
+        removedCandidates.keySet().forEach(candidates::remove);
+    }
+
+    private void removeCandidate(PositionKey key) {
+        candidates.remove(key);
+        Map<PositionKey, OpenPositionCandidate> symbolCandidates = candidatesBySymbol.get(key.symbol());
+        if (symbolCandidates == null) {
+            return;
+        }
+        symbolCandidates.remove(key);
+        if (symbolCandidates.isEmpty()) {
+            candidatesBySymbol.remove(key.symbol());
+        }
     }
 
     private State stateOf(String normalizedSymbol) {

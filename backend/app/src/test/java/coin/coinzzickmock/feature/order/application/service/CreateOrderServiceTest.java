@@ -576,7 +576,14 @@ class CreateOrderServiceTest {
                 positionRepository,
                 accountRepository,
                 new LiquidationPolicy(),
-                new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
+                new FilledOpenOrderApplier(
+                        accountRepository,
+                        positionRepository,
+                        afterCommitEventPublisher,
+                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(
+                                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()
+                        )
+                ),
                 new AccountOrderMutationLock(accountRepository),
                 new PendingLimitOrderBook()
         );

@@ -19,11 +19,19 @@ public record ClosePositionResult(
             PositionCloseOutcome closeOutcome,
             RewardPointResult rewardPointResult
     ) {
+        return from(position, closeOutcome, rewardPointResult.rewardPoint());
+    }
+
+    public static ClosePositionResult from(
+            PositionSnapshot position,
+            PositionCloseOutcome closeOutcome,
+            double grantedPoint
+    ) {
         return new ClosePositionResult(
                 position.symbol(),
                 closeOutcome.closedQuantity(),
                 closeOutcome.netRealizedPnl(),
-                rewardPointResult.rewardPoint()
+                grantedPoint
         );
     }
 }

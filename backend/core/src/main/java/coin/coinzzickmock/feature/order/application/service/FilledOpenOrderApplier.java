@@ -9,6 +9,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.event.PositionOpenedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter;
 import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Optional;
@@ -21,6 +22,8 @@ public class FilledOpenOrderApplier {
     private final AccountRepository accountRepository;
     private final PositionRepository positionRepository;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final OpenPositionBookWriter openPositionBookWriter;
+
 
     public void apply(FilledOpenOrder order) {
         PositionSnapshot existing = positionRepository.findOpenPosition(
@@ -41,7 +44,7 @@ public class FilledOpenOrderApplier {
         afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
 
         if (existing == null) {
-            positionRepository.save(order.memberId(), PositionSnapshot.open(
+            PositionSnapshot saved = positionRepository.save(order.memberId(), PositionSnapshot.open(
                     order.symbol(),
                     order.positionSide(),
                     order.marginMode(),
@@ -51,11 +54,12 @@ public class FilledOpenOrderApplier {
                     order.markPrice(),
                     order.estimatedFee()
             ));
+            openPositionBookWriter.addAfterCommit(order.memberId(), saved);
             afterCommitEventPublisher.publish(new PositionOpenedEvent(order.memberId(), order.symbol()));
             return;
         }
 
-        validatePositionMutation(positionRepository.updateWithVersion(
+        PositionMutationResult mutationResult = positionRepository.updateWithVersion(
                 order.memberId(),
                 existing,
                 existing.increase(
@@ -65,7 +69,9 @@ public class FilledOpenOrderApplier {
                         order.markPrice(),
                         order.estimatedFee()
                 )
-        ));
+        );
+        validatePositionMutation(mutationResult);
+        openPositionBookWriter.replaceAfterCommit(order.memberId(), mutationResult.updatedSnapshot());
     }
 
     private TradingAccount reserveAccountMargin(Long memberId, double estimatedFee, double initialMargin) {

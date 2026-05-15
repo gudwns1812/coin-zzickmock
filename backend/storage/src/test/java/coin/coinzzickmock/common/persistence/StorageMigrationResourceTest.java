@@ -17,9 +17,13 @@ class StorageMigrationResourceTest {
         URL latestRewardShopPurchaseMigration = Thread.currentThread()
                 .getContextClassLoader()
                 .getResource("db/migration/V32__add_reward_shop_purchases.sql");
+        URL latestAccountNonNegativeCheckMigration = Thread.currentThread()
+                .getContextClassLoader()
+                .getResource("db/migration/V33__add_trading_account_non_negative_checks.sql");
 
         assertThat(initialMigration).isNotNull();
         assertThat(restoredCommunityMigration).isNotNull();
         assertThat(latestRewardShopPurchaseMigration).isNotNull();
+        assertThat(latestAccountNonNegativeCheckMigration).isNotNull();
     }
 }

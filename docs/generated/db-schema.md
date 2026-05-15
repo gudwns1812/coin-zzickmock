@@ -77,6 +77,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V30__lower_position_peek_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V30__lower_position_peek_price.sql)
   [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
   [V32__add_reward_shop_purchases.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V32__add_reward_shop_purchases.sql)
+  [V33__add_trading_account_non_negative_checks.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V33__add_trading_account_non_negative_checks.sql)
 - 수동 SQL 기준 여부: 없음
 - 참고: `V31__add_community_posts.sql`는 main history에 한 번 포함된 뒤 제거된 migration을 Flyway continuity를 위해 복구한 것이다. 현재 브랜치는 community application code를 되살리지 않으며, 상점 구매 원장은 충돌을 피하기 위해 `V32`를 사용한다.
 
@@ -122,12 +123,15 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `member_email`, `member_name`, `wallet_balance`, `available_margin`, `version`, `created_at`, `updated_at`
 - 동시성:
   `version`은 주문 체결, 포지션 종료, 레버리지 변경처럼 잔고/증거금을 바꾸는 거래성 mutation의 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 이력과 후속 상태 변경을 진행하지 않고 재조회가 필요한 충돌로 처리한다.
+- 제약:
+  DB CHECK constraint가 `wallet_balance >= 0`과 `available_margin >= 0`을 함께 보장한다. 마이그레이션 전 preflight는 기존 음수 잔고/증거금 row가 있으면 실패한다.
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V1__initial_schema.sql),
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
+  [V33__add_trading_account_non_negative_checks.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V33__add_trading_account_non_negative_checks.sql),
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
 
 ### `account_refill_states`
@@ -682,6 +686,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 ## Change Log
 
+- 2026-05-15:
+  `V33__add_trading_account_non_negative_checks.sql`로 `trading_accounts.wallet_balance`와 `available_margin`의 DB 비음수 CHECK를 추가했다.
 - 2026-05-14:
   `V31__add_community_posts.sql`를 Flyway continuity를 위해 복구하고, `V32__add_reward_shop_purchases.sql`로 상점 즉시 구매 성공 원장을 추가했다.
 - 2026-05-13:

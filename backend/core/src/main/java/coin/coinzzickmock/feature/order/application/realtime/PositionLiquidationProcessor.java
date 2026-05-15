@@ -13,11 +13,12 @@ import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCa
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
+import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook;
+import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookHydrator;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.CrossLiquidationAssessment;
 import coin.coinzzickmock.feature.position.domain.IsolatedLiquidationAssessment;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
-import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +43,10 @@ public class PositionLiquidationProcessor {
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
     private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OpenPositionBook openPositionBook;
+    private final OpenPositionBookHydrator openPositionBookHydrator;
+
+
 
     @Transactional
     public void liquidateBreachedPositions(MarketSummaryResult market) {
@@ -53,11 +58,26 @@ public class PositionLiquidationProcessor {
     }
 
     private void liquidateBreachedCandidates(MarketSummaryResult realtimeMarket) {
-        List<OpenPositionCandidate> candidates = positionRepository.findOpenBySymbol(realtimeMarket.symbol());
+        List<OpenPositionCandidate> candidates = liquidationCandidates(realtimeMarket.symbol());
         Set<Long> assessedCrossMembers = new HashSet<>();
         for (OpenPositionCandidate candidate : candidates) {
             liquidateCandidateIfBreached(candidate, realtimeMarket, assessedCrossMembers);
         }
+    }
+
+    private List<OpenPositionCandidate> liquidationCandidates(String symbol) {
+        OpenPositionBook.Candidates candidates = openPositionBook.candidatesBySymbol(symbol);
+        if (candidates.state() == OpenPositionBook.State.UNHYDRATED) {
+            openPositionBookHydrator.hydrate();
+            candidates = openPositionBook.candidatesBySymbol(symbol);
+        } else if (candidates.state() == OpenPositionBook.State.DIRTY) {
+            openPositionBookHydrator.rehydrateSymbol(symbol);
+            candidates = openPositionBook.candidatesBySymbol(symbol);
+            if (candidates.state() == OpenPositionBook.State.DIRTY) {
+                return positionRepository.findOpenBySymbol(symbol);
+            }
+        }
+        return candidates.values();
     }
 
     private void liquidateCandidateIfBreached(
@@ -137,18 +157,19 @@ public class PositionLiquidationProcessor {
 
     private void liquidate(Long memberId, PositionSnapshot position, double executionPrice, double markPrice) {
         accountOrderMutationLock.lock(memberId);
-        var result = positionCloseFinalizer.close(
-                memberId,
-                position,
-                position.quantity(),
-                markPrice,
-                executionPrice,
-                TAKER_FEE_RATE,
-                PositionHistory.CLOSE_REASON_LIQUIDATION
-        );
-        pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
-        cancelStaleProtectiveOrders(memberId, position);
-        publishPositionLiquidated(memberId, position, result.closedQuantity(), executionPrice, result.realizedPnl());
+        try {
+            var result = positionCloseFinalizer.liquidate(memberId, position, markPrice, TAKER_FEE_RATE);
+            pendingCloseOrderCapReconciler.reconcile(memberId, position, 0, executionPrice);
+            cancelStaleProtectiveOrders(memberId, position);
+            publishPositionLiquidated(memberId, position, result.closedQuantity(), markPrice, result.realizedPnl());
+        } catch (CoreException exception) {
+            if (exception.errorCode() == ErrorCode.POSITION_CHANGED || exception.errorCode() == ErrorCode.POSITION_NOT_FOUND) {
+                openPositionBook.evictSymbol(position.symbol());
+                openPositionBookHydrator.rehydrateSymbol(position.symbol());
+                return;
+            }
+            throw exception;
+        }
     }
 
     private void publishPositionLiquidated(

@@ -88,6 +88,23 @@ public class PositionPersistenceRepository implements PositionRepository {
                 .toList();
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OpenPositionCandidate> findAllOpenCandidates() {
+        return jpaQueryFactory.selectFrom(openPositionEntity)
+                .orderBy(
+                        openPositionEntity.symbol.asc(),
+                        openPositionEntity.memberId.asc(),
+                        openPositionEntity.positionSide.asc(),
+                        openPositionEntity.marginMode.asc()
+                )
+                .fetch()
+                .stream()
+                .map(entity -> new OpenPositionCandidate(entity.memberId(), entity.toDomain()))
+                .toList();
+    }
+
     @Override
     @Transactional
     public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {

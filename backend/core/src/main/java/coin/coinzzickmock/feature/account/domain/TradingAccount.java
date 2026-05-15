@@ -71,12 +71,29 @@ public record TradingAccount(
     }
 
     public TradingAccount settlePositionClose(double grossRealizedPnl, double closeFee, double releasedMargin) {
+        double nextWalletBalance = walletBalance + grossRealizedPnl - closeFee;
+        double nextAvailableMargin = availableMargin + releasedMargin + grossRealizedPnl - closeFee;
+        if (nextWalletBalance < 0 || nextAvailableMargin < 0) {
+            throw new CoreException(ErrorCode.INSUFFICIENT_AVAILABLE_MARGIN);
+        }
         return new TradingAccount(
                 memberId,
                 memberEmail,
                 memberName,
-                walletBalance + grossRealizedPnl - closeFee,
-                availableMargin + releasedMargin + grossRealizedPnl - closeFee,
+                nextWalletBalance,
+                nextAvailableMargin,
+                version
+        );
+    }
+
+    public TradingAccount settleLiquidationClose(double grossRealizedPnl, double closeFee, double releasedMargin) {
+        LiquidationSettlement settlement = LiquidationSettlement.from(this, grossRealizedPnl, closeFee, releasedMargin);
+        return new TradingAccount(
+                memberId,
+                memberEmail,
+                memberName,
+                settlement.nextWalletBalance(),
+                settlement.nextAvailableMargin(),
                 version
         );
     }

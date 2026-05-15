@@ -23,6 +23,8 @@ public interface PositionRepository {
 
     List<OpenPositionCandidate> findOpenBySymbol(String symbol);
 
+    List<OpenPositionCandidate> findAllOpenCandidates();
+
     PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot);
 
     PositionMutationResult updateWithVersion(

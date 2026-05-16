@@ -74,12 +74,12 @@ This inventory gates movement from `backend/storage` to `backend/core` for the b
 | `src/main/java/coin/coinzzickmock/feature/member/domain/MemberIdentityRules.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/member/domain/MemberRole.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/order/application/repository/OrderRepository.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/order/application/result/CancelOrderResult.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/order/application/result/CreateOrderResult.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/order/application/result/ModifyOrderResult.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/order/application/result/OpenOrderResult.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/order/application/result/OrderHistoryResult.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/order/application/result/PendingOrderCandidate.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/order/application/dto/CancelOrderResult.java` | application repository/dto/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/order/application/dto/CreateOrderResult.java` | application repository/dto/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/order/application/dto/ModifyOrderResult.java` | application repository/dto/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/order/application/dto/OpenOrderResult.java` | application repository/dto/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/order/application/dto/OrderHistoryResult.java` | application repository/dto/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/order/application/dto/PendingOrderCandidate.java` | application repository/dto/contract without persistence framework imports |
 | `src/main/java/coin/coinzzickmock/feature/order/domain/FuturesOrder.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/order/domain/OrderPlacementDecision.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/order/domain/OrderPlacementPolicy.java` | pure feature domain model/policy/value |

@@ -3,8 +3,8 @@ package coin.coinzzickmock.feature.order.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
-import coin.coinzzickmock.feature.order.application.result.OpenOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.OpenOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.util.List;
 import java.util.Optional;

@@ -22,7 +22,7 @@ It is the canonical module document for executable runtime assembly.
 Concrete leaf adapter imports are limited to `configuration`, `assembly`, or `config` package boundaries.
 This applies even when two modules intentionally share the same Java package name; same-package simple-name references to leaf adapter classes are still treated as leaf concrete dependencies.
 
-`web` and `job` packages should call core use cases and command/query/result types.
+`web` and `job` packages should call core use cases and application DTO/query/result contracts.
 They should not import JPA repositories, Bitget DTOs, external clients, or stream transport concrete classes directly.
 If an inbound adapter needs stream delivery, `web` should depend on an app-owned gateway contract and let `configuration` or `config` adapt that contract to the stream module.
 

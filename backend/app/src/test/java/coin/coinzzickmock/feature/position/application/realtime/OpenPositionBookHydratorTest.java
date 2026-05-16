@@ -2,8 +2,8 @@ package coin.coinzzickmock.feature.position.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.order.application.realtime.MarketTradeMovementWorker;
-import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBookHydrator;
+import coin.coinzzickmock.feature.order.application.implement.OrderMarketTradeMovementWorker;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBookHydrator;
 import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.testsupport.TestPositionRepository;
@@ -22,8 +22,8 @@ class OpenPositionBookHydratorTest {
         hydrator.start();
 
         assertThat(hydrator.isRunning()).isTrue();
-        assertThat(hydrator.getPhase()).isGreaterThan(PendingLimitOrderBookHydrator.PHASE);
-        assertThat(hydrator.getPhase()).isLessThan(MarketTradeMovementWorker.PHASE);
+        assertThat(hydrator.getPhase()).isGreaterThan(OrderPendingLimitOrderBookHydrator.PHASE);
+        assertThat(hydrator.getPhase()).isLessThan(OrderMarketTradeMovementWorker.PHASE);
         assertThat(book.candidatesBySymbol("BTCUSDT").values()).extracting(OpenPositionCandidate::memberId)
                 .containsExactly(1L);
     }

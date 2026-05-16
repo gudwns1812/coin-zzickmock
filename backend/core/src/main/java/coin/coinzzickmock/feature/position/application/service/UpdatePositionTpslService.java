@@ -6,7 +6,7 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
@@ -28,7 +28,7 @@ public class UpdatePositionTpslService {
     private final OrderRepository orderRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
-    private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OrderMutationLock orderMutationLock;
     private final AccountRepository accountRepository;
     private final PositionSnapshotResultAssembler positionSnapshotResultAssembler;
 
@@ -41,7 +41,7 @@ public class UpdatePositionTpslService {
             Double takeProfitPrice,
             Double stopLossPrice
     ) {
-        accountOrderMutationLock.lock(memberId);
+        orderMutationLock.lock(memberId);
         PositionSnapshot current = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
                 .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
         MarketSnapshot market = realtimeMarketPriceReader.requireFreshMarket(current.symbol());

@@ -545,7 +545,7 @@ tasks.register('architectureLint') {
                                         lines.findIndexOf { it.contains(importedType) } + 1,
                                         'APP_WEB_JOB_CORE_ONLY',
                                         'app web/job code는 backend project module 중 core contract/use-case만 직접 import해야 합니다.',
-                                        'delivery trigger는 core command/query/result/use-case만 호출하고 leaf adapter 구현은 assembly에서 주입하세요.',
+                                        'delivery trigger는 core application DTO/query/result/use-case만 호출하고 leaf adapter 구현은 assembly에서 주입하세요.',
                                         [packageName: packageName, importedType: importedType, sourceModule: importedOwner.moduleName]
                                 )
                             }

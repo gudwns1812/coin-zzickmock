@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.repository;
 
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 
 import java.util.List;

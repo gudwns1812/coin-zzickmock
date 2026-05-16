@@ -10,10 +10,12 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketData
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
-import coin.coinzzickmock.feature.order.application.fill.MarketableEditedOrderFiller;
-import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
-import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.ModifyOrderCommand;
+import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderEditPlanner;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.dto.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
@@ -223,9 +225,10 @@ class ModifyOrderServiceTest {
                 orderRepository,
                 new RealtimeMarketPriceReader(realtimeMarketDataStore),
                 orderPlacementPolicy,
-                new AccountOrderMutationLock(new LockingAccountRepository()),
-                new ClaimOnlyMarketableEditedOrderFiller(orderRepository),
-                new PendingLimitOrderBook()
+                new OrderMutationLock(new LockingAccountRepository()),
+                new OrderEditPlanner(),
+                new ClaimOnlyOrderEditFillHandler(orderRepository),
+                new OrderPendingLimitOrderBook()
         );
     }
 
@@ -335,11 +338,11 @@ class ModifyOrderServiceTest {
         }
     }
 
-    private static class ClaimOnlyMarketableEditedOrderFiller extends MarketableEditedOrderFiller {
+    private static class ClaimOnlyOrderEditFillHandler extends OrderEditFillHandler {
         private final InMemoryOrderRepository orderRepository;
 
-        private ClaimOnlyMarketableEditedOrderFiller(InMemoryOrderRepository orderRepository) {
-            super(null, null, null, null, null, null, null, new PendingLimitOrderBook());
+        private ClaimOnlyOrderEditFillHandler(InMemoryOrderRepository orderRepository) {
+            super(null, null, null, null, null, null, null, new OrderPendingLimitOrderBook());
             this.orderRepository = orderRepository;
         }
 

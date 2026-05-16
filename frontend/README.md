@@ -179,7 +179,8 @@ npm run build --workspace frontend
 
 ## Environment Variables
 
-- `FUTURES_API_BASE_URL`: server-only backend base URL. 로컬 기본값은 `http://127.0.0.1:8080`, Vercel production 값은 `https://coin-zzickmock.duckdns.org`
+- `FUTURES_API_BASE_URL`: backend base URL. 로컬 기본값은 `http://127.0.0.1:8080`, Vercel production 값은 `https://coin-zzickmock.duckdns.org`. `next.config.ts`가 이 값을 브라우저용 SSE/auth origin으로도 주입한다.
+- `NEXT_PUBLIC_FUTURES_API_BASE_URL`: optional browser-visible override for direct market/candle/order SSE and direct backend auth. 설정하지 않으면 `next.config.ts`가 `FUTURES_API_BASE_URL` 값을 브라우저용으로 주입한다.
 - `NEXT_PUBLIC_API_MOCKING=enabled`: 선택, MSW 사용 시
 
 Frontend Vercel 운영 환경 변수와 Preview/Production 배포 기준은

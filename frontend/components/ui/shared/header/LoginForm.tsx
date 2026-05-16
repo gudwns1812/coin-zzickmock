@@ -8,6 +8,7 @@ import Input from "../Input";
 import Link from "next/link";
 import useOutsideClick from "@/hooks/useOutsideClick";
 import Button from "../Button";
+import { loginToFutures } from "@/lib/futures-auth-client";
 
 const LoginForm = () => {
   const [isOpenForm, setIsOpenForm] = useState(false);
@@ -29,14 +30,7 @@ const LoginForm = () => {
       return;
     }
 
-    const res = await fetch(`/proxy/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({ account, password }),
-    });
+    const res = await loginToFutures({ account, password });
 
     if (res.ok) {
       toast.success("로그인에 성공했습니다");

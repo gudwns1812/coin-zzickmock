@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.OrderHistoryResult;
+import coin.coinzzickmock.feature.order.application.dto.OrderHistoryResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

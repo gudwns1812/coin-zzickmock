@@ -46,7 +46,7 @@ function getDocumentVisibilityState() {
 }
 
 function createDefaultEventSource(url: string) {
-  return new EventSource(url);
+  return new EventSource(url, { withCredentials: true });
 }
 
 export function useResilientEventSource({

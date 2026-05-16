@@ -6,14 +6,22 @@ import coin.coinzzickmock.providers.auth.AccessTokenManager;
 import coin.coinzzickmock.providers.auth.ActorRole;
 import coin.coinzzickmock.providers.auth.AuthSessionClaims;
 import java.time.Duration;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 class AccessTokenCookieFactory {
     private final AccessTokenManager accessTokenManager;
+    private final String sameSite;
+
+    AccessTokenCookieFactory(
+            AccessTokenManager accessTokenManager,
+            @Value("${APP_AUTH_COOKIE_SAME_SITE:None}") String sameSite
+    ) {
+        this.accessTokenManager = accessTokenManager;
+        this.sameSite = sameSite;
+    }
 
     ResponseCookie issue(MemberProfileResult memberProfile) {
         String token = accessTokenManager.issue(new AuthSessionClaims(
@@ -26,7 +34,7 @@ class AccessTokenCookieFactory {
         return ResponseCookie.from(accessTokenManager.accessTokenCookieName(), token)
                 .httpOnly(true)
                 .secure(accessTokenManager.secureCookie())
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .path("/")
                 .maxAge(Duration.ofSeconds(accessTokenManager.accessTokenExpirationSeconds()))
                 .build();
@@ -36,7 +44,7 @@ class AccessTokenCookieFactory {
         return ResponseCookie.from(accessTokenManager.accessTokenCookieName(), "")
                 .httpOnly(true)
                 .secure(accessTokenManager.secureCookie())
-                .sameSite("Lax")
+                .sameSite(sameSite)
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .build();

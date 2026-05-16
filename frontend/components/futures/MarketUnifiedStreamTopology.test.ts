@@ -39,13 +39,14 @@ function collectSourceFiles(relativeDirectory: string): string[] {
   });
 }
 
-test("market detail opens public-compatible unified market SSE and keeps order execution SSE separate", () => {
+test("market detail opens direct-capable market and order SSE streams", () => {
   const source = read("components/futures/MarketDetailRealtimeView.tsx");
 
   assert.equal(source.includes("createUnifiedMarketSseUrl"), true);
+  assert.equal(source.includes("createOrderExecutionSseUrl"), true);
   assert.equal(source.includes("/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream"), false);
   assert.equal(source.includes("/candles/stream?"), false);
-  assert.equal(source.includes("/api/futures/orders/stream"), true);
+  assert.equal(source.includes('const orderStreamUrl = "/api/futures/orders/stream"'), false);
   assert.equal(source.includes("useResilientEventSource"), true);
   assert.equal(source.includes("clientKey"), true);
   assert.equal(source.includes("viewer:"), false);
@@ -101,6 +102,7 @@ test("unified market stream URL helper can bypass Vercel route handlers", () => 
   assert.equal(source.includes("interval"), true);
   assert.equal(source.includes("NEXT_PUBLIC_FUTURES_API_BASE_URL"), true);
   assert.equal(source.includes("/markets/stream"), true);
+  assert.equal(source.includes("/orders/stream"), true);
   assert.equal(source.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
 });
 

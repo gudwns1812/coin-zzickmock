@@ -2,6 +2,7 @@
 
 import Button from "@/components/ui/shared/Button";
 import Input from "@/components/ui/shared/Input";
+import { loginToFutures } from "@/lib/futures-auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -24,14 +25,7 @@ export default function LoginFormClient() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/proxy/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ account, password }),
-      });
+      const response = await loginToFutures({ account, password });
 
       if (!response.ok) {
         toast.error("로그인에 실패했습니다.");

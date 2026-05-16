@@ -13,7 +13,7 @@ class AccessTokenCookieFactoryTest {
     @Test
     void issuesHttpOnlyAccessTokenCookieFromMemberProfile() {
         RecordingAccessTokenManager accessTokenManager = new RecordingAccessTokenManager();
-        AccessTokenCookieFactory factory = new AccessTokenCookieFactory(accessTokenManager);
+        AccessTokenCookieFactory factory = new AccessTokenCookieFactory(accessTokenManager, "None");
 
         String cookie = factory.issue(profile(MemberRole.ADMIN)).toString();
 
@@ -23,12 +23,12 @@ class AccessTokenCookieFactoryTest {
         assertThat(cookie).contains("Max-Age=3600");
         assertThat(cookie).contains("Secure");
         assertThat(cookie).contains("HttpOnly");
-        assertThat(cookie).contains("SameSite=Lax");
+        assertThat(cookie).contains("SameSite=None");
     }
 
     @Test
     void expiresAccessTokenCookie() {
-        AccessTokenCookieFactory factory = new AccessTokenCookieFactory(new RecordingAccessTokenManager());
+        AccessTokenCookieFactory factory = new AccessTokenCookieFactory(new RecordingAccessTokenManager(), "None");
 
         String cookie = factory.expire().toString();
 

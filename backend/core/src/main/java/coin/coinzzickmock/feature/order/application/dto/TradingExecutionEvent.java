@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.dto;
 
 import java.math.BigDecimal;
 import java.util.Locale;

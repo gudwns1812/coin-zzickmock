@@ -1,18 +1,18 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class PositionTakeProfitStopLossProcessorTest {
+class OrderPositionTakeProfitStopLossProcessorTest {
     @Test
     void triggersOnlyOrdersMatchingPositionSideAndTriggerType() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 1, 100));
         scenario.orders.save(1L, FuturesOrder.conditionalClose(
                 "long-tp",
@@ -52,7 +52,7 @@ class PositionTakeProfitStopLossProcessorTest {
 
     @Test
     void synchronizesTriggeredOrderToCurrentPositionQuantityBeforeFill() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 1, 100));
         scenario.orders.save(1L, FuturesOrder.conditionalClose(
                 "tp-order",
@@ -78,7 +78,7 @@ class PositionTakeProfitStopLossProcessorTest {
 
     @Test
     void skipsTriggeredOrderThatDisappearedBeforeReload() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         MissingReloadOrderRepository orders = new MissingReloadOrderRepository();
         scenario.orders = orders;
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 1, 100));
@@ -103,7 +103,7 @@ class PositionTakeProfitStopLossProcessorTest {
 
     @Test
     void cancelsStaleProtectiveOrdersWhenTriggeredOrderHasNoOpenPosition() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.orders.save(1L, FuturesOrder.conditionalClose(
                 "tp-order",
                 "BTCUSDT",
@@ -127,7 +127,7 @@ class PositionTakeProfitStopLossProcessorTest {
 
     @Test
     void triggeredOcoOrderCancelsSiblingBeforeProtectiveCleanup() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 1, 100));
         scenario.orders.save(1L, FuturesOrder.conditionalClose(
                 "tp-order",
@@ -166,7 +166,7 @@ class PositionTakeProfitStopLossProcessorTest {
                 .toList());
     }
 
-    private static final class MissingReloadOrderRepository extends OrderRealtimeProcessorFixtures.InMemoryOrderRepository {
+    private static final class MissingReloadOrderRepository extends OrderExecutionProcessorFixtures.InMemoryOrderRepository {
         @Override
         public Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId) {
             return Optional.empty();

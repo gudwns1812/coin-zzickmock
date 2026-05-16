@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -7,10 +7,10 @@ import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
-class PendingLimitOrderBookTest {
+class OrderPendingLimitOrderBookTest {
     @Test
     void returnsBuySideCandidatesInsideDownMoveInFillOrder() {
-        PendingLimitOrderBook orderBook = new PendingLimitOrderBook();
+        OrderPendingLimitOrderBook orderBook = new OrderPendingLimitOrderBook();
         orderBook.add(1L, order("long-99", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, "2026-04-27T00:00:02Z"));
         orderBook.add(1L, order("long-100", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 100, "2026-04-27T00:00:01Z"));
         orderBook.add(1L, order("short-99", "SHORT", FuturesOrder.PURPOSE_OPEN_POSITION, 99, "2026-04-27T00:00:00Z"));
@@ -23,7 +23,7 @@ class PendingLimitOrderBookTest {
 
     @Test
     void returnsSellSideCandidatesInsideUpMoveInFillOrder() {
-        PendingLimitOrderBook orderBook = new PendingLimitOrderBook();
+        OrderPendingLimitOrderBook orderBook = new OrderPendingLimitOrderBook();
         orderBook.add(1L, order("short-101", "SHORT", FuturesOrder.PURPOSE_OPEN_POSITION, 101, "2026-04-27T00:00:02Z"));
         orderBook.add(1L, order("close-long-100", "LONG", FuturesOrder.PURPOSE_CLOSE_POSITION, 100, "2026-04-27T00:00:01Z"));
         orderBook.add(1L, order("long-100", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 100, "2026-04-27T00:00:00Z"));
@@ -35,7 +35,7 @@ class PendingLimitOrderBookTest {
 
     @Test
     void replaceAndRemoveKeepIndexCurrent() {
-        PendingLimitOrderBook orderBook = new PendingLimitOrderBook();
+        OrderPendingLimitOrderBook orderBook = new OrderPendingLimitOrderBook();
         orderBook.add(1L, order("long", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 97, "2026-04-27T00:00:00Z"));
         orderBook.replace(1L, order("long", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, "2026-04-27T00:00:00Z"));
 
@@ -51,7 +51,7 @@ class PendingLimitOrderBookTest {
 
     @Test
     void excludesOrdersCreatedAfterMovementWasReceived() {
-        PendingLimitOrderBook orderBook = new PendingLimitOrderBook();
+        OrderPendingLimitOrderBook orderBook = new OrderPendingLimitOrderBook();
         orderBook.add(1L, order("before", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, "2026-04-27T00:00:00Z"));
         orderBook.add(1L, order("after", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, "2026-04-27T00:00:02Z"));
 
@@ -67,7 +67,7 @@ class PendingLimitOrderBookTest {
 
     @Test
     void replaceAfterCommitUsesReplacementTimeAsEffectiveTime() {
-        PendingLimitOrderBook orderBook = new PendingLimitOrderBook();
+        OrderPendingLimitOrderBook orderBook = new OrderPendingLimitOrderBook();
         FuturesOrder edited = order("edited", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, "2026-04-27T00:00:00Z");
 
         orderBook.replaceAfterCommit(1L, edited);

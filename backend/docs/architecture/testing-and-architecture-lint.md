@@ -62,7 +62,7 @@
 - `core`의 backend project dependency 금지(`MODULE_CORE_NO_PROJECT_DEPENDENCY`)
 - leaf adapter modules의 backend project dependency는 `core`만 허용(`MODULE_LEAF_DEPENDS_ONLY_ON_CORE`)
 - `app`의 leaf adapter concrete import는 configuration/assembly/config package에서만 허용(`APP_LEAF_IMPORTS_CONFIGURATION_ONLY`)
-- `app` `web`/`job`은 core use case와 command/query/result만 직접 호출(`APP_WEB_JOB_CORE_ONLY`)
+- `app` `web`/`job`은 core use case와 application DTO/query/result contract만 직접 호출(`APP_WEB_JOB_CORE_ONLY`)
 - `app` application/domain residue는 `filePath`, `reason`, `ownerPhase`, `targetRemovalPhase`가 있는 allowlist로 추적(`APP_FEATURE_APPLICATION_DOMAIN_RESIDUE_ALLOWLIST`)
 - allowlist entry가 없는 파일을 가리키거나, import owner module과 다른 `sourceModule`을 기록하면 실패
 - 같은 Java package라서 import 없이 쓰인 `app` -> leaf adapter simple-name 참조도 `APP_LEAF_IMPORTS_CONFIGURATION_ONLY` 또는 `APP_WEB_JOB_CORE_ONLY`로 실패

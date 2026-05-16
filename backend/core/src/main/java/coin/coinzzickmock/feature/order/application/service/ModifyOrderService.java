@@ -4,14 +4,14 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
+import coin.coinzzickmock.feature.order.application.dto.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;
 import coin.coinzzickmock.feature.order.application.implement.OrderEditPlanner;
 import coin.coinzzickmock.feature.order.application.implement.OrderEditPlanner.EditPlan;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
-import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.dto.ModifyOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ public class ModifyOrderService {
     private final OrderMutationLock orderMutationLock;
     private final OrderEditPlanner orderEditPlanner;
     private final OrderEditFillHandler orderEditFillHandler;
-    private final PendingLimitOrderBook pendingLimitOrderBook;
+    private final OrderPendingLimitOrderBook pendingLimitOrderBook;
 
     @Transactional
     public ModifyOrderResult modify(ModifyOrderCommand command) {

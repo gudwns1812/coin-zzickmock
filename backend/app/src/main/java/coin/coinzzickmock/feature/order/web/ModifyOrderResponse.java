@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.web;
 
-import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.ModifyOrderResult;
 import java.math.BigDecimal;
 
 public record ModifyOrderResponse(

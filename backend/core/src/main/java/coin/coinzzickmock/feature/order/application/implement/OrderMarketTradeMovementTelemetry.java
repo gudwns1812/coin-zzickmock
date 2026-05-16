@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class MarketTradeMovementTelemetry {
+public class OrderMarketTradeMovementTelemetry {
     static final String QUEUE_DROP_TOTAL = "market.trade.movement.queue.drop.total";
     static final String QUEUE_SIZE_CURRENT = "market.trade.movement.queue.size.current";
     static final String WORKER_FAILURE_TOTAL = "market.trade.movement.worker.failure.total";
@@ -16,11 +16,11 @@ public class MarketTradeMovementTelemetry {
     private final TelemetryProvider telemetryProvider;
 
     @Autowired
-    public MarketTradeMovementTelemetry(Providers providers) {
+    public OrderMarketTradeMovementTelemetry(Providers providers) {
         this(providers.telemetry());
     }
 
-    MarketTradeMovementTelemetry(TelemetryProvider telemetryProvider) {
+    OrderMarketTradeMovementTelemetry(TelemetryProvider telemetryProvider) {
         this.telemetryProvider = telemetryProvider;
     }
 

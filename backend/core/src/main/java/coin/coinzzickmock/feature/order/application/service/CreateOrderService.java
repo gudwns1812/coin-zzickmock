@@ -2,20 +2,22 @@ package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderCrossMarginPreviewProjector;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier.FilledOpenOrder;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.application.implement.OrderPlacementFactory;
 import coin.coinzzickmock.feature.order.application.implement.OrderPositionInvariantValidator;
 import coin.coinzzickmock.feature.order.application.implement.OrderPostSaveFillHandler;
 import coin.coinzzickmock.feature.order.application.implement.OrderPostSaveFillHandler.PostSaveLimitFill;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
-import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
@@ -41,7 +43,8 @@ public class CreateOrderService {
     private final OrderFillApplier orderFillApplier;
     private final OrderPostSaveFillHandler orderPostSaveFillHandler;
     private final OrderMutationLock orderMutationLock;
-    private final PendingLimitOrderBook pendingLimitOrderBook;
+    private final OrderPendingLimitOrderBook pendingLimitOrderBook;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
@@ -68,12 +71,14 @@ public class CreateOrderService {
 
         if (decision.executable()) {
             applyFilledOrder(command, orderId, marketSnapshot, preview, decision.executionPrice());
+            publishOrderFilled(command, orderId, decision.executionPrice());
         } else {
             Optional<PostSaveLimitFill> postSaveFill = orderPostSaveFillHandler.fillIfMarketable(command, orderId);
             if (postSaveFill.isPresent()) {
                 PostSaveLimitFill fill = postSaveFill.orElseThrow();
                 resultOrder = fill.order();
                 resultPreview = fill.preview();
+                publishOrderFilled(command, orderId, fill.order().executionPrice());
             } else {
                 pendingLimitOrderBook.addAfterCommit(command.memberId(), futuresOrder);
             }
@@ -127,6 +132,18 @@ public class CreateOrderService {
                 marketSnapshot.markPrice(),
                 preview.estimatedFee(),
                 preview.estimatedInitialMargin()
+        ));
+    }
+
+    private void publishOrderFilled(CreateOrderCommand command, String orderId, double executionPrice) {
+        afterCommitEventPublisher.publish(TradingExecutionEvent.orderFilled(
+                command.memberId(),
+                orderId,
+                command.symbol(),
+                command.positionSide(),
+                command.marginMode(),
+                command.quantity(),
+                executionPrice
         ));
     }
 

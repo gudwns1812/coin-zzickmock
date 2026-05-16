@@ -4,8 +4,8 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
-import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier.FilledOpenOrder;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
@@ -31,7 +31,7 @@ public class OrderEditFillHandler {
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
-    private final PendingLimitOrderBook pendingLimitOrderBook;
+    private final OrderPendingLimitOrderBook pendingLimitOrderBook;
 
     public FuturesOrder fill(Long memberId, FuturesOrder order, MarketSnapshot market, OrderPlacementDecision decision) {
         double estimatedFee = decision.estimatedFee(order.quantity());

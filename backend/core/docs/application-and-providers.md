@@ -205,28 +205,31 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 
 ```text
 feature/order/application/
-  command/
+  dto/
     PlaceOrderCommand.java
-  result/
     PlaceOrderResult.java
+    PendingOrderCandidate.java
   service/
     PlaceOrderService.java
+  implement/
+    OrderFillApplier.java
 ```
 
 강한 규칙:
 
 - 하나의 application service는 하나의 유스케이스 또는 강하게 응집된 흐름만 맡는다.
 - `FooService` 하나에 여러 unrelated 메서드를 몰아넣지 않는다.
-- 쓰기 작업은 command, 읽기 작업은 query 또는 read model을 분리한다.
+- 쓰기 입력, 읽기 결과, event payload, repository projection은 `application/dto`에 둔다. `*Command`와 `*Result` class name은 의미가 분명하면 유지할 수 있지만 package convention은 `dto`다.
+- `application/command`와 `application/result`는 이전 코드의 migration residue이며 새 코드의 기본값이 아니다.
 - 트랜잭션은 유스케이스 단위로 잡는다.
 - 기본 주입 대상은 concrete `*Service`다.
 - `*UseCase` 인터페이스는 public contract가 실제로 필요한 경우에만 만든다.
 - `*Port`는 외부 경계를 표현하는 계약이 정말 필요할 때만 만든다.
 - 구현이 하나뿐이고 호출 전달만 하는 인터페이스는 만들지 않는다.
 
-## Application Result Factory Rule
+## Application DTO Result Factory Rule
 
-`application/service`는 유스케이스를 조율하고, result 필드 조립과 변환 책임은 각 `application/result/*Result`가 소유한다.
+`application/service`는 유스케이스를 조율하고, result 필드 조립과 변환 책임은 각 `application/dto/*Result` 또는 목적이 분명한 DTO가 소유한다.
 
 강한 규칙:
 
@@ -235,6 +238,16 @@ feature/order/application/
 - service는 repository/provider 호출, 유효성 검증, transaction orchestration, token 발급처럼 유스케이스 진행에 필요한 입력값만 준비한다.
 - token 발급, 외부 조회, repository 호출처럼 side effect가 있는 작업은 result factory 안으로 숨기지 않는다. service가 값을 준비하고 result factory에는 준비된 값이나 순수 callback만 넘긴다.
 - 여러 result가 공유하는 복잡한 projection 전용 로직은 기존 `Assembler`, `Projector`, `Reader` 같은 목적형 협력 객체로 남길 수 있다. 이 경우에도 service가 직접 constructor mapping을 반복하지 않는다.
+
+### Technical Package Split Recipe
+
+`application/realtime`처럼 timing, transport, 또는 technical context를 package 이름으로 묶은 코드는 migration 때 책임별로 다시 분류한다.
+
+1. public use case 또는 application event entrypoint를 식별해 `application/service`로 둔다.
+2. application input/output, event payload, repository projection contract를 식별해 `application/dto`로 둔다.
+3. queue, worker, cache, book, hydrator, processor 같은 execution-detail collaborator를 식별해 `application/implement`로 둔다.
+4. storage-free이고 오래 살아야 하는 제품 규칙이나 상태 전이는 `domain` 후보로 검토한다.
+5. 이동 후 targeted tests로 behavior를 보호하고, old package residue search를 실행한다.
 
 예:
 

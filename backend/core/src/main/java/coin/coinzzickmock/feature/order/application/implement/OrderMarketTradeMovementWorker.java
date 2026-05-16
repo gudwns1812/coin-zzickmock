@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
 import lombok.RequiredArgsConstructor;
@@ -9,12 +9,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class MarketTradeMovementWorker implements SmartLifecycle {
-    public static final int PHASE = PendingLimitOrderBookHydrator.PHASE + 100;
+public class OrderMarketTradeMovementWorker implements SmartLifecycle {
+    public static final int PHASE = OrderPendingLimitOrderBookHydrator.PHASE + 100;
 
-    private final MarketTradeMovementQueue queue;
-    private final PendingOrderFillProcessor pendingOrderFillProcessor;
-    private final MarketTradeMovementTelemetry telemetry;
+    private final OrderMarketTradeMovementQueue queue;
+    private final OrderPendingFillProcessor pendingOrderFillProcessor;
+    private final OrderMarketTradeMovementTelemetry telemetry;
     private volatile boolean running;
     private Thread workerThread;
 

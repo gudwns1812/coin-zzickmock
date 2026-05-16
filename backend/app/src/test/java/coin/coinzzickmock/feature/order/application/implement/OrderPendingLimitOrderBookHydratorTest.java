@@ -1,9 +1,9 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.testsupport.TestOrderRepository;
 import java.time.Instant;
@@ -11,11 +11,11 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class PendingLimitOrderBookHydratorTest {
+class OrderPendingLimitOrderBookHydratorTest {
     @Test
     void startHydratesPersistedPendingLimitOrdersBeforeMovementWorkerPhase() {
-        PendingLimitOrderBook orderBook = new PendingLimitOrderBook();
-        PendingLimitOrderBookHydrator hydrator = new PendingLimitOrderBookHydrator(
+        OrderPendingLimitOrderBook orderBook = new OrderPendingLimitOrderBook();
+        OrderPendingLimitOrderBookHydrator hydrator = new OrderPendingLimitOrderBookHydrator(
                 repositoryReturning(
                         order("open-long", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, null),
                         order("conditional-with-limit", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, 98d)
@@ -26,7 +26,7 @@ class PendingLimitOrderBookHydratorTest {
         hydrator.start();
 
         assertThat(hydrator.isRunning()).isTrue();
-        assertThat(hydrator.getPhase()).isLessThan(MarketTradeMovementWorker.PHASE);
+        assertThat(hydrator.getPhase()).isLessThan(OrderMarketTradeMovementWorker.PHASE);
         assertThat(orderBook.executableCandidates(
                 "BTCUSDT",
                 101,
@@ -39,8 +39,8 @@ class PendingLimitOrderBookHydratorTest {
 
     @Test
     void stopMarksHydratorNotRunningWithoutClearingAlreadyHydratedBook() {
-        PendingLimitOrderBook orderBook = new PendingLimitOrderBook();
-        PendingLimitOrderBookHydrator hydrator = new PendingLimitOrderBookHydrator(
+        OrderPendingLimitOrderBook orderBook = new OrderPendingLimitOrderBook();
+        OrderPendingLimitOrderBookHydrator hydrator = new OrderPendingLimitOrderBookHydrator(
                 repositoryReturning(order("open-long", "LONG", FuturesOrder.PURPOSE_OPEN_POSITION, 99, null)),
                 orderBook
         );

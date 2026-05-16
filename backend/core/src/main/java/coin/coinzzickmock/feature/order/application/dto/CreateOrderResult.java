@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.result;
+package coin.coinzzickmock.feature.order.application.dto;
 
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;

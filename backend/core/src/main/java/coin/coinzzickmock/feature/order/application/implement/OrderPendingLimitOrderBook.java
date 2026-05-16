@@ -1,7 +1,7 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.time.Instant;
 import java.util.Collection;
@@ -14,7 +14,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Component
-public class PendingLimitOrderBook {
+public class OrderPendingLimitOrderBook {
     private final ConcurrentMap<OrderKey, Entry> candidates = new ConcurrentHashMap<>();
 
     public void hydrate(Collection<PendingOrderCandidate> pendingOrders) {

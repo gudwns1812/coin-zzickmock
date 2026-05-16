@@ -2,9 +2,9 @@ package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
-import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
-import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
-import coin.coinzzickmock.feature.order.application.realtime.PositionTakeProfitStopLossProcessor;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingFillProcessor;
+import coin.coinzzickmock.feature.order.application.implement.OrderPositionLiquidationProcessor;
+import coin.coinzzickmock.feature.order.application.implement.OrderPositionTakeProfitStopLossProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -13,9 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class MarketOrderExecutionService {
-    private final PendingOrderFillProcessor pendingOrderFillProcessor;
-    private final PositionLiquidationProcessor positionLiquidationProcessor;
-    private final PositionTakeProfitStopLossProcessor positionTakeProfitStopLossProcessor;
+    private final OrderPendingFillProcessor pendingOrderFillProcessor;
+    private final OrderPositionLiquidationProcessor positionLiquidationProcessor;
+    private final OrderPositionTakeProfitStopLossProcessor positionTakeProfitStopLossProcessor;
 
     @EventListener
     @Transactional

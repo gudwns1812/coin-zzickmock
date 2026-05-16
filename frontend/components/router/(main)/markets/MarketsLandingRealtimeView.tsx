@@ -8,6 +8,7 @@ import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectStatus } from "@/hooks/resilientEventSourcePolicy";
 import type { MarketApiResponse } from "@/lib/futures-api";
+import { createMarketSummarySseUrl } from "@/lib/futures-sse-url";
 import {
   isSupportedMarketSymbol,
   type MarketRankingEntry,
@@ -342,9 +343,7 @@ function MarketLandingStreamSubscription({
   onRecovering,
   onStatusChange,
 }: MarketLandingStreamSubscriptionProps) {
-  const streamUrl = `/api/futures/markets/summary/stream?symbols=${symbols
-    .map((symbol) => encodeURIComponent(symbol))
-    .join(",")}`;
+  const streamUrl = createMarketSummarySseUrl(symbols);
   const { status } = useResilientEventSource({
     onError: (e) => {
       onRecovering();

@@ -1,8 +1,9 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookHydrator;
@@ -12,10 +13,10 @@ import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class PositionLiquidationProcessorTest {
+class OrderPositionLiquidationProcessorTest {
     @Test
     void liquidatesBreachedIsolatedPositionAndPublishesEventOnce() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 2, 100));
 
         scenario.liquidationProcessor()
@@ -29,7 +30,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void leavesIsolatedPositionOpenWhenMaintenanceIsNotBreached() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         PositionSnapshot position = scenario.openPosition("LONG", "ISOLATED", 2, 100).withVersion(3);
         scenario.positions.save(1L, position);
 
@@ -45,7 +46,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void liquidatesBreachedCrossPositionAndPublishesEventOnce() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
@@ -66,7 +67,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void leavesCrossPositionOpenWhenWalletEquityIsNotBreached() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
@@ -86,7 +87,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void liquidationUsesMarkPriceForEventHistoryAndRawPnlWhenLastPriceDiffers() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 2, 100));
 
         scenario.liquidationProcessor()
@@ -103,7 +104,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void liquidationFloorsAccountBalancesAndDoesNotGrantRewardPoints() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.accounts.put(1L, new coin.coinzzickmock.feature.account.domain.TradingAccount(
                 1L,
                 "demo@coinzzickmock.dev",
@@ -124,7 +125,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void liquidationFinalizerDoesNotGrantRewardEvenWhenRawOutcomeIsProfitable() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         PositionSnapshot profitableLiquidation = PositionSnapshot.open("BTCUSDT", "SHORT", "ISOLATED", 10, 2, 100, 100);
         scenario.positions.save(1L, profitableLiquidation);
 
@@ -138,7 +139,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void steadyStateLiquidationCandidatesComeFromOpenPositionBookWithoutSymbolScan() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         PositionSnapshot position = scenario.openPosition("LONG", "ISOLATED", 2, 100);
         scenario.positions.save(1L, position);
         scenario.openPositionBook.hydrate(List.of(new OpenPositionCandidate(1L, position)));
@@ -152,7 +153,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void dirtySymbolTriggersSymbolRehydrateBeforeLiquidationAssessment() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         PositionSnapshot position = scenario.openPosition("LONG", "ISOLATED", 2, 100);
         scenario.positions.save(1L, position);
         scenario.openPositionBook.hydrate(List.of());
@@ -168,7 +169,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void dirtySymbolThatRemainsDirtyAfterRehydrateFallsBackToRepository() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 2, 100));
         scenario.openPositionBook.hydrate(List.of());
         scenario.openPositionBook.evictSymbol("BTCUSDT");
@@ -191,7 +192,7 @@ class PositionLiquidationProcessorTest {
 
     @Test
     void staleProtectiveCancelFailureDoesNotRollBackLiquidationEvent() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 2, 100));
         scenario.orders.save(1L, FuturesOrder.conditionalClose(
                 "tp-before-liquidation",

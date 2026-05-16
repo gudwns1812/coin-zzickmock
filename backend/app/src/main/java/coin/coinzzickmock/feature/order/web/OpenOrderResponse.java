@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.web;
 
-import coin.coinzzickmock.feature.order.application.result.OpenOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.OpenOrderResult;
 import java.time.Instant;
 
 public record OpenOrderResponse(

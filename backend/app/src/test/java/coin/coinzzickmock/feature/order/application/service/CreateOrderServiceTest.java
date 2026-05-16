@@ -11,7 +11,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketData
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.application.implement.OrderPostSaveFillHandler;
@@ -19,9 +19,10 @@ import coin.coinzzickmock.feature.order.application.implement.OrderPositionInvar
 import coin.coinzzickmock.feature.order.application.implement.OrderPlacementFactory;
 import coin.coinzzickmock.feature.order.application.implement.OrderCrossMarginPreviewProjector;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.realtime.PendingLimitOrderBook;
-import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
@@ -330,6 +331,48 @@ class CreateOrderServiceTest {
     }
 
     @Test
+    void filledMarketOrderPublishesTradingExecutionEventAfterTransactionCommit() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        CapturingTradingEventPublisher eventPublisher = new CapturingTradingEventPublisher();
+        CreateOrderService service = service(
+                realtimePriceReader(),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                eventPublisher
+        );
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.execute(new CreateOrderCommand(
+                    1L,
+                    "BTCUSDT",
+                    "LONG",
+                    "MARKET",
+                    "ISOLATED",
+                    10,
+                    0.1,
+                    null
+            ));
+
+            assertTrue(eventPublisher.events.isEmpty());
+
+            TransactionSynchronizationUtils.triggerAfterCommit();
+
+            assertEquals(1, eventPublisher.events.size());
+            TradingExecutionEvent event = eventPublisher.events.get(0);
+            assertEquals("ORDER_FILLED", event.type());
+            assertEquals(1L, event.memberId());
+            assertEquals("BTCUSDT", event.symbol());
+            assertEquals("LONG", event.positionSide());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     void filledMarketOrderReservesPreviewInitialMarginPrecision() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -610,7 +653,8 @@ class CreateOrderServiceTest {
                         orderFillApplier
                 ),
                 new OrderMutationLock(accountRepository),
-                new PendingLimitOrderBook()
+                new OrderPendingLimitOrderBook(),
+                afterCommitEventPublisher
         );
     }
 
@@ -621,6 +665,17 @@ class CreateOrderServiceTest {
         public void publishEvent(Object event) {
             if (event instanceof WalletBalanceChangedEvent walletBalanceChangedEvent) {
                 events.add(walletBalanceChangedEvent);
+            }
+        }
+    }
+
+    private static class CapturingTradingEventPublisher implements ApplicationEventPublisher {
+        private final List<TradingExecutionEvent> events = new ArrayList<>();
+
+        @Override
+        public void publishEvent(Object event) {
+            if (event instanceof TradingExecutionEvent tradingExecutionEvent) {
+                events.add(tradingExecutionEvent);
             }
         }
     }

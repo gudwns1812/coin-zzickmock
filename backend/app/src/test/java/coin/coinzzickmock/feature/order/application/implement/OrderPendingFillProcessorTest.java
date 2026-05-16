@@ -1,20 +1,20 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
-class PendingOrderFillProcessorTest {
+class OrderPendingFillProcessorTest {
     @Test
     void fillsPendingLimitFromTradeMovementOrderBookWithoutRangeQuery() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         FuturesOrder order = scenario.pendingOpenOrderAt(
                 "open-long",
                 "LONG",
@@ -44,7 +44,7 @@ class PendingOrderFillProcessorTest {
 
     @Test
     void doesNotFillOrderCreatedAfterQueuedTradeMovementWasReceived() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         FuturesOrder order = scenario.pendingOpenOrderAt(
                 "late-order",
                 "LONG",
@@ -72,7 +72,7 @@ class PendingOrderFillProcessorTest {
 
     @Test
     void doesNotFillOrderEditedAfterQueuedTradeMovementWasReceived() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         FuturesOrder edited = scenario.pendingOpenOrderAt(
                 "edited-order",
                 "LONG",
@@ -100,8 +100,8 @@ class PendingOrderFillProcessorTest {
 
     @Test
     void claimsPendingLimitFillEvictsCacheOpensPositionAndPublishesOnce() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
-        OrderRealtimeProcessorFixtures.TrackingPendingOrderExecutionCache cache = new OrderRealtimeProcessorFixtures.TrackingPendingOrderExecutionCache();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.TrackingOrderPendingExecutionCache cache = new OrderExecutionProcessorFixtures.TrackingOrderPendingExecutionCache();
         scenario.orders.save(1L, scenario.pendingOpenOrderAt(
                 "open-long",
                 "LONG",
@@ -126,8 +126,8 @@ class PendingOrderFillProcessorTest {
 
     @Test
     void skipsStaleReloadedOrderWithoutFillAndEvictsCache() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
-        OrderRealtimeProcessorFixtures.TrackingPendingOrderExecutionCache cache = new OrderRealtimeProcessorFixtures.TrackingPendingOrderExecutionCache();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.TrackingOrderPendingExecutionCache cache = new OrderExecutionProcessorFixtures.TrackingOrderPendingExecutionCache();
         scenario.orders.save(1L, scenario.pendingOpenOrderAt(
                 "stale-price",
                 "LONG",
@@ -156,8 +156,8 @@ class PendingOrderFillProcessorTest {
 
     @Test
     void skipsCandidateThatDisappearedBeforeReloadAndEvictsCache() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
-        OrderRealtimeProcessorFixtures.TrackingPendingOrderExecutionCache cache = new OrderRealtimeProcessorFixtures.TrackingPendingOrderExecutionCache();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.TrackingOrderPendingExecutionCache cache = new OrderExecutionProcessorFixtures.TrackingOrderPendingExecutionCache();
         scenario.orders.save(1L, scenario.pendingOpenOrderAt(
                 "missing-order",
                 "LONG",
@@ -176,7 +176,7 @@ class PendingOrderFillProcessorTest {
 
     @Test
     void fillsCloseOrderThroughCloseBranchAndCancelsProtectiveOrdersWhenPositionIsClosed() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, PositionSnapshot.open(
                 "BTCUSDT",
                 "LONG",
@@ -219,12 +219,12 @@ class PendingOrderFillProcessorTest {
         assertEquals("ORDER_FILLED", scenario.events.tradingEvents().get(0).type());
     }
 
-    private static final class MissingReloadOrderRepository extends OrderRealtimeProcessorFixtures.InMemoryOrderRepository {
-        private final OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate;
+    private static final class MissingReloadOrderRepository extends OrderExecutionProcessorFixtures.InMemoryOrderRepository {
+        private final OrderExecutionProcessorFixtures.InMemoryOrderRepository delegate;
         private final String missingOrderId;
 
         private MissingReloadOrderRepository(
-                OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate,
+                OrderExecutionProcessorFixtures.InMemoryOrderRepository delegate,
                 String missingOrderId
         ) {
             this.delegate = delegate;
@@ -232,7 +232,7 @@ class PendingOrderFillProcessorTest {
         }
 
         @Override
-        public java.util.List<coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate> findExecutablePendingLimitOrders(
+        public java.util.List<coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate> findExecutablePendingLimitOrders(
                 String symbol,
                 double lowerPrice,
                 double upperPrice,
@@ -255,10 +255,10 @@ class PendingOrderFillProcessorTest {
         }
     }
 
-    private static final class RangeQueryFailingOrderRepository extends OrderRealtimeProcessorFixtures.InMemoryOrderRepository {
-        private final OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate;
+    private static final class RangeQueryFailingOrderRepository extends OrderExecutionProcessorFixtures.InMemoryOrderRepository {
+        private final OrderExecutionProcessorFixtures.InMemoryOrderRepository delegate;
 
-        private RangeQueryFailingOrderRepository(OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate) {
+        private RangeQueryFailingOrderRepository(OrderExecutionProcessorFixtures.InMemoryOrderRepository delegate) {
             this.delegate = delegate;
         }
 
@@ -331,14 +331,14 @@ class PendingOrderFillProcessorTest {
         }
     }
 
-    private static final class ReloadingPriceOrderRepository extends OrderRealtimeProcessorFixtures.InMemoryOrderRepository {
-        private final OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate;
+    private static final class ReloadingPriceOrderRepository extends OrderExecutionProcessorFixtures.InMemoryOrderRepository {
+        private final OrderExecutionProcessorFixtures.InMemoryOrderRepository delegate;
         private final String orderId;
         private final double replacementLimitPrice;
         private boolean reloaded;
 
         private ReloadingPriceOrderRepository(
-                OrderRealtimeProcessorFixtures.InMemoryOrderRepository delegate,
+                OrderExecutionProcessorFixtures.InMemoryOrderRepository delegate,
                 String orderId,
                 double replacementLimitPrice
         ) {
@@ -348,13 +348,13 @@ class PendingOrderFillProcessorTest {
         }
 
         @Override
-        public java.util.List<coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate> findExecutablePendingLimitOrders(
+        public java.util.List<coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate> findExecutablePendingLimitOrders(
                 String symbol,
                 double lowerPrice,
                 double upperPrice,
                 boolean sellSide
         ) {
-            java.util.List<coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate> candidates = delegate.findExecutablePendingLimitOrders(
+            java.util.List<coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate> candidates = delegate.findExecutablePendingLimitOrders(
                     symbol,
                     lowerPrice,
                     upperPrice,
@@ -385,7 +385,7 @@ class PendingOrderFillProcessorTest {
         }
 
         @Override
-        public java.util.List<coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate> findPendingBySymbol(String symbol) {
+        public java.util.List<coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate> findPendingBySymbol(String symbol) {
             return delegate.findPendingBySymbol(symbol);
         }
 

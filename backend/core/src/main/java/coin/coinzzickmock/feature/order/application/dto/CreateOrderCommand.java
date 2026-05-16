@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.command;
+package coin.coinzzickmock.feature.order.application.dto;
 
 public record CreateOrderCommand(
         Long memberId,

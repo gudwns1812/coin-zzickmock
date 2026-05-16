@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.order.infrastructure.persistence;
 
 import static coin.coinzzickmock.feature.order.infrastructure.persistence.QFuturesOrderEntity.futuresOrderEntity;
 
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import com.querydsl.core.types.dsl.BooleanExpression;

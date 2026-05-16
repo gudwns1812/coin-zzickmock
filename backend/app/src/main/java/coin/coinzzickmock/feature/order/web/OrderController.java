@@ -1,13 +1,13 @@
 package coin.coinzzickmock.feature.order.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
-import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
-import coin.coinzzickmock.feature.order.application.command.ModifyOrderCommand;
-import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
-import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
-import coin.coinzzickmock.feature.order.application.result.ModifyOrderResult;
-import coin.coinzzickmock.feature.order.application.result.OpenOrderResult;
-import coin.coinzzickmock.feature.order.application.result.OrderHistoryResult;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.dto.ModifyOrderCommand;
+import coin.coinzzickmock.feature.order.application.dto.CancelOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.ModifyOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.OpenOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.OrderHistoryResult;
 import coin.coinzzickmock.feature.order.application.service.CancelOrderService;
 import coin.coinzzickmock.feature.order.application.service.CreateOrderService;
 import coin.coinzzickmock.feature.order.application.service.GetOpenOrdersService;

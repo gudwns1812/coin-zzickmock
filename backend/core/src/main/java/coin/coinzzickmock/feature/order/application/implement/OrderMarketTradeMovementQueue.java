@@ -1,7 +1,6 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovementPublisher;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -9,30 +8,29 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class MarketTradeMovementQueue implements MarketTradePriceMovementPublisher {
+public class OrderMarketTradeMovementQueue {
     private static final int DEFAULT_CAPACITY = 10_000;
 
     private final BlockingQueue<MarketTradePriceMovedEvent> events;
-    private final MarketTradeMovementTelemetry telemetry;
+    private final OrderMarketTradeMovementTelemetry telemetry;
 
     @Autowired
-    public MarketTradeMovementQueue(MarketTradeMovementTelemetry telemetry) {
+    public OrderMarketTradeMovementQueue(OrderMarketTradeMovementTelemetry telemetry) {
         this(DEFAULT_CAPACITY, telemetry);
     }
 
-    MarketTradeMovementQueue(int capacity, MarketTradeMovementTelemetry telemetry) {
+    OrderMarketTradeMovementQueue(int capacity, OrderMarketTradeMovementTelemetry telemetry) {
         this.events = new LinkedBlockingQueue<>(capacity);
         this.telemetry = telemetry;
         this.telemetry.registerQueueSizeGauge(this::size);
     }
 
-    @Override
-    public boolean publish(MarketTradePriceMovedEvent event) {
-        boolean published = events.offer(event);
-        if (!published) {
+    public boolean enqueue(MarketTradePriceMovedEvent event) {
+        boolean enqueued = events.offer(event);
+        if (!enqueued) {
             telemetry.recordQueueDrop();
         }
-        return published;
+        return enqueued;
     }
 
     Optional<MarketTradePriceMovedEvent> poll() {

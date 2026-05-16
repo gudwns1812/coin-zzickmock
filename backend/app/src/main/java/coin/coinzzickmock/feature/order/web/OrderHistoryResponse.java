@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.web;
 
-import coin.coinzzickmock.feature.order.application.result.OrderHistoryResult;
+import coin.coinzzickmock.feature.order.application.dto.OrderHistoryResult;
 import java.time.Instant;
 
 public record OrderHistoryResponse(

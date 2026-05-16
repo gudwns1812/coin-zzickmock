@@ -42,7 +42,7 @@ function collectSourceFiles(relativeDirectory: string): string[] {
 test("market detail opens public-compatible unified market SSE and keeps order execution SSE separate", () => {
   const source = read("components/futures/MarketDetailRealtimeView.tsx");
 
-  assert.equal(source.includes("/api/futures/markets/stream"), true);
+  assert.equal(source.includes("createUnifiedMarketSseUrl"), true);
   assert.equal(source.includes("/api/futures/markets/${encodeURIComponent(initialMarket.symbol)}/stream"), false);
   assert.equal(source.includes("/candles/stream?"), false);
   assert.equal(source.includes("/api/futures/orders/stream"), true);
@@ -94,34 +94,24 @@ test("futures price chart consumes parent unified candle events instead of openi
   assert.equal(source.includes("MARKET_HISTORY_FINALIZED") || source.includes("historyFinalized"), true);
 });
 
-test("unified market stream proxy route validates query and forwards to backend SSE", () => {
-  const source = read("app/api/futures/markets/stream/route.ts");
+test("unified market stream URL helper can bypass Vercel route handlers", () => {
+  const source = read("lib/futures-sse-url.ts");
 
-  assert.equal(source.includes("clientKey"), true);
   assert.equal(source.includes("symbol"), true);
   assert.equal(source.includes("interval"), true);
-  assert.equal(source.includes("viewer"), false);
-  assert.equal(source.includes("symbols"), false);
-  assert.equal(source.includes("400"), true);
-  assert.equal(source.includes("createSseUpstreamHeaders"), true);
-  assert.equal(source.includes("proxySseStream"), true);
-  assert.equal(source.includes("/api/futures/markets/stream"), true);
-  assert.equal(source.includes("response.json()"), false);
+  assert.equal(source.includes("NEXT_PUBLIC_FUTURES_API_BASE_URL"), true);
+  assert.equal(source.includes("/markets/stream"), true);
+  assert.equal(source.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
 });
 
-test("market landing summary stream proxy forwards multi-symbol SSE without interval", () => {
-  const source = read("app/api/futures/markets/summary/stream/route.ts");
+test("market landing summary stream uses direct-capable URL helper without interval", () => {
+  const source = read("lib/futures-sse-url.ts");
   const landingSource = read("components/router/(main)/markets/MarketsLandingRealtimeView.tsx");
 
-  assert.equal(source.includes("clientKey"), true);
   assert.equal(source.includes("symbols"), true);
-  assert.equal(source.includes("interval"), false);
-  assert.equal(source.includes("400"), true);
-  assert.equal(source.includes("createSseUpstreamHeaders"), true);
-  assert.equal(source.includes("proxySseStream"), true);
-  assert.equal(source.includes("/api/futures/markets/summary/stream"), true);
-  assert.equal(source.includes("response.json()"), false);
-  assert.equal(landingSource.includes("/api/futures/markets/summary/stream"), true);
+  assert.equal(source.includes("createMarketSummarySseUrl"), true);
+  assert.equal(source.includes("/markets/summary/stream"), true);
+  assert.equal(landingSource.includes("createMarketSummarySseUrl"), true);
   assert.equal(landingSource.includes("initialMarkets.map((market) => ("), false);
 });
 

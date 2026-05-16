@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -7,11 +7,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class PendingLimitOrderBookHydrator implements SmartLifecycle {
+public class OrderPendingLimitOrderBookHydrator implements SmartLifecycle {
     public static final int PHASE = Integer.MIN_VALUE + 100;
 
     private final OrderRepository orderRepository;
-    private final PendingLimitOrderBook pendingLimitOrderBook;
+    private final OrderPendingLimitOrderBook pendingLimitOrderBook;
     private volatile boolean running;
 
     @Override

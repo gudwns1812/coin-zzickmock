@@ -30,11 +30,9 @@ backend/core/src/main/java/coin/coinzzickmock/
   feature/
     market/
       application/
-        command/
+        dto/
         query/
         implement/
-        realtime/
-        result/
         service/
       domain/
         model/
@@ -64,6 +62,9 @@ backend/app/src/main/java/coin/coinzzickmock/
 - 최종 feature layer는 `web`, `job`, `application`, `domain`, `infrastructure`만 사용한다.
 - `application/implement`는 최종 feature layer가 아니라 `application` 내부의 단일 subpackage다. service 흐름을 흐리는 concrete execution-detail collaborator를 둘 때만 사용한다.
 - `application/implement` 아래에는 추가 subpackage를 만들지 않는다. class 이름은 `OrderFillApplier`, `PositionCloseProjector`, `AccountBalanceReconciler`처럼 owning domain/use-case prefix로 시작하고, prefix 뒤에는 package context를 반복하지 않는 짧은 role을 쓴다.
+- 새 application input/output/projection DTO의 기본 home은 `application/dto`다. `application/command`와 `application/result`는 이전 코드의 migration residue이며 새 코드의 기본값으로 쓰지 않는다.
+- Order는 이 DTO convention을 먼저 적용한 slice다. 다른 domain의 `application/command`, `application/result`, 또는 timing/context package residue는 별도 후속 migration으로 다룬다.
+- `application/realtime`처럼 기술 또는 실행 맥락을 package 이름으로 묶은 코드는 새 작업에서 만들지 않는다. public/event entrypoint는 `service`, 실행 세부 협력 객체는 `implement`, payload/projection은 `dto`, 오래 사는 규칙은 `domain`으로 분류한다.
 - HTTP delivery Java package는 `web`이다. Java package 이름과 HTTP URL path는 별개이며 `/api/futures/**` path는 유지한다.
 - `support`, `extern`, `storage`처럼 기술/성격 기준의 광역 패키지는 새로 만들지 않는다. `backend/core` Gradle module은 허용하지만 `coin.coinzzickmock.core..` Java package는 만들지 않는다.
 - `application/usecase`, `application/port`는 기본 골격이 아니다. 실제로 필요한 경우에만 추가한다.
@@ -108,7 +109,7 @@ backend/app/src/main/java/coin/coinzzickmock/
 ## Bean Wiring Boundary
 
 `app`은 executable assembly root다. leaf adapter concrete type(`stream`, `storage`, `external`) import는 `app`의 configuration/assembly/config package에서만 허용된다.
-`app`의 `web`/`job`은 core use case와 command/query/result만 호출하고, leaf adapter concrete type이나 persistence/provider infrastructure type을 직접 import하지 않는다.
+`app`의 `web`/`job`은 core use case와 application DTO/query/result contract만 호출하고, leaf adapter concrete type이나 persistence/provider infrastructure type을 직접 import하지 않는다.
 두 module이 같은 Java package를 공유해 import 없이 simple name으로 leaf adapter class를 참조하는 경우도 같은 위반으로 본다.
 SSE delivery가 필요하면 `app`의 `web`은 app-owned gateway contract에 의존하고, `configuration`/`assembly`/`config` 경계에서 stream module concrete type으로 연결한다.
 

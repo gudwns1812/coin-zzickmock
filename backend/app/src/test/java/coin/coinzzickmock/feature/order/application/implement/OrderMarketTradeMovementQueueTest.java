@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,19 +12,19 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
-class MarketTradeMovementQueueTest {
+class OrderMarketTradeMovementQueueTest {
     @Test
     void registersQueueSizeGaugeAndTracksCurrentQueueDepth() {
         CapturingTelemetryProvider telemetryProvider = new CapturingTelemetryProvider();
-        MarketTradeMovementQueue queue = new MarketTradeMovementQueue(
+        OrderMarketTradeMovementQueue queue = new OrderMarketTradeMovementQueue(
                 2,
-                new MarketTradeMovementTelemetry(telemetryProvider)
+                new OrderMarketTradeMovementTelemetry(telemetryProvider)
         );
 
         assertThat(telemetryProvider.gaugeName).isEqualTo("market.trade.movement.queue.size.current");
         assertThat(telemetryProvider.gaugeValue.get().intValue()).isZero();
 
-        assertThat(queue.publish(movement("2026-04-27T00:00:01Z"))).isTrue();
+        assertThat(queue.enqueue(movement("2026-04-27T00:00:01Z"))).isTrue();
 
         assertThat(telemetryProvider.gaugeValue.get().intValue()).isEqualTo(1);
     }
@@ -32,13 +32,13 @@ class MarketTradeMovementQueueTest {
     @Test
     void recordsQueueDropWhenBoundedQueueIsFull() {
         CapturingTelemetryProvider telemetryProvider = new CapturingTelemetryProvider();
-        MarketTradeMovementQueue queue = new MarketTradeMovementQueue(
+        OrderMarketTradeMovementQueue queue = new OrderMarketTradeMovementQueue(
                 1,
-                new MarketTradeMovementTelemetry(telemetryProvider)
+                new OrderMarketTradeMovementTelemetry(telemetryProvider)
         );
 
-        assertThat(queue.publish(movement("2026-04-27T00:00:01Z"))).isTrue();
-        assertThat(queue.publish(movement("2026-04-27T00:00:02Z"))).isFalse();
+        assertThat(queue.enqueue(movement("2026-04-27T00:00:01Z"))).isTrue();
+        assertThat(queue.enqueue(movement("2026-04-27T00:00:02Z"))).isFalse();
 
         assertThat(telemetryProvider.eventNames).containsExactly("market.trade.movement.queue.drop.total");
         assertThat(telemetryProvider.eventTags).containsExactly(Map.of("reason", "full"));

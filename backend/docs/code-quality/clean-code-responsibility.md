@@ -223,7 +223,7 @@ private OrderDecision decideOrder(TradingAccount account, PlaceOrderCommand comm
 - `application/implement`는 새 layer가 아니며 feature별 `application` 안에 하나만 둔다. `common`, `util`, `helper` 같은 하위 package를 만들지 않는다.
 - 한 번만 쓰이고 service 흐름을 흐리지 않는 세부 구현은 premature commonization을 피하고 private method, result factory, 또는 domain factory에 남긴다.
 - 여러 유스케이스에서 반복될 수 있는 절차/계산/조합이면 이름 있는 implement collaborator로 승격한다. 한 번만 쓰이더라도 repository/provider/domain orchestration이 섞여 service 목차를 흐리면 implement로 분리할 수 있다.
-- command/query/result 타입으로 입출력 의미를 드러낸다.
+- application DTO, query, result, projection 타입으로 입출력 의미를 드러낸다. `*Command`나 `*Result` class name을 쓰더라도 새 package convention은 `application/dto`다.
 - application/repository, gateway, provider 같은 운영 인터페이스에 `default` 메서드를 두지 않는다.
 - 여러 진입점이 같은 계정/포지션 mutation 정책을 적용하면 각 service에 복제하지 않고 `OrderFillApplier`처럼 transaction 내부에서 호출되는 `application/implement` 협력 객체로 모은다.
 - 조회 service가 DB range 계산, rollup, cache/provider 보충, telemetry tagging을 모두 품기 시작하면 `Reader`, `Projector`, `Appender`, `Telemetry` 같은 목적형 객체로 나눈다.

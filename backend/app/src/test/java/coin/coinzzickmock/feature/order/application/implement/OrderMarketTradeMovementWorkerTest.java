@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,10 +16,10 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class MarketTradeMovementWorkerTest {
+class OrderMarketTradeMovementWorkerTest {
     @Test
     void drainsQueuedTradeMovementThroughPendingFillProcessor() {
-        OrderRealtimeProcessorFixtures.Scenario scenario = OrderRealtimeProcessorFixtures.scenario();
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         FuturesOrder order = scenario.pendingOpenOrderAt(
                 "open-long",
                 "LONG",
@@ -30,15 +30,15 @@ class MarketTradeMovementWorkerTest {
         scenario.pendingLimitOrderBook.add(1L, order);
         scenario.market(98, 98);
 
-        MarketTradeMovementTelemetry telemetry = new MarketTradeMovementTelemetry(new CapturingTelemetryProvider());
-        MarketTradeMovementQueue queue = new MarketTradeMovementQueue(10, telemetry);
-        MarketTradeMovementWorker worker = new MarketTradeMovementWorker(
+        OrderMarketTradeMovementTelemetry telemetry = new OrderMarketTradeMovementTelemetry(new CapturingTelemetryProvider());
+        OrderMarketTradeMovementQueue queue = new OrderMarketTradeMovementQueue(10, telemetry);
+        OrderMarketTradeMovementWorker worker = new OrderMarketTradeMovementWorker(
                 queue,
                 scenario.pendingFillProcessor(),
                 telemetry
         );
 
-        queue.publish(new MarketTradePriceMovedEvent(
+        queue.enqueue(new MarketTradePriceMovedEvent(
                 "BTCUSDT",
                 101,
                 98,
@@ -56,11 +56,11 @@ class MarketTradeMovementWorkerTest {
     @Test
     void recordsWorkerFailureWhenPendingFillProcessorThrows() {
         CapturingTelemetryProvider telemetryProvider = new CapturingTelemetryProvider();
-        MarketTradeMovementTelemetry telemetry = new MarketTradeMovementTelemetry(telemetryProvider);
-        MarketTradeMovementQueue queue = new MarketTradeMovementQueue(10, telemetry);
-        PendingOrderFillProcessor processor = mock(PendingOrderFillProcessor.class);
-        MarketTradeMovementWorker worker = new MarketTradeMovementWorker(queue, processor, telemetry);
-        queue.publish(movement());
+        OrderMarketTradeMovementTelemetry telemetry = new OrderMarketTradeMovementTelemetry(telemetryProvider);
+        OrderMarketTradeMovementQueue queue = new OrderMarketTradeMovementQueue(10, telemetry);
+        OrderPendingFillProcessor processor = mock(OrderPendingFillProcessor.class);
+        OrderMarketTradeMovementWorker worker = new OrderMarketTradeMovementWorker(queue, processor, telemetry);
+        queue.enqueue(movement());
         doThrow(new IllegalStateException("boom")).when(processor)
                 .fillExecutablePendingOrders(any(MarketTradePriceMovedEvent.class));
 

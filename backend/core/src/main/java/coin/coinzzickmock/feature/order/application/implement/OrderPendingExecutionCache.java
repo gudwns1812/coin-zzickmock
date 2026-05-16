@@ -1,13 +1,13 @@
-package coin.coinzzickmock.feature.order.application.realtime;
+package coin.coinzzickmock.feature.order.application.implement;
 
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PendingOrderExecutionCache {
+public class OrderPendingExecutionCache {
     private final ConcurrentMap<String, List<PendingOrderCandidate>> pendingBySymbol = new ConcurrentHashMap<>();
 
     public List<PendingOrderCandidate> refresh(String symbol, List<PendingOrderCandidate> candidates) {

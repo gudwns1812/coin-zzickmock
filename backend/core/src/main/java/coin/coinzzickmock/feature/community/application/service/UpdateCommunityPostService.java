@@ -32,17 +32,35 @@ public class UpdateCommunityPostService {
         CommunityPost existing = communityPostRepository.findActiveById(command.postId())
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
         boolean isAuthor = Objects.equals(command.actorMemberId(), existing.authorMemberId());
-        if (!CommunityPermissionPolicy.canEditPost(command.isActorAdmin(), isAuthor, existing.category(), command.category())) {
+        if (!CommunityPermissionPolicy.canEditPost(
+                command.isActorAdmin(),
+                isAuthor,
+                existing.category(),
+                command.category()
+        )) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
-        validateImageOwnership(command.actorMemberId(), Set.copyOf(command.imageObjectKeys()));
+
+        Set<String> imageObjectKeys = Set.copyOf(command.imageObjectKeys());
+        validateImageOwnership(command.actorMemberId(), imageObjectKeys);
+
         Instant now = Instant.now(clock);
         CommunityPost updated = existing.recategorize(command.category(), now)
                 .rename(command.title(), now)
                 .rewriteContent(validatedContent(command), now);
         CommunityPost saved = communityPostRepository.update(updated);
-        communityPostImageRepository.attachToPost(saved.id(), command.actorMemberId(), Set.copyOf(command.imageObjectKeys()), CommunityImageStatus.ATTACHED);
-        communityPostImageRepository.detachMissingImages(saved.id(), Set.copyOf(command.imageObjectKeys()), CommunityImageStatus.ORPHANED);
+        communityPostImageRepository.attachToPost(
+                saved.id(),
+                command.actorMemberId(),
+                imageObjectKeys,
+                CommunityImageStatus.ATTACHED
+        );
+        communityPostImageRepository.detachMissingImages(
+                saved.id(),
+                imageObjectKeys,
+                CommunityImageStatus.ORPHANED
+        );
+
         return CommunityPostMutationResult.from(saved);
     }
 
@@ -53,7 +71,10 @@ public class UpdateCommunityPostService {
         }
         return TiptapJsonDocument.of(
                 command.contentJson(),
-                new TiptapJsonImagePolicy("community/" + command.actorMemberId() + "/", policy.allowedImageSrcPrefixes())
+                new TiptapJsonImagePolicy(
+                        "community/" + command.actorMemberId() + "/",
+                        policy.allowedImageSrcPrefixes()
+                )
         );
     }
 

@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 public class CommunityS3UploadConfiguration {
     @Bean(destroyMethod = "close")
     S3Presigner communityS3Presigner(
-            @Value("${coin.community.s3.region:ap-northeast-2}") String region
+            @Value("${coin.community.s3.region:ap-southeast-2}") String region
     ) {
         return S3Presigner.builder()
                 .region(Region.of(region))
@@ -22,9 +22,13 @@ public class CommunityS3UploadConfiguration {
     @Bean
     CommunityImageUploadGateway communityImageUploadGateway(
             S3Presigner communityS3Presigner,
-            @Value("${coin.community.s3.bucket:coin-zzickmock-community-local}") String bucket,
-            @Value("${coin.community.s3.public-base-url:https://coin-zzickmock-community-local.s3.ap-northeast-2.amazonaws.com}") String publicBaseUrl
+            @Value("${coin.community.s3.bucket:coin-zzickmock-community-local-672420933257-ap-southeast-2-an}") String bucket,
+            @Value("${coin.community.s3.region:ap-southeast-2}") String region,
+            @Value("${coin.community.s3.public-base-url:}") String publicBaseUrl
     ) {
-        return new S3CommunityImageUploadGateway(communityS3Presigner, bucket, publicBaseUrl);
+        String resolvedPublicBaseUrl = publicBaseUrl == null || publicBaseUrl.isBlank()
+                ? "https://" + bucket.trim() + ".s3." + region.trim() + ".amazonaws.com"
+                : publicBaseUrl;
+        return new S3CommunityImageUploadGateway(communityS3Presigner, bucket, resolvedPublicBaseUrl);
     }
 }

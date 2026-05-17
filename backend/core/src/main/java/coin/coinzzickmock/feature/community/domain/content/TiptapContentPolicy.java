@@ -13,12 +13,18 @@ public record TiptapContentPolicy(Set<String> approvedImageObjectKeys, List<Stri
         return new TiptapContentPolicy(Set.of(), List.of());
     }
 
-    public static TiptapContentPolicy withImages(Set<String> approvedImageObjectKeys, List<String> allowedImageSrcPrefixes) {
+    public static TiptapContentPolicy withImages(
+            Set<String> approvedImageObjectKeys,
+            List<String> allowedImageSrcPrefixes
+    ) {
         return new TiptapContentPolicy(approvedImageObjectKeys, allowedImageSrcPrefixes);
     }
 
     boolean imageApproved(String objectKey, String src) {
-        if (objectKey == null || objectKey.isBlank() || src == null || src.isBlank()) {
+        if (objectKey == null
+                || objectKey.isBlank()
+                || src == null
+                || src.isBlank()) {
             return false;
         }
         if (!objectKey.startsWith("community/")) {

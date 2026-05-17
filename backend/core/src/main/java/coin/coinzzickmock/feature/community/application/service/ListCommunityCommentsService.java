@@ -14,9 +14,18 @@ public class ListCommunityCommentsService {
     private final CommunityCommentRepository communityCommentRepository;
 
     @Transactional(readOnly = true)
-    public CommunityCommentListResult execute(ListCommunityCommentsQuery query, Long actorMemberId, boolean isActorAdmin) {
+    public CommunityCommentListResult execute(
+            ListCommunityCommentsQuery query,
+            Long actorMemberId,
+            boolean isActorAdmin
+    ) {
         ListCommunityCommentsQuery safeQuery = Objects.requireNonNull(query, "query must not be null");
-        var page = communityCommentRepository.findActiveByPostId(safeQuery.postId(), safeQuery.page(), safeQuery.size());
+        var page = communityCommentRepository.findActiveByPostId(
+                safeQuery.postId(),
+                safeQuery.page(),
+                safeQuery.size()
+        );
+
         return CommunityCommentListResult.from(page, actorMemberId, isActorAdmin);
     }
 }

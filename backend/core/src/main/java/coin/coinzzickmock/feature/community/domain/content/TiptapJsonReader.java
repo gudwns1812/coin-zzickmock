@@ -140,6 +140,8 @@ final class TiptapJsonReader {
         if (!Character.isHighSurrogate(first)) {
             return String.valueOf(first);
         }
+
+        // 서로게이트 쌍은 두 번째 유니코드 이스케이프까지 같이 검증한다.
         if (index + 2 > source.length() || source.charAt(index++) != '\\' || source.charAt(index++) != 'u') {
             throw invalid();
         }
@@ -179,6 +181,7 @@ final class TiptapJsonReader {
         if (consume('-') && index >= source.length()) {
             throw invalid();
         }
+
         if (consume('0')) {
             if (index < source.length() && Character.isDigit(source.charAt(index))) {
                 throw invalid();
@@ -186,9 +189,12 @@ final class TiptapJsonReader {
         } else {
             readDigits();
         }
-        if (index < source.length() && (source.charAt(index) == '.' || source.charAt(index) == 'e' || source.charAt(index) == 'E')) {
+
+        if (index < source.length()
+                && (source.charAt(index) == '.' || source.charAt(index) == 'e' || source.charAt(index) == 'E')) {
             throw invalid();
         }
+
         try {
             return Integer.valueOf(source.substring(start, index));
         } catch (NumberFormatException ex) {

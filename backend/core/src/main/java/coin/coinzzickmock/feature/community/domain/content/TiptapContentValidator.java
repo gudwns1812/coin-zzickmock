@@ -25,16 +25,23 @@ public final class TiptapContentValidator {
     }
 
     public static Validation validate(String contentJson, TiptapContentPolicy policy) {
-        if (contentJson == null || contentJson.isBlank() || contentJson.getBytes(StandardCharsets.UTF_8).length > MAX_JSON_BYTES) {
+        if (contentJson == null
+                || contentJson.isBlank()
+                || contentJson.getBytes(StandardCharsets.UTF_8).length > MAX_JSON_BYTES) {
             throw invalid();
         }
+
         Object parsed = new TiptapJsonReader(contentJson).read();
         if (!(parsed instanceof Map<?, ?> document)) {
             throw invalid();
         }
+
         State state = new State(policy == null ? TiptapContentPolicy.withoutImages() : policy);
         validateNode(document, "doc", 1, state);
-        return new Validation(contentJson, new TiptapContentValidationResult(state.textLength, state.imageCount, state.imageObjectKeys));
+        return new Validation(
+                contentJson,
+                new TiptapContentValidationResult(state.textLength, state.imageCount, state.imageObjectKeys)
+        );
     }
 
     private static void validateNode(Map<?, ?> node, String expectedType, int depth, State state) {
@@ -110,7 +117,10 @@ public final class TiptapContentValidator {
     }
 
     private static void validateLeafWithoutAttrs(Map<?, ?> node) {
-        if (node.containsKey("content") || node.containsKey("text") || node.containsKey("attrs") || node.containsKey("marks")) {
+        if (node.containsKey("content")
+                || node.containsKey("text")
+                || node.containsKey("attrs")
+                || node.containsKey("marks")) {
             throw invalid();
         }
     }

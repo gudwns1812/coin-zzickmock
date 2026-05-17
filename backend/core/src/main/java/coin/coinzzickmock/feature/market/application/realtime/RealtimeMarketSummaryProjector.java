@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import java.time.Instant;
 import java.util.Optional;

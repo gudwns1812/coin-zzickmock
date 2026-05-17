@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;

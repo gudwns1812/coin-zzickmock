@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.CoinZzickmockApplication;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;

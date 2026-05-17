@@ -7,7 +7,7 @@ import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovemen
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;

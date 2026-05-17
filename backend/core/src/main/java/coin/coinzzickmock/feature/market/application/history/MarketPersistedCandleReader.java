@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.market.application.history;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;

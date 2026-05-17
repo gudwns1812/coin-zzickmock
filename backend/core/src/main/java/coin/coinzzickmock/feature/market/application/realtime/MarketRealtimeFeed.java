@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;

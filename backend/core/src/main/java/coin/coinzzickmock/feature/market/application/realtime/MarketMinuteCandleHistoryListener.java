@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;

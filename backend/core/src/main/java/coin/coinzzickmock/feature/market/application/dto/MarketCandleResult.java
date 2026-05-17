@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.application.result;
+package coin.coinzzickmock.feature.market.application.dto;
 
 import java.time.Instant;
 

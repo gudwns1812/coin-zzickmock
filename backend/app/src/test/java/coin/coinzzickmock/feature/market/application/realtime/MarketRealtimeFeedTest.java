@@ -12,7 +12,7 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;

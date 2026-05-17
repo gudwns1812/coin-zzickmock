@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.reward.application.service;
 
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
-import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardRedemptionResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

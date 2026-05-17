@@ -12,7 +12,7 @@ import coin.coinzzickmock.feature.reward.application.event.RewardRedemptionCreat
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopMemberItemUsageRepository;
-import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardRedemptionResult;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;

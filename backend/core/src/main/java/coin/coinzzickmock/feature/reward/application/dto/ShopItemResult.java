@@ -1,8 +1,8 @@
-package coin.coinzzickmock.feature.reward.application.result;
+package coin.coinzzickmock.feature.reward.application.dto;
 
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 
-public record AdminShopItemResult(
+public record ShopItemResult(
         String code,
         String name,
         String description,
@@ -13,10 +13,10 @@ public record AdminShopItemResult(
         int soldQuantity,
         Integer remainingStock,
         Integer perMemberPurchaseLimit,
-        int sortOrder
+        Integer remainingPurchaseLimit
 ) {
-    public static AdminShopItemResult from(RewardShopItem item) {
-        return new AdminShopItemResult(
+    public static ShopItemResult from(RewardShopItem item, int purchaseCount) {
+        return new ShopItemResult(
                 item.code(),
                 item.name(),
                 item.description(),
@@ -27,7 +27,7 @@ public record AdminShopItemResult(
                 item.soldQuantity(),
                 item.remainingStock(),
                 item.perMemberPurchaseLimit(),
-                item.sortOrder()
+                item.remainingPurchaseLimit(purchaseCount)
         );
     }
 }

@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.position.application.result;
 
 import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardPointResult;
 
 public record ClosePositionResult(
         String symbol,

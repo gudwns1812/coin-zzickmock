@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.reward.web;
 
-import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardRedemptionResult;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
 
 import java.time.Instant;

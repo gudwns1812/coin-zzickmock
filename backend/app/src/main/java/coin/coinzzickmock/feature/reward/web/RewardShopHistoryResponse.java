@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.reward.web;
 
-import coin.coinzzickmock.feature.reward.application.result.RewardShopHistoryKind;
-import coin.coinzzickmock.feature.reward.application.result.RewardShopHistoryResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardShopHistoryKind;
+import coin.coinzzickmock.feature.reward.application.dto.RewardShopHistoryResult;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionStatus;
 import java.time.Instant;
 

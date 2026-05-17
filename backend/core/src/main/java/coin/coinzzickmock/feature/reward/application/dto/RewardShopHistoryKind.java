@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.reward.application.result;
+package coin.coinzzickmock.feature.reward.application.dto;
 
 public enum RewardShopHistoryKind {
     INSTANT_PURCHASE,

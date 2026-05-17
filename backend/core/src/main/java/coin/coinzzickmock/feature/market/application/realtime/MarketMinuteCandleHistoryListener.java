@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
+import coin.coinzzickmock.feature.market.application.implement.ClosedMinuteCandlePersistenceScheduler;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MarketMinuteCandleHistoryListener {
     private final MarketSnapshotStore marketSnapshotStore;
-    private final DelayedClosedMinuteCandlePersistenceScheduler delayedClosedMinuteCandlePersistenceScheduler;
+    private final ClosedMinuteCandlePersistenceScheduler delayedClosedMinuteCandlePersistenceScheduler;
 
     @EventListener
     public void onMinuteClosed(MarketMinuteClosedEvent event) {

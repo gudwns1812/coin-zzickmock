@@ -1,6 +1,8 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
+import coin.coinzzickmock.feature.market.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator;
+import coin.coinzzickmock.feature.market.application.implement.ClosedMinuteCandlePersistenceScheduler;
 import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -328,13 +330,11 @@ class MarketRealtimeFeedTest {
         );
         MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator =
                 new MarketHistoryPersistenceCoordinator(persistence);
-        DelayedClosedMinuteCandlePersistenceScheduler delayedPersistenceScheduler =
-                new DelayedClosedMinuteCandlePersistenceScheduler(
-                        mock(org.springframework.scheduling.TaskScheduler.class),
-                        marketHistoryPersistenceCoordinator,
-                        0,
-                        java.time.Clock.systemUTC()
-                );
+        DelayedClosedMinuteCandlePersistenceCoordinator delayedPersistenceCoordinator =
+                new DelayedClosedMinuteCandlePersistenceCoordinator(marketHistoryPersistenceCoordinator);
+        ClosedMinuteCandlePersistenceScheduler delayedPersistenceScheduler = (symbols, openTime, closeTime) ->
+                delayedPersistenceCoordinator.claimClosedMinutePersistence(symbols, openTime, closeTime)
+                        .ifPresent(DelayedClosedMinuteCandlePersistenceCoordinator.ClosedMinutePersistenceTask::persistAndRelease);
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new MarketSupportedMarketRefresher(
                         marketDataGateway,

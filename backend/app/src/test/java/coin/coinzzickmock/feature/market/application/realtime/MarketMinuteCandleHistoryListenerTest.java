@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
+import coin.coinzzickmock.feature.market.application.implement.ClosedMinuteCandlePersistenceScheduler;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,8 +19,8 @@ class MarketMinuteCandleHistoryListenerTest {
     @Test
     void delegatesSupportedSymbolsToDelayedScheduler() {
         MarketSnapshotStore marketSnapshotStore = Mockito.mock(MarketSnapshotStore.class);
-        DelayedClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
-                DelayedClosedMinuteCandlePersistenceScheduler.class);
+        ClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
+                ClosedMinuteCandlePersistenceScheduler.class);
         when(marketSnapshotStore.hasSupportedMarkets()).thenReturn(true);
         when(marketSnapshotStore.getSupportedMarkets()).thenReturn(List.of(
                 summary("BTCUSDT"),
@@ -38,8 +39,8 @@ class MarketMinuteCandleHistoryListenerTest {
     @Test
     void returnsWithoutSchedulingWhenSupportedMarketsAreUnavailable() {
         MarketSnapshotStore marketSnapshotStore = Mockito.mock(MarketSnapshotStore.class);
-        DelayedClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
-                DelayedClosedMinuteCandlePersistenceScheduler.class);
+        ClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
+                ClosedMinuteCandlePersistenceScheduler.class);
         when(marketSnapshotStore.hasSupportedMarkets()).thenReturn(false);
         MarketMinuteCandleHistoryListener listener = new MarketMinuteCandleHistoryListener(
                 marketSnapshotStore,

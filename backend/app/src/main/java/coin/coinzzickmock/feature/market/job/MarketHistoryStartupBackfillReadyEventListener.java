@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.job;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryStartupBackfill;
+import coin.coinzzickmock.feature.market.application.repair.MarketHistoryStartupBackfill;
 import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;

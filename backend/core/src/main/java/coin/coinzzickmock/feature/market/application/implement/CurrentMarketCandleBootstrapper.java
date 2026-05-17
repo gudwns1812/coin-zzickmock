@@ -1,10 +1,12 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.implement;
 
 import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
 import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;

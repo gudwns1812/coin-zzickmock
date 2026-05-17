@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.position.application.result;
+package coin.coinzzickmock.feature.position.application.dto;
 
 public record PositionSnapshotResult(
         String symbol,

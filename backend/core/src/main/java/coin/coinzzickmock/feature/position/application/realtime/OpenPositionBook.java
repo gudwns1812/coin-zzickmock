@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.position.application.realtime;
 
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Collection;
 import java.util.HashMap;

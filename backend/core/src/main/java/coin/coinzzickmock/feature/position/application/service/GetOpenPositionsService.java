@@ -7,7 +7,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.application.dto.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

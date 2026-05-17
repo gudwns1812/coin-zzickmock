@@ -13,7 +13,7 @@ import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
-import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.dto.ClosePositionResult;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;

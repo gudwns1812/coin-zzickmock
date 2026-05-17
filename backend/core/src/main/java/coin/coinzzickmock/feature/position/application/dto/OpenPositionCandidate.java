@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.position.application.result;
+package coin.coinzzickmock.feature.position.application.dto;
 
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 

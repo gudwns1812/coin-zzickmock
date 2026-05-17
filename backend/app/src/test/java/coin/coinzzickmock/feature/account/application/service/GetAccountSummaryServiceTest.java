@@ -18,7 +18,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTrad
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;

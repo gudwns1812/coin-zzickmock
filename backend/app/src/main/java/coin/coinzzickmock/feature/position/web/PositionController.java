@@ -1,8 +1,8 @@
 package coin.coinzzickmock.feature.position.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
-import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
-import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.application.dto.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.dto.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.application.service.ClosePositionService;
 import coin.coinzzickmock.feature.position.application.service.GetOpenPositionsService;
 import coin.coinzzickmock.feature.position.application.service.GetPositionHistoryService;

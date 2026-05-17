@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.position.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import coin.coinzzickmock.feature.position.application.result.PositionHistoryResult;
+import coin.coinzzickmock.feature.position.application.dto.PositionHistoryResult;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 

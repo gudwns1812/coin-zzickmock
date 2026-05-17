@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.feature.order.application.implement.OrderMarketTradeMovementWorker;
 import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBookHydrator;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.testsupport.TestPositionRepository;
 import java.util.List;

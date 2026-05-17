@@ -10,7 +10,7 @@ import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceCha
 import coin.coinzzickmock.feature.position.application.event.PositionOpenedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;

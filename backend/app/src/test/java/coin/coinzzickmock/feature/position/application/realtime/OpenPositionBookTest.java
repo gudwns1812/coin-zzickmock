@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.position.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.List;
 import org.junit.jupiter.api.Test;

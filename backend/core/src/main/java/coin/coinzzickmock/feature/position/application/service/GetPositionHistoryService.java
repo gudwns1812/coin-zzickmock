@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
-import coin.coinzzickmock.feature.position.application.result.PositionHistoryResult;
+import coin.coinzzickmock.feature.position.application.dto.PositionHistoryResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

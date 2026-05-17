@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.positionpeek.web;
 
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekPublicPositionResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekPublicPositionResult;
 
 public record PositionPeekPublicPositionResponse(
         String symbol,

@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.positionpeek.infrastructure.persistence;
 
 import coin.coinzzickmock.feature.positionpeek.application.repository.PositionPeekSnapshotRepository;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekSnapshotRecord;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnapshotRecord;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

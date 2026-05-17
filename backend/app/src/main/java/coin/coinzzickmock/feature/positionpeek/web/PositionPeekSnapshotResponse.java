@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.positionpeek.web;
 
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekSnapshotResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnapshotResult;
 import java.time.Instant;
 import java.util.List;
 

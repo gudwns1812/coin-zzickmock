@@ -4,7 +4,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQuery;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountSummaryResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;

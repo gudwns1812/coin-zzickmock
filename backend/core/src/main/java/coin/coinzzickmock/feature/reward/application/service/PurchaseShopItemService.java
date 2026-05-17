@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.reward.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.refill.AccountRefillCreditProcessor;
-import coin.coinzzickmock.feature.account.application.result.AccountRefillCreditResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountRefillCreditResult;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;

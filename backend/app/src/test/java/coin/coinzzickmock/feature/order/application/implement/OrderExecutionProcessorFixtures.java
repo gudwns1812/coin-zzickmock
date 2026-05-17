@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.order.application.implement;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;

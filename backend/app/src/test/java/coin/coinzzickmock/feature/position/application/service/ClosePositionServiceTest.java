@@ -76,7 +76,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -136,7 +136,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -195,7 +195,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -379,7 +379,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -434,7 +434,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -492,7 +492,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -771,7 +771,7 @@ class ClosePositionServiceTest {
                 new AfterCommitEventPublisher(event -> {
                 })
         ,
-                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()));
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()));
 
         CoreException thrown = assertThrows(CoreException.class, () -> finalizer.close(
                 1L,
@@ -833,7 +833,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),

@@ -1153,9 +1153,9 @@ class MarketOrderExecutionServiceTest {
             StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller
     ) {
         AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
-        var openPositionBook = new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook();
-        var openPositionBookWriter = new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(openPositionBook);
-        var openPositionBookHydrator = new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookHydrator(
+        var openPositionBook = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook();
+        var openPositionBookWriter = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(openPositionBook);
+        var openPositionBookHydrator = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookHydrator(
                 positionRepository,
                 openPositionBook
         );
@@ -1228,8 +1228,8 @@ class MarketOrderExecutionServiceTest {
                 new InMemoryPositionHistoryRepository(),
                 new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
                 afterCommitEventPublisher,
-                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()
                 )
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);

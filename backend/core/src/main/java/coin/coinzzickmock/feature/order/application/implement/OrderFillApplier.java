@@ -9,7 +9,7 @@ import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.event.PositionOpenedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter;
+import coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter;
 import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Optional;

@@ -35,7 +35,7 @@ class MarketStreamBridgeConfiguration {
 
     @Bean
     MarketCurrentCandleBootstrapper marketCurrentCandleBootstrapper(
-            coin.coinzzickmock.feature.market.application.realtime.CurrentMarketCandleBootstrapper bootstrapper
+            coin.coinzzickmock.feature.market.application.implement.CurrentMarketCandleBootstrapper bootstrapper
     ) {
         return (symbol, interval) -> bootstrapper.bootstrapIfNeeded(symbol, MarketCandleInterval.from(interval));
     }

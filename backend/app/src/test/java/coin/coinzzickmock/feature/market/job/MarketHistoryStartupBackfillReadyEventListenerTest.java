@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryStartupBackfill;
+import coin.coinzzickmock.feature.market.application.repair.MarketHistoryStartupBackfill;
 import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import org.junit.jupiter.api.Test;
 

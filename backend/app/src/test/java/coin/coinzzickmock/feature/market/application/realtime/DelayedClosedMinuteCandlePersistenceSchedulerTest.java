@@ -7,6 +7,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import coin.coinzzickmock.feature.market.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator;
+import coin.coinzzickmock.feature.market.job.DelayedClosedMinuteCandlePersistenceScheduler;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -128,7 +130,7 @@ class DelayedClosedMinuteCandlePersistenceSchedulerTest {
     ) {
         return new DelayedClosedMinuteCandlePersistenceScheduler(
                 taskScheduler,
-                coordinator,
+                new DelayedClosedMinuteCandlePersistenceCoordinator(coordinator),
                 delayMs,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );

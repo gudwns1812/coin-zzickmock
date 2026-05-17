@@ -630,8 +630,8 @@ class CreateOrderServiceTest {
                 accountRepository,
                 positionRepository,
                 afterCommitEventPublisher,
-                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()
                 )
         );
         return new CreateOrderService(

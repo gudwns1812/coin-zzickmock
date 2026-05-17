@@ -371,7 +371,7 @@ class UpdatePositionLeverageServiceTest {
                         new LiquidationPolicy()
                 )
         ,
-                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()));
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()));
     }
 
     private static class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {

@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.position.application.realtime;
+package coin.coinzzickmock.feature.position.application.implement;
 
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import lombok.RequiredArgsConstructor;

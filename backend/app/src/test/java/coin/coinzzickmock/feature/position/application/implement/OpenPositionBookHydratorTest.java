@@ -1,9 +1,7 @@
-package coin.coinzzickmock.feature.position.application.realtime;
+package coin.coinzzickmock.feature.position.application.implement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.order.application.implement.OrderMarketTradeMovementWorker;
-import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBookHydrator;
 import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.testsupport.TestPositionRepository;
@@ -12,18 +10,15 @@ import org.junit.jupiter.api.Test;
 
 class OpenPositionBookHydratorTest {
     @Test
-    void startHydratesAllOpenCandidatesBeforeMovementWorkers() {
+    void hydrateLoadsAllOpenCandidates() {
         OpenPositionBook book = new OpenPositionBook();
         OpenPositionBookHydrator hydrator = new OpenPositionBookHydrator(repository(
                 candidate(1L, "BTCUSDT"),
                 candidate(2L, "ETHUSDT")
         ), book);
 
-        hydrator.start();
+        hydrator.hydrate();
 
-        assertThat(hydrator.isRunning()).isTrue();
-        assertThat(hydrator.getPhase()).isGreaterThan(OrderPendingLimitOrderBookHydrator.PHASE);
-        assertThat(hydrator.getPhase()).isLessThan(OrderMarketTradeMovementWorker.PHASE);
         assertThat(book.candidatesBySymbol("BTCUSDT").values()).extracting(OpenPositionCandidate::memberId)
                 .containsExactly(1L);
     }

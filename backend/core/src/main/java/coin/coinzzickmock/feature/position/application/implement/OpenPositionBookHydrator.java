@@ -1,39 +1,14 @@
-package coin.coinzzickmock.feature.position.application.realtime;
+package coin.coinzzickmock.feature.position.application.implement;
 
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class OpenPositionBookHydrator implements SmartLifecycle {
-    public static final int PHASE = Integer.MIN_VALUE + 110;
-
+public class OpenPositionBookHydrator {
     private final PositionRepository positionRepository;
     private final OpenPositionBook openPositionBook;
-    private volatile boolean running;
-
-    @Override
-    public void start() {
-        hydrate();
-        running = true;
-    }
-
-    @Override
-    public void stop() {
-        running = false;
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running;
-    }
-
-    @Override
-    public int getPhase() {
-        return PHASE;
-    }
 
     public void hydrate() {
         openPositionBook.hydrate(positionRepository.findAllOpenCandidates());

@@ -11,7 +11,7 @@ import coin.coinzzickmock.feature.position.application.event.PositionFullyClosed
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.dto.ClosePositionResult;
-import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter;
+import coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter;
 import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;

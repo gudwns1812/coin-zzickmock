@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
-import coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookHydrator;
+import coin.coinzzickmock.feature.position.application.implement.OpenPositionBookHydrator;
 import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;

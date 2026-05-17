@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.member.application.result;
+package coin.coinzzickmock.feature.member.application.dto;
 
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.member.domain.MemberRole;

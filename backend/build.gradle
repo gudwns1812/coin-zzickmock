@@ -185,6 +185,7 @@ tasks.register('architectureLint') {
                             'APP_LEAF_IMPORTS_CONFIGURATION_ONLY',
                             'APP_WEB_JOB_CORE_ONLY',
                             'APP_FEATURE_APPLICATION_DOMAIN_RESIDUE_ALLOWLIST',
+                            'APPLICATION_CONTEXT_PACKAGE_RESIDUE_FORBIDDEN',
                             'ARCHITECTURE_ALLOWLIST_ENTRY_VALID',
                     ],
                     targetLayers: architectureTargetLayers,
@@ -494,6 +495,18 @@ tasks.register('architectureLint') {
                     def importMatcher = lineText =~ /^\s*import\s+([A-Za-z0-9_.]+)\s*;/
                     importMatcher.find() ? importMatcher.group(1) : null
                 }.findAll { it != null }
+
+                if (topLevel == 'feature' && layer == 'application' && packageSegments.size() > 3 &&
+                        ['command', 'result', 'realtime'].contains(packageSegments[3])) {
+                    logViolation(
+                            sourceFile,
+                            packageLine,
+                            'APPLICATION_CONTEXT_PACKAGE_RESIDUE_FORBIDDEN',
+                            'feature application 하위에 command/result/realtime residue package가 다시 추가되었습니다.',
+                            'application DTO는 `application.dto`, public use case는 `application.service`, query facade는 `application.query`, 실행 협력 객체는 `application.implement` 또는 책임별 purpose package로 이동하세요.',
+                            [packageName: packageName, relativePath: relativePath, residuePackage: packageSegments[3]]
+                    )
+                }
 
                 if (isAppSource && topLevel == 'feature' && ['application', 'domain'].contains(layer)) {
                     def residueEntry = appResidueAllowlistByFile[relativePath]

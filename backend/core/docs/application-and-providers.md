@@ -153,7 +153,7 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 | --- | --- | --- | --- |
 | `application/service` | public use-case entrypoint, transaction boundary, top-level orchestration | `CreateOrderService`, `ClosePositionService`처럼 사용자가 시작하는 흐름 | 다른 service 직접 호출, repository/provider/domain 세부 조합을 모두 품는 giant method |
 | `application/implement` | service 흐름을 흐리는 application 실행 절차/계산/조합에 이름을 붙인 concrete collaborator | `OrderFillApplier`, `OrderPlacementFactory`, `PositionCloseProjector`, `AccountBalanceReconciler`처럼 소유 domain/use-case prefix + concise role | 새 layer, generic bucket, interface-first port, `Manager`/`Helper`/`Util`/`CommonService`, prefix 없는 class |
-| `application/<purpose>` | 이미 존재하거나 feature 전반에서 공유되는 명확한 mechanism package | `realtime`, `grant`, `placement`처럼 package 자체가 목적을 설명하고 class도 concrete role을 드러냄 | 새 convention이 필요한 큰 service refactor에서 목적 없는 ad-hoc package 증식 |
+| `application/<purpose>` | 이미 존재하거나 feature 전반에서 공유되는 명확한 mechanism package | `grant`, `history`, `repair`처럼 package 자체가 목적을 설명하고 class도 concrete role을 드러냄 | 새 convention이 필요한 큰 service refactor에서 목적 없는 ad-hoc package 증식. `realtime`처럼 timing/transport 맥락을 묶은 package는 legacy migration residue로 보고 아래 Technical Package Split Recipe에 따라 재분류 |
 | `domain` | storage-free이고 오래 살아야 하는 제품 규칙, 불변식, 상태 전이 | 도메인 언어의 model/policy/service/value object | repository/provider 조회, transaction 실행, 외부 시스템/프레임워크 세부사항 |
 
 `application/implement` 추출의 1순위 판단 기준은 service flow readability다.

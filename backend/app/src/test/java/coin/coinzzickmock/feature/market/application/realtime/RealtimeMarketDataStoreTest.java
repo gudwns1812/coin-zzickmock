@@ -1,5 +1,6 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.implement;
 
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeHealth;
 import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceSnapshot;

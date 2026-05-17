@@ -7,7 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovementPublisher;
+import coin.coinzzickmock.feature.market.application.implement.MarketTradePriceMovementPublisher;
 import coin.coinzzickmock.feature.order.application.implement.OrderMarketTradeMovementQueue;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

@@ -1,9 +1,10 @@
 package coin.coinzzickmock.feature.market.application.repair;
 
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryPersistenceCoordinator;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryPersistenceCoordinator;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import java.time.Duration;
@@ -53,7 +54,7 @@ class MarketHistoryRepairFlowTest {
     private MarketHistoryRepairProcessor marketHistoryRepairProcessor;
 
     @Autowired
-    private coin.coinzzickmock.feature.market.application.realtime.MarketHistoryRecorder marketHistoryRecorder;
+    private coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder marketHistoryRecorder;
 
     @Autowired
     private MarketHistoryRepairEventRepository marketHistoryRepairEventRepository;

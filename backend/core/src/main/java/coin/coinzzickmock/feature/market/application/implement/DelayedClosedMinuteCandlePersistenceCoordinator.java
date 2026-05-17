@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.application.implement;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryPersistenceCoordinator;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryPersistenceCoordinator;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;

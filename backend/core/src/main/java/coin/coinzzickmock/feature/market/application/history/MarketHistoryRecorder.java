@@ -1,5 +1,6 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.history;
 
+import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;

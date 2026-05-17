@@ -1,5 +1,14 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketSummaryProjector;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryPersistenceCoordinator;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
+import coin.coinzzickmock.feature.market.application.history.MarketMinuteCandleHistoryListener;
+import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
+import coin.coinzzickmock.feature.market.application.implement.MarketFundingScheduleLookup;
+import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
+import coin.coinzzickmock.feature.market.application.implement.MarketSupportedMarketRefresher;
 import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
 import coin.coinzzickmock.feature.market.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator;
 import coin.coinzzickmock.feature.market.application.implement.ClosedMinuteCandlePersistenceScheduler;
@@ -305,7 +314,8 @@ class MarketRealtimeFeedTest {
                         marketDataGateway,
                         marketSnapshotStore,
                         applicationEventPublisher,
-                        defaultFundingScheduleLookup()
+                        defaultFundingScheduleLookup(),
+                        new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup())
                 ),
                 marketSnapshotStore
         );
@@ -340,7 +350,8 @@ class MarketRealtimeFeedTest {
                         marketDataGateway,
                         marketSnapshotStore,
                         applicationEventPublisher,
-                        defaultFundingScheduleLookup()
+                        defaultFundingScheduleLookup(),
+                        new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup())
                 ),
                 marketSnapshotStore
         );

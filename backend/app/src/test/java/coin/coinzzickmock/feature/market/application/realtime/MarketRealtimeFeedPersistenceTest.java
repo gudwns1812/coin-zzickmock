@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.history.MarketMinuteCandleHistoryListener;
+import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
 import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
 import static org.assertj.core.api.Assertions.assertThat;
 

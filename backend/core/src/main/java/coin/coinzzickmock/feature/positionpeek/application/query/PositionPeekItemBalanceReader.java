@@ -1,13 +1,13 @@
-package coin.coinzzickmock.feature.positionpeek.application.service;
+package coin.coinzzickmock.feature.positionpeek.application.query;
 
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+@Component
 @RequiredArgsConstructor
 public class PositionPeekItemBalanceReader {
     public static final String POSITION_PEEK_ITEM_CODE = "position.peek";

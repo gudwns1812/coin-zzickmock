@@ -4,7 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.reward.application.refund.RewardRedemptionRefundProcessor;
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
-import coin.coinzzickmock.feature.reward.application.result.RewardRedemptionResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardRedemptionResult;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

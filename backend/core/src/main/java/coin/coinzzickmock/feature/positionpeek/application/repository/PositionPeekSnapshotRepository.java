@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.positionpeek.application.repository;
 
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekSnapshotRecord;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnapshotRecord;
 import java.util.Optional;
 
 public interface PositionPeekSnapshotRepository {

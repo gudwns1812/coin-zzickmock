@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.common.cache.CoinCacheNames;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandlePage;
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;

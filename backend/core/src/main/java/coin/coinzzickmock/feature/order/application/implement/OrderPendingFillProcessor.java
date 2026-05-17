@@ -1,13 +1,13 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
-import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
-import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;

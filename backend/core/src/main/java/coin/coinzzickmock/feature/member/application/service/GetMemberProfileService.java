@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.member.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
-import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
+import coin.coinzzickmock.feature.member.application.dto.MemberProfileResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

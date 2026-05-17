@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.leaderboard.web;
 
-import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardEntryResult;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekTargetResult;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardEntryResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetResult;
 
 public record LeaderboardEntryResponse(
         int rank,

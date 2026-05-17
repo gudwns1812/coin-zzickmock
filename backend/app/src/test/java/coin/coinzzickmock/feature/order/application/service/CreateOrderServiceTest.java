@@ -1,16 +1,16 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.dto.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
@@ -28,7 +28,7 @@ import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import org.junit.jupiter.api.Test;
@@ -630,8 +630,8 @@ class CreateOrderServiceTest {
                 accountRepository,
                 positionRepository,
                 afterCommitEventPublisher,
-                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()
                 )
         );
         return new CreateOrderService(

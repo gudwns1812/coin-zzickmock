@@ -1,15 +1,15 @@
 package coin.coinzzickmock.feature.position.application.service;
 
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
@@ -20,8 +20,8 @@ import coin.coinzzickmock.feature.position.application.close.PositionCloseFinali
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.ClosePositionResult;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
@@ -76,7 +76,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -136,7 +136,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -195,7 +195,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -379,7 +379,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -434,7 +434,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -492,7 +492,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
@@ -771,7 +771,7 @@ class ClosePositionServiceTest {
                 new AfterCommitEventPublisher(event -> {
                 })
         ,
-                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()));
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()));
 
         CoreException thrown = assertThrows(CoreException.class, () -> finalizer.close(
                 1L,
@@ -833,7 +833,7 @@ class ClosePositionServiceTest {
                         new AfterCommitEventPublisher(event -> {
                         })
                 ,
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook())),
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),

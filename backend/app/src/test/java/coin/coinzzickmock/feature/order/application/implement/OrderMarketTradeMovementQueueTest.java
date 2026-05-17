@@ -1,9 +1,9 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
-import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
 import coin.coinzzickmock.testsupport.TestTelemetryProvider;
 import java.time.Instant;
 import java.util.ArrayList;

@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.reward.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
-import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
+import coin.coinzzickmock.feature.reward.application.dto.AdminShopItemResult;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import java.util.List;
 import java.util.function.Function;

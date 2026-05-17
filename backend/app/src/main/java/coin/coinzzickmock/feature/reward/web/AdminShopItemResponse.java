@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.reward.web;
 
-import coin.coinzzickmock.feature.reward.application.result.AdminShopItemResult;
+import coin.coinzzickmock.feature.reward.application.dto.AdminShopItemResult;
 
 public record AdminShopItemResponse(
         String code,

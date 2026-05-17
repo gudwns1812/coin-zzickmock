@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;

@@ -1,19 +1,19 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.implement.OrderPendingExecutionCache;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderPendingFillProcessor;
@@ -30,7 +30,7 @@ import coin.coinzzickmock.feature.position.application.close.StaleProtectiveClos
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -1153,9 +1153,9 @@ class MarketOrderExecutionServiceTest {
             StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller
     ) {
         AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
-        var openPositionBook = new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook();
-        var openPositionBookWriter = new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(openPositionBook);
-        var openPositionBookHydrator = new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookHydrator(
+        var openPositionBook = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook();
+        var openPositionBookWriter = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(openPositionBook);
+        var openPositionBookHydrator = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookHydrator(
                 positionRepository,
                 openPositionBook
         );
@@ -1228,8 +1228,8 @@ class MarketOrderExecutionServiceTest {
                 new InMemoryPositionHistoryRepository(),
                 new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
                 afterCommitEventPublisher,
-                new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBookWriter(
-                        new coin.coinzzickmock.feature.position.application.realtime.OpenPositionBook()
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()
                 )
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);

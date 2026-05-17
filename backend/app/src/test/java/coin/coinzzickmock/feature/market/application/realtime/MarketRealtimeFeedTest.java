@@ -1,5 +1,20 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.query.MarketRealtimeFeed;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketSummaryProjector;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryPersistenceCoordinator;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
+import coin.coinzzickmock.feature.market.application.history.MarketMinuteCandleHistoryListener;
+import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
+import coin.coinzzickmock.feature.market.application.implement.MarketFundingScheduleLookup;
+import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
+import coin.coinzzickmock.feature.market.application.implement.MarketSupportedMarketRefresher;
+import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
+import coin.coinzzickmock.feature.market.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator;
+import coin.coinzzickmock.feature.market.application.implement.ClosedMinuteCandlePersistenceScheduler;
+import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -12,7 +27,7 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
@@ -300,7 +315,8 @@ class MarketRealtimeFeedTest {
                         marketDataGateway,
                         marketSnapshotStore,
                         applicationEventPublisher,
-                        defaultFundingScheduleLookup()
+                        defaultFundingScheduleLookup(),
+                        new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup())
                 ),
                 marketSnapshotStore
         );
@@ -325,19 +341,18 @@ class MarketRealtimeFeedTest {
         );
         MarketHistoryPersistenceCoordinator marketHistoryPersistenceCoordinator =
                 new MarketHistoryPersistenceCoordinator(persistence);
-        DelayedClosedMinuteCandlePersistenceScheduler delayedPersistenceScheduler =
-                new DelayedClosedMinuteCandlePersistenceScheduler(
-                        mock(org.springframework.scheduling.TaskScheduler.class),
-                        marketHistoryPersistenceCoordinator,
-                        0,
-                        java.time.Clock.systemUTC()
-                );
+        DelayedClosedMinuteCandlePersistenceCoordinator delayedPersistenceCoordinator =
+                new DelayedClosedMinuteCandlePersistenceCoordinator(marketHistoryPersistenceCoordinator);
+        ClosedMinuteCandlePersistenceScheduler delayedPersistenceScheduler = (symbols, openTime, closeTime) ->
+                delayedPersistenceCoordinator.claimClosedMinutePersistence(symbols, openTime, closeTime)
+                        .ifPresent(DelayedClosedMinuteCandlePersistenceCoordinator.ClosedMinutePersistenceTask::persistAndRelease);
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
                 new MarketSupportedMarketRefresher(
                         marketDataGateway,
                         marketSnapshotStore,
                         applicationEventPublisher,
-                        defaultFundingScheduleLookup()
+                        defaultFundingScheduleLookup(),
+                        new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup())
                 ),
                 marketSnapshotStore
         );

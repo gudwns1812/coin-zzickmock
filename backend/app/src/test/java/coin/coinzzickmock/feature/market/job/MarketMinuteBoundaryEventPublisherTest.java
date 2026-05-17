@@ -1,9 +1,9 @@
 package coin.coinzzickmock.feature.market.job;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketMinuteClosedEvent;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;

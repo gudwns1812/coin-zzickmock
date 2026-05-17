@@ -8,7 +8,7 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.application.service.AccountRefillDatePolicy;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
-import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
+import coin.coinzzickmock.feature.member.application.dto.MemberProfileResult;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

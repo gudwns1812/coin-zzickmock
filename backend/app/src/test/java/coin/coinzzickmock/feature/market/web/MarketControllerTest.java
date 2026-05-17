@@ -7,7 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.time.Instant;

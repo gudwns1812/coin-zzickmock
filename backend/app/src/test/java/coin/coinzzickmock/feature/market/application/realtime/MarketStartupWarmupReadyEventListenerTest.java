@@ -1,5 +1,10 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketSummaryProjector;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.implement.MarketFundingScheduleLookup;
+import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
+import coin.coinzzickmock.feature.market.application.implement.MarketSupportedMarketRefresher;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -38,7 +43,8 @@ class MarketStartupWarmupReadyEventListenerTest {
                 marketDataGateway,
                 marketSnapshotStore,
                 applicationEventPublisher,
-                defaultFundingScheduleLookup()
+                defaultFundingScheduleLookup(),
+                new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup())
         );
         MarketStartupWarmupReadyEventListener listener =
                 new MarketStartupWarmupReadyEventListener(marketSupportedMarketRefresher);

@@ -1,5 +1,8 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
+import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
+import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;

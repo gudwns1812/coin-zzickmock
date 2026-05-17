@@ -1,8 +1,8 @@
 package coin.coinzzickmock.feature.market.infrastructure.config;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketCandleUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryFinalizedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.web.MarketCandleRealtimeSseBroker;
 import coin.coinzzickmock.feature.market.web.MarketRealtimeSseBroker;
 import coin.coinzzickmock.feature.market.web.MarketStreamBroker;

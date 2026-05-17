@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.application.history;
 
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
 import java.time.Instant;

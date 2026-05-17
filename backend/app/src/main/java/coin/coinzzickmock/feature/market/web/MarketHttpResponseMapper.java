@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.market.web;
 
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import java.math.BigDecimal;
 import java.util.Objects;
 

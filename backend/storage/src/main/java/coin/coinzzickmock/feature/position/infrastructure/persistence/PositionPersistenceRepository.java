@@ -3,8 +3,8 @@ package coin.coinzzickmock.feature.position.infrastructure.persistence;
 import static coin.coinzzickmock.feature.position.infrastructure.persistence.QOpenPositionEntity.openPositionEntity;
 
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.querydsl.jpa.impl.JPAUpdateClause;

@@ -5,7 +5,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.activity.application.service.RecordMemberActivityService;
 import coin.coinzzickmock.feature.activity.domain.ActivitySource;
-import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
+import coin.coinzzickmock.feature.member.application.dto.MemberProfileResult;
 import coin.coinzzickmock.feature.member.application.service.AuthenticateMemberService;
 import coin.coinzzickmock.feature.member.application.service.CheckMemberAvailabilityService;
 import coin.coinzzickmock.feature.member.application.service.GetMemberProfileService;

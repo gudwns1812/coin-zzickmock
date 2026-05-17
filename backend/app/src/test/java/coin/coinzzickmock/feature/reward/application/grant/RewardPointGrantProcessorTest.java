@@ -1,9 +1,9 @@
 package coin.coinzzickmock.feature.reward.application.grant;
 
-import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
+import coin.coinzzickmock.feature.reward.application.dto.GrantProfitPointCommand;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointHistoryRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
-import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardPointResult;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistoryType;
 import coin.coinzzickmock.feature.reward.domain.RewardPointPolicy;

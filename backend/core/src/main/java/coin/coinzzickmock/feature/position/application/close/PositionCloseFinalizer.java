@@ -16,9 +16,9 @@ import coin.coinzzickmock.feature.position.application.result.PositionMutationRe
 import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
+import coin.coinzzickmock.feature.reward.application.dto.GrantProfitPointCommand;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
-import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardPointResult;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

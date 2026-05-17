@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.reward.web;
 
-import coin.coinzzickmock.feature.reward.application.result.RewardPointHistoryResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardPointHistoryResult;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistoryType;
 
 public record RewardPointHistoryResponse(

@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.reward.application.result;
+package coin.coinzzickmock.feature.reward.application.dto;
 
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistory;
 import coin.coinzzickmock.feature.reward.domain.RewardPointHistoryType;

@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.reward.application.service;
 
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopHistoryRepository;
-import coin.coinzzickmock.feature.reward.application.result.RewardShopHistoryResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardShopHistoryResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

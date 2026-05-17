@@ -15,13 +15,11 @@ import coin.coinzzickmock.feature.community.application.query.ListCommunityComme
 import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.application.result.CommunityCommentListResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityCommentMutationResult;
-import coin.coinzzickmock.feature.community.application.result.CommunityCommentResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityImageUploadPresignedUrlResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityLikeResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityPostListResult;
 import coin.coinzzickmock.feature.community.application.result.CommunityPostMutationResult;
-import coin.coinzzickmock.feature.community.application.result.CommunityPostSummaryResult;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityCommentService;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityPostService;
 import coin.coinzzickmock.feature.community.application.service.DeleteCommunityCommentService;
@@ -34,12 +32,22 @@ import coin.coinzzickmock.feature.community.application.service.ToggleCommunityP
 import coin.coinzzickmock.feature.community.application.service.UpdateCommunityPostService;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
+import coin.coinzzickmock.feature.community.web.request.CommunityCommentCreateRequest;
+import coin.coinzzickmock.feature.community.web.request.CommunityImageUploadPresignRequest;
+import coin.coinzzickmock.feature.community.web.request.CommunityPostUpsertRequest;
+import coin.coinzzickmock.feature.community.web.response.CommunityCommentListResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityCommentMutationResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityDeleteResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityImageUploadPresignedUrlResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityLikeResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityPostDetailResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityPostListResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityPostMutationResponse;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -84,7 +92,10 @@ public class CommunityController {
             GenerateCommunityImageUploadPresignedUrlService generateImageUploadPresignedUrlService,
             Providers providers,
             ObjectMapper objectMapper,
-            @Value("${coin.community.images.allowed-src-prefixes:https://}") String allowedImageSrcPrefixes
+            @Value("${coin.community.images.allowed-src-prefixes:}") String allowedImageSrcPrefixes,
+            @Value("${coin.community.s3.public-base-url:}") String publicBaseUrl,
+            @Value("${coin.community.s3.bucket:coin-zzickmock-community-local-672420933257-ap-southeast-2-an}") String bucket,
+            @Value("${coin.community.s3.region:ap-southeast-2}") String region
     ) {
         this.listCommunityPostsService = listCommunityPostsService;
         this.getCommunityPostService = getCommunityPostService;
@@ -98,7 +109,12 @@ public class CommunityController {
         this.generateImageUploadPresignedUrlService = generateImageUploadPresignedUrlService;
         this.providers = providers;
         this.objectMapper = objectMapper;
-        this.allowedImageSrcPrefixes = Arrays.stream(allowedImageSrcPrefixes.split(","))
+        this.allowedImageSrcPrefixes = Arrays.stream(resolveAllowedImageSrcPrefixes(
+                        allowedImageSrcPrefixes,
+                        publicBaseUrl,
+                        bucket,
+                        region
+                ).split(","))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .toList();
@@ -202,21 +218,27 @@ public class CommunityController {
             @PathVariable Long commentId
     ) {
         Actor actor = providers.auth().currentActor();
-        deleteCommunityCommentService.execute(new DeleteCommunityCommentCommand(postId, commentId, actor.memberId(), actor.admin()));
+        deleteCommunityCommentService.execute(
+                new DeleteCommunityCommentCommand(postId, commentId, actor.memberId(), actor.admin())
+        );
         return ApiResponse.success(new CommunityDeleteResponse(true));
     }
 
     @PostMapping("/posts/{postId}/like")
     public ApiResponse<CommunityLikeResponse> like(@PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
-        CommunityLikeResult result = toggleCommunityPostLikeService.like(new ToggleCommunityPostLikeCommand(postId, actor.memberId()));
+        CommunityLikeResult result = toggleCommunityPostLikeService.like(
+                new ToggleCommunityPostLikeCommand(postId, actor.memberId())
+        );
         return ApiResponse.success(CommunityLikeResponse.from(result));
     }
 
     @DeleteMapping("/posts/{postId}/like")
     public ApiResponse<CommunityLikeResponse> unlike(@PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
-        CommunityLikeResult result = toggleCommunityPostLikeService.unlike(new ToggleCommunityPostLikeCommand(postId, actor.memberId()));
+        CommunityLikeResult result = toggleCommunityPostLikeService.unlike(
+                new ToggleCommunityPostLikeCommand(postId, actor.memberId())
+        );
         return ApiResponse.success(CommunityLikeResponse.from(result));
     }
 
@@ -271,135 +293,25 @@ public class CommunityController {
         return TiptapContentPolicy.withImages(imageObjectKeys, allowedImageSrcPrefixes);
     }
 
+    private static String resolveAllowedImageSrcPrefixes(
+            String allowedImageSrcPrefixes,
+            String publicBaseUrl,
+            String bucket,
+            String region
+    ) {
+        if (allowedImageSrcPrefixes != null && !allowedImageSrcPrefixes.isBlank()) {
+            return allowedImageSrcPrefixes;
+        }
+        if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
+            return publicBaseUrl;
+        }
+        return "https://" + bucket.trim() + ".s3." + region.trim() + ".amazonaws.com";
+    }
+
     private static <T> T requireRequest(T request) {
         if (request == null) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         return request;
-    }
-}
-
-record CommunityPostUpsertRequest(String category, String title, JsonNode contentJson, Set<String> imageObjectKeys) {
-    Set<String> safeImageObjectKeys() {
-        return imageObjectKeys == null ? Set.of() : Set.copyOf(imageObjectKeys);
-    }
-}
-
-record CommunityCommentCreateRequest(String content) {
-}
-
-record CommunityImageUploadPresignRequest(String fileName, String contentType, long sizeBytes) {
-}
-
-record CommunityPostListResponse(
-        List<CommunityPostSummaryResponse> pinnedNotices,
-        List<CommunityPostSummaryResponse> posts,
-        CommunityPageResponse page
-) {
-    static CommunityPostListResponse from(CommunityPostListResult result) {
-        return new CommunityPostListResponse(
-                result.pinnedNotices().stream().map(CommunityPostSummaryResponse::from).toList(),
-                result.posts().stream().map(CommunityPostSummaryResponse::from).toList(),
-                new CommunityPageResponse(result.page(), result.size(), result.totalElements(), result.totalPages(), result.hasNext())
-        );
-    }
-}
-
-record CommunityPostSummaryResponse(
-        Long id,
-        CommunityCategory category,
-        String title,
-        String authorNickname,
-        long viewCount,
-        long likeCount,
-        long commentCount,
-        Instant createdAt
-) {
-    static CommunityPostSummaryResponse from(CommunityPostSummaryResult result) {
-        return new CommunityPostSummaryResponse(result.id(), result.category(), result.title(), result.authorNickname(),
-                result.viewCount(), result.likeCount(), result.commentCount(), result.createdAt());
-    }
-}
-
-record CommunityPostDetailResponse(
-        Long id,
-        CommunityCategory category,
-        String title,
-        String authorNickname,
-        String contentJson,
-        long viewCount,
-        long likeCount,
-        long commentCount,
-        boolean canEdit,
-        boolean canDelete,
-        boolean likedByMe,
-        Instant createdAt,
-        Instant updatedAt
-) {
-    static CommunityPostDetailResponse from(CommunityPostDetailResult result) {
-        return new CommunityPostDetailResponse(result.id(), result.category(), result.title(), result.authorNickname(),
-                result.contentJson(), result.viewCount(), result.likeCount(), result.commentCount(), result.canEdit(),
-                result.canDelete(), result.isLikedByMe(), result.createdAt(), result.updatedAt());
-    }
-}
-
-record CommunityPageResponse(int page, int size, long totalElements, int totalPages, boolean hasNext) {
-}
-
-record CommunityPostMutationResponse(Long postId) {
-    static CommunityPostMutationResponse from(CommunityPostMutationResult result) {
-        return new CommunityPostMutationResponse(result.postId());
-    }
-}
-
-record CommunityCommentListResponse(List<CommunityCommentResponse> comments, CommunityPageResponse page) {
-    static CommunityCommentListResponse from(CommunityCommentListResult result) {
-        return new CommunityCommentListResponse(
-                result.comments().stream().map(CommunityCommentResponse::from).toList(),
-                new CommunityPageResponse(result.page(), result.size(), result.totalElements(), result.totalPages(), result.hasNext())
-        );
-    }
-}
-
-record CommunityCommentResponse(
-        Long id,
-        Long postId,
-        String authorNickname,
-        String content,
-        boolean canDelete,
-        Instant createdAt
-) {
-    static CommunityCommentResponse from(CommunityCommentResult result) {
-        return new CommunityCommentResponse(result.id(), result.postId(), result.authorNickname(), result.content(),
-                result.canDelete(), result.createdAt());
-    }
-}
-
-record CommunityCommentMutationResponse(Long commentId) {
-    static CommunityCommentMutationResponse from(CommunityCommentMutationResult result) {
-        return new CommunityCommentMutationResponse(result.commentId());
-    }
-}
-
-record CommunityLikeResponse(Long postId, boolean likedByMe) {
-    static CommunityLikeResponse from(CommunityLikeResult result) {
-        return new CommunityLikeResponse(result.postId(), result.isLikedByMe());
-    }
-}
-
-record CommunityDeleteResponse(boolean deleted) {
-}
-
-record CommunityImageUploadPresignedUrlResponse(
-        String uploadUrl,
-        String objectKey,
-        String publicUrl,
-        String contentType,
-        Instant expiresAt,
-        long maxBytes
-) {
-    static CommunityImageUploadPresignedUrlResponse from(CommunityImageUploadPresignedUrlResult result) {
-        return new CommunityImageUploadPresignedUrlResponse(result.uploadUrl(), result.objectKey(), result.publicUrl(),
-                result.contentType(), result.expiresAt(), result.maxBytes());
     }
 }

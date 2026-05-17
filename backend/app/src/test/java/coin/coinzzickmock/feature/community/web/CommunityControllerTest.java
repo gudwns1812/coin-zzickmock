@@ -19,6 +19,8 @@ import coin.coinzzickmock.feature.community.application.service.ListCommunityCom
 import coin.coinzzickmock.feature.community.application.service.ListCommunityPostsService;
 import coin.coinzzickmock.feature.community.application.service.ToggleCommunityPostLikeService;
 import coin.coinzzickmock.feature.community.application.service.UpdateCommunityPostService;
+import coin.coinzzickmock.feature.community.web.request.CommunityImageUploadPresignRequest;
+import coin.coinzzickmock.feature.community.web.response.CommunityImageUploadPresignedUrlResponse;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
@@ -89,7 +91,10 @@ class CommunityControllerTest {
                 presign,
                 providers,
                 new ObjectMapper(),
-                "https://cdn.example/"
+                "https://cdn.example/",
+                "",
+                "bucket",
+                "ap-southeast-2"
         );
     }
 }

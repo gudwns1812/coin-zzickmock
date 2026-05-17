@@ -13,7 +13,7 @@ import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketData
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.implement.OrderPendingExecutionCache;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderPendingFillProcessor;

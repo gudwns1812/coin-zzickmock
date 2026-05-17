@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import java.math.BigDecimal;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

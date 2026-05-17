@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.common.cache.CoinCacheNames;
 import java.util.LinkedHashSet;
 import java.util.List;

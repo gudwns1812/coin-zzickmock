@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.history;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryPersistenceResult;
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryPersistenceStatus;

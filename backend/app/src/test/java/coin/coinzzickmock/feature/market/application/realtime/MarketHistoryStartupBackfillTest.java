@@ -5,8 +5,8 @@ import static org.mockito.Mockito.mock;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryRecorder;
-import coin.coinzzickmock.feature.market.application.realtime.CompletedHourlyCandleBuilder;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
+import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;

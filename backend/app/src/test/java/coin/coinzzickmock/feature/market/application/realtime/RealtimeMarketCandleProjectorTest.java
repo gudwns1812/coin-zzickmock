@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketCandleProjector;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 

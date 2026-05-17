@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.market.application.repair;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryPersistenceResult;
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryPersistenceStatus;
-import coin.coinzzickmock.feature.market.application.realtime.MarketHistoryRecorder;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import java.time.Instant;

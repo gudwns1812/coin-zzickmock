@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.account.web;
 
-import coin.coinzzickmock.feature.account.application.result.WalletHistoryResult;
+import coin.coinzzickmock.feature.account.application.dto.WalletHistoryResult;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;

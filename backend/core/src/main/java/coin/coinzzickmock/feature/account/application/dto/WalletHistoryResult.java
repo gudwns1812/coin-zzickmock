@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.account.application.result;
+package coin.coinzzickmock.feature.account.application.dto;
 
 import coin.coinzzickmock.feature.account.domain.WalletHistorySnapshot;
 import java.math.BigDecimal;

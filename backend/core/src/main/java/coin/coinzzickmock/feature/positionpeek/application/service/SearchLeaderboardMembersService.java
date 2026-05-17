@@ -5,7 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekTargetResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetResult;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;

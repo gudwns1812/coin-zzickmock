@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.testsupport.TestConnectorProvider;

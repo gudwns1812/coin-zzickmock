@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.order.application.implement.OrderPendingFillProcessor;
 import coin.coinzzickmock.feature.order.application.implement.OrderPositionLiquidationProcessor;

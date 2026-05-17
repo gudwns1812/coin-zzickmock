@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.math.BigDecimal;
 import java.time.Instant;

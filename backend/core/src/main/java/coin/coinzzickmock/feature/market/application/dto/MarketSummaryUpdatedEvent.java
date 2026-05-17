@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.dto;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 

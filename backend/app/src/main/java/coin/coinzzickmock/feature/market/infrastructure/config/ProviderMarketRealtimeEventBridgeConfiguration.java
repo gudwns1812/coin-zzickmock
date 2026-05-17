@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.config;
 
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
 import coin.coinzzickmock.feature.market.application.realtime.ProviderMarketRealtimeEventBridge;
 import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovementPublisher;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleUpdateService;

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
 import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovementPublisher;
 import coin.coinzzickmock.feature.order.application.implement.OrderMarketTradeMovementQueue;
 import lombok.RequiredArgsConstructor;

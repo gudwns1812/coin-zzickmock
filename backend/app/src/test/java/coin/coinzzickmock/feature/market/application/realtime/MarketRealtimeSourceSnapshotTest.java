@@ -1,5 +1,9 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeHealth;
+import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeReconnectState;
+import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceSnapshot;
+import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceType;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

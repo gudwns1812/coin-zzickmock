@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceSnapshot;
+import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;

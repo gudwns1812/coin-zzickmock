@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.time.Instant;

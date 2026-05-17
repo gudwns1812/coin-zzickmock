@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketTime;

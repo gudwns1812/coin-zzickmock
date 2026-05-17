@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketHistoryPersistenceResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketHistoryPersistenceStatus;
 import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
 import java.time.Instant;
 import java.util.LinkedHashMap;

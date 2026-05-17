@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

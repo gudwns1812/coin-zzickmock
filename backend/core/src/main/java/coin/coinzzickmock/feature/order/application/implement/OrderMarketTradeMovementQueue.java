@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketTradePriceMovedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;

@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;

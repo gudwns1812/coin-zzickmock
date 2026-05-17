@@ -1,8 +1,8 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

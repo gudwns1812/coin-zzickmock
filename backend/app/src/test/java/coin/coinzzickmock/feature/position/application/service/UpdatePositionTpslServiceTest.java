@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.position.application.service;
 
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,8 +12,6 @@ import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.leaderboard.web;
 
-import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardMemberRankResult;
 
 public record LeaderboardMemberRankResponse(
         int rank

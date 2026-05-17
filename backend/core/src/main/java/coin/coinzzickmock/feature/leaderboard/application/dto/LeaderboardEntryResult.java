@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.leaderboard.application.result;
+package coin.coinzzickmock.feature.leaderboard.application.dto;
 
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 

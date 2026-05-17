@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.leaderboard.infrastructure.store;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardMemberRankResult;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;

@@ -158,11 +158,20 @@
 - 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
 - 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며
   `application-prod.yml`, `docker-compose.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.
-- 커뮤니티 이미지 업로드는 backend-only S3 presign 설정으로 관리한다. `S3_BUCKET`, `S3_REGION`, `PUBLIC_CDN_BASE_URL`
-  또는 `CDN_BASE_URL`, `S3_KEY_PREFIX`, `COMMUNITY_IMAGE_ALLOWED_MIME`, `COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES`,
+- 커뮤니티 이미지 업로드는 backend-only S3 presign 설정으로 관리한다. `S3_BUCKET`, `S3_REGION`, optional `PUBLIC_CDN_BASE_URL`
+  또는 `CDN_BASE_URL`, `S3_KEY_PREFIX`, `COMMUNITY_IMAGE_ALLOWED_MIME`, optional `COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES`,
   `COMMUNITY_IMAGE_MAX_BYTES`, `COMMUNITY_IMAGE_PRESIGN_TTL`을 서버 환경에 주입하고,
   AWS 접근 권한은 인스턴스 역할이나 AWS SDK credential provider chain으로 공급한다. AWS access key/secret, presigned URL,
   업로드 credential 원문은 예시 파일·로그·릴리즈 기록에 남기지 않는다.
+- 로컬 `docker-compose.yml`은 `.env`의 optional `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`,
+  `AWS_PROFILE`을 backend 컨테이너에 전달하고, host `${HOME}/.aws`를 `/home/app/.aws`로 read-only mount한다.
+  로컬에서 `aws configure` profile을 쓰면 `AWS_PROFILE`을 해당 profile 이름으로 맞추고, access key/secret을 직접 쓰면
+  `.env`에 secret 값을 넣되 Git에 커밋하지 않는다.
+- 운영 `docker-compose.prod.yml`에는 local AWS profile/access key 전달을 추가하지 않는다. 운영 S3 접근은 EC2 instance role
+  또는 서버 전용 credential provider chain으로 공급하고, 운영 credential 원문은 `.env.prod` 예시나 릴리즈 문서에 기록하지 않는다.
+- `PUBLIC_CDN_BASE_URL`/`CDN_BASE_URL`이 비어 있으면 backend는 `S3_BUCKET`과 `S3_REGION`으로
+  `https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com` public URL prefix를 계산한다. compose runtime에는 S3 관련 환경 변수를
+  backend 컨테이너 환경으로 전달해야 한다.
 - 커뮤니티 이미지 bucket/CORS는 프론트 배포 origin에서 `PUT`, `OPTIONS` preflight가 성공하도록 구성해야 한다.
   최소 허용 header는 `Content-Type`, `Content-MD5`, `x-amz-*`이며 임시 credential 구성이면 `x-amz-security-token`도 허용한다.
   CDN을 쓰면 `COMMUNITY_IMAGE_ALLOWED_SRC_PREFIXES`는 실제 public/CDN prefix와 일치해야 한다.

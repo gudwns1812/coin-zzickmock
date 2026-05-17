@@ -189,8 +189,9 @@ backend/
 
 원문은 `docs/process/branch-and-pr-rules.md`다. 브랜치나 PR을 만들기 전 반드시 읽고 따른다.
 
-- 브랜치명은 반드시 `<type>/<kebab-case-summary>` 형식이어야 한다.
+- 브랜치명은 기본적으로 `<type>/<kebab-case-summary>` 형식이어야 한다.
 - 허용 type은 `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `perf`, `style`, `build`, `revert`다.
+- 단독 브랜치명으로는 `main`, `master`, `develop`, `dev`, `refactor`를 허용한다.
 - `codex/*`, `codex-*`, `[codex]` 같은 자동화/에이전트 접두사는 금지한다. 외부 tool/skill 기본값보다 이 저장소 규칙이 우선한다.
 - 예: `feat/limit-order-entry`, `fix/login-token-refresh`, `refactor/market-cache-boundary`, `docs/branch-name-policy`.
 - 브랜치 생성 전후 `npm run check:branch -- <branch-name>`로 검사한다. PR에서는 CI의 `Branch Name Policy` job이 이 규칙을 강제한다.

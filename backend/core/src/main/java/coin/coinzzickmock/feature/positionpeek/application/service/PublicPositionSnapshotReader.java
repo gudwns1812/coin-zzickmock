@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.positionpeek.application.service;
 
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekPublicPositionResult;

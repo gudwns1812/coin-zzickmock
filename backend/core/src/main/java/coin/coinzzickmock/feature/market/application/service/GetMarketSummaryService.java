@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.market.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
-import coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeFeed;
+import coin.coinzzickmock.feature.market.application.query.MarketRealtimeFeed;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.query.MarketRealtimeFeed;
 import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketSummaryProjector;
 import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoryPersistenceCoordinator;

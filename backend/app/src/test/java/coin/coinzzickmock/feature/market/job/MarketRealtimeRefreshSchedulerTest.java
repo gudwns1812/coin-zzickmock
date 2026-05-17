@@ -1,8 +1,10 @@
 package coin.coinzzickmock.feature.market.job;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketRealtimeFeed;
+import coin.coinzzickmock.feature.market.application.implement.MarketRealtimeRefreshCoordinator;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,29 +19,12 @@ class MarketRealtimeRefreshSchedulerTest {
     }
 
     @Test
-    void delegatesRefreshWorkToApplicationFeed() {
-        RecordingMarketRealtimeFeed feed = new RecordingMarketRealtimeFeed();
-        MarketRealtimeRefreshScheduler scheduler = new MarketRealtimeRefreshScheduler(feed);
+    void delegatesRefreshWorkToApplicationCoordinator() {
+        MarketRealtimeRefreshCoordinator coordinator = mock(MarketRealtimeRefreshCoordinator.class);
+        MarketRealtimeRefreshScheduler scheduler = new MarketRealtimeRefreshScheduler(coordinator);
 
         scheduler.refreshSupportedMarkets();
 
-        assertEquals(1, feed.calls());
-    }
-
-    private static class RecordingMarketRealtimeFeed extends MarketRealtimeFeed {
-        private int calls;
-
-        private RecordingMarketRealtimeFeed() {
-            super(null, null, null);
-        }
-
-        @Override
-        public void refreshSupportedMarkets() {
-            calls++;
-        }
-
-        private int calls() {
-            return calls;
-        }
+        verify(coordinator).refreshSupportedMarkets();
     }
 }

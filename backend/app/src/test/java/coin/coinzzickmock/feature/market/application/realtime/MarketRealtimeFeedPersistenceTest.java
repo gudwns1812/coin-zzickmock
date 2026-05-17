@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.query.MarketRealtimeFeed;
 import coin.coinzzickmock.feature.market.application.history.MarketMinuteCandleHistoryListener;
 import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
 import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;

@@ -3,8 +3,8 @@ package coin.coinzzickmock.feature.leaderboard.web;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardEntryResult;
-import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardEntryResult;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;

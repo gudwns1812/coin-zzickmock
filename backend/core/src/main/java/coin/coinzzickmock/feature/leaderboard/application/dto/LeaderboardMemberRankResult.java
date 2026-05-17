@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.leaderboard.application.result;
+package coin.coinzzickmock.feature.leaderboard.application.dto;
 
 public record LeaderboardMemberRankResult(
         int rank

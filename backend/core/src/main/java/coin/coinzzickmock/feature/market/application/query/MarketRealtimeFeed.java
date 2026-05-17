@@ -1,5 +1,6 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.query;
 
+import coin.coinzzickmock.feature.market.application.implement.MarketRealtimeRefreshCoordinator;
 import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
 import coin.coinzzickmock.feature.market.application.implement.MarketSupportedMarketRefresher;
 import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
@@ -15,27 +16,27 @@ import org.springframework.stereotype.Component;
 @Component
 public class MarketRealtimeFeed {
 
-    private final MarketSupportedMarketRefresher marketSupportedMarketRefresher;
+    private final MarketRealtimeRefreshCoordinator marketRealtimeRefreshCoordinator;
     private final MarketSnapshotStore marketSnapshotStore;
     private final RealtimeMarketSummaryProjector realtimeMarketSummaryProjector;
 
     @Autowired
     public MarketRealtimeFeed(
-            MarketSupportedMarketRefresher marketSupportedMarketRefresher,
+            MarketRealtimeRefreshCoordinator marketRealtimeRefreshCoordinator,
             MarketSnapshotStore marketSnapshotStore,
             RealtimeMarketSummaryProjector realtimeMarketSummaryProjector
     ) {
-        this.marketSupportedMarketRefresher = marketSupportedMarketRefresher;
+        this.marketRealtimeRefreshCoordinator = marketRealtimeRefreshCoordinator;
         this.marketSnapshotStore = marketSnapshotStore;
         this.realtimeMarketSummaryProjector = realtimeMarketSummaryProjector;
     }
 
-    MarketRealtimeFeed(
+    public MarketRealtimeFeed(
             MarketSupportedMarketRefresher marketSupportedMarketRefresher,
             MarketSnapshotStore marketSnapshotStore
     ) {
         this(
-                marketSupportedMarketRefresher,
+                new MarketRealtimeRefreshCoordinator(marketSupportedMarketRefresher),
                 marketSnapshotStore,
                 new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(),
                         symbol -> FundingSchedule.defaultUsdtPerpetual())
@@ -43,7 +44,7 @@ public class MarketRealtimeFeed {
     }
 
     public void refreshSupportedMarkets() {
-        marketSupportedMarketRefresher.refreshSupportedMarkets();
+        marketRealtimeRefreshCoordinator.refreshSupportedMarkets();
     }
 
     public MarketSummaryResult getMarket(String symbol) {
@@ -64,7 +65,7 @@ public class MarketRealtimeFeed {
 
     public List<MarketSummaryResult> getSupportedMarkets() {
         if (!marketSnapshotStore.hasSupportedMarkets()) {
-            marketSupportedMarketRefresher.refreshSupportedMarkets();
+            marketRealtimeRefreshCoordinator.refreshSupportedMarkets();
         }
 
         return marketSnapshotStore.getSupportedMarkets().stream()

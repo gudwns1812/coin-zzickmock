@@ -10,7 +10,7 @@ import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.dto.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;

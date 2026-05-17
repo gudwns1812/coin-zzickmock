@@ -6,7 +6,7 @@ import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.dto.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;

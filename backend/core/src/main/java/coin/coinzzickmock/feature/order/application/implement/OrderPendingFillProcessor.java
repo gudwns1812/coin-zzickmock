@@ -6,7 +6,7 @@ import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEv
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;

@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.query;
 
 import coin.coinzzickmock.feature.market.application.implement.MarketRealtimeFreshnessPolicy;
 import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;

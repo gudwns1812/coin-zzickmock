@@ -17,6 +17,6 @@ public record CommunityPostTitle(String value) {
     }
 
     private static CoreException invalid() {
-        return new CoreException(ErrorCode.INVALID_REQUEST);
+        return new CoreException(ErrorCode.COMMUNITY_POST_INVALID_TITLE);
     }
 }

@@ -20,9 +20,46 @@ test("community client mutations use backend-approved presign upload data", () =
   assert.match(api, /presignCommunityImageUpload/);
   assert.match(api, /uploadCommunityImageToPresignedUrl/);
   assert.match(api, /if \(!response\.ok\)/);
-  assert.match(editor, /objectKey: presign\.objectKey/);
-  assert.match(editor, /src: presign\.publicUrl/);
+  assert.match(editor, /objectKey: uploadedImage\.objectKey/);
+  assert.match(editor, /src: uploadedImage\.publicUrl/);
   assert.doesNotMatch(editor, /URL\.createObjectURL/);
+});
+
+test("community editor routes picker drop and paste images through the same safe upload policy", () => {
+  const editor = source(
+    "components/router/(main)/community/CommunityPostEditorClient.tsx"
+  );
+  const policy = source(
+    "components/router/(main)/community/community-editor-image-policy.ts"
+  );
+
+  assert.match(editor, /handleDrop/);
+  assert.match(editor, /handlePaste/);
+  assert.match(editor, /insertImageFilesIntoEditor/);
+  assert.match(editor, /uploadCommunityEditorImage/);
+  assert.match(editor, /insertUploadedImage/);
+  assert.match(editor, /addInputRules\(\)\s*{\s*return \[\];\s*}/);
+  assert.match(editor, /containsUnsupportedImageNode/);
+  assert.match(policy, /containsUnsupportedCommunityEditorImagePayload/);
+  assert.match(policy, /COMMUNITY_EDITOR_ACCEPTED_IMAGE_TYPES/);
+  assert.doesNotMatch(policy, /containsExternalImageUrl/);
+});
+
+test("community editor user-facing copy hides infrastructure terminology", () => {
+  const editor = source(
+    "components/router/(main)/community/CommunityPostEditorClient.tsx"
+  );
+  const policy = source(
+    "components/router/(main)/community/community-editor-image-policy.ts"
+  );
+  const api = source("lib/futures-client-api.ts");
+
+  assert.doesNotMatch(
+    editor,
+    /이미지는 백엔드가 승인한 presigned URL 업로드 후 본문에 삽입됩니다/
+  );
+  assert.doesNotMatch(policy, /S3|CORS|backend|백엔드/i);
+  assert.doesNotMatch(api, /S3 CORS/);
 });
 
 test("community write UI keeps NOTICE behind the admin flag", () => {

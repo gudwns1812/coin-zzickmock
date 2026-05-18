@@ -99,7 +99,7 @@ public class CommunityPostEntity extends AuditableEntity {
 
     public CommunityPost toDomain() {
         return CommunityPost.restore(id, authorMemberId, authorNickname, CommunityCategory.valueOf(category), title,
-                TiptapJsonDocument.of(contentJson), viewCount, likeCount, commentCount, deletedAt,
+                TiptapJsonDocument.restore(contentJson), viewCount, likeCount, commentCount, deletedAt,
                 createdAt(), updatedAt(), version);
     }
 

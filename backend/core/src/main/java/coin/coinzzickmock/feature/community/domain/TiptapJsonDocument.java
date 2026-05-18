@@ -47,7 +47,12 @@ public final class TiptapJsonDocument {
     }
 
     public static TiptapJsonDocument of(String rawJson, TiptapJsonImagePolicy imagePolicy) {
-        validate(rawJson, imagePolicy);
+        validate(rawJson, imagePolicy, false);
+        return new TiptapJsonDocument(rawJson);
+    }
+
+    public static TiptapJsonDocument restore(String rawJson) {
+        validate(rawJson, null, true);
         return new TiptapJsonDocument(rawJson);
     }
 
@@ -55,7 +60,7 @@ public final class TiptapJsonDocument {
         return value;
     }
 
-    private static void validate(String rawJson, TiptapJsonImagePolicy imagePolicy) {
+    private static void validate(String rawJson, TiptapJsonImagePolicy imagePolicy, boolean trustStoredImages) {
         if (rawJson == null || rawJson.isBlank()) {
             throw invalid();
         }
@@ -64,7 +69,7 @@ public final class TiptapJsonDocument {
         }
 
         Object parsed = new JsonParser(rawJson).parse();
-        ValidationState state = new ValidationState(imagePolicy);
+        ValidationState state = new ValidationState(imagePolicy, trustStoredImages);
         validateNode(parsed, 1, state);
         if (state.textLength > MAX_EXTRACTED_TEXT_LENGTH) {
             throw invalid();
@@ -89,7 +94,8 @@ public final class TiptapJsonDocument {
 
         switch (type) {
             case "doc" -> validateDoc(map, depth, state);
-            case "paragraph", "bulletList", "orderedList", "listItem", "blockquote" -> validateContainerNode(map, depth, state, type);
+            case "paragraph", "blockquote" -> validateOptionalContentBlockNode(map, depth, state);
+            case "bulletList", "orderedList", "listItem" -> validateRequiredContentContainerNode(map, depth, state);
             case "text" -> validateText(map, state);
             case "heading" -> validateHeading(map, depth, state);
             case "hardBreak" -> validateHardBreak(map);
@@ -104,7 +110,12 @@ public final class TiptapJsonDocument {
         validateChildren(array(map, "content"), depth + 1, state);
     }
 
-    private static void validateContainerNode(Map<?, ?> map, int depth, ValidationState state, String type) {
+    private static void validateOptionalContentBlockNode(Map<?, ?> map, int depth, ValidationState state) {
+        ensureAllowedKeys(map, Set.of("type", "content"));
+        validateChildren(optionalArray(map, "content"), depth + 1, state);
+    }
+
+    private static void validateRequiredContentContainerNode(Map<?, ?> map, int depth, ValidationState state) {
         ensureAllowedKeys(map, Set.of("type", "content"));
         validateChildren(array(map, "content"), depth + 1, state);
     }
@@ -118,12 +129,12 @@ public final class TiptapJsonDocument {
         if (headingLevel < 1 || headingLevel > 4 || headingLevel != level.doubleValue()) {
             throw invalid();
         }
-        validateChildren(array(map, "content"), depth + 1, state);
+        validateChildren(optionalArray(map, "content"), depth + 1, state);
     }
 
     private static void validateCodeBlock(Map<?, ?> map, int depth, ValidationState state) {
         ensureAllowedKeys(map, Set.of("type", "content"));
-        validateChildren(array(map, "content"), depth + 1, state);
+        validateChildren(optionalArray(map, "content"), depth + 1, state);
     }
 
     private static void validateHardBreak(Map<?, ?> map) {
@@ -153,8 +164,8 @@ public final class TiptapJsonDocument {
         ensureAllowedKeys(attrs, Set.of("src", "objectKey", "alt", "title"));
         String src = string(attrs, "src");
         String objectKey = string(attrs, "objectKey");
-        if (state.imagePolicy == null || !state.imagePolicy.accepts(objectKey, src)) {
-            throw invalid();
+        if (!state.trustStoredImages && (state.imagePolicy == null || !state.imagePolicy.accepts(objectKey, src))) {
+            throw imageNotAttachable();
         }
         state.imageCount++;
         if (state.imageCount > MAX_IMAGES) {
@@ -217,6 +228,17 @@ public final class TiptapJsonDocument {
         return list;
     }
 
+    private static List<?> optionalArray(Map<?, ?> map, String key) {
+        if (!map.containsKey(key)) {
+            return List.of();
+        }
+        Object value = map.get(key);
+        if (!(value instanceof List<?> list)) {
+            throw invalid();
+        }
+        return list;
+    }
+
     private static String string(Map<?, ?> map, String key) {
         Object value = map.get(key);
         if (!(value instanceof String string)) {
@@ -234,16 +256,22 @@ public final class TiptapJsonDocument {
     }
 
     private static CoreException invalid() {
-        return new CoreException(ErrorCode.INVALID_REQUEST);
+        return new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CONTENT);
+    }
+
+    private static CoreException imageNotAttachable() {
+        return new CoreException(ErrorCode.COMMUNITY_POST_IMAGE_NOT_ATTACHABLE);
     }
 
     private static final class ValidationState {
         private final TiptapJsonImagePolicy imagePolicy;
+        private final boolean trustStoredImages;
         private int textLength;
         private int imageCount;
 
-        private ValidationState(TiptapJsonImagePolicy imagePolicy) {
+        private ValidationState(TiptapJsonImagePolicy imagePolicy, boolean trustStoredImages) {
             this.imagePolicy = imagePolicy;
+            this.trustStoredImages = trustStoredImages;
         }
     }
 

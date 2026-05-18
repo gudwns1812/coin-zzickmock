@@ -32,7 +32,6 @@ public record CommunityPostImageIntent(
 
     public boolean canBeAttachedBy(Long memberId) {
         return uploaderMemberId.equals(memberId)
-                && objectKey.startsWith("community/" + memberId + "/")
                 && (status == CommunityPostImageStatus.PRESIGNED || status == CommunityPostImageStatus.ATTACHED);
     }
 

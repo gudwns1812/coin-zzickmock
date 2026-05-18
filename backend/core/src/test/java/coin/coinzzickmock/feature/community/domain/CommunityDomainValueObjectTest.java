@@ -43,6 +43,18 @@ class CommunityDomainValueObjectTest {
         );
 
         assertThat(image.canBeAttachedBy(7L)).isTrue();
+        assertThat(new CommunityPostImageIntent(
+                2L,
+                null,
+                7L,
+                "uploads/7/image.webp",
+                "https://cdn.example/uploads/7/image.webp",
+                "image/webp",
+                1234L,
+                CommunityPostImageStatus.PRESIGNED,
+                Instant.parse("2026-05-13T00:00:00Z"),
+                Instant.parse("2026-05-13T00:00:00Z")
+        ).canBeAttachedBy(7L)).isTrue();
         CommunityPostImageIntent attached = image.attachTo(10L, Instant.parse("2026-05-13T00:01:00Z"));
         assertThat(attached.status())
                 .isEqualTo(CommunityPostImageStatus.ATTACHED);

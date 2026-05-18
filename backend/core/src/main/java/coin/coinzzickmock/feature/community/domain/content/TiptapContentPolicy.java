@@ -27,9 +27,6 @@ public record TiptapContentPolicy(Set<String> approvedImageObjectKeys, List<Stri
                 || src.isBlank()) {
             return false;
         }
-        if (!objectKey.startsWith("community/")) {
-            return false;
-        }
         if (approvedImageObjectKeys.isEmpty() || !approvedImageObjectKeys.contains(objectKey)) {
             return false;
         }

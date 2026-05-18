@@ -16,7 +16,11 @@ export default function CommunityTiptapRenderer({ contentJson }: { contentJson: 
     );
   }
 
-  return <div className="space-y-4 text-base-custom leading-7 text-main-dark-gray">{renderChildren(document.content)}</div>;
+  return (
+    <div className="community-rich-content space-y-4 text-base-custom leading-7 text-main-dark-gray">
+      {renderChildren(document.content)}
+    </div>
+  );
 }
 
 function parseDocument(contentJson: string): TiptapNode | null {

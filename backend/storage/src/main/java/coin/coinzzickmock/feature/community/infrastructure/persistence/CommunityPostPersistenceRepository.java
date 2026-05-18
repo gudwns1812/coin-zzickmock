@@ -186,10 +186,8 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
     public List<CommunityPostImageIntent> findOwnedAttachable(Long uploaderMemberId, Collection<String> objectKeys) {
         Set<String> requested = new HashSet<>(objectKeys == null ? Set.of() : objectKeys);
         if (requested.isEmpty()) return List.of();
-        String requiredPrefix = "community/" + uploaderMemberId + "/";
         return imageEntityRepository.findByObjectKeyIn(requested).stream()
                 .filter(image -> uploaderMemberId.equals(image.uploaderMemberId()))
-                .filter(image -> image.objectKey().startsWith(requiredPrefix))
                 .filter(image -> ATTACHABLE_IMAGE_STATUSES.contains(image.status()))
                 .map(CommunityPostImageEntity::toDomain).toList();
     }
@@ -205,10 +203,8 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
         if (requested.isEmpty()) {
             return List.of();
         }
-        String requiredPrefix = "community/" + uploaderMemberId + "/";
         List<CommunityPostImageEntity> attachableImages = imageEntityRepository.findByObjectKeyIn(requested).stream()
                 .filter(image -> uploaderMemberId.equals(image.uploaderMemberId()))
-                .filter(image -> image.objectKey().startsWith(requiredPrefix))
                 .filter(image -> ATTACHABLE_IMAGE_STATUSES.contains(image.status()))
                 .toList();
         if (attachableImages.size() != requested.size()) {

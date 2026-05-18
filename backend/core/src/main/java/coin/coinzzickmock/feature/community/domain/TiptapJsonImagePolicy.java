@@ -2,11 +2,13 @@ package coin.coinzzickmock.feature.community.domain;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
-public record TiptapJsonImagePolicy(String objectKeyPrefix, List<String> allowedSrcPrefixes) {
+public record TiptapJsonImagePolicy(Set<String> approvedObjectKeys, List<String> allowedSrcPrefixes) {
     public TiptapJsonImagePolicy {
-        if (objectKeyPrefix == null || objectKeyPrefix.isBlank()) {
-            throw new IllegalArgumentException("objectKeyPrefix must not be blank");
+        approvedObjectKeys = Set.copyOf(Objects.requireNonNull(approvedObjectKeys, "approvedObjectKeys"));
+        if (approvedObjectKeys.isEmpty() || approvedObjectKeys.stream().anyMatch(key -> key == null || key.isBlank())) {
+            throw new IllegalArgumentException("approvedObjectKeys must not be blank");
         }
         allowedSrcPrefixes = List.copyOf(Objects.requireNonNull(allowedSrcPrefixes, "allowedSrcPrefixes"));
         if (allowedSrcPrefixes.isEmpty() || allowedSrcPrefixes.stream().anyMatch(prefix -> prefix == null || prefix.isBlank())) {
@@ -18,7 +20,7 @@ public record TiptapJsonImagePolicy(String objectKeyPrefix, List<String> allowed
         if (objectKey == null || src == null) {
             return false;
         }
-        if (!objectKey.startsWith(objectKeyPrefix)) {
+        if (!approvedObjectKeys.contains(objectKey)) {
             return false;
         }
         return allowedSrcPrefixes.stream().anyMatch(src::startsWith);

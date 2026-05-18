@@ -12,6 +12,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.persistence.AuditableEntity;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
+import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import coin.coinzzickmock.feature.community.domain.CommunityPostImageIntent;
 import coin.coinzzickmock.feature.community.domain.CommunityPostImageStatus;
 import java.lang.reflect.Field;
@@ -95,8 +96,8 @@ class CommunityPostPersistenceRepositoryTest {
     }
 
     @Test
-    void attachToPostRejectsImagesWithWrongObjectKeyPrefix() {
-        CommunityPostImageEntity image = image("community/11/wrong.png", 10L, CommunityPostImageStatus.PRESIGNED);
+    void attachToPostRejectsImagesOwnedByAnotherMember() {
+        CommunityPostImageEntity image = image("community/11/wrong.png", 11L, CommunityPostImageStatus.PRESIGNED);
         when(imageEntityRepository.findByObjectKeyIn(Set.of("community/11/wrong.png")))
                 .thenReturn(List.of(image));
 
@@ -108,6 +109,19 @@ class CommunityPostPersistenceRepositoryTest {
         )).isInstanceOf(CoreException.class);
 
         assertThat(image.postId()).isNull();
+    }
+
+    @Test
+    void attachToPostAllowsConfiguredNonCommunityObjectKeyPrefix() {
+        CommunityPostImageEntity image = image("uploads/10/ok.png", 10L, CommunityPostImageStatus.PRESIGNED);
+        setAuditTimestamps(image);
+        when(imageEntityRepository.findByObjectKeyIn(Set.of("uploads/10/ok.png")))
+                .thenReturn(List.of(image));
+
+        repository.attachToPost(1L, 10L, Set.of("uploads/10/ok.png"), CommunityImageStatus.ATTACHED);
+
+        assertThat(image.postId()).isEqualTo(1L);
+        assertThat(image.status()).isEqualTo(CommunityPostImageStatus.ATTACHED.name());
     }
 
     @Test
@@ -164,6 +178,32 @@ class CommunityPostPersistenceRepositoryTest {
     }
 
     @Test
+    void postEntityRestoresPersistedImageContentWithoutUploadPolicy() {
+        String imageContent = """
+                {"type":"doc","content":[
+                  {"type":"image","attrs":{"src":"https://cdn.example.com/community/10/ok.png","objectKey":"community/10/ok.png","alt":"ok.png"}}
+                ]}
+                """;
+        CommunityPostEntity entity = new CommunityPostEntity(
+                1L,
+                10L,
+                "writer",
+                "CHAT",
+                "image post",
+                imageContent,
+                0,
+                0,
+                0,
+                null
+        );
+        setAuditTimestamps(entity);
+
+        CommunityPost post = entity.toDomain();
+
+        assertThat(post.content().value()).contains("\"objectKey\":\"community/10/ok.png\"");
+    }
+
+    @Test
     void findLatestNoticesDoesNotQueryForNonPositiveLimit() {
         assertThat(repository.findLatestNotices(0)).isEmpty();
 
@@ -187,16 +227,16 @@ class CommunityPostPersistenceRepositoryTest {
         );
     }
 
-    private static void setAuditTimestamps(CommunityPostImageEntity image) {
-        setAuditTimestamp(image, "createdAt");
-        setAuditTimestamp(image, "updatedAt");
+    private static void setAuditTimestamps(Object entity) {
+        setAuditTimestamp(entity, "createdAt");
+        setAuditTimestamp(entity, "updatedAt");
     }
 
-    private static void setAuditTimestamp(CommunityPostImageEntity image, String fieldName) {
+    private static void setAuditTimestamp(Object entity, String fieldName) {
         try {
             Field field = AuditableEntity.class.getDeclaredField(fieldName);
             field.setAccessible(true);
-            field.set(image, Instant.parse("2026-05-13T00:00:00Z"));
+            field.set(entity, Instant.parse("2026-05-13T00:00:00Z"));
         } catch (ReflectiveOperationException exception) {
             throw new AssertionError(exception);
         }

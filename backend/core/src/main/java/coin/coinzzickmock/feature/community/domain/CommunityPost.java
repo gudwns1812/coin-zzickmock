@@ -262,11 +262,11 @@ public final class CommunityPost {
 
     private static String requireTitle(String title) {
         if (title == null) {
-            throw invalid();
+            throw invalidTitle();
         }
         String trimmed = title.trim();
         if (trimmed.isEmpty() || trimmed.length() > MAX_TITLE_LENGTH) {
-            throw invalid();
+            throw invalidTitle();
         }
         return trimmed;
     }
@@ -279,12 +279,20 @@ public final class CommunityPost {
 
     private static void requireCategory(CommunityCategory category) {
         if (category == null) {
-            throw invalid();
+            throw invalidCategory();
         }
     }
 
     private static CoreException invalid() {
         return new CoreException(ErrorCode.INVALID_REQUEST);
+    }
+
+    private static CoreException invalidCategory() {
+        return new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CATEGORY);
+    }
+
+    private static CoreException invalidTitle() {
+        return new CoreException(ErrorCode.COMMUNITY_POST_INVALID_TITLE);
     }
 
     public Long id() {

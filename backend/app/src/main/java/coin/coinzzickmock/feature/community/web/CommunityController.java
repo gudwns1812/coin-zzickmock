@@ -140,7 +140,7 @@ public class CommunityController {
                 actor.memberId(),
                 actor.nickname(),
                 actor.admin(),
-                parseCategory(requireRequest(request).category(), true),
+                parseCategory(request.category(), true),
                 request.title(),
                 jsonText(request.contentJson()),
                 request.safeImageObjectKeys(),
@@ -168,7 +168,7 @@ public class CommunityController {
                 postId,
                 actor.memberId(),
                 actor.admin(),
-                parseCategory(requireRequest(request).category(), true),
+                parseCategory(request.category(), true),
                 request.title(),
                 jsonText(request.contentJson()),
                 request.safeImageObjectKeys(),
@@ -207,7 +207,7 @@ public class CommunityController {
                 postId,
                 actor.memberId(),
                 actor.nickname(),
-                requireRequest(request).content()
+                request.content()
         ));
         return ApiResponse.success(CommunityCommentMutationResponse.from(result));
     }
@@ -250,7 +250,7 @@ public class CommunityController {
         CommunityImageUploadPresignedUrlResult result = generateImageUploadPresignedUrlService.execute(
                 new GenerateCommunityImageUploadPresignedUrlCommand(
                         actor.memberId(),
-                        requireRequest(request).fileName(),
+                        request.fileName(),
                         request.contentType(),
                         request.sizeBytes()
                 )
@@ -261,20 +261,20 @@ public class CommunityController {
     private CommunityCategory parseCategory(String category, boolean required) {
         if (category == null || category.isBlank()) {
             if (required) {
-                throw new CoreException(ErrorCode.INVALID_REQUEST);
+                throw new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CATEGORY);
             }
             return null;
         }
         try {
             return CommunityCategory.valueOf(category.trim());
         } catch (IllegalArgumentException exception) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CATEGORY);
         }
     }
 
     private String jsonText(JsonNode contentJson) {
         if (contentJson == null || contentJson.isNull()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CONTENT);
         }
         if (contentJson.isTextual()) {
             return contentJson.asText();
@@ -282,7 +282,7 @@ public class CommunityController {
         try {
             return objectMapper.writeValueAsString(contentJson);
         } catch (JsonProcessingException exception) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CONTENT);
         }
     }
 
@@ -308,10 +308,4 @@ public class CommunityController {
         return "https://" + bucket.trim() + ".s3." + region.trim() + ".amazonaws.com";
     }
 
-    private static <T> T requireRequest(T request) {
-        if (request == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        return request;
-    }
 }

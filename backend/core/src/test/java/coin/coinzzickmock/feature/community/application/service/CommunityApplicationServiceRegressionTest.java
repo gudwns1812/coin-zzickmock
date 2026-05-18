@@ -136,11 +136,29 @@ class CommunityApplicationServiceRegressionTest {
         String imageJson = "{\"type\":\"doc\",\"content\":[{\"type\":\"image\",\"attrs\":{\"src\":\"https://cdn.example/community/1/chart.webp\",\"objectKey\":\"community/1/chart.webp\",\"alt\":\"chart\",\"title\":\"chart\"}}]}";
         TiptapContentPolicy policy = TiptapContentPolicy.withImages(Set.of("community/1/chart.webp"), List.of("https://cdn.example/community/"));
 
-        assertCore(ErrorCode.INVALID_REQUEST, () -> create.execute(createPost(1L, false, CommunityCategory.CHAT, imageJson, Set.of("community/1/chart.webp"), policy)));
+        assertCore(ErrorCode.COMMUNITY_POST_IMAGE_NOT_ATTACHABLE, () -> create.execute(createPost(1L, false, CommunityCategory.CHAT, imageJson, Set.of("community/1/chart.webp"), policy)));
 
         images.allow(1L, "community/1/chart.webp");
         Long postId = create.execute(createPost(1L, false, CommunityCategory.CHAT, imageJson, Set.of("community/1/chart.webp"), policy)).postId();
         assertThat(images.attachedToPost(postId)).containsExactly("community/1/chart.webp");
+
+        String configuredPrefixImageJson = "{\"type\":\"doc\",\"content\":[{\"type\":\"image\",\"attrs\":{\"src\":\"https://cdn.example/uploads/1/chart.webp\",\"objectKey\":\"uploads/1/chart.webp\"}}]}";
+        TiptapContentPolicy configuredPrefixPolicy = TiptapContentPolicy.withImages(Set.of("uploads/1/chart.webp"), List.of("https://cdn.example/uploads/"));
+        images.allow(1L, "uploads/1/chart.webp");
+        Long configuredPrefixPostId = create.execute(createPost(1L, false, CommunityCategory.CHAT, configuredPrefixImageJson, Set.of("uploads/1/chart.webp"), configuredPrefixPolicy)).postId();
+        assertThat(images.attachedToPost(configuredPrefixPostId)).containsExactly("uploads/1/chart.webp");
+    }
+
+    @Test
+    void postCreateReportsSpecificInputErrorCodes() {
+        CreateCommunityPostService create = new CreateCommunityPostService(posts, images, CLOCK);
+
+        assertCore(ErrorCode.COMMUNITY_POST_INVALID_CATEGORY,
+                () -> create.execute(createPost(1L, false, null, CONTENT, Set.of(), TiptapContentPolicy.withoutImages())));
+        assertCore(ErrorCode.COMMUNITY_POST_INVALID_TITLE,
+                () -> create.execute(new CreateCommunityPostCommand(1L, "actor-1", false, CommunityCategory.CHAT, "   ", CONTENT, Set.of(), TiptapContentPolicy.withoutImages())));
+        assertCore(ErrorCode.COMMUNITY_POST_INVALID_CONTENT,
+                () -> create.execute(createPost(1L, false, CommunityCategory.CHAT, "{\"type\":\"doc\",\"content\":[{\"type\":\"html\"}]}", Set.of(), TiptapContentPolicy.withoutImages())));
     }
 
     @Test

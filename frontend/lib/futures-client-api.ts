@@ -258,7 +258,7 @@ export async function uploadCommunityImageToPresignedUrl(
 
   if (!response.ok) {
     throw new FuturesClientApiError(
-      "이미지를 업로드하지 못했습니다. S3 CORS와 업로드 설정을 확인해주세요.",
+      "이미지를 업로드하지 못했습니다. 잠시 후 다시 시도해주세요.",
       response.status
     );
   }

@@ -30,6 +30,9 @@ public class CreateCommunityPostService {
     @Transactional
     public CommunityPostMutationResult execute(CreateCommunityPostCommand command) {
         CommunityCategory category = command.category();
+        if (category == null) {
+            throw new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CATEGORY);
+        }
         if (!CommunityPermissionPolicy.canCreatePost(command.isActorAdmin(), category)) {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
@@ -65,7 +68,7 @@ public class CreateCommunityPostService {
         return TiptapJsonDocument.of(
                 command.contentJson(),
                 new TiptapJsonImagePolicy(
-                        "community/" + command.actorMemberId() + "/",
+                        policy.approvedImageObjectKeys(),
                         policy.allowedImageSrcPrefixes()
                 )
         );
@@ -74,7 +77,7 @@ public class CreateCommunityPostService {
     private void validateImageOwnership(Long memberId, Set<String> objectKeys) {
         Set<String> attachable = communityPostImageRepository.findAttachableObjectKeys(memberId, objectKeys);
         if (!attachable.containsAll(objectKeys)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new CoreException(ErrorCode.COMMUNITY_POST_IMAGE_NOT_ATTACHABLE);
         }
     }
 }

@@ -72,7 +72,7 @@ public class UpdateCommunityPostService {
         return TiptapJsonDocument.of(
                 command.contentJson(),
                 new TiptapJsonImagePolicy(
-                        "community/" + command.actorMemberId() + "/",
+                        policy.approvedImageObjectKeys(),
                         policy.allowedImageSrcPrefixes()
                 )
         );
@@ -81,7 +81,7 @@ public class UpdateCommunityPostService {
     private void validateImageOwnership(Long memberId, Set<String> objectKeys) {
         Set<String> attachable = communityPostImageRepository.findAttachableObjectKeys(memberId, objectKeys);
         if (!attachable.containsAll(objectKeys)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
+            throw new CoreException(ErrorCode.COMMUNITY_POST_IMAGE_NOT_ATTACHABLE);
         }
     }
 }

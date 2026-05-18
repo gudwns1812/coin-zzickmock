@@ -80,7 +80,7 @@ class TiptapContentValidatorTest {
     @Test
     void rejectsExternalOrUnapprovedImageObjectKey() {
         assertInvalid(doc("{\"type\":\"image\",\"attrs\":{\"objectKey\":\"https://evil.example/a.webp\",\"src\":\"https://evil.example/a.webp\"}}"),
-                TiptapContentPolicy.withImages(java.util.Set.of("https://evil.example/a.webp"), java.util.List.of("https://evil.example/")));
+                TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://evil.example/")));
         assertInvalid(doc("{\"type\":\"image\",\"attrs\":{\"objectKey\":\"community/7/chart.webp\",\"src\":\"https://evil.example/other/chart.webp\"}}"),
                 TiptapContentPolicy.withImages(java.util.Set.of("community/7/chart.webp"), java.util.List.of("https://cdn.example/community/")));
     }

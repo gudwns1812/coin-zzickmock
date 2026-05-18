@@ -99,6 +99,7 @@ Next.js는 이미 존재하는 `process.env` 값을 가장 먼저 사용한다.
 - `BackendAuthGate`는 Preview/Production에서 client UI gate로만 사용한다. backend 401/403 응답은 정상적인 실패 상태로 렌더링해야 하며, frontend-domain cookie 복제나 demo member fallback으로 보완하지 않는다.
 - Backend CORS의 `coin.web.cors.allowed-origin-patterns`는 Vercel frontend origin을 허용해야 한다. 기본값은 `https://coin-zzickmock-frontend*.vercel.app`와 local 개발 origin을 포함한다.
 - Backend auth cookie는 cross-origin frontend에서 backend API/SSE 인증에 사용할 수 있도록 `SameSite=None; Secure`로 발급한다. Frontend는 이 쿠키를 앱 도메인 쿠키로 복제하거나 정규화하지 않는다.
+- Backend는 `SameSite=None` 쿠키의 CSRF 위험을 줄이기 위해 unsafe method의 `/api/futures/**` 요청에서 `Origin` 또는 `Referer` origin을 검사한다. 허용 origin은 `https://coin-zzickmock-frontend.vercel.app`, `http://localhost:3000` 두 개만 둔다.
 - 로컬 HTTP Compose 검증에서는 browser가 backend cookie를 저장할 수 있도록 `APP_AUTH_COOKIE_SECURE=false`, `APP_AUTH_COOKIE_SAME_SITE=Lax` 기본값을 사용한다. Production에서는 `docker-compose.prod.yml`/`.env.prod` 계약이 `true`/`None`을 유지해야 한다.
 - Vercel 배포에서 `FUTURES_API_BASE_URL`이 없으면 frontend build/runtime은 실패해야 한다. 조용히 localhost fallback으로 배포하지 않는다.
 - `NEXT_PUBLIC_*`에는 공개 가능한 값만 둔다.

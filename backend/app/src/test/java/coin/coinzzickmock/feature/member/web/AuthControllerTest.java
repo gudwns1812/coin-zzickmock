@@ -10,11 +10,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,7 +47,7 @@ class AuthControllerTest {
 
     @Test
     void demoAccountCanLoginAndReadAccountSummary() throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -73,7 +75,7 @@ class AuthControllerTest {
 
     @Test
     void loginAndAuthenticatedApiRecordDailyActivity() throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -100,7 +102,7 @@ class AuthControllerTest {
 
     @Test
     void registerMakesAccountUnavailableForDuplicateCheck() throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -125,7 +127,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.role").value("USER"))
                 .andExpect(jsonPath("$.data.admin").value(false));
 
-        mockMvc.perform(post("/api/futures/auth/duplicate")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/duplicate")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -137,7 +139,7 @@ class AuthControllerTest {
 
     @Test
     void registerCreatesDefaultTradingAccountState() throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -157,7 +159,7 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isOk());
 
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -180,7 +182,7 @@ class AuthControllerTest {
 
     @Test
     void registerAndLoginNormalizeTrimmedIdentityFields() throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -202,7 +204,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.account").value("trimmed-user"))
                 .andExpect(jsonPath("$.data.memberName").value("trimmed-name"));
 
-        mockMvc.perform(post("/api/futures/auth/duplicate")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/duplicate")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -211,7 +213,7 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isConflict());
 
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -235,7 +237,7 @@ class AuthControllerTest {
 
     @Test
     void meReadsAuthenticatedUserWithoutRefreshingCookie() throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -263,7 +265,7 @@ class AuthControllerTest {
 
     @Test
     void withdrawnMemberCannotLoginAgain() throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -283,7 +285,7 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isOk());
 
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -299,7 +301,7 @@ class AuthControllerTest {
         snapshotDailyActiveUserSummaryService.snapshot(activityDate);
         assertThat(summaryCount(activityDate)).isEqualTo(1);
 
-        mockMvc.perform(delete("/api/futures/auth/withdraw")
+        mockMvc.perform(deleteWithTrustedOrigin("/api/futures/auth/withdraw")
                         .cookie(accessTokenCookie(loginResult))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -316,7 +318,7 @@ class AuthControllerTest {
         assertThat(activityRows(memberId)).isEqualTo(1);
         assertThat(summaryCount(activityDate)).isEqualTo(1);
 
-        mockMvc.perform(post("/api/futures/auth/login")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -326,7 +328,7 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -349,7 +351,7 @@ class AuthControllerTest {
 
     @Test
     void withdrawnMemberRefreshWithOldTokenFails() throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -369,7 +371,7 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isOk());
 
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -383,7 +385,7 @@ class AuthControllerTest {
         Cookie staleAccessToken = accessTokenCookie(loginResult);
         Long memberId = memberId(loginResult);
 
-        mockMvc.perform(delete("/api/futures/auth/withdraw")
+        mockMvc.perform(deleteWithTrustedOrigin("/api/futures/auth/withdraw")
                         .cookie(staleAccessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -399,7 +401,7 @@ class AuthControllerTest {
 
     @Test
     void meRejectsStaleWithdrawnMemberToken() throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -419,7 +421,7 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isOk());
 
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -433,7 +435,7 @@ class AuthControllerTest {
         Cookie staleAccessToken = accessTokenCookie(loginResult);
         Long memberId = memberId(loginResult);
 
-        mockMvc.perform(delete("/api/futures/auth/withdraw")
+        mockMvc.perform(deleteWithTrustedOrigin("/api/futures/auth/withdraw")
                         .cookie(staleAccessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -449,7 +451,7 @@ class AuthControllerTest {
 
     @Test
     void withdrawRejectsAnotherMembersId() throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -460,7 +462,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        mockMvc.perform(delete("/api/futures/auth/withdraw")
+        mockMvc.perform(deleteWithTrustedOrigin("/api/futures/auth/withdraw")
                         .cookie(accessTokenCookie(loginResult))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -473,7 +475,7 @@ class AuthControllerTest {
 
     @Test
     void withdrawRejectsBlankMemberId() throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -484,7 +486,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        mockMvc.perform(delete("/api/futures/auth/withdraw")
+        mockMvc.perform(deleteWithTrustedOrigin("/api/futures/auth/withdraw")
                         .cookie(accessTokenCookie(loginResult))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -553,5 +555,15 @@ class AuthControllerTest {
                 Long.class,
                 activityDate
         );
+    }
+
+    private static MockHttpServletRequestBuilder postWithTrustedOrigin(String urlTemplate, Object... uriVars) {
+        return post(urlTemplate, uriVars)
+                .header(HttpHeaders.ORIGIN, "http://localhost:3000");
+    }
+
+    private static MockHttpServletRequestBuilder deleteWithTrustedOrigin(String urlTemplate, Object... uriVars) {
+        return delete(urlTemplate, uriVars)
+                .header(HttpHeaders.ORIGIN, "http://localhost:3000");
     }
 }

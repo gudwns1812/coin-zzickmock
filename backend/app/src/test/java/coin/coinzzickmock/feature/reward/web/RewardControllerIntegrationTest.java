@@ -9,11 +9,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -47,7 +49,7 @@ class RewardControllerIntegrationTest {
         rewardPointRepository.save(new RewardPointWallet(memberId("test"), 300));
 
         String rejectedRequestId = createRedemption(adminCookie);
-        mockMvc.perform(post("/api/futures/admin/reward-redemptions/{requestId}/reject", rejectedRequestId)
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/admin/reward-redemptions/{requestId}/reject", rejectedRequestId)
                         .cookie(adminCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -64,7 +66,7 @@ class RewardControllerIntegrationTest {
                 .andExpect(jsonPath("$.data[0].status").value("REJECTED"));
 
         String approvedRequestId = createRedemption(adminCookie);
-        mockMvc.perform(post("/api/futures/admin/reward-redemptions/{requestId}/send", approvedRequestId)
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/admin/reward-redemptions/{requestId}/send", approvedRequestId)
                         .cookie(adminCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -96,20 +98,20 @@ class RewardControllerIntegrationTest {
                 .andExpect(jsonPath("$.data[0].requestId").value(requestId))
                 .andExpect(jsonPath("$.data[0].status").value("PENDING"));
 
-        mockMvc.perform(post("/api/futures/shop/redemptions/{requestId}/cancel", requestId)
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/shop/redemptions/{requestId}/cancel", requestId)
                         .cookie(otherCookie))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/api/futures/shop/redemptions/{requestId}/cancel", "missing-request")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/shop/redemptions/{requestId}/cancel", "missing-request")
                         .cookie(ownerCookie))
                 .andExpect(status().isNotFound());
 
-        mockMvc.perform(post("/api/futures/shop/redemptions/{requestId}/cancel", requestId)
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/shop/redemptions/{requestId}/cancel", requestId)
                         .cookie(ownerCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
 
-        mockMvc.perform(post("/api/futures/shop/redemptions/{requestId}/cancel", requestId)
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/shop/redemptions/{requestId}/cancel", requestId)
                         .cookie(ownerCookie))
                 .andExpect(status().isConflict());
     }
@@ -121,7 +123,7 @@ class RewardControllerIntegrationTest {
         rewardPointRepository.save(new RewardPointWallet(memberId("shop-history-owner"), 300));
 
         String requestId = createRedemption(ownerCookie);
-        mockMvc.perform(post("/api/futures/shop/items/{code}/purchase", "position.peek")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/shop/items/{code}/purchase", "position.peek")
                         .cookie(ownerCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.itemCode").value("position.peek"));
@@ -145,7 +147,7 @@ class RewardControllerIntegrationTest {
         rewardPointRepository.save(new RewardPointWallet(memberId("shop-history-tie-owner"), 300));
 
         String requestId = createRedemption(ownerCookie);
-        mockMvc.perform(post("/api/futures/shop/items/{code}/purchase", "position.peek")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/shop/items/{code}/purchase", "position.peek")
                         .cookie(ownerCookie))
                 .andExpect(status().isOk());
 
@@ -167,7 +169,7 @@ class RewardControllerIntegrationTest {
     }
 
     private String createRedemption(Cookie cookie) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/futures/shop/redemptions")
+        MvcResult result = mockMvc.perform(postWithTrustedOrigin("/api/futures/shop/redemptions")
                         .cookie(cookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -182,7 +184,7 @@ class RewardControllerIntegrationTest {
     }
 
     private void register(String account) throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -208,7 +210,7 @@ class RewardControllerIntegrationTest {
     }
 
     private Cookie login(String account, String password) throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -227,5 +229,10 @@ class RewardControllerIntegrationTest {
             throw new AssertionError("accessToken cookie is required");
         }
         return accessToken;
+    }
+
+    private static MockHttpServletRequestBuilder postWithTrustedOrigin(String urlTemplate, Object... uriVars) {
+        return post(urlTemplate, uriVars)
+                .header(HttpHeaders.ORIGIN, "http://localhost:3000");
     }
 }

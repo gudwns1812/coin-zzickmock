@@ -22,9 +22,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(classes = CoinZzickmockApplication.class, properties = {
@@ -96,7 +98,7 @@ class PositionPeekControllerIntegrationTest {
         String targetToken = JsonPath.read(searchResult.getResponse().getContentAsString(), "$.data[0].targetToken");
         assertThat(targetToken).isNotBlank();
 
-        MvcResult latestBeforeConsume = mockMvc.perform(post("/api/futures/position-peeks/latest")
+        MvcResult latestBeforeConsume = mockMvc.perform(postWithTrustedOrigin("/api/futures/position-peeks/latest")
                         .cookie(viewerCookie)
                         .contentType("application/json")
                         .content("""
@@ -110,7 +112,7 @@ class PositionPeekControllerIntegrationTest {
                 .isEqualTo(1);
         assertThat((Object) JsonPath.read(latestBeforeConsume.getResponse().getContentAsString(), "$.data.latestSnapshot")).isNull();
 
-        MvcResult consumeResult = mockMvc.perform(post("/api/futures/position-peeks")
+        MvcResult consumeResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/position-peeks")
                         .cookie(viewerCookie)
                         .contentType("application/json")
                         .content("""
@@ -138,7 +140,7 @@ class PositionPeekControllerIntegrationTest {
     }
 
     private void register(String account) throws Exception {
-        mockMvc.perform(post("/api/futures/auth/register")
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType("application/json")
                         .content("""
                                 {
@@ -164,7 +166,7 @@ class PositionPeekControllerIntegrationTest {
     }
 
     private Cookie login(String account, String password) throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/api/futures/auth/login")
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType("application/json")
                         .content("""
                                 {
@@ -179,5 +181,10 @@ class PositionPeekControllerIntegrationTest {
             throw new AssertionError("accessToken cookie is required");
         }
         return accessToken;
+    }
+
+    private static MockHttpServletRequestBuilder postWithTrustedOrigin(String urlTemplate, Object... uriVars) {
+        return post(urlTemplate, uriVars)
+                .header(HttpHeaders.ORIGIN, "http://localhost:3000");
     }
 }

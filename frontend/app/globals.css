@@ -98,6 +98,56 @@
         animation: fadeHighlight 2s ease-in-out;
     }
 
+    @keyframes loadingShimmer {
+        0% {
+            background-position: 180% 0;
+        }
+        100% {
+            background-position: -180% 0;
+        }
+    }
+
+    .coin-loading-shimmer {
+        background-image: linear-gradient(
+                90deg,
+                rgba(233, 233, 233, 0.66),
+                rgba(255, 255, 255, 0.95),
+                rgba(233, 233, 233, 0.66)
+        );
+        background-size: 220% 100%;
+        animation: loadingShimmer 1.6s ease-in-out infinite;
+    }
+
+    @keyframes loadingFloat {
+        0%,
+        100% {
+            opacity: 0.58;
+            transform: scaleY(0.82);
+        }
+        50% {
+            opacity: 1;
+            transform: scaleY(1);
+        }
+    }
+
+    .coin-loading-float {
+        animation: loadingFloat 1.8s ease-in-out infinite;
+        transform-origin: bottom;
+    }
+
+    @keyframes loadingScan {
+        0% {
+            transform: translateX(-70%);
+        }
+        100% {
+            transform: translateX(70%);
+        }
+    }
+
+    .coin-loading-scan {
+        animation: loadingScan 1.9s ease-in-out infinite;
+    }
+
     /* Custom Font Size Classes */
     .text-xs-custom {
         font-size: var(--font-size-xs-custom);

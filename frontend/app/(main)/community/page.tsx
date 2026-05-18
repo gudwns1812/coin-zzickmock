@@ -18,6 +18,7 @@ type CommunityPageProps = {
   searchParams?: Promise<{
     category?: string;
     page?: string;
+    q?: string;
   }>;
 };
 
@@ -32,6 +33,7 @@ export default async function CommunityPage({
   const resolvedSearchParams = await searchParams;
   const category = parseCategory(resolvedSearchParams?.category);
   const page = parsePage(resolvedSearchParams?.page);
+  const searchQuery = parseSearchQuery(resolvedSearchParams?.q);
   const result = await getCommunityPosts({
     category,
     page,
@@ -43,6 +45,7 @@ export default async function CommunityPage({
       category={category}
       message={result.message}
       result={result.data}
+      searchQuery={searchQuery}
       unavailable={result.unavailable}
     />
   );
@@ -66,4 +69,8 @@ function parseCategory(
 function parsePage(value: string | undefined): number {
   const page = Number(value);
   return Number.isInteger(page) && page > 0 ? page : 0;
+}
+
+function parseSearchQuery(value: string | undefined): string {
+  return typeof value === "string" ? value.trim().slice(0, 80) : "";
 }

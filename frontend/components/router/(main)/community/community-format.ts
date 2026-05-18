@@ -2,7 +2,7 @@ import type { CommunityCategory } from "@/lib/futures-api";
 
 export const COMMUNITY_CATEGORY_LABELS: Record<CommunityCategory, string> = {
   NOTICE: "공지",
-  CHART_ANALYSIS: "차트분석",
+  CHART_ANALYSIS: "사례분석",
   COIN_INFORMATION: "코인정보",
   CHAT: "잡담",
 };
@@ -18,12 +18,11 @@ export function formatCommunityDate(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return "-";
   }
-  return new Intl.DateTimeFormat("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function formatCommunityCount(value: number): string {

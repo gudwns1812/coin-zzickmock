@@ -69,7 +69,7 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
   };
 
   return (
-    <div className="mt-main flex flex-wrap items-center justify-between gap-main border-t border-main-light-gray pt-main">
+    <div className="mt-main flex flex-wrap items-center justify-between gap-main rounded-main bg-main-light-gray/25 p-main">
       <div className="flex flex-wrap items-center gap-2">
         <button
           className={likedByMe ? activeButtonClass : neutralButtonClass}
@@ -86,7 +86,7 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
         ) : null}
         {post.canDelete ? (
           <button
-            className="inline-flex items-center gap-1 rounded-main bg-red-50 px-main py-2 text-sm-custom font-semibold text-red-600 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-main bg-red-50 px-main py-2 text-sm-custom font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-100 disabled:opacity-50"
             disabled={deleteMutation.isPending}
             onClick={handleDelete}
             type="button"
@@ -135,7 +135,7 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
   const canSubmit = content.trim().length > 0 && content.trim().length <= 1000;
 
   return (
-    <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
+    <section className="rounded-main bg-white/90 p-main-2 shadow-md ring-1 ring-main-light-gray/40">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-xl-custom font-bold text-main-dark-gray">
           <MessageCircle size={18} /> 댓글
@@ -147,7 +147,9 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
 
       <div className="mt-main grid gap-2">
         <textarea
-          className="min-h-24 rounded-main border border-main-light-gray bg-white p-main text-sm-custom outline-none transition-colors focus:border-main-blue/50"
+          id="community-comment"
+          name="comment"
+          className="min-h-24 rounded-main bg-main-light-gray/25 p-main text-sm-custom outline-none ring-1 ring-main-light-gray/45 transition-all placeholder:text-main-dark-gray/35 focus:bg-white focus:ring-main-blue/35"
           maxLength={1000}
           onChange={(event) => setContent(event.target.value)}
           placeholder="댓글을 입력하세요."
@@ -158,7 +160,7 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
             {content.trim().length}/1000
           </span>
           <button
-            className="rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white disabled:bg-main-light-gray disabled:text-main-dark-gray/35"
+            className="rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white shadow-sm transition-all hover:bg-main-blue/90 disabled:bg-main-light-gray disabled:text-main-dark-gray/35 disabled:shadow-none"
             disabled={!canSubmit || createMutation.isPending}
             onClick={() => createMutation.mutate()}
             type="button"
@@ -173,7 +175,7 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
       {initialComments?.comments.length ? (
         <div className="mt-main grid gap-3">
           {initialComments.comments.map((comment) => (
-            <div key={comment.id} className="rounded-main bg-main-light-gray/30 p-main">
+            <div key={comment.id} className="rounded-main bg-main-light-gray/25 p-main ring-1 ring-white/60">
               <div className="flex items-center justify-between gap-main">
                 <span className="font-semibold text-main-dark-gray">{comment.authorNickname}</span>
                 <div className="flex items-center gap-2">
@@ -199,7 +201,7 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
           ))}
         </div>
       ) : (
-        <div className="mt-main rounded-main bg-main-light-gray/35 p-main text-sm-custom text-main-dark-gray/55">
+        <div className="mt-main rounded-main bg-main-light-gray/25 p-main text-sm-custom text-main-dark-gray/55 ring-1 ring-white/60">
           아직 댓글이 없습니다. 첫 댓글을 남겨보세요.
         </div>
       )}
@@ -208,9 +210,9 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
 }
 
 const neutralButtonClass =
-  "inline-flex items-center gap-1 rounded-main bg-main-light-gray/45 px-main py-2 text-sm-custom font-semibold text-main-dark-gray/65 transition-colors hover:text-main-blue disabled:opacity-50";
+  "inline-flex items-center gap-1 rounded-main bg-white px-main py-2 text-sm-custom font-semibold text-main-dark-gray/65 shadow-sm ring-1 ring-main-light-gray/45 transition-colors hover:text-main-blue disabled:opacity-50";
 const activeButtonClass =
-  "inline-flex items-center gap-1 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white transition-colors disabled:opacity-50";
+  "inline-flex items-center gap-1 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white shadow-sm transition-colors disabled:opacity-50";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";

@@ -14,7 +14,7 @@ const {
 describe("community read UI formatting", () => {
   it("maps backend category names to Korean labels", () => {
     assert.equal(COMMUNITY_CATEGORY_LABELS.NOTICE, "공지");
-    assert.equal(COMMUNITY_CATEGORY_LABELS.CHART_ANALYSIS, "차트분석");
+    assert.equal(COMMUNITY_CATEGORY_LABELS.CHART_ANALYSIS, "사례분석");
     assert.equal(COMMUNITY_CATEGORY_LABELS.COIN_INFORMATION, "코인정보");
     assert.equal(COMMUNITY_CATEGORY_LABELS.CHAT, "잡담");
   });
@@ -27,5 +27,9 @@ describe("community read UI formatting", () => {
 
   it("keeps invalid dates as a terse safe fallback", () => {
     assert.equal(formatCommunityDate("not-a-date"), "-");
+  });
+
+  it("formats community list dates as calendar dates", () => {
+    assert.equal(formatCommunityDate("2026-05-18T09:00:00+09:00"), "2026-05-18");
   });
 });

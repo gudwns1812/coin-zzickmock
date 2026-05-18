@@ -321,21 +321,24 @@ export default function CommunityPostEditorClient({
 
   return (
     <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-main-2 px-main-3 pb-24 pt-4">
-      <div>
-        <p className="text-sm-custom font-semibold text-main-blue">Community Editor</p>
-        <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
+      <div className="relative overflow-hidden rounded-main bg-white/88 p-main-2 shadow-color ring-1 ring-white/70">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-main-blue/10 blur-3xl" />
+        <p className="relative text-sm-custom font-semibold text-main-blue">Community Studio</p>
+        <h1 className="relative mt-2 text-3xl-custom font-bold text-main-dark-gray">
           {mode === "edit" ? "게시글 수정" : "게시글 작성"}
         </h1>
-        <p className="mt-2 text-sm-custom text-main-dark-gray/55">
+        <p className="relative mt-2 max-w-[640px] text-sm-custom leading-6 text-main-dark-gray/55">
           제목과 본문을 작성하고, 이미지는 버튼·드래그·붙여넣기로 추가할 수 있어요.
         </p>
       </div>
 
-      <section className="grid gap-main rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
+      <section className="grid gap-main rounded-main bg-white/90 p-main-2 shadow-md ring-1 ring-main-light-gray/40">
         <label className="grid gap-2 text-sm-custom font-semibold text-main-dark-gray">
           카테고리
           <select
-            className="rounded-main border border-main-light-gray bg-white p-main text-sm-custom outline-none focus:border-main-blue/50"
+            id="community-category"
+            name="category"
+            className="rounded-main bg-main-light-gray/25 p-main text-sm-custom outline-none ring-1 ring-main-light-gray/45 transition-all focus:bg-white focus:ring-main-blue/35"
             onChange={(event) => setCategory(event.target.value as CommunityCategory)}
             value={category}
           >
@@ -350,7 +353,9 @@ export default function CommunityPostEditorClient({
         <label className="grid gap-2 text-sm-custom font-semibold text-main-dark-gray">
           제목
           <input
-            className="rounded-main border border-main-light-gray bg-white p-main text-sm-custom outline-none focus:border-main-blue/50"
+            id="community-title"
+            name="title"
+            className="rounded-main bg-main-light-gray/25 p-main text-sm-custom outline-none ring-1 ring-main-light-gray/45 transition-all focus:bg-white focus:ring-main-blue/35"
             maxLength={200}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="제목을 입력하세요"
@@ -358,7 +363,7 @@ export default function CommunityPostEditorClient({
           />
         </label>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-main bg-main-light-gray/30 p-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-main bg-main-light-gray/25 p-2 ring-1 ring-white/70">
           <ToolbarButton active={toolbarState.bold} label="굵게" onClick={() => editor?.chain().focus().toggleBold().run()}>
             <Bold size={15} /> 굵게
           </ToolbarButton>
@@ -375,7 +380,7 @@ export default function CommunityPostEditorClient({
             <ListOrdered size={15} /> 번호
           </ToolbarButton>
           <button
-            className="inline-flex items-center gap-1 rounded-main bg-white px-3 py-2 text-xs-custom font-semibold text-main-dark-gray/65 hover:text-main-blue disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-main bg-white px-3 py-2 text-xs-custom font-semibold text-main-dark-gray/65 shadow-sm ring-1 ring-main-light-gray/40 transition-colors hover:text-main-blue disabled:opacity-50"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
             type="button"
@@ -394,7 +399,7 @@ export default function CommunityPostEditorClient({
 
         <div
           className={clsx(
-            "community-rich-editor rounded-main transition-colors",
+            "community-rich-editor rounded-main bg-main-light-gray/20 p-1 ring-1 ring-main-light-gray/35 transition-colors",
             draggingImage && "bg-main-blue/5 ring-2 ring-main-blue/35 ring-offset-2 ring-offset-white"
           )}
           onDragEnter={(event) => handleEditorDragEnter(event)}
@@ -414,14 +419,14 @@ export default function CommunityPostEditorClient({
 
         <div className="flex items-center justify-end gap-2">
           <button
-            className="rounded-main bg-main-light-gray px-main py-2 text-sm-custom font-semibold text-main-dark-gray/60"
+            className="rounded-main bg-white px-main py-2 text-sm-custom font-semibold text-main-dark-gray/60 shadow-sm ring-1 ring-main-light-gray/45 transition-colors hover:text-main-blue"
             onClick={() => router.push(post ? `/community/${post.id}` : "/community")}
             type="button"
           >
             취소
           </button>
           <button
-            className="inline-flex items-center gap-2 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white disabled:bg-main-light-gray disabled:text-main-dark-gray/35"
+            className="inline-flex items-center gap-2 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white shadow-sm transition-all hover:bg-main-blue/90 disabled:bg-main-light-gray disabled:text-main-dark-gray/35 disabled:shadow-none"
             disabled={saveDisabled}
             onClick={handleSave}
             type="button"
@@ -453,7 +458,7 @@ function ToolbarButton({
         "inline-flex items-center gap-1 rounded-main border px-3 py-2 text-xs-custom font-semibold transition-colors",
         active
           ? "border-main-blue bg-main-blue text-white shadow-sm ring-2 ring-main-blue/20"
-          : "border-main-light-gray bg-white text-main-dark-gray/65 hover:border-main-blue/45 hover:text-main-blue"
+          : "border-main-light-gray/60 bg-white text-main-dark-gray/65 shadow-sm hover:border-main-blue/45 hover:text-main-blue"
       )}
       onClick={onClick}
       type="button"

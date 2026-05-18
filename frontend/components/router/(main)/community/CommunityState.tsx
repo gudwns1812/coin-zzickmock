@@ -17,18 +17,21 @@ export default function CommunityState({
   actionLabel,
 }: CommunityStateProps) {
   const Icon = tone === "error" ? AlertCircle : Inbox;
-  const iconClassName = tone === "error" ? "text-main-red/60" : "text-main-blue/55";
+  const iconClassName = tone === "error" ? "text-main-red/65" : "text-main-blue/60";
+  const iconSurfaceClassName = tone === "error" ? "bg-red-50" : "bg-main-blue/10";
 
   return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-main border border-main-light-gray bg-white/75 p-main-2 text-center shadow-sm">
-      <Icon className={iconClassName} size={42} aria-hidden />
+    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-main bg-white/82 p-main-2 text-center shadow-md ring-1 ring-white/70">
+      <div className={`${iconSurfaceClassName} rounded-full p-3`}>
+        <Icon className={iconClassName} size={36} aria-hidden />
+      </div>
       <h2 className="mt-4 text-xl-custom font-bold text-main-dark-gray">{title}</h2>
       <p className="mt-2 max-w-[520px] text-sm-custom leading-6 text-main-dark-gray/60">
         {message}
       </p>
       {actionHref && actionLabel ? (
         <Link
-          className="mt-5 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white transition-colors hover:bg-main-blue/85"
+          className="mt-5 rounded-main bg-main-blue px-main py-2 text-sm-custom font-semibold text-white shadow-sm transition-colors hover:bg-main-blue/85"
           href={actionHref}
         >
           {actionLabel}

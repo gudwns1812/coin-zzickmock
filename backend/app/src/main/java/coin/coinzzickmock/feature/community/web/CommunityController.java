@@ -30,6 +30,7 @@ import coin.coinzzickmock.feature.community.application.service.ListCommunityCom
 import coin.coinzzickmock.feature.community.application.service.ListCommunityPostsService;
 import coin.coinzzickmock.feature.community.application.service.ToggleCommunityPostLikeService;
 import coin.coinzzickmock.feature.community.application.service.UpdateCommunityPostService;
+import coin.coinzzickmock.feature.community.application.view.CommunityPostReadIntent;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
 import coin.coinzzickmock.feature.community.web.request.CommunityCommentCreateRequest;
@@ -153,7 +154,16 @@ public class CommunityController {
     public ApiResponse<CommunityPostDetailResponse> post(@PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
         CommunityPostDetailResult result = getCommunityPostService.execute(
-                new GetCommunityPostQuery(postId, actor.memberId(), actor.admin())
+                new GetCommunityPostQuery(postId, actor.memberId(), actor.admin(), CommunityPostReadIntent.DETAIL)
+        );
+        return ApiResponse.success(CommunityPostDetailResponse.from(result));
+    }
+
+    @GetMapping("/posts/{postId}/edit")
+    public ApiResponse<CommunityPostDetailResponse> editPost(@PathVariable Long postId) {
+        Actor actor = providers.auth().currentActor();
+        CommunityPostDetailResult result = getCommunityPostService.execute(
+                new GetCommunityPostQuery(postId, actor.memberId(), actor.admin(), CommunityPostReadIntent.EDIT_PRELOAD)
         );
         return ApiResponse.success(CommunityPostDetailResponse.from(result));
     }

@@ -7,8 +7,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.common.api.ApiResponse;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.application.dto.GenerateCommunityImageUploadPresignedUrlCommand;
 import coin.coinzzickmock.feature.community.application.dto.CommunityImageUploadPresignedUrlResult;
+import coin.coinzzickmock.feature.community.application.query.GetCommunityPostQuery;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityCommentService;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityPostService;
 import coin.coinzzickmock.feature.community.application.service.DeleteCommunityCommentService;
@@ -19,8 +21,11 @@ import coin.coinzzickmock.feature.community.application.service.ListCommunityCom
 import coin.coinzzickmock.feature.community.application.service.ListCommunityPostsService;
 import coin.coinzzickmock.feature.community.application.service.ToggleCommunityPostLikeService;
 import coin.coinzzickmock.feature.community.application.service.UpdateCommunityPostService;
+import coin.coinzzickmock.feature.community.application.view.CommunityPostReadIntent;
+import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.web.request.CommunityImageUploadPresignRequest;
 import coin.coinzzickmock.feature.community.web.response.CommunityImageUploadPresignedUrlResponse;
+import coin.coinzzickmock.feature.community.web.response.CommunityPostDetailResponse;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
@@ -42,6 +47,42 @@ class CommunityControllerTest {
     private final GenerateCommunityImageUploadPresignedUrlService presign = mock(GenerateCommunityImageUploadPresignedUrlService.class);
     private final Providers providers = mock(Providers.class);
     private final AuthProvider auth = mock(AuthProvider.class);
+
+    @Test
+    void postUsesDetailReadIntentForViewCountingPath() {
+        when(providers.auth()).thenReturn(auth);
+        when(auth.currentActor()).thenReturn(new Actor(7L, "user", "user@example.com", "tester"));
+        when(getPost.execute(any(GetCommunityPostQuery.class))).thenReturn(detailResult(11L, true));
+        CommunityController controller = controller();
+
+        ApiResponse<CommunityPostDetailResponse> response = controller.post(11L);
+
+        assertThat(response.success()).isTrue();
+        assertThat(response.data().id()).isEqualTo(11L);
+        ArgumentCaptor<GetCommunityPostQuery> captor = ArgumentCaptor.forClass(GetCommunityPostQuery.class);
+        verify(getPost).execute(captor.capture());
+        assertThat(captor.getValue().postId()).isEqualTo(11L);
+        assertThat(captor.getValue().actorMemberId()).isEqualTo(7L);
+        assertThat(captor.getValue().intent()).isEqualTo(CommunityPostReadIntent.DETAIL);
+    }
+
+    @Test
+    void editPostUsesEditPreloadIntentWithoutViewCountingPath() {
+        when(providers.auth()).thenReturn(auth);
+        when(auth.currentActor()).thenReturn(new Actor(7L, "user", "user@example.com", "tester"));
+        when(getPost.execute(any(GetCommunityPostQuery.class))).thenReturn(detailResult(11L, true));
+        CommunityController controller = controller();
+
+        ApiResponse<CommunityPostDetailResponse> response = controller.editPost(11L);
+
+        assertThat(response.success()).isTrue();
+        assertThat(response.data().canEdit()).isTrue();
+        ArgumentCaptor<GetCommunityPostQuery> captor = ArgumentCaptor.forClass(GetCommunityPostQuery.class);
+        verify(getPost).execute(captor.capture());
+        assertThat(captor.getValue().postId()).isEqualTo(11L);
+        assertThat(captor.getValue().actorMemberId()).isEqualTo(7L);
+        assertThat(captor.getValue().intent()).isEqualTo(CommunityPostReadIntent.EDIT_PRELOAD);
+    }
 
     @Test
     void presignImageUsesAuthenticatedActorAndMapsResponse() {
@@ -75,6 +116,24 @@ class CommunityControllerTest {
         assertThat(captor.getValue().fileName()).isEqualTo("chart.webp");
         assertThat(captor.getValue().contentType()).isEqualTo("image/webp");
         assertThat(captor.getValue().contentLength()).isEqualTo(123L);
+    }
+
+    private static CommunityPostDetailResult detailResult(Long postId, boolean canEdit) {
+        return new CommunityPostDetailResult(
+                postId,
+                CommunityCategory.CHAT,
+                "title",
+                "tester",
+                "{}",
+                0L,
+                0L,
+                0L,
+                canEdit,
+                canEdit,
+                false,
+                Instant.parse("2026-05-13T00:00:00Z"),
+                Instant.parse("2026-05-13T00:00:00Z")
+        );
     }
 
     private CommunityController controller() {

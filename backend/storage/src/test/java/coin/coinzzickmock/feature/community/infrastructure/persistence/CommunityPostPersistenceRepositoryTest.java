@@ -11,10 +11,12 @@ import static org.mockito.Mockito.when;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.persistence.AuditableEntity;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import coin.coinzzickmock.feature.community.domain.CommunityPostImageIntent;
 import coin.coinzzickmock.feature.community.domain.CommunityPostImageStatus;
+import coin.coinzzickmock.feature.community.domain.TiptapJsonDocument;
 import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
@@ -47,12 +49,74 @@ class CommunityPostPersistenceRepositoryTest {
     }
 
     @Test
-    void updateThrowsWhenActivePostMissing() {
-        when(postEntityRepository.findWithLockingByIdAndDeletedAtIsNull(1L)).thenReturn(java.util.Optional.empty());
+    void counterIncrementThrowsWhenNoActivePostUpdated() {
+        when(postEntityRepository.incrementLikeCountIfActive(1L)).thenReturn(0);
 
         assertThatThrownBy(() -> repository.incrementLikeCount(1L))
                 .isInstanceOfSatisfying(CoreException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+    }
+
+    @Test
+    void counterMutationsUseAtomicUpdateQueriesInsteadOfPessimisticPostLocks() {
+        when(postEntityRepository.incrementViewCountIfActive(1L)).thenReturn(1);
+        when(postEntityRepository.incrementLikeCountIfActive(1L)).thenReturn(1);
+        when(postEntityRepository.decrementLikeCountIfActive(1L)).thenReturn(1);
+        when(postEntityRepository.incrementCommentCountIfActive(1L)).thenReturn(1);
+
+        repository.incrementViewCount(1L);
+        repository.incrementLikeCount(1L);
+        repository.decrementLikeCount(1L);
+        repository.incrementCommentCount(1L);
+
+        verify(postEntityRepository).incrementViewCountIfActive(1L);
+        verify(postEntityRepository).incrementLikeCountIfActive(1L);
+        verify(postEntityRepository).decrementLikeCountIfActive(1L);
+        verify(postEntityRepository).incrementCommentCountIfActive(1L);
+        verify(postEntityRepository, never()).findWithLockingByIdAndDeletedAtIsNull(1L);
+    }
+
+    @Test
+    void updatePreservesExistingCountersAgainstStaleIncomingDomain() {
+        CommunityPostEntity entity = new CommunityPostEntity(
+                1L,
+                10L,
+                "writer",
+                "CHAT",
+                "old title",
+                document("old body"),
+                9,
+                4,
+                3,
+                null
+        );
+        setAuditTimestamps(entity);
+        CommunityPost staleIncoming = CommunityPost.restore(
+                1L,
+                10L,
+                "writer",
+                CommunityCategory.CHAT,
+                "new title",
+                TiptapJsonDocument.restore(document("new body")),
+                0,
+                0,
+                0,
+                null,
+                Instant.parse("2026-05-13T00:00:00Z"),
+                Instant.parse("2026-05-13T00:01:00Z"),
+                0
+        );
+        when(postEntityRepository.findWithLockingByIdAndDeletedAtIsNull(1L))
+                .thenReturn(java.util.Optional.of(entity));
+        when(postEntityRepository.save(entity)).thenReturn(entity);
+
+        CommunityPost saved = repository.update(staleIncoming);
+
+        assertThat(saved.title()).isEqualTo("new title");
+        assertThat(saved.content().value()).contains("new body");
+        assertThat(saved.viewCount()).isEqualTo(9);
+        assertThat(saved.likeCount()).isEqualTo(4);
+        assertThat(saved.commentCount()).isEqualTo(3);
     }
 
     @Test
@@ -225,6 +289,12 @@ class CommunityPostPersistenceRepositoryTest {
                 100L,
                 status.name()
         );
+    }
+
+    private static String document(String text) {
+        return """
+                {"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"%s"}]}]}
+                """.formatted(text);
     }
 
     private static void setAuditTimestamps(Object entity) {

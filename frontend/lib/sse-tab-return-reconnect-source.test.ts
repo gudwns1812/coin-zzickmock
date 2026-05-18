@@ -95,13 +95,16 @@ test("event sources include credentials for direct backend SSE", () => {
   assert.equal(hookSource.includes("new EventSource(url, { withCredentials: true })"), true);
 });
 
-test("client login seeds backend-domain and same-origin auth cookies", () => {
+test("client auth requests target the backend domain for SSE-compatible cookies", () => {
   const authSource = readFrontendSource("lib/futures-auth-client.ts");
   const pageLoginSource = readFrontendSource("app/login/LoginFormClient.tsx");
   const headerLoginSource = readFrontendSource("components/ui/shared/header/LoginForm.tsx");
+  const refreshSource = readFrontendSource("hooks/useSessionActivityRefresh.ts");
 
   assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/login")'), true);
-  assert.equal(authSource.includes('"/proxy/auth/login"'), true);
+  assert.equal(authSource.includes('"/proxy/auth/login"'), false);
+  assert.equal(authSource.includes('"/proxy/auth/logout"'), false);
+  assert.equal(refreshSource.includes('createFuturesBackendApiUrl("/auth/refresh")'), true);
   assert.equal(authSource.includes("credentials: \"include\""), true);
   assert.equal(pageLoginSource.includes("loginToFutures"), true);
   assert.equal(headerLoginSource.includes("loginToFutures"), true);

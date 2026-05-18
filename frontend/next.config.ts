@@ -17,11 +17,6 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        // 로컬 인증 서버
-        source: "/proxy/auth/:path*",
-        destination: `${FUTURES_API_BASE_URL}/api/futures/auth/:path*`,
-      },
-      {
         // 코인 선물 백엔드
         source: "/proxy-futures/:path*",
         destination: `${FUTURES_API_BASE_URL}/api/futures/:path*`,

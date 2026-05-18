@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { JwtToken } from "@/type/jwt";
 import Modal from "../../Modal";
 import { useRouter } from "next/navigation";
+import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 
 const WithdrawalForm = ({
   action,
@@ -18,7 +19,7 @@ const WithdrawalForm = ({
   const router = useRouter();
 
   const handleWithdrawal = async (formData: FormData) => {
-    const res = await fetch("/proxy/auth/withdraw", {
+    const res = await fetch(createFuturesBackendApiUrl("/auth/withdraw"), {
       method: "DELETE",
       credentials: "include",
       headers: {

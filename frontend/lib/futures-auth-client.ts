@@ -17,39 +17,17 @@ function jsonPostInit(body: unknown): RequestInit {
 }
 
 export async function loginToFutures(credentials: LoginCredentials) {
-  const directResponse = await fetch(
+  return fetch(
     createFuturesBackendApiUrl("/auth/login"),
     jsonPostInit(credentials)
   );
-
-  if (!directResponse.ok) {
-    return directResponse;
-  }
-
-  const sameOriginResponse = await fetch(
-    "/proxy/auth/login",
-    jsonPostInit(credentials)
-  );
-
-  return sameOriginResponse.ok ? directResponse : sameOriginResponse;
 }
 
 export async function logoutFromFutures() {
-  const [directResult, sameOriginResult] = await Promise.allSettled([
-    fetch(createFuturesBackendApiUrl("/auth/logout"), {
-      method: "POST",
-      credentials: "include",
-    }),
-    fetch("/proxy/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    }),
-  ]);
+  const response = await fetch(createFuturesBackendApiUrl("/auth/logout"), {
+    method: "POST",
+    credentials: "include",
+  });
 
-  const directOk =
-    directResult.status === "fulfilled" && directResult.value.ok;
-  const sameOriginOk =
-    sameOriginResult.status === "fulfilled" && sameOriginResult.value.ok;
-
-  return directOk || sameOriginOk;
+  return response.ok;
 }

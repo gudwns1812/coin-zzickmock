@@ -63,4 +63,16 @@ public class GetCommunityPostService {
         try {
             communityPostRepository.incrementViewCount(query.postId());
         } catch (RuntimeException exception) {
-            log.warn(Skipped
+            log.warn("Skipped community post view count increment after throttle claim. postId={}", query.postId(), exception);
+        }
+    }
+
+    private boolean claimView(GetCommunityPostQuery query) {
+        try {
+            return communityPostViewThrottle.tryClaim(query.postId(), query.actorMemberId(), VIEW_THROTTLE_WINDOW);
+        } catch (RuntimeException exception) {
+            log.warn("Skipped community post view count increment because throttle claim failed. postId={}", query.postId(), exception);
+            return false;
+        }
+    }
+}

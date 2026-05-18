@@ -8,6 +8,10 @@ import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectStatus } from "@/hooks/resilientEventSourcePolicy";
 import type { MarketApiResponse } from "@/lib/futures-api";
+import {
+  FUTURES_AUTH_CHANGED_EVENT,
+  getFuturesAuthUserClient,
+} from "@/lib/futures-auth-state";
 import { createMarketSummarySseUrl } from "@/lib/futures-sse-url";
 import {
   isSupportedMarketSymbol,
@@ -147,10 +151,12 @@ export default function MarketsLandingRealtimeView({
     useState<RecoveredSymbolMap>({});
   const [streamStatus, setStreamStatus] =
     useState<EventSourceReconnectStatus>("idle");
+  const [hasBackendSession, setHasBackendSession] = useState(isAuthenticated);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
   const marketMapRef = useRef(marketMap);
   const flashMetadataRef = useRef<PriceFlashMetadataMap>({});
   const animationFrameRef = useRef<number | null>(null);
+  const effectiveIsAuthenticated = isAuthenticated || hasBackendSession;
 
   useEffect(() => {
     const nextMap = toMarketMap(initialMarkets);
@@ -164,6 +170,29 @@ export default function MarketsLandingRealtimeView({
     setRecoveredStreamSymbols({});
     setStreamStatus("idle");
   }, [initialMarkets]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function resolveBackendSession() {
+      const authUser = await getFuturesAuthUserClient();
+      if (isActive) {
+        setHasBackendSession(Boolean(authUser));
+      }
+    }
+
+    const handleAuthChanged = () => {
+      void resolveBackendSession();
+    };
+
+    void resolveBackendSession();
+    window.addEventListener(FUTURES_AUTH_CHANGED_EVENT, handleAuthChanged);
+
+    return () => {
+      isActive = false;
+      window.removeEventListener(FUTURES_AUTH_CHANGED_EVENT, handleAuthChanged);
+    };
+  }, []);
 
   const clearFlashState = useCallback(() => {
     flashMetadataRef.current = {};
@@ -311,7 +340,7 @@ export default function MarketsLandingRealtimeView({
       />
       <MarketsLanding
         isMarketDataDegraded={isStreamRecovering}
-        isAuthenticated={isAuthenticated}
+        isAuthenticated={effectiveIsAuthenticated}
         markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
         rankingEntries={rankingEntries}
         summaryCards={summaryCards}

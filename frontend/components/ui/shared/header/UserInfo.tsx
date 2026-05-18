@@ -5,16 +5,30 @@ import EditInfo from "./EditInfo";
 import useOutsideClick from "@/hooks/useOutsideClick";
 import useSessionActivityRefresh from "@/hooks/useSessionActivityRefresh";
 import { formatMarketRank, type MarketRankingMemberRank } from "@/lib/markets";
-import { JwtToken } from "@/type/jwt";
 import clsx from "clsx";
 import { usePathname } from "next/navigation";
+
+export type HeaderUser = {
+  memberId: number;
+  account: string;
+  nickname: string;
+  memberName?: string;
+  email?: string;
+  role?: "USER" | "ADMIN";
+  admin?: boolean;
+  exp?: number;
+  Address?: string;
+  AddressDetail?: string;
+  phoneNumber?: string;
+  zipCode?: string;
+};
 
 const UserInfo = ({
   token,
   myRank,
   children,
 }: {
-  token: JwtToken;
+  token: HeaderUser;
   myRank: MarketRankingMemberRank | null;
   children: React.ReactNode;
 }) => {
@@ -69,7 +83,7 @@ const UserInfo = ({
             <span>{token.phoneNumber || "-"}</span>
 
             <span>이메일</span>
-            <span>{token.email}</span>
+            <span>{token.email || "-"}</span>
 
             <span>집주소</span>
             <span>

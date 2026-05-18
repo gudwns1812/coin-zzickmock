@@ -2,6 +2,7 @@
 
 import Button from "@/components/ui/shared/Button";
 import Modal from "@/components/ui/Modal";
+import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 import { formatUsd } from "@/lib/markets";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -82,8 +83,9 @@ export default function ClosePositionButton({
     setIsPending(true);
 
     try {
-      const response = await fetch("/proxy-futures/positions/close", {
+      const response = await fetch(createFuturesBackendApiUrl("/positions/close"), {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

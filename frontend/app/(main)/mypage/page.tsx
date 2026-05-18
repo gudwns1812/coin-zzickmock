@@ -7,7 +7,6 @@ import {
 } from "@/lib/futures-api";
 import AccountRefillCard from "@/components/mypage/AccountRefillCard";
 import { formatMarketRank, formatUsd } from "@/lib/markets";
-import { getJwtToken } from "@/utils/auth";
 import {
   CalendarDays,
   ClipboardList,
@@ -21,7 +20,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export default async function MyPage() {
-  const token = await getJwtToken();
   const [account, positions, reward, leaderboard, refillStatus] = await Promise.all([
     getFuturesAccountSummary(),
     getFuturesPositions(),
@@ -38,7 +36,7 @@ export default async function MyPage() {
           <div>
             <p className="text-sm-custom text-main-dark-gray/55">Account</p>
             <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
-              {token?.nickname ?? account.nickname}
+              {account.nickname}
             </h1>
             <div className="mt-3 inline-flex items-center gap-2 rounded-main bg-main-blue/10 px-3 py-1 text-sm-custom font-semibold text-main-blue">
               <Trophy size={15} />
@@ -54,17 +52,17 @@ export default async function MyPage() {
           <InfoRow
             icon={<Mail size={17} />}
             label="이메일"
-            value={token?.email ?? "-"}
+            value="-"
           />
           <InfoRow
             icon={<Phone size={17} />}
             label="휴대폰"
-            value={token?.phoneNumber ?? "-"}
+            value="-"
           />
           <InfoRow
             icon={<ShieldCheck size={17} />}
             label="아이디"
-            value={token?.account ?? account.account}
+            value={account.account}
           />
         </div>
       </section>

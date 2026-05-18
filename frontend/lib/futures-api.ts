@@ -8,6 +8,7 @@ import {
   type MarketSymbol,
   isSupportedMarketSymbol,
 } from "@/lib/markets";
+import { cookies } from "next/headers";
 import { FUTURES_API_BASE_URL } from "./futures-env";
 
 type ApiResponse<T> = {
@@ -704,11 +705,6 @@ export async function getAdminShopItems(): Promise<AdminShopItemsResult> {
   };
 }
 
-export async function getAuthUser(): Promise<AuthUser | null> {
-  const response = await readApiResult<AuthUser>("/api/futures/auth/me");
-  return response.ok ? response.data : null;
-}
-
 export async function getCommunityPosts(options: {
   category?: Exclude<CommunityCategory, "NOTICE"> | null;
   page?: number;
@@ -796,14 +792,10 @@ async function readApiResult<T>(
   message: string | null;
 }> {
   try {
-    const cookieHeader = await getAccessTokenCookieHeader();
+    const cookieHeader = await getBackendCookieHeader();
     const response = await fetch(`${FUTURES_API_BASE_URL}${path}`, {
       cache: "no-store",
-      headers: cookieHeader
-        ? {
-            Cookie: cookieHeader,
-          }
-        : undefined,
+      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
       signal: AbortSignal.timeout(2000),
     });
 
@@ -845,19 +837,13 @@ async function readApiResult<T>(
   }
 }
 
-async function getAccessTokenCookieHeader(): Promise<string | null> {
-  if (typeof window !== "undefined") {
-    return null;
-  }
+async function getBackendCookieHeader() {
+  const requestCookies = await cookies();
+  const cookiePairs = requestCookies
+    .getAll()
+    .map((cookie) => `${cookie.name}=${cookie.value}`);
 
-  try {
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
-    return accessToken ? `accessToken=${accessToken}` : null;
-  } catch {
-    return null;
-  }
+  return cookiePairs.join("; ");
 }
 
 function mergeMarketSnapshot(

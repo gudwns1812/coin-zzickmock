@@ -12,7 +12,7 @@ import type {
   ShopPurchaseResult,
   CommunityCategory,
 } from "@/lib/futures-api";
-
+import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 
 export type CommunityPostInput = {
   category: CommunityCategory;
@@ -329,7 +329,7 @@ export async function deactivateAdminShopItem(
 }
 
 async function readFuturesApi<T>(path: string): Promise<T> {
-  const response = await fetch(`/proxy-futures${path}`, {
+  const response = await fetch(createFuturesBackendApiUrl(path), {
     method: "GET",
     credentials: "include",
   });
@@ -354,7 +354,7 @@ async function requestFuturesApi<T>(
   method: "POST" | "PUT" | "DELETE",
   body?: unknown
 ): Promise<T> {
-  const response = await fetch(`/proxy-futures${path}`, {
+  const response = await fetch(createFuturesBackendApiUrl(path), {
     method,
     credentials: "include",
     headers:

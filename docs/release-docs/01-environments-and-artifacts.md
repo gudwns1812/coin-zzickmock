@@ -156,6 +156,8 @@
 - 운영 자격증명은 코드, 샘플 파일, 문서 예시에 넣지 않는다.
 - 설정값이 바뀌면 적용 대상 환경과 주입 위치를 릴리즈 기록에 남긴다.
 - 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
+- Backend-owned auth cookie는 runtime 환경별로 `APP_AUTH_COOKIE_SECURE`, `APP_AUTH_COOKIE_SAME_SITE`를 명시한다.
+  로컬 Compose 기본값은 HTTP 개발을 위해 `false`/`Lax`이고, 운영 Compose 기본값은 Vercel frontend에서 backend origin API 인증에 사용할 수 있도록 `true`/`None`이다.
 - 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며
   `application-prod.yml`, `docker-compose.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.
 - 커뮤니티 이미지 업로드는 backend-only S3 presign 설정으로 관리한다. Compose runtime에서는 `S3_BUCKET`, `S3_REGION`,

@@ -1,10 +1,10 @@
+import BackendAuthGate from "@/components/router/BackendAuthGate";
 import CommunityDetailView from "@/components/router/(main)/community/CommunityDetailView";
 import {
   getCommunityComments,
   getCommunityPost,
 } from "@/lib/futures-api";
-import { getJwtToken } from "@/utils/auth";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 const COMMENT_PAGE_SIZE = 20;
 
@@ -17,11 +17,6 @@ type CommunityDetailPageProps = {
 export default async function CommunityDetailPage({
   params,
 }: CommunityDetailPageProps) {
-  const token = await getJwtToken();
-  if (!token) {
-    redirect("/login");
-  }
-
   const { postId: rawPostId } = await params;
   const postId = Number(rawPostId);
   if (!Number.isInteger(postId) || postId <= 0) {
@@ -34,11 +29,13 @@ export default async function CommunityDetailPage({
   ]);
 
   return (
-    <CommunityDetailView
-      comments={commentsResult.data}
-      message={postResult.message}
-      post={postResult.data}
-      unavailable={postResult.unavailable}
-    />
+    <BackendAuthGate>
+      <CommunityDetailView
+        comments={commentsResult.data}
+        message={postResult.message}
+        post={postResult.data}
+        unavailable={postResult.unavailable}
+      />
+    </BackendAuthGate>
   );
 }

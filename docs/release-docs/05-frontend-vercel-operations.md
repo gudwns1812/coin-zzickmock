@@ -83,8 +83,8 @@ Next.js는 이미 존재하는 `process.env` 값을 가장 먼저 사용한다.
 
 | Name | Value | Visibility | Purpose |
 | --- | --- | --- | --- |
-| `FUTURES_API_BASE_URL` | `https://coin-zzickmock.duckdns.org` | Server/Public injected by Next config | Next.js rewrite, server fetch, browser SSE가 사용할 backend base URL |
-| `NEXT_PUBLIC_FUTURES_API_BASE_URL` | optional override | Public | 브라우저의 market/candle/order SSE와 직접 backend auth 호출 origin. 설정하지 않으면 `FUTURES_API_BASE_URL`에서 주입 |
+| `FUTURES_API_BASE_URL` | `https://coin-zzickmock.duckdns.org` | Server/Public injected by Next config | Next.js rewrite, server fetch, SSE proxy가 사용할 backend base URL |
+| `NEXT_PUBLIC_FUTURES_API_BASE_URL` | optional override | Public | 브라우저의 direct backend auth/API/SSE 호출 origin. 설정하지 않으면 `FUTURES_API_BASE_URL`에서 주입 |
 | `NEXT_PUBLIC_API_MOCKING` | unset | Public | production에서는 MSW를 켜지 않는다 |
 | `NEXT_PUBLIC_BASE_URL` | 운영 legacy stock API base URL, 필요한 경우만 | Public | 남아 있는 legacy stock route용 |
 | `NEXT_PUBLIC_BASE_URL2` | 운영 legacy stock API base URL, 필요한 경우만 | Public | 남아 있는 legacy stock API 호출용 |
@@ -93,10 +93,11 @@ Next.js는 이미 존재하는 `process.env` 값을 가장 먼저 사용한다.
 강한 규칙:
 
 - `FUTURES_API_BASE_URL`에는 `/api/futures`를 붙이지 않는다. `frontend/next.config.ts`와 URL helper가 path를 붙인다.
-- `NEXT_PUBLIC_FUTURES_API_BASE_URL`을 별도로 설정하는 경우에도 `/api/futures`를 붙이지 않는다. SSE/auth URL helper가 path를 붙인다.
-- Production에서는 `next.config.ts`가 `FUTURES_API_BASE_URL`을 브라우저용 SSE/auth origin으로 주입해 market/candle/order SSE가 Vercel 함수 실행 시간을 점유하지 않게 한다.
+- `NEXT_PUBLIC_FUTURES_API_BASE_URL`을 별도로 설정하는 경우에도 `/api/futures`를 붙이지 않는다. URL helper가 path를 붙인다.
+- Production에서는 `next.config.ts`가 `FUTURES_API_BASE_URL`을 브라우저용 backend origin으로 주입한다. Auth와 authenticated SSE/API 호출은 backend origin으로 직접 보내 backend-owned cookie를 사용한다.
 - Backend CORS의 `coin.web.cors.allowed-origin-patterns`는 Vercel frontend origin을 허용해야 한다. 기본값은 `https://coin-zzickmock-frontend*.vercel.app`와 local 개발 origin을 포함한다.
-- Backend auth cookie는 cross-origin SSE 인증을 위해 `SameSite=None; Secure`로 발급한다.
+- Backend auth cookie는 cross-origin frontend에서 backend API/SSE 인증에 사용할 수 있도록 `SameSite=None; Secure`로 발급한다. Frontend는 이 쿠키를 앱 도메인 쿠키로 복제하거나 정규화하지 않는다.
+- 로컬 HTTP Compose 검증에서는 browser가 backend cookie를 저장할 수 있도록 `APP_AUTH_COOKIE_SECURE=false`, `APP_AUTH_COOKIE_SAME_SITE=Lax` 기본값을 사용한다. Production에서는 `docker-compose.prod.yml`/`.env.prod` 계약이 `true`/`None`을 유지해야 한다.
 - Vercel 배포에서 `FUTURES_API_BASE_URL`이 없으면 frontend build/runtime은 실패해야 한다. 조용히 localhost fallback으로 배포하지 않는다.
 - `NEXT_PUBLIC_*`에는 공개 가능한 값만 둔다.
 - production Vercel env에서 `NEXT_PUBLIC_API_MOCKING=enabled`를 설정하지 않는다.

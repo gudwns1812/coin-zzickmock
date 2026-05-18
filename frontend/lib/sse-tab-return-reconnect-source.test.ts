@@ -83,7 +83,6 @@ test("public market SSE consumers can bypass Vercel route handlers", () => {
   assert.equal(urlSource.includes("NEXT_PUBLIC_FUTURES_API_BASE_URL"), true);
   assert.equal(urlSource.includes("/markets/stream"), true);
   assert.equal(urlSource.includes("/markets/summary/stream"), true);
-  assert.equal(urlSource.includes("/orders/stream"), true);
   assert.equal(detailSource.includes("createUnifiedMarketSseUrl"), true);
   assert.equal(detailSource.includes("createOrderExecutionSseUrl"), true);
   assert.equal(landingSource.includes("createMarketSummarySseUrl"), true);
@@ -95,19 +94,33 @@ test("event sources include credentials for direct backend SSE", () => {
   assert.equal(hookSource.includes("new EventSource(url, { withCredentials: true })"), true);
 });
 
-test("client auth requests target the backend domain for SSE-compatible cookies", () => {
+test("client auth requests target the backend origin for backend-owned cookies", () => {
   const authSource = readFrontendSource("lib/futures-auth-client.ts");
+  const urlSource = readFrontendSource("lib/futures-sse-url.ts");
   const pageLoginSource = readFrontendSource("app/login/LoginFormClient.tsx");
   const headerLoginSource = readFrontendSource("components/ui/shared/header/LoginForm.tsx");
   const refreshSource = readFrontendSource("hooks/useSessionActivityRefresh.ts");
 
   assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/login")'), true);
-  assert.equal(authSource.includes('"/proxy/auth/login"'), false);
-  assert.equal(authSource.includes('"/proxy/auth/logout"'), false);
+  assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/logout")'), true);
+  assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/me")'), true);
+  assert.equal(urlSource.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
+  assert.equal(urlSource.includes("window.location.hostname"), true);
+  assert.equal(urlSource.includes("isLoopbackHost(apiUrl.hostname)"), true);
+  assert.equal(urlSource.includes("apiUrl.hostname = pageHostname"), true);
+  assert.equal(urlSource.includes("`${publicBaseUrl}${relativeUrl}`"), true);
   assert.equal(refreshSource.includes('createFuturesBackendApiUrl("/auth/refresh")'), true);
   assert.equal(authSource.includes("credentials: \"include\""), true);
+  assert.equal(authSource.includes("cache: \"no-store\""), true);
   assert.equal(pageLoginSource.includes("loginToFutures"), true);
   assert.equal(headerLoginSource.includes("loginToFutures"), true);
+});
+
+test("authenticated order SSE targets backend origin for backend-owned cookies", () => {
+  const urlSource = readFrontendSource("lib/futures-sse-url.ts");
+
+  assert.equal(urlSource.includes('buildFuturesSseUrl("/orders/stream"'), true);
+  assert.equal(urlSource.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
 });
 
 test("frontend SSE routes fail missing or blank clientKey before proxying", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/ui/shared/Button";
+import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
@@ -29,8 +30,9 @@ export default function CancelOrderButton({ orderId }: Props) {
     setIsPending(true);
 
     try {
-      const response = await fetch(`/proxy-futures/orders/${orderId}/cancel`, {
+      const response = await fetch(createFuturesBackendApiUrl(`/orders/${orderId}/cancel`), {
         method: "POST",
+        credentials: "include",
       });
 
       const payload =

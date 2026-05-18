@@ -1,10 +1,9 @@
+import BackendAuthGate from "@/components/router/BackendAuthGate";
 import CommunityListView from "@/components/router/(main)/community/CommunityListView";
 import {
   getCommunityPosts,
   type CommunityCategory,
 } from "@/lib/futures-api";
-import { getJwtToken } from "@/utils/auth";
-import { redirect } from "next/navigation";
 
 const COMMUNITY_POST_CATEGORIES: Exclude<CommunityCategory, "NOTICE">[] = [
   "CHART_ANALYSIS",
@@ -25,11 +24,6 @@ type CommunityPageProps = {
 export default async function CommunityPage({
   searchParams,
 }: CommunityPageProps) {
-  const token = await getJwtToken();
-  if (!token) {
-    redirect("/login");
-  }
-
   const resolvedSearchParams = await searchParams;
   const category = parseCategory(resolvedSearchParams?.category);
   const page = parsePage(resolvedSearchParams?.page);
@@ -41,13 +35,15 @@ export default async function CommunityPage({
   });
 
   return (
-    <CommunityListView
-      category={category}
-      message={result.message}
-      result={result.data}
-      searchQuery={searchQuery}
-      unavailable={result.unavailable}
-    />
+    <BackendAuthGate>
+      <CommunityListView
+        category={category}
+        message={result.message}
+        result={result.data}
+        searchQuery={searchQuery}
+        unavailable={result.unavailable}
+      />
+    </BackendAuthGate>
   );
 }
 

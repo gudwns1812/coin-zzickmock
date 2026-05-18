@@ -8,6 +8,7 @@ import Input from "../Input";
 import Link from "next/link";
 import useOutsideClick from "@/hooks/useOutsideClick";
 import Button from "../Button";
+import { notifyFuturesAuthChanged } from "@/lib/futures-auth-state";
 import { loginToFutures } from "@/lib/futures-auth-client";
 
 const LoginForm = () => {
@@ -34,6 +35,8 @@ const LoginForm = () => {
 
     if (res.ok) {
       toast.success("로그인에 성공했습니다");
+      notifyFuturesAuthChanged();
+      setIsOpenForm(false);
       router.refresh();
     } else {
       toast.error("아이디 / 비밀번호가 일치하지 않습니다");

@@ -1,42 +1,8 @@
-import { getAuthUser } from "@/lib/futures-api";
-import { getJwtToken } from "@/utils/auth";
-import { Package, ShieldAlert, ShieldCheck, TicketCheck } from "lucide-react";
+import { Package, ShieldCheck, TicketCheck } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export default async function AdminPage() {
-  const token = await getJwtToken();
-  if (!token) {
-    redirect("/login");
-  }
-
-  const authUser = await getAuthUser();
-  const isAdmin = authUser?.admin ?? token?.admin ?? token?.role === "ADMIN";
-
-  if (!isAdmin) {
-    return (
-      <div className="px-main-2 pb-24 pt-4">
-        <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
-          <div className="flex items-start gap-main">
-            <div className="flex size-[56px] items-center justify-center rounded-main bg-main-light-gray text-main-dark-gray/55">
-              <ShieldAlert size={26} />
-            </div>
-            <div>
-              <p className="text-sm-custom text-main-dark-gray/55">Admin</p>
-              <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
-                관리자 권한이 필요합니다
-              </h1>
-              <p className="mt-3 text-sm-custom text-main-dark-gray/65 break-keep">
-                관리자 기능은 운영 권한이 있는 계정에서만 사용할 수 있습니다.
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
   return (
     <div className="px-main-2 pb-24 pt-4">
       <section className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">

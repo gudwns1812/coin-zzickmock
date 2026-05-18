@@ -8,7 +8,6 @@ import {
   getFuturesPositions,
   isSupportedFuturesSymbol,
 } from "@/lib/futures-api";
-import { getJwtToken } from "@/utils/auth";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({
@@ -41,21 +40,20 @@ export default async function MarketDetailPage({
     notFound();
   }
 
-  const [market, positions, openOrders, orderHistory, positionHistory, user] =
+  const [market, positions, openOrders, orderHistory, positionHistory] =
     await Promise.all([
     getFuturesMarket(symbol),
     getFuturesPositions(),
     getFuturesOpenOrders(),
     getFuturesOrderHistory(),
     getFuturesPositionHistory(),
-    getJwtToken(),
   ]);
-  const accountSummary = user ? await getFuturesAccountSummary() : null;
+  const accountSummary = await getFuturesAccountSummary();
 
   return (
     <MarketDetailRealtimeView
       initialMarket={market}
-      isAuthenticated={user !== null}
+      isAuthenticated={false}
       key={market.symbol}
       accountSummary={accountSummary}
       chartOpenOrders={openOrders.filter((order) => order.symbol === symbol)}

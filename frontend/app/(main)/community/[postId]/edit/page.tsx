@@ -1,8 +1,8 @@
+import BackendAuthGate from "@/components/router/BackendAuthGate";
 import CommunityPostEditorClient from "@/components/router/(main)/community/CommunityPostEditorClient";
 import CommunityState from "@/components/router/(main)/community/CommunityState";
 import { getCommunityPostForEdit } from "@/lib/futures-api";
-import { getJwtToken } from "@/utils/auth";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 type CommunityEditPageProps = {
   params: Promise<{
@@ -11,11 +11,6 @@ type CommunityEditPageProps = {
 };
 
 export default async function CommunityEditPage({ params }: CommunityEditPageProps) {
-  const token = await getJwtToken();
-  if (!token) {
-    redirect("/login");
-  }
-
   const { postId: rawPostId } = await params;
   const postId = Number(rawPostId);
   if (!Number.isInteger(postId) || postId <= 0) {
@@ -52,10 +47,12 @@ export default async function CommunityEditPage({ params }: CommunityEditPagePro
   }
 
   return (
-    <CommunityPostEditorClient
-      isAdmin={Boolean(token.admin || token.role === "ADMIN")}
-      mode="edit"
-      post={result.data}
-    />
+    <BackendAuthGate>
+      <CommunityPostEditorClient
+        isAdmin={false}
+        mode="edit"
+        post={result.data}
+      />
+    </BackendAuthGate>
   );
 }

@@ -2,6 +2,7 @@
 
 import Button from "@/components/ui/shared/Button";
 import Input from "@/components/ui/shared/Input";
+import { notifyFuturesAuthChanged } from "@/lib/futures-auth-state";
 import { loginToFutures } from "@/lib/futures-auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ export default function LoginFormClient() {
       }
 
       toast.success("로그인되었습니다.");
+      notifyFuturesAuthChanged();
       router.push("/markets");
       router.refresh();
     } finally {

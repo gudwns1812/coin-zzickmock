@@ -6,9 +6,17 @@ import { Edit } from "lucide-react";
 import React, { useState } from "react";
 import AddressModal from "../AddressModal";
 import { UserInfo } from "@/type/userInfo";
-import { JwtToken } from "@/type/jwt";
 
-const EditInfo = ({ token }: { token: JwtToken }) => {
+type EditableHeaderUser = {
+  nickname: string;
+  email?: string;
+  phoneNumber?: string;
+  zipCode?: string;
+  Address?: string;
+  AddressDetail?: string;
+};
+
+const EditInfo = ({ token }: { token: EditableHeaderUser }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenAddressModal, setIsOpenAddressModal] = useState(false);
   const [info, setInfo] = useState<UserInfo>(() => {
@@ -21,7 +29,7 @@ const EditInfo = ({ token }: { token: JwtToken }) => {
         phoneNumber1: phoneNumber[1],
         phoneNumber2: phoneNumber[2],
       },
-      email: token.email,
+      email: token.email ?? "",
       address: {
         zipcode: token.zipCode || "",
         address: token.Address || "",

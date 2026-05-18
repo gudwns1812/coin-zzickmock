@@ -22,6 +22,11 @@ import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import {
+  FUTURES_AUTH_CHANGED_EVENT,
+  getFuturesAuthUserClient,
+} from "@/lib/futures-auth-state";
+import {
+  createFuturesBackendApiUrl,
   createOrderExecutionSseUrl,
   createUnifiedMarketSseUrl,
 } from "@/lib/futures-sse-url";
@@ -116,6 +121,7 @@ export default function MarketDetailRealtimeView({
     Date.now()
   );
   const [activeTab, setActiveTab] = useState<TradingTab>("POSITIONS");
+  const [hasBackendSession, setHasBackendSession] = useState(isAuthenticated);
   const [executionEvents, setExecutionEvents] = useState<
     DisplayedExecutionEvent[]
   >([]);
@@ -143,6 +149,30 @@ export default function MarketDetailRealtimeView({
     return createUnifiedMarketSseUrl(initialMarket.symbol, selectedInterval);
   }, [initialMarket.symbol, selectedInterval]);
   const orderStreamUrl = useMemo(() => createOrderExecutionSseUrl(), []);
+  const effectiveIsAuthenticated = isAuthenticated || hasBackendSession;
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function resolveBackendSession() {
+      const authUser = await getFuturesAuthUserClient();
+      if (isActive) {
+        setHasBackendSession(Boolean(authUser));
+      }
+    }
+
+    const handleAuthChanged = () => {
+      void resolveBackendSession();
+    };
+
+    void resolveBackendSession();
+    window.addEventListener(FUTURES_AUTH_CHANGED_EVENT, handleAuthChanged);
+
+    return () => {
+      isActive = false;
+      window.removeEventListener(FUTURES_AUTH_CHANGED_EVENT, handleAuthChanged);
+    };
+  }, []);
 
   const applyMarketSummary = useCallback(
     (symbol: string, data: MarketApiResponse, receivedAt: number) => {
@@ -223,7 +253,7 @@ export default function MarketDetailRealtimeView({
 
   useResilientEventSource({
     onMessage: handleMarketStreamMessage,
-    reconnectKey: isAuthenticated ? "authenticated" : "anonymous",
+    reconnectKey: effectiveIsAuthenticated ? "authenticated" : "anonymous",
     url: marketStreamUrl,
   });
 
@@ -324,7 +354,7 @@ export default function MarketDetailRealtimeView({
   }, []);
 
   useResilientEventSource({
-    enabled: isAuthenticated,
+    enabled: effectiveIsAuthenticated,
     onMessage: handleOrderStreamMessage,
     onReconnect: refreshOnOrderStreamResume,
     url: orderStreamUrl,
@@ -508,7 +538,7 @@ export default function MarketDetailRealtimeView({
           <OrderEntryPanel
             accountSummary={accountSummary}
             currentPrice={displayedLatestPrice}
-            isAuthenticated={isAuthenticated}
+            isAuthenticated={effectiveIsAuthenticated}
             positions={displayedPositions}
             quickLimitPriceSelection={quickLimitPriceSelection}
             symbol={market.symbol}
@@ -870,8 +900,9 @@ function PositionTpslEditor({
     setIsPending(true);
 
     try {
-      const response = await fetch("/proxy-futures/positions/tpsl", {
+      const response = await fetch(createFuturesBackendApiUrl("/positions/tpsl"), {
         method: "PATCH",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

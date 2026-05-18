@@ -11,24 +11,58 @@ function readFrontendSource(relativePath: string): string {
   return readFileSync(path.join(rootDir, relativePath), "utf8");
 }
 
-test("login route redirects authenticated users before rendering the client form", () => {
+test("login route leaves auth ownership with the backend", () => {
   const loginPageSource = readFrontendSource("app/login/page.tsx");
   const loginFormSource = readFrontendSource("app/login/LoginFormClient.tsx");
 
   assert.doesNotMatch(loginPageSource, /"use client"/);
-  assert.match(loginPageSource, /const authUser = await getAuthUser\(\);/);
-  assert.match(loginPageSource, /if \(authUser\) \{/);
-  assert.match(loginPageSource, /redirect\("\/markets"\);/);
+  assert.doesNotMatch(loginPageSource, /getAuthUser/);
+  assert.doesNotMatch(loginPageSource, /redirect\("\/markets"\);/);
   assert.match(loginPageSource, /return <LoginFormClient \/>;/);
   assert.match(loginFormSource, /"use client"/);
+  assert.match(loginFormSource, /loginToFutures/);
+  assert.match(loginFormSource, /notifyFuturesAuthChanged/);
 });
 
 test("frontend authenticated-user lookup uses the non-mutating auth me endpoint", () => {
+  const authStateSource = readFrontendSource("lib/futures-auth-state.ts");
   const futuresApiSource = readFrontendSource("lib/futures-api.ts");
 
-  assert.match(futuresApiSource, /readApiResult<AuthUser>\("\/api\/futures\/auth\/me"\)/);
+  assert.match(authStateSource, /createFuturesBackendApiUrl\("\/auth\/me"\)/);
+  assert.match(authStateSource, /credentials: "include"/);
   assert.doesNotMatch(
-    futuresApiSource,
-    /readApiResult<AuthUser>\("\/api\/futures\/auth\/refresh"\)/
+    authStateSource,
+    /createFuturesBackendApiUrl\("\/auth\/refresh"\)/
   );
+  assert.doesNotMatch(futuresApiSource, /getAccessTokenCookieHeader/);
+});
+
+test("server-rendered futures data forwards request cookies to the backend", () => {
+  const futuresApiSource = readFrontendSource("lib/futures-api.ts");
+
+  assert.match(futuresApiSource, /from "next\/headers"/);
+  assert.match(futuresApiSource, /await cookies\(\)/);
+  assert.match(futuresApiSource, /headers: cookieHeader \? \{ Cookie: cookieHeader \} : undefined/);
+  assert.match(futuresApiSource, /getBackendCookieHeader\(\)/);
+});
+
+test("authenticated screens re-check backend auth after login/logout events", () => {
+  const authGateSource = readFrontendSource("components/router/BackendAuthGate.tsx");
+  const marketDetailSource = readFrontendSource(
+    "components/futures/MarketDetailRealtimeView.tsx"
+  );
+  const marketsLandingSource = readFrontendSource(
+    "components/router/(main)/markets/MarketsLandingRealtimeView.tsx"
+  );
+
+  for (const source of [authGateSource, marketDetailSource, marketsLandingSource]) {
+    assert.match(source, /FUTURES_AUTH_CHANGED_EVENT/);
+    assert.match(source, /window\.addEventListener\(FUTURES_AUTH_CHANGED_EVENT/);
+    assert.match(source, /window\.removeEventListener\(FUTURES_AUTH_CHANGED_EVENT/);
+    assert.match(source, /getFuturesAuthUserClient\(\)/);
+  }
+
+  assert.match(marketsLandingSource, /effectiveIsAuthenticated/);
+  assert.match(marketsLandingSource, /isAuthenticated=\{effectiveIsAuthenticated\}/);
+  assert.doesNotMatch(marketsLandingSource, /isAuthenticated=\{isAuthenticated\}/);
 });

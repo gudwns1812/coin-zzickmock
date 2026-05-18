@@ -736,6 +736,15 @@ export async function getCommunityPost(
   return toCommunityApiResult(response);
 }
 
+export async function getCommunityPostForEdit(
+  postId: number
+): Promise<CommunityApiResult<CommunityPostDetail>> {
+  const response = await readApiResult<CommunityPostDetail>(
+    `/api/futures/community/posts/${encodeURIComponent(String(postId))}/edit`
+  );
+  return toCommunityApiResult(response);
+}
+
 export async function getCommunityComments(
   postId: number,
   options: { page?: number; size?: number } = {}

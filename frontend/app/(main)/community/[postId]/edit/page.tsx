@@ -1,6 +1,6 @@
 import CommunityPostEditorClient from "@/components/router/(main)/community/CommunityPostEditorClient";
 import CommunityState from "@/components/router/(main)/community/CommunityState";
-import { getCommunityPost } from "@/lib/futures-api";
+import { getCommunityPostForEdit } from "@/lib/futures-api";
 import { getJwtToken } from "@/utils/auth";
 import { notFound, redirect } from "next/navigation";
 
@@ -22,7 +22,7 @@ export default async function CommunityEditPage({ params }: CommunityEditPagePro
     notFound();
   }
 
-  const result = await getCommunityPost(postId);
+  const result = await getCommunityPostForEdit(postId);
   if (result.unavailable || !result.data) {
     return (
       <div className="mx-auto w-full max-w-[1000px] px-main-3 pb-24 pt-4">

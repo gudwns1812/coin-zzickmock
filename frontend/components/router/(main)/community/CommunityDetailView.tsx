@@ -1,6 +1,6 @@
 import type { CommunityCommentList, CommunityPostDetail } from "@/lib/futures-api";
 import type { ReactNode } from "react";
-import { ArrowLeft, Eye, MessageCircle, ShieldCheck, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import CommunityState from "./CommunityState";
 import { CommunityComments, CommunityPostActions } from "./CommunityDetailInteractions";
@@ -57,18 +57,12 @@ export default function CommunityDetailView({
             <span className="rounded-full bg-main-light-gray/35 px-2 py-1 text-xs-custom font-semibold text-main-dark-gray/45">
               {formatCommunityDate(post.createdAt)}
             </span>
-            {post.canEdit || post.canDelete ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs-custom font-bold text-emerald-600">
-                <ShieldCheck size={13} /> 작성자/관리 권한
-              </span>
-            ) : null}
           </div>
           <h1 className="mt-5 text-3xl-custom font-bold leading-tight text-main-dark-gray">{post.title}</h1>
           <div className="mt-5 grid gap-main rounded-main bg-white/64 p-main shadow-sm ring-1 ring-main-light-gray/45 sm:grid-cols-[1fr_auto] sm:items-center">
-            <div>
-              <p className="text-xs-custom font-bold uppercase tracking-[0.16em] text-main-blue/60">Author</p>
-              <p className="mt-1 text-sm-custom font-semibold text-main-dark-gray">{post.authorNickname}의 관점</p>
-            </div>
+            <p className="text-sm-custom font-semibold text-main-dark-gray">
+              <span className="text-main-dark-gray/55">작성자:</span> {post.authorNickname}
+            </p>
             <div className="flex flex-wrap items-center gap-2 text-xs-custom text-main-dark-gray/55">
               <Metric icon={<MessageCircle size={15} />} value={post.commentCount} label="댓글" active={post.commentCount > 0} />
               <Metric icon={<ThumbsUp size={15} />} value={post.likeCount} label="좋아요" active={post.likedByMe || post.likeCount > 0} />

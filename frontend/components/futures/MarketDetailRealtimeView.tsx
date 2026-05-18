@@ -17,6 +17,7 @@ import {
   type MarketStreamHistoryFinalized,
 } from "@/components/futures/marketStreamEnvelope";
 import QuickLimitPriceSelector from "@/components/futures/QuickLimitPriceSelector";
+import AppLoadingScreen from "@/components/ui/shared/AppLoadingScreen";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
@@ -132,6 +133,7 @@ export default function MarketDetailRealtimeView({
   );
   const [activeTab, setActiveTab] = useState<TradingTab>("POSITIONS");
   const [hasBackendSession, setHasBackendSession] = useState(isAuthenticated);
+  const [isAuthResolved, setIsAuthResolved] = useState(isAuthenticated);
   const [executionEvents, setExecutionEvents] = useState<
     DisplayedExecutionEvent[]
   >([]);
@@ -201,9 +203,10 @@ export default function MarketDetailRealtimeView({
     let isActive = true;
 
     async function resolveBackendSession() {
-      const authUser = await getFuturesAuthUserClient();
+      const authUser = await getFuturesAuthUserClient().catch(() => null);
       if (isActive) {
         setHasBackendSession(Boolean(authUser));
+        setIsAuthResolved(true);
       }
     }
 
@@ -450,6 +453,15 @@ export default function MarketDetailRealtimeView({
     [fundingCountdownNow, market.nextFundingAt, market.serverTime, marketUpdatedAt]
   );
   const displayedLatestPrice = latestCandleClosePrice ?? market.lastPrice;
+
+  if (!isAuthResolved) {
+    return (
+      <AppLoadingScreen
+        title="트레이딩 화면을 준비하고 있습니다"
+        description="실시간 시세와 계정 상태를 맞춘 뒤 주문 화면을 보여드립니다."
+      />
+    );
+  }
 
   return (
     <div className="flex w-full flex-col gap-main-2 px-main-2 pb-24">

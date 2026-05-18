@@ -5,6 +5,7 @@ import type {
   PriceFlashRenderState,
 } from "@/components/router/(main)/markets/MarketsLanding";
 import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
+import AppLoadingScreen from "@/components/ui/shared/AppLoadingScreen";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectStatus } from "@/hooks/resilientEventSourcePolicy";
 import type { FuturesAccountSummary, FuturesPosition, FuturesReward, MarketApiResponse } from "@/lib/futures-api";
@@ -162,6 +163,7 @@ export default function MarketsLandingRealtimeView({
   const [streamStatus, setStreamStatus] =
     useState<EventSourceReconnectStatus>("idle");
   const [hasBackendSession, setHasBackendSession] = useState(isAuthenticated);
+  const [isAuthResolved, setIsAuthResolved] = useState(isAuthenticated);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
   const marketMapRef = useRef(marketMap);
   const flashMetadataRef = useRef<PriceFlashMetadataMap>({});
@@ -210,9 +212,10 @@ export default function MarketsLandingRealtimeView({
     let isActive = true;
 
     async function resolveBackendSession() {
-      const authUser = await getFuturesAuthUserClient();
+      const authUser = await getFuturesAuthUserClient().catch(() => null);
       if (isActive) {
         setHasBackendSession(Boolean(authUser));
+        setIsAuthResolved(true);
       }
     }
 
@@ -364,6 +367,15 @@ export default function MarketsLandingRealtimeView({
     initialMarkets.some((market) => !recoveredStreamSymbols[market.symbol]);
   const isStreamRecovering =
     isInitialFallbackRecovering || isRecoveringStatus(streamStatus);
+
+  if (!isAuthResolved) {
+    return (
+      <AppLoadingScreen
+        title="마켓 데이터를 준비하고 있습니다"
+        description="시세와 계정 상태를 확인한 뒤 대시보드를 보여드립니다."
+      />
+    );
+  }
 
   return (
     <>

@@ -108,7 +108,6 @@ API 타입, 훅, 상태 이름은 코인 선물 기준으로 다시 정의한다
 15. 포인트 적립과 상점
 16. 관리자 상점 아이템/교환권 처리
 17. 메인 대시보드의 읽기 전용 실현 수익률 랭킹
-18. 로그인 전용 커뮤니티 MVP: 게시글, 최신 공지 3개 고정, Tiptap JSON 본문, S3 이미지, 댓글, 좋아요, 조회수
 
 ### 제외
 
@@ -283,7 +282,7 @@ MVP에서는 기본 리스트와 요약 카드 중심으로 시작한다.
 - `FeeLedger`
 - `BalanceHistory`
 - `PointLedger`
-- `ShopPurchase`
+- `ShopPurchase`: 교환권 신청과 분리된 즉시 구매 성공 원장. `ACCOUNT_REFILL_COUNT`, `POSITION_PEEK`처럼 요청 lifecycle이 없는 상품은 구매 시점의 item snapshot과 `purchaseId`를 남긴다.
 
 ## 시뮬레이션 규칙 기준
 

@@ -120,8 +120,16 @@ non-conditional 주문으로 제한한다. TP/SL 조건부 주문은 포지션 T
 
 #### Pending limit 체결 순서
 
+WebSocket trade tick에서 accepted 된 최신 체결가 이동이 pending limit 체결의 primary trigger다.
 시세 수집부는 처리부에 이전 가격, 현재 가격, 이동 방향(`UP`/`DOWN`/`UNCHANGED`)을 함께 전달한다.
 첫 시세처럼 이전 가격이 없거나 가격이 변하지 않은 이벤트는 pending limit 체결을 시도하지 않는다.
+WebSocket 수신 thread는 가격 이동 이벤트를 application worker에 넘기는 역할만 하며, 체결 대상 후보는 in-memory pending order book에서 좁힌다.
+이 in-memory order book은 권위 저장소가 아니며 최종 체결 여부는 DB의 pending limit guarded claim과 claim 직전 주문 재조회로 확정한다.
+이 경로는 단일 애플리케이션 인스턴스를 전제로 하며, in-memory pending order book은 인스턴스 간에 공유하거나 복제하지 않는다.
+서버 재시작 시에는 DB의 pending non-conditional limit 주문을 worker 시작 전 in-memory order book에 적재해 재시작 전 대기 주문도 이후 WebSocket price movement 후보가 되도록 한다.
+서버 재시작 또는 워커 재기동 동안 누락된 WebSocket trade movement는 replay되지 않는다. DB에서 pending 주문을 재적재해 다음 accepted movement부터 후보로 삼을 수는 있지만, 다운타임 동안 지나간 중간 가격 경로는 보장하지 않는다.
+pending 지정가가 수정되면 수정 commit 이후의 가격 이동부터 새 지정가 체결 후보가 될 수 있으며, 수정 전 이미 큐에 들어간 과거 trade movement로 새 지정가를 체결하지 않는다.
+WebSocket trade movement가 없는 REST/provider fallback 환경에서는 coarse market summary refresh가 pending limit 체결을 보조로 깨울 수 있지만, 빠르게 찍고 되돌아온 중간 가격 경로 보장은 WebSocket trade movement 기준으로만 제공한다.
 
 - 가격 상승(`UP`) 이벤트는 매도 성격 주문인 `open short`, `close long`만 후보로 본다
 - 가격 하락(`DOWN`) 이벤트는 매수 성격 주문인 `open long`, `close short`만 후보로 본다
@@ -159,6 +167,7 @@ non-conditional 주문으로 제한한다. TP/SL 조건부 주문은 포지션 T
 
 포지션 종료, pending 종료 주문 체결, 청산 종료는 열린 포지션의 `version`을 조건으로 하는 낙관적 잠금 mutation이다.
 이미 다른 요청이 포지션을 변경했다면 계정 정산, 포지션 이력, 리워드 지급, 응답용 체결 이벤트 발행 전에 충돌로 중단한다.
+일반 포지션 종료는 정산 이후 `walletBalance` 또는 `availableMargin`이 음수가 되는 요청을 거절해 DB의 계정 non-negative invariant를 위반하지 않는다. 청산 종료만 별도 정산 모델로 손실을 cap하고 0으로 floor 처리한다.
 
 ### 포지션 TP/SL
 
@@ -337,6 +346,9 @@ TP/SL로 종료된 포지션은 종료 사유를 각각 `TAKE_PROFIT`, `STOP_LOS
 - 청산 평가는 `mark price` 기준이다
 - `maintenance margin`을 밑돌면 청산 대상으로 본다
 - 유지 증거금률은 MVP 1차에서 심볼 공통 고정값으로 시작한다
+- 청산 raw close outcome, 청산 체결 이벤트의 `executionPrice`, 포지션 히스토리 `averageExitPrice`와 실현 손익은 모두 `markPrice` 기준이다. 최신 체결가(`lastPrice`)는 manual pending close cap reconciliation의 실행 가능성 정렬에만 사용할 수 있고 청산 정산가로 전달하지 않는다.
+- 청산 계정 반영은 일반 종료와 분리된 `LiquidationSettlement` 모델을 사용한다. raw 손실이 계정 잔고를 초과하면 계정 반영 손실을 cap하고 `walletBalance`, `availableMargin`은 각각 `max(0, rawAfter)`로 floor 처리한다.
+- `lossCappedAmount`는 raw 청산 손실 중 계정에 더 이상 반영하지 못한 금액을 나타내며, 리워드 포인트나 실현 수익으로 보지 않는다. 청산 종료는 raw outcome이 양수여도 포인트 적립 대상이 아니다.
 - 청산 체결 이벤트는 DB transaction commit 이후에만 발행한다
 
 ### 유지 증거금률
@@ -371,6 +383,20 @@ MVP 1차는 아래 순서로 단순화한다.
 위험도 정렬 기준은 `riskRatio = max(0, initialMargin + unrealizedPnl) / maintenanceRequirement`가 낮은 순서다. `maintenanceRequirement <= 0`이면 해당 포지션의 `riskRatio`는 `Infinity`로 두어 0분모를 만들지 않는다. 같은 값이면 절대 미실현 손실이 큰 포지션을 먼저 보고, 그래도 같으면 `symbol + positionSide + marginMode` 안정 키 순서로 결정한다. 이 MVP는 largest absolute loss, margin usage ratio, liquidation price proximity 같은 다른 후보 지표를 사용하지 않는다.
 
 교차 마진의 청산 후보 선정은 MVP 근사 휴리스틱이다. 실제 거래소의 부분청산, 위험한도, ADL 모델과 동일하다고 보지 않는다.
+
+
+### 청산 후보 메모리 캐시
+
+실시간 market tick의 청산 후보 조회는 `OpenPositionBook` 단일 인스턴스 in-memory candidate cache로 좁힌다.
+이 book은 청산 판단의 source of truth가 아니며, 최종 청산 여부와 mutation 성공은 account lock, 최신 market 재조회, mark-to-market 재평가, DB version guarded mutation으로 확정한다.
+
+- startup 시 DB의 모든 open position 후보를 hydrate한다.
+- open/increase/update/delete/liquidate close 성공 commit 이후 afterCommit write-through로 add/replace/remove한다.
+- book 상태가 `UNHYDRATED`이면 전체 hydrate를 수행하고, symbol 상태가 `DIRTY`이면 해당 tick 시작 시 symbol-level rehydrate를 수행한 뒤 평가한다.
+- symbol-level rehydrate는 dirty generation을 관찰한 뒤 reload하고, reload 중 더 최신 evict 또는 afterCommit write-through가 발생했으면 이전 reload가 symbol을 clean으로 되돌리거나 최신 candidate를 덮어쓰지 않는다. 이 경우 해당 tick은 partial dirty book을 source로 쓰지 않고 DB symbol scan으로 fallback한다.
+- stale guarded mutation 실패나 not found는 해당 symbol을 evict하고 symbol-level rehydrate를 유발한다.
+- 이 cache는 단일 애플리케이션 인스턴스 후보 최적화용이다. 인스턴스 간 공유/복제와 다운타임 동안의 완전성은 보장하지 않는다.
+- 사용자 read API와 교차마진 member portfolio 조회는 이 book을 source로 사용하지 않는다.
 
 교차 `liquidationPrice`와 주문 `estimatedLiquidationPrice`는 저장 컬럼의 원천값이 아니라 응답 시점의 계정/포지션 상태로 계산한 동적 값이다. 응답은 아래 정확도 타입을 함께 제공한다.
 
@@ -430,7 +456,7 @@ MVP 1차는 아래 순서로 단순화한다.
 
 ### MVP 1차 상품
 
-- `COFFEE_VOUCHER`: 커피 교환권, 50P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
+- `COFFEE_VOUCHER`: 커피 교환권, 100P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
 - `ACCOUNT_REFILL_COUNT`: 현재 주간 지갑 리필 횟수 추가권, 20P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`
 - `POSITION_PEEK`: 포지션 엿보기권, 10P, DB 운영 데이터, 무제한 재고, 유저별 구매 제한 없음, `active = true`, item code `position.peek`
 - 관리 방식:
@@ -438,9 +464,11 @@ MVP 1차는 아래 순서로 단순화한다.
 - 관리자 상품 CRUD UI/API:
   MVP 범위 밖
 
-`ACCOUNT_REFILL_COUNT`는 교환권 요청을 만들지 않는 즉시 구매 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 현재 KST 주간 지갑 리필 가능 횟수를 1회 늘린다. 늘어난 횟수는 무료 주간 횟수와 같은 카운터에 합산되며, 지갑 리필 규칙에 따라 사용되고 다음 KST 월요일 00:00 리셋 때 이월되지 않는다.
+`ACCOUNT_REFILL_COUNT`는 교환권 요청을 만들지 않는 즉시 구매 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 현재 KST 주간 지갑 리필 가능 횟수를 1회 늘린다. 늘어난 횟수는 무료 주간 횟수와 같은 카운터에 합산되며, 지갑 리필 규칙에 따라 사용되고 다음 KST 월요일 00:00 리셋 때 이월되지 않는다. 성공한 구매는 `reward_shop_purchases`에 status 없는 terminal event로 저장하며, `purchase_id`는 같은 구매의 `reward_point_histories.source_reference`와 일치한다.
 
-`POSITION_PEEK`는 교환권 요청을 만들지 않는 즉시 소비형 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 `reward_item_balances.remaining_quantity`를 1 증가시킨다. 사용 시에는 리더보드에서 선택한 target 1명의 현재 열린 포지션 공개 요약 snapshot 1개를 생성하는 transaction이 성공한 경우에만 수량을 1 감소시킨다. snapshot 생성 실패, target token 위조/만료, target 삭제/차단, 서버 오류는 수량을 차감하지 않는다. 사용된 엿보기권은 환불하지 않으며, 같은 target을 다시 보려면 새 엿보기권 1개를 추가 소비해 새 snapshot을 만든다. 엿보기권 구매/사용은 리더보드 점수와 포인트 적립 공식에 영향을 주지 않는다.
+`POSITION_PEEK`는 교환권 요청을 만들지 않는 즉시 소비형 상품이다. 구매 성공 시 같은 트랜잭션에서 포인트를 차감하고 `reward_item_balances.remaining_quantity`를 1 증가시킨다. 성공한 구매는 `reward_shop_purchases`에 구매 시점의 item code/name/type/price/point snapshot과 함께 저장한다. 사용 시에는 리더보드에서 선택한 target 1명의 현재 열린 포지션 공개 요약 snapshot 1개를 생성하는 transaction이 성공한 경우에만 수량을 1 감소시킨다. snapshot 생성 실패, target token 위조/만료, target 삭제/차단, 서버 오류는 수량을 차감하지 않는다. 사용된 엿보기권은 환불하지 않으며, 같은 target을 다시 보려면 새 엿보기권 1개를 추가 소비해 새 snapshot을 만든다. 엿보기권 구매/사용은 리더보드 점수와 포인트 적립 공식에 영향을 주지 않는다.
+
+과거 `INSTANT_SHOP_PURCHASE` 포인트 이력은 item snapshot이 없어 구매 원장으로 백필하지 않는다. 통합 구매/교환 내역은 새 원장 도입 이후의 즉시 구매와 기존/신규 교환권 신청을 합쳐 보여주며, 포인트 내역 화면은 내부 UUID형 `source_reference`를 사용자에게 직접 노출하지 않는다.
 
 ### 판매 가능성
 
@@ -452,7 +480,7 @@ MVP 1차는 아래 순서로 단순화한다.
 - 사용자의 포인트 잔액이 상품 가격 이상
 
 `sold_quantity`는 item-level 재고 소진 수량이다.
-유저별 제한은 `purchase_count`로 추적하며, `PENDING`과 `APPROVED` 요청만 카운트한다.
+유저별 제한은 `purchase_count`로 추적하며, 즉시 구매 성공과 `PENDING`/`APPROVED` 교환 요청을 카운트한다.
 `REJECTED`와 `CANCELLED` 요청은 재고와 유저 구매 카운트를 정확히 한 번 복구한다.
 판매 가능성 검증과 재고/구매 카운트/포인트 차감은 같은 트랜잭션에서 수행해 검증 시점과 저장 시점이 갈라지지 않게 한다.
 
@@ -497,6 +525,8 @@ MVP 1차는 아래 순서로 단순화한다.
 - 포지션 종료
 - 포인트 적립
 - 상점 구매
+
+상점 구매/교환 내역 API는 즉시 구매 원장과 교환권 요청을 합친 read model을 반환한다. 정렬은 public UUID나 request id 문자열이 아니라 `eventAt DESC`, 내부 `sortSequence DESC` 기준으로 수행한다.
 
 ## 프론트 계산과 서버 계산의 책임 분리
 
@@ -584,7 +614,8 @@ type PositionSnapshot = {
 - **Pending and closeable quantity**: `pendingCloseQuantity` is the sum of pending manual close orders only, excluding TP/SL conditional close orders. `closeableQuantity = max(0, quantity - pendingCloseQuantity)` is retained as compatibility data. Neither field is displayed as `Close amount`.
 - **Close order acceptance and reconciliation**: a new close request is validated against held position quantity, not closeable quantity. The backend may accept a new close order before reconciling pending manual close caps; after submission, pending manual close orders are reduced or cancelled so total pending manual close quantity does not exceed the remaining held quantity. LONG close reconciliation reduces/cancels higher limit-price orders first; SHORT reduces/cancels lower limit-price orders first; ties reduce newer orders before older orders.
 - **TP/SL editing**: position-level TP/SL values are displayed on the position card, but inputs are hidden by default and opened via the `Position TP/SL` edit action. Save and clear use `/api/futures/positions/tpsl`, whose persistence source is pending conditional close orders, not `open_positions` TP/SL columns. Save upserts existing active TP/SL orders in place and does not create extra Order history rows for unchanged or modified TP/SL values.
-- **Frontend open-order 100% sizing**: the local, non-authoritative max quantity for OPEN MARKET and OPEN LIMIT orders is `available / (price * (1 / leverage + taker fee rate))`, using the configured taker fee rate from the fee rules (`0.0005`), and is floored to supported quantity precision. Supported quantity precision means the quantity decimal places accepted by the ticket helper; the current frontend helper floors to three decimal places. MARKET uses the current market price as `price`; LIMIT uses the entered limit price as `price`. The taker fee rate is the conservative affordability denominator for both paths, even when a pending limit may later fill as maker. Backend margin validation remains authoritative if price or account state changes before submission.
+- **Frontend open-order 100% sizing**: the local, non-authoritative max quantity for OPEN MARKET and OPEN LIMIT orders is `available / (helperAffordabilityPrice * (1 / leverage + taker fee rate))`, using the configured taker fee rate from the fee rules (`0.0005`), and is floored to supported quantity precision. Supported quantity precision means the quantity decimal places accepted by the ticket helper; the current frontend helper floors to three decimal places. MARKET uses the current market price as `helperAffordabilityPrice`; LIMIT uses `max(entered limit price, current market price)` as `helperAffordabilityPrice`. This LIMIT helper is a conservative affordability preview, not a side-aware maker optimization or an execution-price guarantee. The taker fee rate is the conservative affordability denominator for both paths, even when a pending limit may later fill as maker. Backend margin validation remains authoritative if price or account state changes before submission.
+- **Frontend open-order summary value/cost**: when the order panel derives quantity from the Open 100% helper, displayed `Futures value` follows the same `helperAffordabilityPrice * resolvedQuantity` conservative preview basis. For OPEN LIMIT, this is not the actual limit-order notional `enteredLimitPrice * resolvedQuantity`; the submitted payload still keeps the user-entered `limitPrice`. Displayed `Cost` is the conservative preview margin cost corresponding to `Futures value / leverage`; backend `estimatedInitialMargin + estimatedFee` validation remains authoritative at submission.
 
 ## Wallet history and Assets chart source
 

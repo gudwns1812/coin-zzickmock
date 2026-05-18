@@ -8,10 +8,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import coin.coinzzickmock.feature.community.application.CommunityImageUploadSettings;
-import coin.coinzzickmock.feature.community.application.command.GenerateCommunityImageUploadPresignedUrlCommand;
+import coin.coinzzickmock.feature.community.application.dto.GenerateCommunityImageUploadPresignedUrlCommand;
 import coin.coinzzickmock.feature.community.application.gateway.CommunityImageUploadGateway;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostImageRepository;
-import coin.coinzzickmock.feature.community.application.result.CommunityImageUploadPresignedUrlResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityImageUploadPresignedUrlResult;
 import coin.coinzzickmock.feature.community.domain.CommunityPostImageIntent;
 import coin.coinzzickmock.feature.community.domain.CommunityPostImageStatus;
 import java.net.MalformedURLException;

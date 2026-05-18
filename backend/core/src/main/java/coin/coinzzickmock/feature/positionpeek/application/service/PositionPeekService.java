@@ -4,12 +4,14 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
+import coin.coinzzickmock.feature.positionpeek.application.query.PositionPeekItemBalanceReader;
+import coin.coinzzickmock.feature.positionpeek.application.query.PublicPositionSnapshotReader;
 import coin.coinzzickmock.feature.positionpeek.application.repository.PositionPeekSnapshotRepository;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekPublicPositionResult;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekSnapshotRecord;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekSnapshotResult;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekStatusResult;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekTargetResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekPublicPositionResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnapshotRecord;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnapshotResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekStatusResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetResult;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
@@ -30,7 +32,7 @@ public class PositionPeekService {
     private final RewardItemBalanceRepository rewardItemBalanceRepository;
     private final PublicPositionSnapshotReader publicPositionSnapshotReader;
     private final PositionPeekSnapshotRepository positionPeekSnapshotRepository;
-    private final PositionPeekItemBalanceReader itemBalanceService;
+    private final PositionPeekItemBalanceReader itemBalanceReader;
 
     @Transactional(readOnly = true)
     public PositionPeekStatusResult latest(Long viewerMemberId, String targetToken) {
@@ -42,7 +44,7 @@ public class PositionPeekService {
         return PositionPeekStatusResult.from(
                 target.result(),
                 latest,
-                itemBalanceService.getRemainingCount(viewerMemberId)
+                itemBalanceReader.getRemainingCount(viewerMemberId)
         );
     }
 

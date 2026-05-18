@@ -5,7 +5,7 @@ import coin.coinzzickmock.common.web.SseEmitterLifecycle;
 import coin.coinzzickmock.common.web.SseSubscriptionLimitExceededException;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry;
 import coin.coinzzickmock.common.web.SseSubscriptionRegistry.ReservationRejection;
-import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.providers.telemetry.NoopSseTelemetry;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;

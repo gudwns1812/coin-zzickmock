@@ -1,8 +1,10 @@
 package coin.coinzzickmock.providers.infrastructure;
 
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class MicrometerTelemetryProvider implements TelemetryProvider {
     private static final String USE_CASE_TOTAL = "app.usecase.total";
@@ -32,5 +34,13 @@ public class MicrometerTelemetryProvider implements TelemetryProvider {
     @Override
     public void recordEvent(String eventName, Map<String, String> tags) {
         meterRegistry.counter(MetricTags.meterName(eventName), MetricTags.of(tags)).increment();
+    }
+
+    @Override
+    public void registerGauge(String gaugeName, Map<String, String> tags, Supplier<Number> valueSupplier) {
+        Gauge.builder(MetricTags.meterName(gaugeName), valueSupplier, supplier -> supplier.get().doubleValue())
+                .tags(MetricTags.of(tags))
+                .strongReference(true)
+                .register(meterRegistry);
     }
 }

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.community.web.response;
 
-import coin.coinzzickmock.feature.community.application.result.CommunityPostDetailResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import java.time.Instant;
 

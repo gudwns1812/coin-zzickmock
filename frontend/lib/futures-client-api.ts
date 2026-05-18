@@ -13,16 +13,6 @@ import type {
   CommunityCategory,
 } from "@/lib/futures-api";
 
-type ClientApiResponse<T> = {
-  success: boolean;
-  data: T | null;
-  message: string | null;
-};
-
-type ClientApiErrorPayload = {
-  message?: string | null;
-};
-
 
 export type CommunityPostInput = {
   category: CommunityCategory;
@@ -61,6 +51,16 @@ export type CommunityImageUploadPresignResult = {
   contentType: string;
   expiresAt: string;
   maxBytes: number;
+};
+
+type ClientApiResponse<T> = {
+  success: boolean;
+  data: T | null;
+  message: string | null;
+};
+
+type ClientApiErrorPayload = {
+  message?: string | null;
 };
 
 export class FuturesClientApiError extends Error {
@@ -357,11 +357,12 @@ async function requestFuturesApi<T>(
   const response = await fetch(`/proxy-futures${path}`, {
     method,
     credentials: "include",
-    headers: body === undefined
-      ? undefined
-      : {
-          "Content-Type": "application/json",
-        },
+    headers:
+      body === undefined
+        ? undefined
+        : {
+            "Content-Type": "application/json",
+          },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 

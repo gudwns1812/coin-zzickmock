@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.order.infrastructure.persistence;
 
 import static coin.coinzzickmock.feature.order.infrastructure.persistence.QFuturesOrderEntity.futuresOrderEntity;
 
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -49,6 +49,26 @@ public class OrderPersistenceRepository implements OrderRepository {
                         symbol,
                         FuturesOrder.STATUS_PENDING
                 ).stream()
+                .map(entity -> new PendingOrderCandidate(entity.memberId(), entity.toDomain()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PendingOrderCandidate> findPendingNonConditionalLimitOrders() {
+        return jpaQueryFactory.selectFrom(futuresOrderEntity)
+                .where(
+                        futuresOrderEntity.status.eq(FuturesOrder.STATUS_PENDING),
+                        futuresOrderEntity.orderType.eq(FuturesOrder.TYPE_LIMIT),
+                        futuresOrderEntity.limitPrice.isNotNull(),
+                        futuresOrderEntity.triggerPrice.isNull(),
+                        futuresOrderEntity.triggerType.isNull(),
+                        futuresOrderEntity.triggerSource.isNull(),
+                        futuresOrderEntity.ocoGroupId.isNull()
+                )
+                .orderBy(futuresOrderEntity.createdAt.asc())
+                .fetch()
+                .stream()
                 .map(entity -> new PendingOrderCandidate(entity.memberId(), entity.toDomain()))
                 .toList();
     }

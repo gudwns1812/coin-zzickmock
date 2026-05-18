@@ -5,12 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -22,6 +23,9 @@ class AccountPersistenceRepositoryTest {
 
     @Autowired
     private MemberCredentialRepository memberCredentialRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void createUsesInsertOnlySemanticsForManuallyAssignedAccountId() {
@@ -90,6 +94,34 @@ class AccountPersistenceRepositoryTest {
 
         assertThat(result.status()).isEqualTo(AccountMutationResult.Status.NOT_FOUND);
         assertThat(accountRepository.findByMemberId(missing.memberId())).isEmpty();
+    }
+
+    @Test
+    void tradingAccountBalanceChecksRejectNegativeWalletOrAvailableMargin() {
+        MemberCredential walletMember = memberCredentialRepository.save(member("negative-wallet-" + System.nanoTime()));
+        MemberCredential marginMember = memberCredentialRepository.save(member("negative-margin-" + System.nanoTime()));
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO trading_accounts "
+                        + "(member_id, member_email, member_name, wallet_balance, available_margin, version, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                walletMember.memberId(),
+                walletMember.memberEmail(),
+                walletMember.memberName(),
+                -0.0001,
+                100
+        )).isInstanceOf(RuntimeException.class);
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO trading_accounts "
+                        + "(member_id, member_email, member_name, wallet_balance, available_margin, version, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                marginMember.memberId(),
+                marginMember.memberEmail(),
+                marginMember.memberName(),
+                100,
+                -0.0001
+        )).isInstanceOf(RuntimeException.class);
     }
 
     private MemberCredential member(String account) {

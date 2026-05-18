@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.community.web.response;
 
-import coin.coinzzickmock.feature.community.application.result.CommunityImageUploadPresignedUrlResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityImageUploadPresignedUrlResult;
 import java.time.Instant;
 
 public record CommunityImageUploadPresignedUrlResponse(

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.member.web;
 
-import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
+import coin.coinzzickmock.feature.member.application.dto.MemberProfileResult;
 import coin.coinzzickmock.feature.member.domain.MemberRole;
 
 public record AuthUserResponse(

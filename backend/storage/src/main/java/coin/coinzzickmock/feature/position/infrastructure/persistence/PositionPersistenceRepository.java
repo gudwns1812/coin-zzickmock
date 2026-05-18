@@ -3,8 +3,8 @@ package coin.coinzzickmock.feature.position.infrastructure.persistence;
 import static coin.coinzzickmock.feature.position.infrastructure.persistence.QOpenPositionEntity.openPositionEntity;
 
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.querydsl.jpa.impl.JPAUpdateClause;
@@ -78,6 +78,23 @@ public class PositionPersistenceRepository implements PositionRepository {
         return jpaQueryFactory.selectFrom(openPositionEntity)
                 .where(openPositionEntity.symbol.eq(symbol))
                 .orderBy(
+                        openPositionEntity.memberId.asc(),
+                        openPositionEntity.positionSide.asc(),
+                        openPositionEntity.marginMode.asc()
+                )
+                .fetch()
+                .stream()
+                .map(entity -> new OpenPositionCandidate(entity.memberId(), entity.toDomain()))
+                .toList();
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OpenPositionCandidate> findAllOpenCandidates() {
+        return jpaQueryFactory.selectFrom(openPositionEntity)
+                .orderBy(
+                        openPositionEntity.symbol.asc(),
                         openPositionEntity.memberId.asc(),
                         openPositionEntity.positionSide.asc(),
                         openPositionEntity.marginMode.asc()

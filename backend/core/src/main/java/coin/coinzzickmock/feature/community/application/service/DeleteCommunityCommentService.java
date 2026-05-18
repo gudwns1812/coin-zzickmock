@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.community.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.community.application.command.DeleteCommunityCommentCommand;
+import coin.coinzzickmock.feature.community.application.dto.DeleteCommunityCommentCommand;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentRepository;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;

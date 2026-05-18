@@ -7,16 +7,16 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.ArrayList;
@@ -370,7 +370,8 @@ class UpdatePositionLeverageServiceTest {
                         new PendingCloseOrderCapReconciler(orderRepository),
                         new LiquidationPolicy()
                 )
-        );
+        ,
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()));
     }
 
     private static class InMemoryPositionRepository extends coin.coinzzickmock.testsupport.TestPositionRepository {

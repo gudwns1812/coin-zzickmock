@@ -122,6 +122,58 @@ private PlaceOrderResult toResult(Order order) {
 
 위 예처럼 위쪽은 이야기의 목차처럼 읽히고, 아래쪽은 목차의 각 장을 펼쳐 보는 순서가 된다.
 
+## Method Paragraphs And Blank Lines
+
+메서드 안에도 문단이 있다.
+빈 줄은 장식이 아니라, 같은 추상화 수준의 단계가 바뀌는 지점을 보여 주는 읽기 장치다.
+검증, 조회, 정책 판단, 상태 변경, 저장, 응답 변환이 한 덩어리로 붙어 있으면 코드가 맞아도 다음 사람이 흐름을 놓친다.
+
+규칙:
+
+- 서로 다른 개념적 단계 사이에는 빈 줄을 둔다.
+- 같은 하위 책임을 이루는 statement들은 붙여서 한 문단으로 읽히게 한다.
+- 짧은 guard clause는 붙여도 되지만, guard 이후 본 흐름이 시작되면 빈 줄로 구분한다.
+- 반복문이나 조건문 안에서도 조회, 판단, mutation, side effect가 단계로 바뀌면 빈 줄로 문단을 나눈다.
+- 빈 줄이 네 덩어리 이상 계속 필요해지면 메서드 추출이나 협력 객체 분리를 먼저 검토한다.
+- 빈 줄로 낮은 추상화 수준의 세부 구현을 숨기려 하지 않는다. 문단을 나눠도 한 메서드가 여러 책임을 품고 있으면 분리한다.
+
+권장 예:
+
+```java
+private OrderDecision decideOrder(TradingAccount account, PlaceOrderCommand command) {
+    OrderRequest request = orderRequestFactory.create(command);
+    MarketPrice price = marketPriceReader.currentPrice(command.symbol());
+
+    if (account.cannotTrade(command.symbol())) {
+        throw new CoreException(OrderErrorType.TRADING_NOT_ALLOWED);
+    }
+
+    RiskSnapshot risk = riskPolicy.evaluate(account, request, price);
+
+    return orderPolicy.decide(account, request, risk);
+}
+```
+
+위 예에서 요청/시세 준비, guard, 위험 평가, 최종 판단은 각각 다른 읽기 단위다.
+빈 줄은 이 단위가 바뀌는 곳에만 둔다.
+
+피해야 할 예:
+
+```java
+private OrderDecision decideOrder(TradingAccount account, PlaceOrderCommand command) {
+    OrderRequest request = orderRequestFactory.create(command);
+    MarketPrice price = marketPriceReader.currentPrice(command.symbol());
+    if (account.cannotTrade(command.symbol())) {
+        throw new CoreException(OrderErrorType.TRADING_NOT_ALLOWED);
+    }
+    RiskSnapshot risk = riskPolicy.evaluate(account, request, price);
+    return orderPolicy.decide(account, request, risk);
+}
+```
+
+위 코드는 모든 statement가 붙어 있어 단계 전환이 눈에 들어오지 않는다.
+작은 메서드라도 읽기 단위가 바뀌면 문단을 나눈다.
+
 ## Class Responsibility
 
 클래스는 "무엇을 시작하는가"와 "어떤 메커니즘으로 돕는가"를 섞지 않는다.
@@ -130,9 +182,12 @@ private PlaceOrderResult toResult(Order order) {
 
 - `application/service` 클래스는 유스케이스 진입점이다.
 - `application/service` 클래스가 캐시 저장소, 파서, 배치 커서 관리, 이벤트 fan-out, 재시도 정책까지 직접 소유하면 분리한다.
+- service flow readability를 1순위로 본다. public service 메서드는 lock, transaction, 검증, 조회, 판단, 저장, 이벤트/결과 반환 같은 유스케이스 목차가 먼저 읽혀야 한다.
 - 여러 유스케이스가 공유하는 처리 메커니즘은 `application/<purpose>` 하위 패키지의 비-Service 협력 객체로 둔다.
+- service 흐름을 흐리는 application 실행 절차/계산/조합은 단일 `application/implement` 패키지의 concrete collaborator로 둘 수 있다.
 - 오래 살아야 하는 비즈니스 규칙은 `domain`으로 올릴 수 있는지 먼저 판단한다.
 - 프레임워크나 외부 시스템 세부사항은 `infrastructure`로 내린다.
+- `application/implement` class 이름은 `Order`, `Position`, `Account`처럼 owning domain/use-case prefix로 시작하고, prefix 뒤에는 `OrderFillApplier`처럼 간결한 role을 둔다.
 - `Manager`, `Helper`, `Util`, `CommonService`처럼 책임을 숨기는 이름은 새로 만들지 않는다.
 
 분리 기준:
@@ -165,9 +220,12 @@ private PlaceOrderResult toResult(Order order) {
 - domain 규칙을 대신 구현하지 않는다.
 - 외부 SDK, SecurityContext, Redis client, JPA entity 세부사항을 직접 다루지 않는다.
 - 공유 로직은 `application/service`끼리 호출하지 말고 목적형 협력 객체로 분리한다.
-- command/query/result 타입으로 입출력 의미를 드러낸다.
+- `application/implement`는 새 layer가 아니며 feature별 `application` 안에 하나만 둔다. `common`, `util`, `helper` 같은 하위 package를 만들지 않는다.
+- 한 번만 쓰이고 service 흐름을 흐리지 않는 세부 구현은 premature commonization을 피하고 private method, result factory, 또는 domain factory에 남긴다.
+- 여러 유스케이스에서 반복될 수 있는 절차/계산/조합이면 이름 있는 implement collaborator로 승격한다. 한 번만 쓰이더라도 repository/provider/domain orchestration이 섞여 service 목차를 흐리면 implement로 분리할 수 있다.
+- application DTO, query, result, projection 타입으로 입출력 의미를 드러낸다. `*Command`나 `*Result` class name을 쓰더라도 새 package convention은 `application/dto`다.
 - application/repository, gateway, provider 같은 운영 인터페이스에 `default` 메서드를 두지 않는다.
-- 여러 진입점이 같은 계정/포지션 mutation 정책을 적용하면 각 service에 복제하지 않고 `FilledOpenOrderApplier`처럼 transaction 내부에서 호출되는 application 협력 객체로 모은다.
+- 여러 진입점이 같은 계정/포지션 mutation 정책을 적용하면 각 service에 복제하지 않고 `OrderFillApplier`처럼 transaction 내부에서 호출되는 `application/implement` 협력 객체로 모은다.
 - 조회 service가 DB range 계산, rollup, cache/provider 보충, telemetry tagging을 모두 품기 시작하면 `Reader`, `Projector`, `Appender`, `Telemetry` 같은 목적형 객체로 나눈다.
 
 ### `domain`
@@ -229,6 +287,7 @@ private PlaceOrderResult toResult(Order order) {
 구현 중 아래 신호가 보이면 멈추고 구조를 다시 나눈다.
 
 - 한 메서드가 화면에 한 번에 읽히지 않을 정도로 길어진다.
+- 서로 다른 개념적 단계가 빈 줄 없이 한 덩어리로 붙어 흐름이 잘 보이지 않는다.
 - `and`가 붙은 메서드명이나 클래스명이 필요해진다.
 - 메서드를 한 문장으로 설명할 수 없거나, 설명에 서로 다른 개념적 책임이 섞인다.
 - 한 private method가 다시 여러 private method를 끌고 다닌다.
@@ -247,17 +306,33 @@ private PlaceOrderResult toResult(Order order) {
 4. 단순히 읽기 좋은 단계 이름만 필요한 경우 private method로 추출한다.
 5. 추출 후 이름이 책임을 설명하지 못하면 추출 방향을 다시 검토한다.
 
+### Application Implement Refactor Checklist
+
+큰 application service를 정리할 때는 아래 순서로 판단한다.
+
+1. public service flow를 먼저 쓴다. 읽는 사람이 유스케이스 목차를 따라갈 수 없다면 세부 구현을 내린다.
+2. storage-free이고 오래 살아야 하는 제품 규칙은 `domain` 후보로 먼저 본다.
+3. repository/provider/domain 조합, post-save 처리, projection, invariant validation처럼 application 실행 세부사항이면 `application/implement` 후보로 본다.
+4. 단순 constructor/field mapping이거나 한 번만 쓰이고 흐름을 흐리지 않는 코드는 premature commonization을 피하고 private method 또는 factory에 남긴다.
+5. 여러 유스케이스에서 반복될 수 있는 절차/계산/조합은 `application/implement`로 승격한다.
+6. `application/implement`에는 하위 package를 만들지 않고, 모든 class를 바로 아래에 둔다.
+7. class 이름은 `Order`, `Position`, `Account` 같은 owning domain/use-case prefix로 시작하되, prefix 뒤에는 `FillApplier`, `PlacementFactory`, `CrossMarginPreviewProjector`처럼 짧고 역할이 드러나는 이름을 쓴다.
+8. `Manager`, `Helper`, `Util`, `CommonService`, generic `Processor`밖에 떠오르지 않으면 책임을 다시 쪼개거나 위치를 재검토한다.
+
 ## Verification Checklist
 
 백엔드 변경 검증에는 기능 테스트뿐 아니라 책임 분리 확인도 포함한다.
 
 - 변경한 public 유스케이스 메서드를 읽었을 때 흐름이 위에서 아래로 설명되는가?
+- 메서드 내부의 검증, 조회, 판단, mutation, 저장, 변환 단계가 빈 줄로 자연스럽게 구분되는가?
 - private method 위치가 호출 흐름을 따라 top-down으로 읽히는가?
 - 새 클래스마다 한 문장으로 책임을 설명할 수 있는가?
 - 테스트가 도메인 규칙, application orchestration, infrastructure adapter를 구분해서 검증하는가?
 - mock/fake가 너무 많아서 클래스 책임이 과한 신호를 숨기고 있지 않은가?
 - 운영 인터페이스 `default` 메서드가 남아 있지 않고, 테스트 편의 구현은 `src/test/java`의 테스트 전용 class에만 있는가?
 - `application/service` 간 직접 의존이 없는가?
+- `application/implement`가 새 layer처럼 쓰이지 않고, 하위 `common`/`util`/`helper` package 없이 concrete execution-detail collaborator만 담는가?
+- `application/implement` class 이름이 owning domain/use-case prefix로 시작하고 concise role naming을 따르는가?
 - `./gradlew architectureLint`가 통과하는가?
 - `./gradlew check`가 통과하는가?
 

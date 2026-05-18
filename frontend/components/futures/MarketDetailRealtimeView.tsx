@@ -21,6 +21,10 @@ import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
+import {
+  createOrderExecutionSseUrl,
+  createUnifiedMarketSseUrl,
+} from "@/lib/futures-sse-url";
 import type {
   FuturesAccountSummary,
   FuturesOpenOrder,
@@ -136,14 +140,9 @@ export default function MarketDetailRealtimeView({
 
   const marketStreamUrl = useMemo(() => {
     // clientKey is appended by useResilientEventSource at the shared hook boundary.
-    const params = new URLSearchParams({
-      symbol: initialMarket.symbol,
-      interval: selectedInterval,
-    });
-
-    return `/api/futures/markets/stream?${params.toString()}`;
+    return createUnifiedMarketSseUrl(initialMarket.symbol, selectedInterval);
   }, [initialMarket.symbol, selectedInterval]);
-  const orderStreamUrl = "/api/futures/orders/stream";
+  const orderStreamUrl = useMemo(() => createOrderExecutionSseUrl(), []);
 
   const applyMarketSummary = useCallback(
     (symbol: string, data: MarketApiResponse, receivedAt: number) => {

@@ -15,7 +15,7 @@ const allowedTypes = [
     "build",
     "revert"
 ];
-const protectedBranches = new Set(["main", "master", "develop", "dev"]);
+const allowedStandaloneBranches = new Set(["main", "master", "develop", "dev", "refactor"]);
 const typePattern = allowedTypes.join("|");
 const branchPattern = new RegExp(
     `^(${typePattern})/[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$`,
@@ -42,6 +42,7 @@ function fail(message) {
     console.error("");
     console.error("Required format: <type>/<kebab-case-summary>");
     console.error(`Allowed types: ${allowedTypes.join(", ")}`);
+    console.error(`Allowed standalone branches: ${Array.from(allowedStandaloneBranches).join(", ")}`);
     console.error("Examples: feat/limit-order-entry, fix/login-token-refresh, refactor/market-cache-boundary");
     console.error("Forbidden: codex/*, codex-*, untyped names, uppercase letters, spaces");
     process.exit(1);
@@ -51,7 +52,7 @@ if (!branchName) {
     fail("could not determine the branch name.");
 }
 
-if (protectedBranches.has(branchName)) {
+if (allowedStandaloneBranches.has(branchName)) {
     process.exit(0);
 }
 

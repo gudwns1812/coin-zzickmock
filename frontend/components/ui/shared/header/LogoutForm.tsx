@@ -2,18 +2,16 @@
 import React from "react";
 import { toast } from "react-toastify";
 import { useFormStatus } from "react-dom";
+import { logoutFromFutures } from "@/lib/futures-auth-client";
 
 const LogoutForm = ({ action }: { action: (formData: FormData) => void }) => {
   const { pending } = useFormStatus();
 
   const handleLogout = async (formData: FormData) => {
     action(formData);
-    const response = await fetch("/proxy/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    });
+    const succeeded = await logoutFromFutures();
 
-    if (response.ok) {
+    if (succeeded) {
       toast.success("로그아웃 되었습니다");
     } else {
       toast.error("로그아웃에 실패했습니다");

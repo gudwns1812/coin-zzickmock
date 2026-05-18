@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.community.application.service;
 
 import coin.coinzzickmock.feature.community.application.query.ListCommunityCommentsQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentRepository;
-import coin.coinzzickmock.feature.community.application.result.CommunityCommentListResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityCommentListResult;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

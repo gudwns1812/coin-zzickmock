@@ -56,10 +56,10 @@ export default async function MyPagePointsPage() {
                   <HistoryIcon type={history.historyType} />
                   <div>
                     <p className="font-semibold text-main-dark-gray">
-                      {historyLabel(history.historyType)}
+                      {historyLabel(history.historyType, history.sourceType)}
                     </p>
                     <p className="mt-1 text-xs-custom text-main-dark-gray/45">
-                      {history.sourceType} · {history.sourceReference}
+                      {historySourceLabel(history.sourceType)}
                     </p>
                   </div>
                 </div>
@@ -110,10 +110,18 @@ function HistoryIcon({ type }: { type: RewardPointHistoryType }) {
   );
 }
 
-function historyLabel(type: RewardPointHistoryType): string {
+function historyLabel(type: RewardPointHistoryType, sourceType: string): string {
+  if (sourceType === "INSTANT_SHOP_PURCHASE") return "상점 즉시 구매";
   if (type === "GRANT") return "포인트 적립";
   if (type === "REDEMPTION_REFUND") return "교환권 환불";
   return "교환권 신청";
+}
+
+function historySourceLabel(sourceType: string): string {
+  if (sourceType === "INSTANT_SHOP_PURCHASE") return "상점 상품 구매";
+  if (sourceType === "REDEMPTION_REQUEST") return "교환권 신청";
+  if (sourceType === "POSITION_CLOSE_PROFIT") return "포지션 종료 수익";
+  return "포인트 이력";
 }
 
 function formatPointDelta(value: number): string {

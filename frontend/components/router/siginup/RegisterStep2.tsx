@@ -7,6 +7,7 @@ import { UserInfo } from "@/type/userInfo";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Button from "@/components/ui/shared/Button";
+import { loginToFutures } from "@/lib/futures-auth-client";
 
 interface RegisterStep2Props {
   setStep: (step: number) => void;
@@ -176,16 +177,9 @@ const RegisterStep2 = ({
 
     // 회원가입 성공 시 → 바로 로그인
     if (res.ok) {
-      const res = await fetch(`/proxy/auth/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          account: userInfo.id,
-          password: userInfo.password,
-        }),
+      const res = await loginToFutures({
+        account: userInfo.id,
+        password: userInfo.password,
       });
 
       if (res.ok) {

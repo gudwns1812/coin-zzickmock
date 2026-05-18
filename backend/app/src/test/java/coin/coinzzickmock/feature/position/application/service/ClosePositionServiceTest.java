@@ -1,18 +1,18 @@
 package coin.coinzzickmock.feature.position.application.service;
 
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
@@ -20,8 +20,8 @@ import coin.coinzzickmock.feature.position.application.close.PositionCloseFinali
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.ClosePositionResult;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
@@ -75,11 +75,12 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
 
         ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
@@ -134,11 +135,12 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
 
         ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "MARKET", null);
@@ -192,11 +194,12 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
 
         ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.2, "MARKET", null);
@@ -375,11 +378,12 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
 
         ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 112000.0);
@@ -429,11 +433,12 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
 
         ClosePositionResult result = service.close(1L, "BTCUSDT", "LONG", "ISOLATED", 0.1, "LIMIT", 110000.0);
@@ -486,11 +491,12 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
 
         ClosePositionResult result = service.close(1L, "BTCUSDT", "SHORT", "ISOLATED", 0.1, "LIMIT", 90000.0);
@@ -764,7 +770,8 @@ class ClosePositionServiceTest {
                 new RewardPointGrantProcessor(new RewardPointPolicy(), rewardPointRepository),
                 new AfterCommitEventPublisher(event -> {
                 })
-        );
+        ,
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()));
 
         CoreException thrown = assertThrows(CoreException.class, () -> finalizer.close(
                 1L,
@@ -825,11 +832,12 @@ class ClosePositionServiceTest {
                         new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
                         new AfterCommitEventPublisher(event -> {
                         })
-                ),
+                ,
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook())),
                 new PendingCloseOrderCapReconciler(orderRepository),
                 new StaleProtectiveCloseOrderCanceller(orderRepository),
                 new OrderPlacementPolicy(),
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
     }
 

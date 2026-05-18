@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.market.infrastructure.config;
 
 import coin.coinzzickmock.feature.market.application.query.FinalizedCandleIntervalsReader;
 import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketCandleProjector;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.web.MarketCandleSnapshotReader;
@@ -35,7 +35,7 @@ class MarketStreamBridgeConfiguration {
 
     @Bean
     MarketCurrentCandleBootstrapper marketCurrentCandleBootstrapper(
-            coin.coinzzickmock.feature.market.application.realtime.CurrentMarketCandleBootstrapper bootstrapper
+            coin.coinzzickmock.feature.market.application.implement.CurrentMarketCandleBootstrapper bootstrapper
     ) {
         return (symbol, interval) -> bootstrapper.bootstrapIfNeeded(symbol, MarketCandleInterval.from(interval));
     }

@@ -170,7 +170,7 @@ class MarketUnifiedStreamTopologyContractTest {
         Path fullyClosed = findRequired("PositionFullyClosedEvent.java");
         String openedSource = Files.readString(opened);
         String closedSource = Files.readString(fullyClosed);
-        String openApplier = Files.readString(findRequired("FilledOpenOrderApplier.java"));
+        String openApplier = Files.readString(findRequired("OrderFillApplier.java"));
         String closeFinalizer = Files.readString(findRequired("PositionCloseFinalizer.java"));
 
         assertTrue(openedSource.contains("memberId") && openedSource.contains("symbol"),

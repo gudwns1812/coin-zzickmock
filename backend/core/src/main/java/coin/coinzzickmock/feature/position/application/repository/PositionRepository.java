@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.position.application.repository;
 
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 
 import java.util.List;
@@ -22,6 +22,8 @@ public interface PositionRepository {
     Optional<PositionSnapshot> findOpenPosition(Long memberId, String symbol, String positionSide);
 
     List<OpenPositionCandidate> findOpenBySymbol(String symbol);
+
+    List<OpenPositionCandidate> findAllOpenCandidates();
 
     PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot);
 

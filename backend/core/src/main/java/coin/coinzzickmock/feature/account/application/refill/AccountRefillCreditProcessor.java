@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.account.application.refill;
 
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountRefillCreditResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountRefillCreditResult;
 import coin.coinzzickmock.feature.account.application.service.AccountRefillDatePolicy;
 import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import lombok.RequiredArgsConstructor;

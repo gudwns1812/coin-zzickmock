@@ -1,10 +1,14 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.query.MarketRealtimeFeed;
+import coin.coinzzickmock.feature.market.application.history.MarketMinuteCandleHistoryListener;
+import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
+import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.CoinZzickmockApplication;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.providers.Providers;

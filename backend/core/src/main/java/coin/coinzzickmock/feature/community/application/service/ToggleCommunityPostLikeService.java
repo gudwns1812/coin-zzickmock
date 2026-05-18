@@ -2,10 +2,10 @@ package coin.coinzzickmock.feature.community.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.community.application.command.ToggleCommunityPostLikeCommand;
+import coin.coinzzickmock.feature.community.application.dto.ToggleCommunityPostLikeCommand;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
-import coin.coinzzickmock.feature.community.application.result.CommunityLikeResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityLikeResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

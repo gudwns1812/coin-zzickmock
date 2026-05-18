@@ -13,7 +13,7 @@ It is module-specific and complements the backend-wide architecture rules in [..
 - `coin.coinzzickmock.providers` contracts.
 - `feature/<feature>/domain`.
 - `feature/<feature>/application`.
-- Technology-neutral repository, gateway, provider, command, query, result, policy, and event contracts.
+- Technology-neutral repository, gateway, provider, application DTO/input/output/projection/query, policy, and event contracts.
 
 `core` does not own:
 
@@ -36,4 +36,3 @@ When moving code into `core`, first classify it:
 - Keep outside: anything that imports persistence, external SDK, web delivery, scheduler runtime, or concrete adapter implementation.
 
 The storage movement inventory in [../../storage/docs/storage-contract-inventory-2026-05-13.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/docs/storage-contract-inventory-2026-05-13.md) is the current reference for storage-to-core classification.
-

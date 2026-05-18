@@ -66,10 +66,6 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `/mypage/redemptions`
 - `/watchlist`
 - `/shop`
-- `/community`
-- `/community/[postId]`
-- `/community/write`
-- `/community/[postId]/edit`
 - `/admin`
 - `/admin/reward-redemptions`
 - `/admin/shop-items`
@@ -303,7 +299,8 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 포지션 카드의 `Liq. Price`는 서버가 내려준 `liquidationPriceType`을 따른다. `EXACT`는 숫자를 그대로 표시하고, `ESTIMATED`이면 추정 표시를 붙이고, `UNAVAILABLE` 또는 `null`이면 `-`로 표시한다.
 - `pendingCloseQuantity`와 `closeableQuantity`의 정의와 backend cap 권위는 [simulation rules](./coin-futures-simulation-rules.md)의 pending manual close 규칙을 따른다. TP/SL 조건부 주문은 protective lifecycle로 별도 관리되며 이 두 값에 포함하지 않는다. 두 값은 manual close 예약 상태/호환 필드이며 `Close amount` 라벨로 표시하지 않는다.
 - close 입력의 최대값과 클라이언트 검증은 `closeableQuantity`가 아니라 현재 보유 `quantity` 기준이다. pending close 수량이 보유 수량과 같아도 새 close 주문은 제출할 수 있고, 백엔드는 접수 후 pending close cap을 조정한다.
-- 주문 패널 `Open` 모드의 100% 수량 보조 UI는 [simulation rules](./coin-futures-simulation-rules.md)의 Open Order helper formula `available / (price * (1 / leverage + taker fee rate))`로 로컬 최대 수량을 구하고 simulation rules가 정의한 지원 수량 precision에서 내림한다. `Market`은 현재 시장가를, `Limit`은 사용자가 입력한 지정가를 `price`로 사용한다. 이 값은 입력 편의를 위한 비권위 계산이며, 제출 시 백엔드 증거금/수수료 검증과 `pendingCloseQuantity`/`closeableQuantity` cap 처리 권위가 최종 기준이다.
+- 주문 패널 `Open` 모드의 100% 수량 보조 UI는 [simulation rules](./coin-futures-simulation-rules.md)의 Open Order helper formula `available / (helperAffordabilityPrice * (1 / leverage + taker fee rate))`로 로컬 최대 수량을 구하고 simulation rules가 정의한 지원 수량 precision에서 내림한다. `Market`은 현재 시장가를 `helperAffordabilityPrice`로 사용하고, `Limit`은 `max(사용자가 입력한 지정가, 현재 시장가)`를 `helperAffordabilityPrice`로 사용한다. 이 LIMIT 기준가는 side-aware maker 최적화나 체결가 확정이 아니라 증거금 부족 주문을 줄이기 위한 보수적 preview다. 이 값은 입력 편의를 위한 비권위 계산이며, 제출 시 백엔드 증거금/수수료 검증과 `pendingCloseQuantity`/`closeableQuantity` cap 처리 권위가 최종 기준이다.
+- 주문 패널 `Open` 모드의 `Futures value`는 100% helper와 같은 보수적 preview 기준인 `helperAffordabilityPrice * resolvedQuantity`를 표시한다. `Limit` 주문에서도 이는 실제 지정가 주문 명목가치인 `입력 지정가 * resolvedQuantity` 필드가 아니며, 제출 payload의 `limitPrice`는 사용자가 입력한 지정가를 그대로 유지한다. `Cost`는 같은 preview 명목가치를 레버리지로 나눈 보수적 증거금 비용(`Futures value / leverage`)으로 표시한다.
 - 주문 패널 `Close` 모드의 퍼센트/최대 수량 보조 UI도 같은 심볼/방향/마진 모드의 현재 보유 `quantity`를 기준으로 한다. 같은 방향의 포지션이 없거나 반대 방향 포지션만 있으면 제출 결과는 포지션 없음 오류로 표시한다.
 - market close, limit close 체결, liquidation, 새 close 주문 접수로 포지션 수량 또는 pending manual close exposure가 cap을 넘으면 같은 포지션의 pending manual close exposure가 남은 포지션 수량을 넘지 않도록 조정한다. 포지션 수량이 0이 되는 경로는 stale manual close 주문과 stale TP/SL 조건부 주문을 모두 취소한다. 부분 종료로 남은 수량이 있으면 manual close 주문만 남은 수량 이하로 조정하고 TP/SL 조건부 주문은 cap 때문에 취소하지 않는다.
 - 포지션은 order-backed `takeProfitPrice`, `stopLossPrice`를 표시할 수 있다. 화면은 `Position TP/SL` 값을 기본 표시만 하고, edit icon을 눌렀을 때 편집기를 연다. 사용자가 TP/SL을 수정하면 백엔드는 현재 mark price 기준으로 이미 발동된 가격을 거절하고, 기존 pending conditional `CLOSE_POSITION` 주문을 upsert한다. 같은 값 저장은 no-op이고, 기존 active TP/SL이 있으면 새 주문을 만들지 않고 같은 주문의 trigger price 등을 수정한다. 기존에 없던 TP 또는 SL만 새로 생성하고, 입력에서 제거된 TP 또는 SL만 취소한다.
@@ -385,13 +382,15 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 - 현재 포인트 잔액
 - 포인트 적립, 교환권 신청 차감, 교환권 환불 이력
+- 즉시 구매 차감 이력은 내부 `purchaseId`/UUID 대신 `상점 즉시 구매` 같은 사용자 문구로 표시한다.
 - 상점 이동 링크
 
 ### `/mypage/redemptions`
 
 - 사용자 친화적 화면 라벨은 `교환 내역` 또는 `구매/교환 내역`을 사용한다.
-- 포인트 상점에서 신청한 교환권 요청 목록을 최근 신청순으로 보여준다.
-- 상품명, 상태, 제출한 휴대폰 번호, 신청 시각, 요청 ID, 차감 포인트를 표시한다.
+- 포인트 상점에서 신청한 교환권 요청과 즉시 구매 성공 이력을 최근 활동순으로 함께 보여준다.
+- 교환권 요청 row는 상품명, 상태, 제출한 휴대폰 번호, 신청 시각, 차감 포인트를 표시한다.
+- 즉시 구매 row는 상품명, 상품 유형, 구매 시각, 차감 포인트를 표시하고 연락처/취소 버튼은 표시하지 않는다.
 - `PENDING` 상태의 요청은 사용자가 취소할 수 있다.
 - 취소 성공 시 포인트 환불과 재고/유저 구매 카운트 복구는 백엔드 트랜잭션 규칙을 따른다.
 
@@ -401,7 +400,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `/mypage`의 기본 정보가 없으면 값 자리에 `-` 또는 0을 표시하고, 계정 영역 자체는 유지한다.
 - `/mypage/assets`의 포지션 히스토리가 비어 있으면 캘린더를 0원 셀로 표시한다.
 - `/mypage/points`의 포인트 이력이 비어 있으면 빈 이력 문구를 표시한다.
-- `/mypage/redemptions`의 교환 내역이 비어 있으면 빈 내역 문구를 표시한다.
+- `/mypage/redemptions`의 구매/교환 내역이 비어 있으면 빈 내역 문구를 표시한다.
 - API 장애 시 서버 렌더링 단계의 fallback 데이터는 화면 붕괴를 막는 용도이며, 실제 잔액/포인트 확정값은 다음 정상 API 응답으로 갱신한다.
 
 ### 수용 기준
@@ -409,7 +408,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `/mypage`는 사용자 기본 정보를 보여준다.
 - `/mypage/assets`는 거래소 액션 버튼 없이 assets 패널과 KST 일별 실현손익 캘린더를 보여준다.
 - `/mypage/points`는 현재 포인트와 point history를 보여준다.
-- `/mypage/redemptions`는 상점 교환 내역과 대기중 취소 액션을 보여준다.
+- `/mypage/redemptions`는 상점 즉시 구매/교환 내역과 대기중 교환 신청 취소 액션을 보여준다.
 - `/portfolio`는 `/mypage`로 리다이렉트된다.
 
 ## 화면 6. 관심 심볼 `/watchlist`
@@ -472,6 +471,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 신청 성공 시 포인트는 즉시 차감되고 `PENDING` 교환권 요청이 생성된다.
 - 유저가 리필 횟수 추가권 구매를 누르면 휴대폰 번호 입력 없이 확인 모달을 거쳐 즉시 구매한다. 성공 시 포인트가 즉시 차감되고 현재 주간 리필 가능 횟수가 1회 늘어나며, 교환권 요청은 생성하지 않는다.
 - 리필 추가권은 다음 KST 월요일 00:00 리셋 때 이월되지 않는다.
+- 리필 추가권과 포지션 엿보기권 즉시 구매 성공은 `reward_shop_purchases`에 기록되고 `/mypage/redemptions`의 구매/교환 내역에 `즉시 구매`로 표시된다.
 - 관리자에게 SMTP 알림을 보낸다. 수신자는 `coin.reward.notification.admin-email` 설정값이며 기본값은 `gudwns1812@naver.com`이다.
 - SMTP 실패는 요청을 롤백하지 않고 request id와 실패 사유를 로그로 남긴다. 수신자 email 원문은 로그에 남기지 않는다.
 - MVP는 알림 시도 이력을 별도 테이블로 저장하거나 자동 재시도하지 않는다. 알림 실패 시에도 관리자 페이지의 `PENDING` 목록이 처리 기준 데이터다.
@@ -560,7 +560,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 비관리자 사용자는 `/admin`에서 관리자 권한 필요 상태를 보고 세부 작업 링크를 보지 않는다.
 - 계정 사이드바는 `/admin/reward-redemptions`, `/admin/shop-items`를 직접 나열하지 않는다.
 
-## 화면 10. 관리자 교환권 처리 `/admin/reward-redemptions`
+## 화면 9. 관리자 교환권 처리 `/admin/reward-redemptions`
 
 ### 목표
 
@@ -606,7 +606,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - 신청 결과가 즉시 계정과 관리자 페이지에 반영된다
 - 환불은 정확히 한 번만 발생한다
 
-## 화면 11. 관리자 상품 관리 `/admin/shop-items`
+## 화면 10. 관리자 상품 관리 `/admin/shop-items`
 
 ### 목표
 
@@ -646,10 +646,6 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 - `MyPageShell`
 - `DailyPnlCalendar`
 - `RiskWarningBanner`
-- `CommunityCategoryBadge`
-- `CommunityPostList`
-- `CommunityContentRenderer`
-- `CommunityEditorShell`
 
 ## 현재 프론트 구조에서의 매핑 전략
 

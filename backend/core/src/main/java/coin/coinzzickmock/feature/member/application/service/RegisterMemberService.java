@@ -5,7 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.event.MemberRegisteredEvent;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
-import coin.coinzzickmock.feature.member.application.result.MemberProfileResult;
+import coin.coinzzickmock.feature.member.application.dto.MemberProfileResult;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.member.domain.MemberIdentityRules;
 import lombok.RequiredArgsConstructor;

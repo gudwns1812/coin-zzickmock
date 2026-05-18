@@ -20,7 +20,7 @@ Boot runtime, component scan, profile configuration, web/job adapters, and leaf 
 - Only `app` applies the Spring Boot executable plugin.
 - `app` may depend on `core`, `stream`, `storage`, and `external`.
 - Leaf adapter concrete imports are allowed only in configuration/assembly/config package boundaries.
-- `web` and `job` adapters call core use cases and command/query/result types; they do not directly depend on storage/external/stream concrete implementation.
+- `web` and `job` adapters call core use cases and application DTO/query/result contracts; they do not directly depend on storage/external/stream concrete implementation.
 - API/SSE URL behavior must not change during assembly refactors unless product docs are updated in the same change.
 
 ## Verification
@@ -33,4 +33,3 @@ cd backend
 ./gradlew architectureLint --console=plain
 ./gradlew check --console=plain
 ```
-

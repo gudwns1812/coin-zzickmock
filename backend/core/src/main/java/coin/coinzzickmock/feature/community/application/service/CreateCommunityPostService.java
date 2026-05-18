@@ -2,10 +2,10 @@ package coin.coinzzickmock.feature.community.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.community.application.command.CreateCommunityPostCommand;
+import coin.coinzzickmock.feature.community.application.dto.CreateCommunityPostCommand;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostImageRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
-import coin.coinzzickmock.feature.community.application.result.CommunityPostMutationResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostMutationResult;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
 import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;

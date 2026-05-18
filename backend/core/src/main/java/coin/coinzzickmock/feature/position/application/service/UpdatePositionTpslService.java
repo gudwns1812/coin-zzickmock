@@ -3,15 +3,15 @@ package coin.coinzzickmock.feature.position.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.PositionSnapshotResult;
+import coin.coinzzickmock.feature.position.application.dto.PositionSnapshotResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.Comparator;
 import java.util.List;
@@ -28,7 +28,7 @@ public class UpdatePositionTpslService {
     private final OrderRepository orderRepository;
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final RealtimeMarketPriceReader realtimeMarketPriceReader;
-    private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OrderMutationLock orderMutationLock;
     private final AccountRepository accountRepository;
     private final PositionSnapshotResultAssembler positionSnapshotResultAssembler;
 
@@ -41,7 +41,7 @@ public class UpdatePositionTpslService {
             Double takeProfitPrice,
             Double stopLossPrice
     ) {
-        accountOrderMutationLock.lock(memberId);
+        orderMutationLock.lock(memberId);
         PositionSnapshot current = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
                 .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
         MarketSnapshot market = realtimeMarketPriceReader.requireFreshMarket(current.symbol());

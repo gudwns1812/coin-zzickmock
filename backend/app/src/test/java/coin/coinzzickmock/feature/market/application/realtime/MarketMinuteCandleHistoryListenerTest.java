@@ -1,10 +1,14 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.history.MarketMinuteCandleHistoryListener;
+import coin.coinzzickmock.feature.market.application.implement.MarketSnapshotStore;
+import coin.coinzzickmock.feature.market.application.dto.MarketMinuteClosedEvent;
+import coin.coinzzickmock.feature.market.application.implement.ClosedMinuteCandlePersistenceScheduler;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -17,8 +21,8 @@ class MarketMinuteCandleHistoryListenerTest {
     @Test
     void delegatesSupportedSymbolsToDelayedScheduler() {
         MarketSnapshotStore marketSnapshotStore = Mockito.mock(MarketSnapshotStore.class);
-        DelayedClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
-                DelayedClosedMinuteCandlePersistenceScheduler.class);
+        ClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
+                ClosedMinuteCandlePersistenceScheduler.class);
         when(marketSnapshotStore.hasSupportedMarkets()).thenReturn(true);
         when(marketSnapshotStore.getSupportedMarkets()).thenReturn(List.of(
                 summary("BTCUSDT"),
@@ -37,8 +41,8 @@ class MarketMinuteCandleHistoryListenerTest {
     @Test
     void returnsWithoutSchedulingWhenSupportedMarketsAreUnavailable() {
         MarketSnapshotStore marketSnapshotStore = Mockito.mock(MarketSnapshotStore.class);
-        DelayedClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
-                DelayedClosedMinuteCandlePersistenceScheduler.class);
+        ClosedMinuteCandlePersistenceScheduler scheduler = Mockito.mock(
+                ClosedMinuteCandlePersistenceScheduler.class);
         when(marketSnapshotStore.hasSupportedMarkets()).thenReturn(false);
         MarketMinuteCandleHistoryListener listener = new MarketMinuteCandleHistoryListener(
                 marketSnapshotStore,

@@ -1,8 +1,8 @@
 package coin.coinzzickmock.testsupport;
 
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +42,11 @@ public abstract class TestPositionRepository implements PositionRepository {
 
     @Override
     public List<OpenPositionCandidate> findOpenBySymbol(String symbol) {
+        return List.of();
+    }
+
+    @Override
+    public List<OpenPositionCandidate> findAllOpenCandidates() {
         return List.of();
     }
 

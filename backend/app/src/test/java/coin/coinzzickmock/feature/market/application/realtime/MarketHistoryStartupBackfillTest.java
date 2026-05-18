@@ -1,10 +1,12 @@
-package coin.coinzzickmock.feature.market.application.realtime;
+package coin.coinzzickmock.feature.market.application.repair;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
+import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;

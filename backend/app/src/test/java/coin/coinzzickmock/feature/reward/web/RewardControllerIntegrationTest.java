@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -36,6 +37,9 @@ class RewardControllerIntegrationTest {
 
     @Autowired
     private MemberCredentialRepository memberCredentialRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void adminLegacyAndNewTransitionEndpointsStayCompatible() throws Exception {
@@ -108,6 +112,58 @@ class RewardControllerIntegrationTest {
         mockMvc.perform(post("/api/futures/shop/redemptions/{requestId}/cancel", requestId)
                         .cookie(ownerCookie))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shopHistoryCombinesInstantPurchasesAndRedemptionRequests() throws Exception {
+        register("shop-history-owner");
+        Cookie ownerCookie = login("shop-history-owner", "hello@1234");
+        rewardPointRepository.save(new RewardPointWallet(memberId("shop-history-owner"), 300));
+
+        String requestId = createRedemption(ownerCookie);
+        mockMvc.perform(post("/api/futures/shop/items/{code}/purchase", "position.peek")
+                        .cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.itemCode").value("position.peek"));
+
+        mockMvc.perform(get("/api/futures/shop/history").cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].kind").value("INSTANT_PURCHASE"))
+                .andExpect(jsonPath("$.data[0].itemCode").value("position.peek"))
+                .andExpect(jsonPath("$.data[0].submittedPhoneNumber").doesNotExist())
+                .andExpect(jsonPath("$.data[0].status").doesNotExist())
+                .andExpect(jsonPath("$.data[1].kind").value("REDEMPTION_REQUEST"))
+                .andExpect(jsonPath("$.data[1].entryId").value(requestId))
+                .andExpect(jsonPath("$.data[1].status").value("PENDING"))
+                .andExpect(jsonPath("$.data[1].submittedPhoneNumber").value("010-1234-5678"));
+    }
+
+    @Test
+    void shopHistoryUsesStableKindPriorityWhenEventTimesTie() throws Exception {
+        register("shop-history-tie-owner");
+        Cookie ownerCookie = login("shop-history-tie-owner", "hello@1234");
+        rewardPointRepository.save(new RewardPointWallet(memberId("shop-history-tie-owner"), 300));
+
+        String requestId = createRedemption(ownerCookie);
+        mockMvc.perform(post("/api/futures/shop/items/{code}/purchase", "position.peek")
+                        .cookie(ownerCookie))
+                .andExpect(status().isOk());
+
+        jdbcTemplate.update(
+                "UPDATE reward_redemption_requests SET requested_at = TIMESTAMP '2026-05-14 03:00:00' WHERE request_id = ?",
+                requestId
+        );
+        jdbcTemplate.update(
+                "UPDATE reward_shop_purchases SET purchased_at = TIMESTAMP '2026-05-14 03:00:00' WHERE member_id = ?",
+                memberId("shop-history-tie-owner")
+        );
+
+        mockMvc.perform(get("/api/futures/shop/history").cookie(ownerCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].kind").value("INSTANT_PURCHASE"))
+                .andExpect(jsonPath("$.data[0].itemCode").value("position.peek"))
+                .andExpect(jsonPath("$.data[1].kind").value("REDEMPTION_REQUEST"))
+                .andExpect(jsonPath("$.data[1].entryId").value(requestId));
     }
 
     private String createRedemption(Cookie cookie) throws Exception {

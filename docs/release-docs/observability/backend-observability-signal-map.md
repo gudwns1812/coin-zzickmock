@@ -104,6 +104,20 @@ Implemented `result` values:
 - `skipped`
 - `rejected`
 
+### Implemented: Market Trade Movement Queue
+
+- `market.trade.movement.queue.size.current`
+- `market.trade.movement.queue.drop.total` with `reason`
+- `market.trade.movement.worker.failure.total` with `reason`
+
+Implemented `reason` values:
+
+- `full`
+- `runtime_exception`
+
+Pending limit fill은 단일 백엔드 인스턴스의 live worker가 수신한 accepted WebSocket trade movement만 기준으로 한다.
+restart-gap 징후는 WebSocket reconnect, snapshot staleness, trade movement queue depth/drop, worker failure를 함께 본다.
+
 ### Planned: Market Realtime, WebSocket, History, And Cache
 
 - `market.refresh.total` with `result`

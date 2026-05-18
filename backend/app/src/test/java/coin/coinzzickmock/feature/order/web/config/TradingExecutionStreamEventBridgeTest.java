@@ -6,7 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.web.TradingExecutionSseBroker;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;

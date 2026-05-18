@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.web;
 
-import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.CancelOrderResult;
 
 public record CancelOrderResponse(
         String orderId,

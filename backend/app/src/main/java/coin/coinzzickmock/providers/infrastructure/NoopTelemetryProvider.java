@@ -2,6 +2,7 @@ package coin.coinzzickmock.providers.infrastructure;
 
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class NoopTelemetryProvider implements TelemetryProvider {
     @Override
@@ -14,5 +15,9 @@ public class NoopTelemetryProvider implements TelemetryProvider {
 
     @Override
     public void recordEvent(String eventName, Map<String, String> tags) {
+    }
+
+    @Override
+    public void registerGauge(String gaugeName, Map<String, String> tags, Supplier<Number> valueSupplier) {
     }
 }

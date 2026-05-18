@@ -7,7 +7,7 @@ import coin.coinzzickmock.feature.market.application.history.MarketHistoryLookup
 import coin.coinzzickmock.feature.market.application.history.MarketPersistedCandleReader;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

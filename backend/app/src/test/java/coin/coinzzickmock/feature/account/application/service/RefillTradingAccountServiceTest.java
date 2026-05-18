@@ -9,16 +9,16 @@ import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository.LockedAccountRefillState;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
-import coin.coinzzickmock.feature.account.application.result.AccountRefillResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountRefillResult;
 import coin.coinzzickmock.feature.account.domain.AccountRefillState;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -218,6 +218,11 @@ class RefillTradingAccountServiceTest {
         }
 
         @Override
+        public List<OpenPositionCandidate> findAllOpenCandidates() {
+            return List.of();
+        }
+
+        @Override
         public PositionSnapshot save(Long memberId, PositionSnapshot positionSnapshot) {
             return positionSnapshot;
         }
@@ -269,6 +274,11 @@ class RefillTradingAccountServiceTest {
 
         @Override
         public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
+            return List.of();
+        }
+
+        @Override
+        public List<PendingOrderCandidate> findPendingNonConditionalLimitOrders() {
             return List.of();
         }
 

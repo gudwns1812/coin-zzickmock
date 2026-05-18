@@ -2,10 +2,10 @@ package coin.coinzzickmock.feature.community.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.community.application.command.CreateCommunityCommentCommand;
+import coin.coinzzickmock.feature.community.application.dto.CreateCommunityCommentCommand;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
-import coin.coinzzickmock.feature.community.application.result.CommunityCommentMutationResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityCommentMutationResult;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import java.time.Clock;
 import java.time.Instant;

@@ -17,6 +17,7 @@ import {
 import {
   calculateMaxOpenOrderQuantity,
   formatFlooredQuantity,
+  resolveOpenOrderAffordabilityPrice,
 } from "@/lib/order-entry-quantity";
 import { deriveLiveAccountSummaryDisplay } from "@/components/futures/livePositionDisplay";
 import Modal from "@/components/ui/Modal";
@@ -164,6 +165,12 @@ export default function OrderEntryPanel({
 
   const effectivePrice =
     orderType === "LIMIT" ? Number.parseFloat(limitPrice) : currentPrice;
+  const parsedLimitPrice = Number.parseFloat(limitPrice);
+  const openOrderAffordabilityPrice = resolveOpenOrderAffordabilityPrice(
+    orderType,
+    currentPrice,
+    parsedLimitPrice
+  );
   const baseAsset = symbol.replace("USDT", "");
   const liveAccountSummary = useMemo(
     () => deriveLiveAccountSummaryDisplay(accountSummary, positions),
@@ -180,8 +187,13 @@ export default function OrderEntryPanel({
   );
   const isMarginModeLocked = selectedSidePosition !== null;
   const maxOpenQuantity =
-    Number.isFinite(effectivePrice) && effectivePrice > 0
-      ? calculateMaxOpenOrderQuantity(availableBalance, leverage, effectivePrice)
+    Number.isFinite(openOrderAffordabilityPrice) &&
+    openOrderAffordabilityPrice > 0
+      ? calculateMaxOpenOrderQuantity(
+          availableBalance,
+          leverage,
+          openOrderAffordabilityPrice
+        )
       : 0;
   const maxCloseQuantity = matchingPosition?.quantity ?? 0;
   const quantityControlMax =
@@ -219,9 +231,11 @@ export default function OrderEntryPanel({
     ]
   );
   const hasValidOrder = orderPayload !== null;
+  const orderNotionalPrice =
+    ticketMode === "OPEN" ? openOrderAffordabilityPrice : effectivePrice;
   const orderNotional =
-    Number.isFinite(parsedQuantity) && Number.isFinite(effectivePrice)
-      ? parsedQuantity * effectivePrice
+    Number.isFinite(parsedQuantity) && Number.isFinite(orderNotionalPrice)
+      ? parsedQuantity * orderNotionalPrice
       : 0;
   const costEstimate = leverage > 0 ? orderNotional / leverage : 0;
   const valueSummaryLabel =

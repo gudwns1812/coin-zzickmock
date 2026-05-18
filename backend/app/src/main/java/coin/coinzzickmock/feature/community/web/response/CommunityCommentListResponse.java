@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.community.web.response;
 
-import coin.coinzzickmock.feature.community.application.result.CommunityCommentListResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityCommentListResult;
 import java.util.List;
 
 public record CommunityCommentListResponse(List<CommunityCommentResponse> comments, CommunityPageResponse page) {

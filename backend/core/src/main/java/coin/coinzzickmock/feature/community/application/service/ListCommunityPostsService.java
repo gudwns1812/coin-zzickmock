@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.community.application.service;
 import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
-import coin.coinzzickmock.feature.community.application.result.CommunityPostListResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostListResult;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

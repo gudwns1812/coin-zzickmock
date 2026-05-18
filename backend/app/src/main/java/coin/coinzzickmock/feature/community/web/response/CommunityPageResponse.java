@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.community.web.response;
 
-import coin.coinzzickmock.feature.community.application.result.CommunityCommentListResult;
-import coin.coinzzickmock.feature.community.application.result.CommunityPostListResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityCommentListResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostListResult;
 
 public record CommunityPageResponse(int page, int size, long totalElements, int totalPages, boolean hasNext) {
     public static CommunityPageResponse from(CommunityPostListResult result) {

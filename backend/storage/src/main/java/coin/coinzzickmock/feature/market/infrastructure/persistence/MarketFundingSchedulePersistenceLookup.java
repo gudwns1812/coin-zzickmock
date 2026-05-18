@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
-import coin.coinzzickmock.feature.market.application.realtime.MarketFundingScheduleLookup;
+import coin.coinzzickmock.feature.market.application.implement.MarketFundingScheduleLookup;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import java.time.DateTimeException;
 import java.time.ZoneId;

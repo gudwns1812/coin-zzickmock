@@ -3,7 +3,8 @@ package coin.coinzzickmock.feature.order.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.CancelOrderResult;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.dto.CancelOrderResult;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CancelOrderService {
     private final OrderRepository orderRepository;
+    private final OrderPendingLimitOrderBook pendingLimitOrderBook;
 
     @Transactional
     public CancelOrderResult cancel(Long memberId, String orderId) {
@@ -24,6 +26,7 @@ public class CancelOrderService {
         }
 
         FuturesOrder cancelledOrder = orderRepository.updateStatus(memberId, orderId, "CANCELLED");
+        pendingLimitOrderBook.removeAfterCommit(memberId, orderId);
         return CancelOrderResult.from(cancelledOrder);
     }
 }

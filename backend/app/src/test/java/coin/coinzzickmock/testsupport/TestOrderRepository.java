@@ -1,7 +1,7 @@
 package coin.coinzzickmock.testsupport;
 
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +24,11 @@ public abstract class TestOrderRepository implements OrderRepository {
 
     @Override
     public List<PendingOrderCandidate> findPendingBySymbol(String symbol) {
+        return List.of();
+    }
+
+    @Override
+    public List<PendingOrderCandidate> findPendingNonConditionalLimitOrders() {
         return List.of();
     }
 

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.repository;
 
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 
 import java.util.List;
@@ -14,6 +14,8 @@ public interface OrderRepository {
     Optional<FuturesOrder> findByMemberIdAndOrderId(Long memberId, String orderId);
 
     List<PendingOrderCandidate> findPendingBySymbol(String symbol);
+
+    List<PendingOrderCandidate> findPendingNonConditionalLimitOrders();
 
     boolean existsPendingByMemberId(Long memberId);
 

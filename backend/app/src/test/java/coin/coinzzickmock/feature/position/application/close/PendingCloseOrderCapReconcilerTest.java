@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.position.application.close;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.LinkedHashMap;

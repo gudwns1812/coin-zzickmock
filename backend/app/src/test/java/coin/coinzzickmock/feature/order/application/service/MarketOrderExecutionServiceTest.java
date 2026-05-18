@@ -1,34 +1,36 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.application.realtime.MarketSummaryUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.market.application.result.MarketSummaryResult;
-import coin.coinzzickmock.feature.order.application.realtime.PendingOrderExecutionCache;
-import coin.coinzzickmock.feature.order.application.realtime.PendingOrderFillProcessor;
-import coin.coinzzickmock.feature.order.application.realtime.PositionLiquidationProcessor;
-import coin.coinzzickmock.feature.order.application.realtime.PositionTakeProfitStopLossProcessor;
-import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingExecutionCache;
+import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingFillProcessor;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.implement.OrderPositionLiquidationProcessor;
+import coin.coinzzickmock.feature.order.application.implement.OrderPositionTakeProfitStopLossProcessor;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -1151,30 +1153,43 @@ class MarketOrderExecutionServiceTest {
             StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller
     ) {
         AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
+        var openPositionBook = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook();
+        var openPositionBookWriter = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(openPositionBook);
+        var openPositionBookHydrator = new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookHydrator(
+                positionRepository,
+                openPositionBook
+        );
         PositionCloseFinalizer positionCloseFinalizer = new PositionCloseFinalizer(
                 positionRepository,
                 accountRepository,
                 new InMemoryPositionHistoryRepository(),
                 new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
-                afterCommitEventPublisher
+                afterCommitEventPublisher,
+                openPositionBookWriter
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
         RealtimeMarketPriceReader realtimeMarketPriceReader = new RealtimeMarketPriceReader(realtimeMarketDataStore);
-        AccountOrderMutationLock accountOrderMutationLock = new AccountOrderMutationLock(accountRepository);
+        OrderMutationLock orderMutationLock = new OrderMutationLock(accountRepository);
         return new MarketOrderExecutionService(
-                new PendingOrderFillProcessor(
+                new OrderPendingFillProcessor(
                         orderRepository,
                         positionRepository,
-                        new PendingOrderExecutionCache(),
+                        new OrderPendingExecutionCache(),
+                        new OrderPendingLimitOrderBook(),
                         positionCloseFinalizer,
                         pendingCloseOrderCapReconciler,
                         staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
-                        new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
-                        accountOrderMutationLock
+                        new OrderFillApplier(
+                                accountRepository,
+                                positionRepository,
+                                afterCommitEventPublisher,
+                                openPositionBookWriter
+                        ),
+                        orderMutationLock
                 ),
-                new PositionLiquidationProcessor(
+                new OrderPositionLiquidationProcessor(
                         positionRepository,
                         accountRepository,
                         new LiquidationPolicy(),
@@ -1183,9 +1198,11 @@ class MarketOrderExecutionServiceTest {
                         staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
-                        accountOrderMutationLock
+                        orderMutationLock,
+                        openPositionBook,
+                        openPositionBookHydrator
                 ),
-                new PositionTakeProfitStopLossProcessor(
+                new OrderPositionTakeProfitStopLossProcessor(
                         orderRepository,
                         positionRepository,
                         positionCloseFinalizer,
@@ -1193,12 +1210,12 @@ class MarketOrderExecutionServiceTest {
                         staleProtectiveCloseOrderCanceller,
                         afterCommitEventPublisher,
                         realtimeMarketPriceReader,
-                        accountOrderMutationLock
+                        orderMutationLock
                 )
         );
     }
 
-    private PositionTakeProfitStopLossProcessor tpslProcessor(
+    private OrderPositionTakeProfitStopLossProcessor tpslProcessor(
             OrderRepository orderRepository,
             PositionRepository positionRepository,
             AccountRepository accountRepository,
@@ -1210,12 +1227,15 @@ class MarketOrderExecutionServiceTest {
                 accountRepository,
                 new InMemoryPositionHistoryRepository(),
                 new RewardPointGrantProcessor(new RewardPointPolicy(), new InMemoryRewardPointRepository()),
-                afterCommitEventPublisher
+                afterCommitEventPublisher,
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()
+                )
         );
         PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler = new PendingCloseOrderCapReconciler(orderRepository);
         StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller = new StaleProtectiveCloseOrderCanceller(orderRepository);
         RealtimeMarketPriceReader realtimeMarketPriceReader = new RealtimeMarketPriceReader(realtimeMarketDataStore);
-        return new PositionTakeProfitStopLossProcessor(
+        return new OrderPositionTakeProfitStopLossProcessor(
                 orderRepository,
                 positionRepository,
                 positionCloseFinalizer,
@@ -1223,7 +1243,7 @@ class MarketOrderExecutionServiceTest {
                 staleProtectiveCloseOrderCanceller,
                 afterCommitEventPublisher,
                 realtimeMarketPriceReader,
-                new AccountOrderMutationLock(accountRepository)
+                new OrderMutationLock(accountRepository)
         );
     }
 
@@ -1478,6 +1498,11 @@ class MarketOrderExecutionServiceTest {
             return positions.values().stream()
                     .filter(candidate -> candidate.symbol().equals(symbol))
                     .toList();
+        }
+
+        @Override
+        public List<OpenPositionCandidate> findAllOpenCandidates() {
+            return List.copyOf(positions.values());
         }
 
         @Override

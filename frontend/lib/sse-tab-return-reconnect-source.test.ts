@@ -26,7 +26,7 @@ test("markets landing opens one summary SSE through a child subscription", () =>
 
   assert.equal(source.includes("MarketLandingStreamSubscription"), true);
   assert.equal(source.includes("useResilientEventSource({"), true);
-  assert.equal(source.includes("/api/futures/markets/summary/stream"), true);
+  assert.equal(source.includes("createMarketSummarySseUrl"), true);
   assert.equal(source.includes("/api/futures/markets/${encodeURIComponent(symbol)}/stream"), false);
   assert.equal(source.includes("initialMarkets.map((market) => ("), false);
   assert.equal(source.includes("const streams = initialMarkets.map"), false);
@@ -73,20 +73,38 @@ test("candle stream invalidates futures candle queries by prefix", () => {
   );
 });
 
-test("frontend SSE route handlers use the cancellable SSE proxy", () => {
-  const routeSources = sseRoutePaths.map(readFrontendSource);
+test("public market SSE consumers can bypass Vercel route handlers", () => {
+  const urlSource = readFrontendSource("lib/futures-sse-url.ts");
+  const detailSource = readFrontendSource("components/futures/MarketDetailRealtimeView.tsx");
+  const landingSource = readFrontendSource(
+    "components/router/(main)/markets/MarketsLandingRealtimeView.tsx"
+  );
 
-  for (const source of routeSources) {
-    assert.equal(source.includes("proxySseStream({"), true);
-    assert.equal(source.includes("createSseUpstreamHeaders(request)"), true);
-  }
+  assert.equal(urlSource.includes("NEXT_PUBLIC_FUTURES_API_BASE_URL"), true);
+  assert.equal(urlSource.includes("/markets/stream"), true);
+  assert.equal(urlSource.includes("/markets/summary/stream"), true);
+  assert.equal(urlSource.includes("/orders/stream"), true);
+  assert.equal(detailSource.includes("createUnifiedMarketSseUrl"), true);
+  assert.equal(detailSource.includes("createOrderExecutionSseUrl"), true);
+  assert.equal(landingSource.includes("createMarketSummarySseUrl"), true);
+});
 
-  const proxySource = readFrontendSource("lib/sse-proxy.ts");
+test("event sources include credentials for direct backend SSE", () => {
+  const hookSource = readFrontendSource("hooks/useResilientEventSource.ts");
 
-  assert.equal(proxySource.includes("new AbortController()"), true);
-  assert.equal(proxySource.includes("reader?.cancel()"), true);
-  assert.equal(proxySource.includes("start(controller)"), true);
-  assert.equal(proxySource.includes("async cancel()"), true);
+  assert.equal(hookSource.includes("new EventSource(url, { withCredentials: true })"), true);
+});
+
+test("client login seeds backend-domain and same-origin auth cookies", () => {
+  const authSource = readFrontendSource("lib/futures-auth-client.ts");
+  const pageLoginSource = readFrontendSource("app/login/LoginFormClient.tsx");
+  const headerLoginSource = readFrontendSource("components/ui/shared/header/LoginForm.tsx");
+
+  assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/login")'), true);
+  assert.equal(authSource.includes('"/proxy/auth/login"'), true);
+  assert.equal(authSource.includes("credentials: \"include\""), true);
+  assert.equal(pageLoginSource.includes("loginToFutures"), true);
+  assert.equal(headerLoginSource.includes("loginToFutures"), true);
 });
 
 test("frontend SSE routes fail missing or blank clientKey before proxying", () => {
@@ -149,8 +167,8 @@ test("frontend SSE consumers keep plain stream URLs and rely on the hook boundar
   }
 
   const detailSource = readFrontendSource("components/futures/MarketDetailRealtimeView.tsx");
-  assert.equal(detailSource.includes("new URLSearchParams({"), true);
-  assert.equal(detailSource.includes("interval: selectedInterval"), true);
+  assert.equal(detailSource.includes("createUnifiedMarketSseUrl"), true);
+  assert.equal(detailSource.includes("selectedInterval"), true);
   assert.equal(detailSource.includes("viewer:"), false);
   assert.equal(detailSource.includes("symbols:"), false);
 });

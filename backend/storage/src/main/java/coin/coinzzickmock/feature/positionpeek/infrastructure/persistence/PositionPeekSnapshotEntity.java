@@ -1,8 +1,8 @@
 package coin.coinzzickmock.feature.positionpeek.infrastructure.persistence;
 
 import coin.coinzzickmock.common.persistence.AuditableEntity;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekPublicPositionResult;
-import coin.coinzzickmock.feature.positionpeek.application.result.PositionPeekSnapshotRecord;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekPublicPositionResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnapshotRecord;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

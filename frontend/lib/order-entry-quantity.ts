@@ -1,6 +1,28 @@
 export const OPEN_ORDER_TAKER_FEE_RATE = 0.0005;
 export const DEFAULT_QUANTITY_PRECISION = 3;
 
+export type OpenOrderPriceKind = "MARKET" | "LIMIT";
+
+export function resolveOpenOrderAffordabilityPrice(
+  priceKind: OpenOrderPriceKind,
+  currentPrice: number,
+  limitPrice?: number
+): number {
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+    return 0;
+  }
+
+  if (priceKind === "MARKET") {
+    return currentPrice;
+  }
+
+  if (!Number.isFinite(limitPrice) || limitPrice == null || limitPrice <= 0) {
+    return 0;
+  }
+
+  return Math.max(limitPrice, currentPrice);
+}
+
 export function calculateMaxOpenOrderQuantity(
   availableBalance: number,
   leverage: number,

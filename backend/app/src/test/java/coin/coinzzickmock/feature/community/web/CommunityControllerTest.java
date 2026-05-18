@@ -7,8 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.common.api.ApiResponse;
-import coin.coinzzickmock.feature.community.application.command.GenerateCommunityImageUploadPresignedUrlCommand;
-import coin.coinzzickmock.feature.community.application.result.CommunityImageUploadPresignedUrlResult;
+import coin.coinzzickmock.feature.community.application.dto.GenerateCommunityImageUploadPresignedUrlCommand;
+import coin.coinzzickmock.feature.community.application.dto.CommunityImageUploadPresignedUrlResult;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityCommentService;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityPostService;
 import coin.coinzzickmock.feature.community.application.service.DeleteCommunityCommentService;

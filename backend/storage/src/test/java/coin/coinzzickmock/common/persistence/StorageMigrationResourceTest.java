@@ -11,11 +11,19 @@ class StorageMigrationResourceTest {
         URL initialMigration = Thread.currentThread()
                 .getContextClassLoader()
                 .getResource("db/migration/V1__initial_schema.sql");
-        URL latestCommunityMigration = Thread.currentThread()
+        URL restoredCommunityMigration = Thread.currentThread()
                 .getContextClassLoader()
                 .getResource("db/migration/V31__add_community_posts.sql");
+        URL latestRewardShopPurchaseMigration = Thread.currentThread()
+                .getContextClassLoader()
+                .getResource("db/migration/V32__add_reward_shop_purchases.sql");
+        URL latestAccountNonNegativeCheckMigration = Thread.currentThread()
+                .getContextClassLoader()
+                .getResource("db/migration/V33__add_trading_account_non_negative_checks.sql");
 
         assertThat(initialMigration).isNotNull();
-        assertThat(latestCommunityMigration).isNotNull();
+        assertThat(restoredCommunityMigration).isNotNull();
+        assertThat(latestRewardShopPurchaseMigration).isNotNull();
+        assertThat(latestAccountNonNegativeCheckMigration).isNotNull();
     }
 }

@@ -1,8 +1,11 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketCandleProjector;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.market.application.result.MarketCandleResult;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.math.BigDecimal;
 import java.time.Instant;

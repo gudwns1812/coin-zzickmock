@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.account.application.repository;
 
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 
 import java.util.List;
 import java.util.Optional;

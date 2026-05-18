@@ -1,26 +1,34 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.order.application.command.CreateOrderCommand;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderCommand;
+import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderPostSaveFillHandler;
+import coin.coinzzickmock.feature.order.application.implement.OrderPositionInvariantValidator;
+import coin.coinzzickmock.feature.order.application.implement.OrderPlacementFactory;
+import coin.coinzzickmock.feature.order.application.implement.OrderCrossMarginPreviewProjector;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.result.CreateOrderResult;
-import coin.coinzzickmock.feature.order.application.result.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.implement.OrderPendingLimitOrderBook;
+import coin.coinzzickmock.feature.order.application.dto.CreateOrderResult;
+import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.OpenPositionCandidate;
+import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import org.junit.jupiter.api.Test;
@@ -323,6 +331,48 @@ class CreateOrderServiceTest {
     }
 
     @Test
+    void filledMarketOrderPublishesTradingExecutionEventAfterTransactionCommit() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        CapturingTradingEventPublisher eventPublisher = new CapturingTradingEventPublisher();
+        CreateOrderService service = service(
+                realtimePriceReader(),
+                orderRepository,
+                accountRepository,
+                positionRepository,
+                eventPublisher
+        );
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.execute(new CreateOrderCommand(
+                    1L,
+                    "BTCUSDT",
+                    "LONG",
+                    "MARKET",
+                    "ISOLATED",
+                    10,
+                    0.1,
+                    null
+            ));
+
+            assertTrue(eventPublisher.events.isEmpty());
+
+            TransactionSynchronizationUtils.triggerAfterCommit();
+
+            assertEquals(1, eventPublisher.events.size());
+            TradingExecutionEvent event = eventPublisher.events.get(0);
+            assertEquals("ORDER_FILLED", event.type());
+            assertEquals(1L, event.memberId());
+            assertEquals("BTCUSDT", event.symbol());
+            assertEquals("LONG", event.positionSide());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     void filledMarketOrderReservesPreviewInitialMarginPrecision() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
@@ -567,16 +617,44 @@ class CreateOrderServiceTest {
             ApplicationEventPublisher eventPublisher
     ) {
         AfterCommitEventPublisher afterCommitEventPublisher = new AfterCommitEventPublisher(eventPublisher);
+        OrderPreviewPolicy orderPreviewPolicy = new OrderPreviewPolicy();
+        OrderPlacementPolicy orderPlacementPolicy = new OrderPlacementPolicy();
+        OrderPlacementFactory orderPlacementFactory = new OrderPlacementFactory();
+        OrderCrossMarginPreviewProjector orderCrossMarginPreviewProjector = new OrderCrossMarginPreviewProjector(
+                accountRepository,
+                positionRepository,
+                realtimeMarketPriceReader,
+                new LiquidationPolicy()
+        );
+        OrderFillApplier orderFillApplier = new OrderFillApplier(
+                accountRepository,
+                positionRepository,
+                afterCommitEventPublisher,
+                new coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter(
+                        new coin.coinzzickmock.feature.position.application.implement.OpenPositionBook()
+                )
+        );
         return new CreateOrderService(
-                new OrderPreviewPolicy(),
-                new OrderPlacementPolicy(),
+                orderPreviewPolicy,
+                orderPlacementPolicy,
                 realtimeMarketPriceReader,
                 orderRepository,
-                positionRepository,
-                accountRepository,
-                new LiquidationPolicy(),
-                new FilledOpenOrderApplier(accountRepository, positionRepository, afterCommitEventPublisher),
-                new AccountOrderMutationLock(accountRepository)
+                orderPlacementFactory,
+                new OrderPositionInvariantValidator(positionRepository),
+                orderCrossMarginPreviewProjector,
+                orderFillApplier,
+                new OrderPostSaveFillHandler(
+                        realtimeMarketPriceReader,
+                        orderPlacementPolicy,
+                        orderPreviewPolicy,
+                        orderRepository,
+                        orderPlacementFactory,
+                        orderCrossMarginPreviewProjector,
+                        orderFillApplier
+                ),
+                new OrderMutationLock(accountRepository),
+                new OrderPendingLimitOrderBook(),
+                afterCommitEventPublisher
         );
     }
 
@@ -587,6 +665,17 @@ class CreateOrderServiceTest {
         public void publishEvent(Object event) {
             if (event instanceof WalletBalanceChangedEvent walletBalanceChangedEvent) {
                 events.add(walletBalanceChangedEvent);
+            }
+        }
+    }
+
+    private static class CapturingTradingEventPublisher implements ApplicationEventPublisher {
+        private final List<TradingExecutionEvent> events = new ArrayList<>();
+
+        @Override
+        public void publishEvent(Object event) {
+            if (event instanceof TradingExecutionEvent tradingExecutionEvent) {
+                events.add(tradingExecutionEvent);
             }
         }
     }

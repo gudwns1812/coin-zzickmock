@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.position.web;
 
-import coin.coinzzickmock.feature.position.application.result.PositionHistoryResult;
+import coin.coinzzickmock.feature.position.application.dto.PositionHistoryResult;
 import java.time.Instant;
 
 public record PositionHistoryResponse(

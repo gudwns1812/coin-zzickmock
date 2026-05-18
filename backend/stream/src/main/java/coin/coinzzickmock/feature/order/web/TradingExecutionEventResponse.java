@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.web;
 
-import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import java.math.BigDecimal;
 
 public record TradingExecutionEventResponse(

@@ -4,24 +4,24 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
-import coin.coinzzickmock.feature.account.application.result.AccountMutationResult;
+import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.position.application.event.PositionFullyClosedEvent;
 import coin.coinzzickmock.feature.position.application.repository.PositionHistoryRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
-import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
-import coin.coinzzickmock.feature.position.application.result.PositionMutationResult;
+import coin.coinzzickmock.feature.position.application.dto.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter;
+import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;
 import coin.coinzzickmock.feature.position.domain.PositionCloseOutcome;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
-import coin.coinzzickmock.feature.reward.application.command.GrantProfitPointCommand;
+import coin.coinzzickmock.feature.reward.application.dto.GrantProfitPointCommand;
 import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
-import coin.coinzzickmock.feature.reward.application.result.RewardPointResult;
+import coin.coinzzickmock.feature.reward.application.dto.RewardPointResult;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-
-import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
@@ -31,6 +31,8 @@ public class PositionCloseFinalizer {
     private final PositionHistoryRepository positionHistoryRepository;
     private final RewardPointGrantProcessor rewardPointGrantProcessor;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final OpenPositionBookWriter openPositionBookWriter;
+
 
     public ClosePositionResult close(
             Long memberId,
@@ -41,24 +43,10 @@ public class PositionCloseFinalizer {
             double feeRate,
             String closeReason
     ) {
-        if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
+        PositionCloseOutcome closeOutcome = closePositionWithGuard(memberId, position, quantity, markPrice, executionPrice, feeRate, closeReason);
 
         TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
-        PositionCloseOutcome closeOutcome = position.close(quantity, markPrice, executionPrice, feeRate);
-        PositionMutationResult mutationResult;
-        if (closeOutcome.remainingPosition() == null) {
-            mutationResult = positionRepository.deleteWithVersion(memberId, position);
-            validateGuardedMutation(mutationResult);
-            positionHistoryRepository.save(memberId, toHistory(position, closeOutcome, closeReason));
-            afterCommitEventPublisher.publish(new PositionFullyClosedEvent(memberId, position.symbol()));
-        } else {
-            mutationResult = positionRepository.updateWithVersion(memberId, position, closeOutcome.remainingPosition());
-            validateGuardedMutation(mutationResult);
-        }
-
         TradingAccount updatedAccount = validateAccountMutation(accountRepository.updateWithVersion(
                 account,
                 account.settlePositionClose(
@@ -74,6 +62,66 @@ public class PositionCloseFinalizer {
         );
 
         return ClosePositionResult.from(position, closeOutcome, rewardPointResult);
+    }
+
+    public ClosePositionResult liquidate(
+            Long memberId,
+            PositionSnapshot position,
+            double markPrice,
+            double feeRate
+    ) {
+        PositionCloseOutcome rawOutcome = closePositionWithGuard(
+                memberId,
+                position,
+                position.quantity(),
+                markPrice,
+                markPrice,
+                feeRate,
+                PositionHistory.CLOSE_REASON_LIQUIDATION
+        );
+
+        TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        TradingAccount updatedAccount = validateAccountMutation(accountRepository.updateWithVersion(
+                account,
+                account.settleLiquidationClose(
+                        rawOutcome.grossRealizedPnl(),
+                        rawOutcome.closeFee(),
+                        rawOutcome.releasedMargin()
+                )
+        ));
+        afterCommitEventPublisher.publish(WalletBalanceChangedEvent.from(updatedAccount));
+
+        return ClosePositionResult.from(position, rawOutcome, 0);
+    }
+
+    private PositionCloseOutcome closePositionWithGuard(
+            Long memberId,
+            PositionSnapshot position,
+            double quantity,
+            double markPrice,
+            double executionPrice,
+            double feeRate,
+            String closeReason
+    ) {
+        if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+
+        PositionCloseOutcome closeOutcome = position.close(quantity, markPrice, executionPrice, feeRate);
+        PositionMutationResult mutationResult;
+        if (closeOutcome.remainingPosition() == null) {
+            mutationResult = positionRepository.deleteWithVersion(memberId, position);
+            validateGuardedMutation(mutationResult);
+            positionHistoryRepository.save(memberId, toHistory(position, closeOutcome, closeReason));
+            openPositionBookWriter.removeAfterCommit(memberId, position);
+            afterCommitEventPublisher.publish(new PositionFullyClosedEvent(memberId, position.symbol()));
+        } else {
+            mutationResult = positionRepository.updateWithVersion(memberId, position, closeOutcome.remainingPosition());
+            validateGuardedMutation(mutationResult);
+            openPositionBookWriter.replaceAfterCommit(memberId, mutationResult.updatedSnapshot());
+        }
+        return closeOutcome;
     }
 
     private TradingAccount validateAccountMutation(AccountMutationResult mutationResult) {

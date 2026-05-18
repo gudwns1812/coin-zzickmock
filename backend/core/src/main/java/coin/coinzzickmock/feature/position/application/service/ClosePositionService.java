@@ -2,10 +2,10 @@ package coin.coinzzickmock.feature.position.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.feature.market.application.realtime.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.order.application.service.AccountOrderMutationLock;
+import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementDecision;
 import coin.coinzzickmock.feature.order.domain.OrderPlacementPolicy;
@@ -13,7 +13,7 @@ import coin.coinzzickmock.feature.order.domain.OrderPlacementRequest;
 import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
 import coin.coinzzickmock.feature.position.application.close.PositionCloseFinalizer;
 import coin.coinzzickmock.feature.position.application.close.StaleProtectiveCloseOrderCanceller;
-import coin.coinzzickmock.feature.position.application.result.ClosePositionResult;
+import coin.coinzzickmock.feature.position.application.dto.ClosePositionResult;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionHistory;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
@@ -36,7 +36,7 @@ public class ClosePositionService {
     private final PendingCloseOrderCapReconciler pendingCloseOrderCapReconciler;
     private final StaleProtectiveCloseOrderCanceller staleProtectiveCloseOrderCanceller;
     private final OrderPlacementPolicy orderPlacementPolicy;
-    private final AccountOrderMutationLock accountOrderMutationLock;
+    private final OrderMutationLock orderMutationLock;
 
     @Transactional
     public ClosePositionResult close(
@@ -48,7 +48,7 @@ public class ClosePositionService {
             String orderType,
             Double limitPrice
     ) {
-        accountOrderMutationLock.lock(memberId);
+        orderMutationLock.lock(memberId);
         PositionSnapshot position = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
                 .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
         validateCloseRequest(quantity, orderType, limitPrice, position);

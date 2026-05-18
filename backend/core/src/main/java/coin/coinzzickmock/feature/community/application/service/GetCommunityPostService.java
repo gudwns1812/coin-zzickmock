@@ -5,7 +5,7 @@ import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.application.query.GetCommunityPostQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
-import coin.coinzzickmock.feature.community.application.result.CommunityPostDetailResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import java.time.Clock;
 import java.time.Instant;

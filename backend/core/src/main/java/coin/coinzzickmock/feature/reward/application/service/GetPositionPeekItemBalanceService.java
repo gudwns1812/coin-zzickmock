@@ -4,7 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
-import coin.coinzzickmock.feature.reward.application.result.PositionPeekItemBalanceResult;
+import coin.coinzzickmock.feature.reward.application.dto.PositionPeekItemBalanceResult;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

@@ -218,8 +218,9 @@ Infra/compose 변경은 backend image를 새로 만들지 않고, 분류된 runt
 
 ## 브랜치 네이밍
 
-브랜치명은 반드시 `<type>/<kebab-case-summary>` 형식이어야 합니다.
+브랜치명은 기본적으로 `<type>/<kebab-case-summary>` 형식이어야 합니다.
 허용 type은 `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `perf`, `style`, `build`, `revert`입니다.
+단독 브랜치명으로는 `main`, `master`, `develop`, `dev`, `refactor`를 허용합니다.
 
 `codex/*`, `codex-*`, `[codex]` 같은 자동화 접두사는 금지하며 외부 도구 기본값보다 이 저장소 규칙이 우선합니다.
 

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.community.web.response;
 
-import coin.coinzzickmock.feature.community.application.result.CommunityPostListResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostListResult;
 import java.util.List;
 
 public record CommunityPostListResponse(

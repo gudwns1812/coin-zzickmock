@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.order.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import coin.coinzzickmock.feature.order.application.realtime.TradingExecutionEvent;
+import coin.coinzzickmock.feature.order.application.dto.TradingExecutionEvent;
 import coin.coinzzickmock.providers.telemetry.SseTelemetry;
 import java.io.IOException;
 import java.time.Duration;

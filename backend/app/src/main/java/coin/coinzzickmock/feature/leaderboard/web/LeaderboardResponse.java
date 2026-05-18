@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.leaderboard.web;
 
-import coin.coinzzickmock.feature.leaderboard.application.result.LeaderboardResult;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardResult;
 import java.time.Instant;
 import java.util.List;
 

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.community.web.response;
 
-import coin.coinzzickmock.feature.community.application.result.CommunityCommentResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityCommentResult;
 import java.time.Instant;
 
 public record CommunityCommentResponse(

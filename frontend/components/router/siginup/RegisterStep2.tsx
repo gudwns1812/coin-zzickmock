@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Button from "@/components/ui/shared/Button";
 import { loginToFutures } from "@/lib/futures-auth-client";
+import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 
 interface RegisterStep2Props {
   setStep: (step: number) => void;
@@ -68,11 +69,12 @@ const RegisterStep2 = ({
   }, [userInfo.id]);
 
   const checkUserId = async () => {
-    const res = await fetch(`/proxy/auth/duplicate`, {
+    const res = await fetch(createFuturesBackendApiUrl("/auth/duplicate"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({ account: userInfo.id }),
     });
 
@@ -167,11 +169,12 @@ const RegisterStep2 = ({
     };
 
     // --- 모든 유효성 통과 후 회원가입 요청 ---
-    const res = await fetch(`/proxy/auth/register`, {
+    const res = await fetch(createFuturesBackendApiUrl("/auth/register"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify(userData),
     });
 

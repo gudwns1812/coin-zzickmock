@@ -3,9 +3,12 @@
 import {
   deactivateAdminShopItem,
   createAdminShopItem,
+  getAdminShopItemsClient,
   updateAdminShopItem,
 } from "@/lib/futures-client-api";
 import type { AdminShopItem } from "@/lib/futures-api";
+import { futuresQueryKeys } from "@/lib/futures-query-keys";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   EMPTY_ADMIN_SHOP_ITEM_FORM,
   formFromAdminShopItem,
@@ -28,9 +31,9 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
-  items: AdminShopItem[];
-  unavailable: boolean;
-  message: string | null;
+  items?: AdminShopItem[];
+  unavailable?: boolean;
+  message?: string | null;
 };
 
 export default function AdminShopItemsClient({
@@ -38,12 +41,23 @@ export default function AdminShopItemsClient({
   unavailable,
   message,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [form, setForm] = useState<AdminShopItemForm>(
     EMPTY_ADMIN_SHOP_ITEM_FORM
   );
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const itemsQuery = useQuery({
+    queryKey: [...futuresQueryKeys.admin, "shop-items"],
+    queryFn: getAdminShopItemsClient,
+    initialData: items
+      ? { items, unavailable: unavailable ?? false, message: message ?? null }
+      : undefined,
+  });
+  const result = itemsQuery.data;
+  const currentItems = result?.items ?? [];
+  const currentUnavailable = result?.unavailable ?? false;
+  const currentMessage = result?.message ?? null;
   const isEditing = editingCode !== null;
 
   const startCreate = () => {
@@ -83,7 +97,7 @@ export default function AdminShopItemsClient({
         toast.success("상품을 생성했습니다.");
       }
       startCreate();
-      router.refresh();
+      void queryClient.invalidateQueries({ queryKey: futuresQueryKeys.admin });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "상품 저장 실패");
     } finally {
@@ -99,7 +113,7 @@ export default function AdminShopItemsClient({
       if (editingCode === item.code) {
         startCreate();
       }
-      router.refresh();
+      void queryClient.invalidateQueries({ queryKey: futuresQueryKeys.admin });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "상품 판매 중지 실패");
     } finally {
@@ -135,9 +149,11 @@ export default function AdminShopItemsClient({
         </div>
       </section>
 
-      {unavailable ? (
+      {itemsQuery.isLoading ? (
+        <div className="mt-main-2 rounded-main border border-main-light-gray bg-white p-main-2 text-main-dark-gray/70">상품 목록을 불러오는 중입니다...</div>
+      ) : currentUnavailable ? (
         <div className="mt-main-2 rounded-main border border-main-light-gray bg-white p-main-2 text-main-dark-gray/70">
-          {message ?? "관리자 권한이 필요하거나 상품을 불러오지 못했습니다."}
+          {currentMessage ?? "관리자 권한이 필요하거나 상품을 불러오지 못했습니다."}
         </div>
       ) : (
         <div className="mt-main-2 grid grid-cols-[1.35fr_0.9fr] gap-main-2">
@@ -151,12 +167,12 @@ export default function AdminShopItemsClient({
               <span>관리</span>
             </div>
 
-            {items.length === 0 ? (
+            {currentItems.length === 0 ? (
               <div className="px-main py-main-2 text-sm-custom text-main-dark-gray/55">
                 등록된 상품이 없습니다.
               </div>
             ) : (
-              items.map((item) => (
+              currentItems.map((item) => (
                 <div
                   className="grid grid-cols-[1.1fr_0.9fr_0.8fr_0.8fr_0.7fr_0.8fr] gap-main border-b border-main-light-gray px-main py-4 text-sm-custom last:border-b-0"
                   key={item.code}

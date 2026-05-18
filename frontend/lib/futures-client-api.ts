@@ -1,5 +1,20 @@
 import type {
   AccountRefillResult,
+  AccountRefillStatus,
+  AdminRewardRedemptionsResult,
+  AdminShopItemsResult,
+  CommunityApiResult,
+  CommunityCommentList,
+  CommunityPostDetail,
+  CommunityPostList,
+  FuturesAccountSummary,
+  FuturesLeaderboard,
+  FuturesOpenOrder,
+  FuturesOrderHistory,
+  FuturesPosition,
+  FuturesPositionHistory,
+  FuturesReward,
+  FuturesWalletHistoryPoint,
   AdminShopItem,
   AdminShopItemInput,
   LeaderboardMode,
@@ -11,7 +26,14 @@ import type {
   RewardRedemption,
   ShopPurchaseResult,
   CommunityCategory,
+  RewardPointHistory,
+  RewardRedemptionsResult,
+  RewardRedemptionStatus,
+  RewardShopHistoryResult,
+  RewardShopHistoryRow,
+  ShopItem,
 } from "@/lib/futures-api";
+import { isSupportedMarketSymbol, type MarketSymbol } from "@/lib/markets";
 import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 
 export type CommunityPostInput = {
@@ -91,6 +113,168 @@ function readClientApiData<T>(
   }
 
   return payload.data;
+}
+
+export async function getFuturesAccountSummaryClient(): Promise<FuturesAccountSummary> {
+  return readFuturesApi<FuturesAccountSummary>("/account/me");
+}
+
+export async function getAccountRefillStatusClient(): Promise<AccountRefillStatus> {
+  return readFuturesApi<AccountRefillStatus>("/account/me/refill");
+}
+
+export async function getFuturesWalletHistoryClient(): Promise<FuturesWalletHistoryPoint[]> {
+  return readFuturesApi<FuturesWalletHistoryPoint[]>("/account/me/wallet-history");
+}
+
+export async function getFuturesPositionsClient(): Promise<FuturesPosition[]> {
+  const positions = await readFuturesApi<FuturesPosition[]>("/positions/me");
+  return positions.filter((position) =>
+    isSupportedMarketSymbol(position.symbol)
+  );
+}
+
+export async function getFuturesOpenOrdersClient(
+  symbol?: MarketSymbol
+): Promise<FuturesOpenOrder[]> {
+  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  const orders = await readFuturesApi<FuturesOpenOrder[]>(
+    `/orders/open${query}`
+  );
+  return orders.filter((order) => isSupportedMarketSymbol(order.symbol));
+}
+
+export async function getFuturesOrderHistoryClient(
+  symbol?: MarketSymbol
+): Promise<FuturesOrderHistory[]> {
+  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  const orders = await readFuturesApi<FuturesOrderHistory[]>(
+    `/orders/history${query}`
+  );
+  return orders
+    .filter((order) => isSupportedMarketSymbol(order.symbol))
+    .filter((order) => !symbol || order.symbol === symbol);
+}
+
+export async function getFuturesPositionHistoryClient(
+  symbol?: MarketSymbol
+): Promise<FuturesPositionHistory[]> {
+  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
+  const history = await readFuturesApi<FuturesPositionHistory[]>(
+    `/positions/history${query}`
+  );
+  return history.filter((position) =>
+    isSupportedMarketSymbol(position.symbol)
+  );
+}
+
+export async function getFuturesRewardClient(): Promise<FuturesReward> {
+  return readFuturesApi<FuturesReward>("/rewards/me");
+}
+
+export async function getFuturesLeaderboardClient(
+  options: { mode?: LeaderboardMode; limit?: number } = {}
+): Promise<FuturesLeaderboard> {
+  const params = new URLSearchParams({
+    mode: options.mode ?? "profitRate",
+    limit: String(options.limit ?? 4),
+  });
+  return readFuturesApi<FuturesLeaderboard>(
+    `/leaderboard?${params.toString()}`
+  );
+}
+
+export async function getShopItemsClient(): Promise<ShopItem[]> {
+  return readFuturesApi<ShopItem[]>("/shop/items");
+}
+
+export async function getRewardPointHistoryClient(): Promise<RewardPointHistory[]> {
+  return readFuturesApi<RewardPointHistory[]>("/rewards/history");
+}
+
+export async function getRewardRedemptionsClient(): Promise<RewardRedemptionsResult> {
+  return readFuturesApiResult<
+    RewardRedemption[],
+    Pick<RewardRedemptionsResult, "redemptions">
+  >("/shop/redemptions", (rows) => ({
+    redemptions: rows ?? [],
+  }));
+}
+
+export async function getRewardShopHistoryClient(): Promise<RewardShopHistoryResult> {
+  return readFuturesApiResult<
+    RewardShopHistoryRow[],
+    Pick<RewardShopHistoryResult, "rows">
+  >("/shop/history", (rows) => ({
+    rows: rows ?? [],
+  }));
+}
+
+export async function getAdminRewardRedemptionsClient(
+  status: RewardRedemptionStatus = "PENDING"
+): Promise<AdminRewardRedemptionsResult> {
+  return readFuturesApiResult<
+    RewardRedemption[],
+    Pick<AdminRewardRedemptionsResult, "redemptions">
+  >(
+    `/admin/reward-redemptions?status=${encodeURIComponent(status)}`,
+    (rows) => ({ redemptions: rows ?? [] })
+  );
+}
+
+export async function getAdminShopItemsClient(): Promise<AdminShopItemsResult> {
+  return readFuturesApiResult<
+    AdminShopItem[],
+    Pick<AdminShopItemsResult, "items">
+  >("/admin/shop-items", (items) => ({
+    items: items ?? [],
+  }));
+}
+
+export async function getCommunityPostsClient(options: {
+  category?: Exclude<CommunityCategory, "NOTICE"> | null;
+  page?: number;
+  size?: number;
+} = {}): Promise<CommunityApiResult<CommunityPostList>> {
+  const params = new URLSearchParams({
+    page: String(options.page ?? 0),
+    size: String(options.size ?? 20),
+  });
+  if (options.category) {
+    params.set("category", options.category);
+  }
+  return readCommunityApi<CommunityPostList>(
+    `/community/posts?${params.toString()}`
+  );
+}
+
+export async function getCommunityPostClient(
+  postId: number
+): Promise<CommunityApiResult<CommunityPostDetail>> {
+  return readCommunityApi<CommunityPostDetail>(
+    `/community/posts/${encodeURIComponent(String(postId))}`
+  );
+}
+
+export async function getCommunityPostForEditClient(
+  postId: number
+): Promise<CommunityApiResult<CommunityPostDetail>> {
+  return readCommunityApi<CommunityPostDetail>(
+    `/community/posts/${encodeURIComponent(String(postId))}/edit`
+  );
+}
+
+export async function getCommunityCommentsClient(
+  postId: number,
+  options: { page?: number; size?: number } = {}
+): Promise<CommunityApiResult<CommunityCommentList>> {
+  const params = new URLSearchParams({
+    page: String(options.page ?? 0),
+    size: String(options.size ?? 20),
+  });
+  return readCommunityApi<CommunityCommentList>(
+    `/community/posts/${encodeURIComponent(String(postId))}/comments?${params.toString()}`
+  );
 }
 
 export async function searchFuturesLeaderboardMembers(
@@ -326,6 +510,59 @@ export async function deactivateAdminShopItem(
     `/admin/shop-items/${encodeURIComponent(code)}/deactivate`,
     {}
   );
+}
+
+
+async function readFuturesApiResult<T, R extends object>(
+  path: string,
+  toResult: (data: T | null) => R
+): Promise<R & { unavailable: boolean; message: string | null }> {
+  const response = await fetch(createFuturesBackendApiUrl(path), {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | ClientApiResponse<T>
+    | ClientApiErrorPayload
+    | null;
+  const ok = Boolean(
+    response.ok && payload && "success" in payload && payload.success
+  );
+
+  return {
+    ...toResult(ok && payload && "data" in payload ? payload.data : null),
+    unavailable: !ok,
+    message: payload?.message ?? null,
+  };
+}
+
+async function readCommunityApi<T>(path: string): Promise<CommunityApiResult<T>> {
+  const response = await fetch(createFuturesBackendApiUrl(path), {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | ClientApiResponse<T>
+    | ClientApiErrorPayload
+    | null;
+
+  if (response.ok && payload && "success" in payload && payload.success) {
+    return {
+      data: payload.data,
+      unavailable: payload.data === null,
+      status: response.status,
+      message: payload.message,
+    };
+  }
+
+  return {
+    data: null,
+    unavailable: true,
+    status: response.status,
+    message: payload?.message ?? null,
+  };
 }
 
 async function readFuturesApi<T>(path: string): Promise<T> {

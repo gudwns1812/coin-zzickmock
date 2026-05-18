@@ -2,12 +2,15 @@
 
 import {
   approveRewardRedemption,
+  getAdminRewardRedemptionsClient,
   rejectRewardRedemption,
 } from "@/lib/futures-client-api";
 import type {
   RewardRedemption,
   RewardRedemptionStatus,
 } from "@/lib/futures-api";
+import { futuresQueryKeys } from "@/lib/futures-query-keys";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import { ArrowLeft, Check, Loader2, RotateCcw } from "lucide-react";
 import Link from "next/link";
@@ -24,10 +27,10 @@ const STATUS_TABS: { label: string; value: RewardRedemptionStatus }[] = [
 ];
 
 type Props = {
-  redemptions: RewardRedemption[];
+  redemptions?: RewardRedemption[];
   status: RewardRedemptionStatus;
-  unavailable: boolean;
-  message: string | null;
+  unavailable?: boolean;
+  message?: string | null;
 };
 
 export default function AdminRewardRedemptionsClient({
@@ -36,11 +39,22 @@ export default function AdminRewardRedemptionsClient({
   unavailable,
   message,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [memoByRequestId, setMemoByRequestId] = useState<Record<string, string>>(
     {}
   );
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const redemptionsQuery = useQuery({
+    queryKey: [...futuresQueryKeys.admin, "reward-redemptions", status],
+    queryFn: () => getAdminRewardRedemptionsClient(status),
+    initialData: redemptions
+      ? { redemptions, unavailable: unavailable ?? false, message: message ?? null }
+      : undefined,
+  });
+  const result = redemptionsQuery.data;
+  const currentRedemptions = result?.redemptions ?? [];
+  const currentUnavailable = result?.unavailable ?? false;
+  const currentMessage = result?.message ?? null;
 
   const runAction = async (
     request: RewardRedemption,
@@ -59,7 +73,7 @@ export default function AdminRewardRedemptionsClient({
         toast.success("교환권 신청을 반려하고 포인트를 환불했습니다.");
       }
 
-      router.refresh();
+      void queryClient.invalidateQueries({ queryKey: futuresQueryKeys.admin });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "관리자 처리를 실패했습니다."
@@ -117,9 +131,11 @@ export default function AdminRewardRedemptionsClient({
         })}
       </div>
 
-      {unavailable ? (
+      {redemptionsQuery.isLoading ? (
+        <div className="mt-main-2 rounded-main border border-main-light-gray bg-white p-main-2 text-main-dark-gray/70">관리자 목록을 불러오는 중입니다...</div>
+      ) : currentUnavailable ? (
         <div className="mt-main-2 rounded-main border border-main-light-gray bg-white p-main-2 text-main-dark-gray/70">
-          {message ?? "관리자 권한이 필요하거나 목록을 불러오지 못했습니다."}
+          {currentMessage ?? "관리자 권한이 필요하거나 목록을 불러오지 못했습니다."}
         </div>
       ) : (
         <div className="mt-main-2 overflow-hidden rounded-main border border-main-light-gray bg-white shadow-sm">
@@ -131,12 +147,12 @@ export default function AdminRewardRedemptionsClient({
             <span>처리</span>
           </div>
 
-          {redemptions.length === 0 ? (
+          {currentRedemptions.length === 0 ? (
             <div className="px-main py-main-2 text-sm-custom text-main-dark-gray/55">
               해당 상태의 신청이 없습니다.
             </div>
           ) : (
-            redemptions.map((request) => (
+            currentRedemptions.map((request) => (
               <div
                 className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.3fr] gap-main border-b border-main-light-gray px-main py-4 text-sm-custom last:border-b-0"
                 key={request.requestId}

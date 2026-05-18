@@ -22,6 +22,15 @@ import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import {
+  getFuturesAccountSummaryClient,
+  getFuturesOpenOrdersClient,
+  getFuturesOrderHistoryClient,
+  getFuturesPositionHistoryClient,
+  getFuturesPositionsClient,
+} from "@/lib/futures-client-api";
+import { futuresQueryKeys } from "@/lib/futures-query-keys";
+import { invalidateTradingQueries } from "@/lib/futures-query-invalidation";
+import {
   FUTURES_AUTH_CHANGED_EVENT,
   getFuturesAuthUserClient,
 } from "@/lib/futures-auth-state";
@@ -64,6 +73,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "react-toastify";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Props = {
   initialMarket: MarketSnapshot;
@@ -111,7 +121,7 @@ export default function MarketDetailRealtimeView({
   positionHistory,
   orderHistory,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [market, setMarket] = useState(initialMarket);
   const [marketUpdatedAt, setMarketUpdatedAt] = useState(() => Date.now());
   const [latestCandleClosePrice, setLatestCandleClosePrice] = useState<
@@ -150,6 +160,42 @@ export default function MarketDetailRealtimeView({
   }, [initialMarket.symbol, selectedInterval]);
   const orderStreamUrl = useMemo(() => createOrderExecutionSseUrl(), []);
   const effectiveIsAuthenticated = isAuthenticated || hasBackendSession;
+  const accountQuery = useQuery({
+    queryKey: futuresQueryKeys.account,
+    queryFn: getFuturesAccountSummaryClient,
+    enabled: effectiveIsAuthenticated,
+  });
+  const positionsQuery = useQuery({
+    queryKey: futuresQueryKeys.positions,
+    queryFn: () => getFuturesPositionsClient(),
+    enabled: effectiveIsAuthenticated,
+  });
+  const openOrdersQuery = useQuery({
+    queryKey: futuresQueryKeys.openOrders,
+    queryFn: () => getFuturesOpenOrdersClient(),
+    enabled: effectiveIsAuthenticated,
+  });
+  const orderHistoryQuery = useQuery({
+    queryKey: futuresQueryKeys.orderHistory,
+    queryFn: () => getFuturesOrderHistoryClient(),
+    enabled: effectiveIsAuthenticated,
+  });
+  const positionHistoryQuery = useQuery({
+    queryKey: futuresQueryKeys.positionHistory,
+    queryFn: () => getFuturesPositionHistoryClient(),
+    enabled: effectiveIsAuthenticated,
+  });
+  const effectiveAccountSummary = accountQuery.data ?? accountSummary;
+  const effectivePositions = positionsQuery.data ?? positions;
+  const effectiveOpenOrders = openOrdersQuery.data ?? openOrders;
+  const effectiveOrderHistory = orderHistoryQuery.data ?? orderHistory;
+  const effectivePositionHistory = positionHistoryQuery.data ?? positionHistory;
+  const effectiveChartOpenOrders = effectiveOpenOrders.filter(
+    (order) => order.symbol === initialMarket.symbol
+  );
+  const effectiveChartPositions = effectivePositions.filter(
+    (position) => position.symbol === initialMarket.symbol
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -290,9 +336,9 @@ export default function MarketDetailRealtimeView({
       }
 
       lastOrderStreamRefreshAtRef.current = nowMs;
-      router.refresh();
+      void invalidateTradingQueries(queryClient);
     },
-    [router]
+    [queryClient]
   );
 
   const refreshOnOrderStreamResume = useCallback(
@@ -376,17 +422,17 @@ export default function MarketDetailRealtimeView({
 
   const displayedPositions = useMemo(
     () =>
-      positions.map((position) =>
+      effectivePositions.map((position) =>
         deriveLivePositionDisplayFromSnapshots(position, marketSnapshotsBySymbol)
       ),
-    [marketSnapshotsBySymbol, positions]
+    [marketSnapshotsBySymbol, effectivePositions]
   );
   const displayedChartPositions = useMemo(
     () =>
-      chartPositions.map((position) =>
+      effectiveChartPositions.map((position) =>
         deriveLivePositionDisplayFromSnapshots(position, marketSnapshotsBySymbol)
       ),
-    [chartPositions, marketSnapshotsBySymbol]
+    [effectiveChartPositions, marketSnapshotsBySymbol]
   );
   const unrealizedPnl = useMemo(
     () =>
@@ -480,7 +526,7 @@ export default function MarketDetailRealtimeView({
             marketStreamHistoryFinalized={marketStreamHistoryFinalized}
             onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}
             onSelectedIntervalChange={setSelectedInterval}
-            openOrders={chartOpenOrders}
+            openOrders={effectiveChartOpenOrders}
             positions={displayedChartPositions}
             selectedInterval={selectedInterval}
             symbol={market.symbol}
@@ -491,10 +537,10 @@ export default function MarketDetailRealtimeView({
           <TradingBlotter
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            openOrders={openOrders}
-            orderHistory={orderHistory}
+            openOrders={effectiveOpenOrders}
+            orderHistory={effectiveOrderHistory}
             positions={displayedPositions}
-            positionHistory={positionHistory}
+            positionHistory={effectivePositionHistory}
             unrealizedPnl={unrealizedPnl}
           />
         </div>
@@ -536,7 +582,7 @@ export default function MarketDetailRealtimeView({
           </div>
 
           <OrderEntryPanel
-            accountSummary={accountSummary}
+            accountSummary={effectiveAccountSummary}
             currentPrice={displayedLatestPrice}
             isAuthenticated={effectiveIsAuthenticated}
             positions={displayedPositions}
@@ -863,7 +909,7 @@ function PositionTpslEditor({
   onClose: () => void;
   position: FuturesPosition;
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [takeProfitPrice, setTakeProfitPrice] = useState(() =>
     formatEditablePrice(position.takeProfitPrice)
   );
@@ -923,7 +969,7 @@ function PositionTpslEditor({
 
       toast.success("TP/SL이 저장되었습니다.");
       onClose();
-      router.refresh();
+      void invalidateTradingQueries(queryClient);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "TP/SL 저장에 실패했습니다."

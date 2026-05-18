@@ -1,8 +1,12 @@
 "use client";
 
 import Button from "@/components/ui/shared/Button";
+import {
+  invalidateRewardAndShopQueries,
+  invalidateTradingQueries,
+} from "@/lib/futures-query-invalidation";
 import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
@@ -23,7 +27,7 @@ type ClientApiResponse<T> = {
 };
 
 export default function CancelOrderButton({ orderId }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [isPending, setIsPending] = useState(false);
 
   async function handleCancel() {
@@ -43,7 +47,10 @@ export default function CancelOrderButton({ orderId }: Props) {
       }
 
       toast.success(`${payload.data.symbol} 대기 주문을 취소했습니다.`);
-      router.refresh();
+      void Promise.all([
+        invalidateTradingQueries(queryClient),
+        invalidateRewardAndShopQueries(queryClient),
+      ]);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "주문 취소에 실패했습니다."

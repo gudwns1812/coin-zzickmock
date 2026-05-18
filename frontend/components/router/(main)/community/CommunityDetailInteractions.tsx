@@ -11,6 +11,7 @@ import {
   likeCommunityPost,
   unlikeCommunityPost,
 } from "@/lib/futures-client-api";
+import { invalidateCommunityQueries } from "@/lib/futures-query-invalidation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, Pencil, ThumbsUp, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -46,8 +47,7 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
       setError(errorMessage(mutationError));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["community", post.id] });
-      router.refresh();
+      void invalidateCommunityQueries(queryClient);
     },
   });
 
@@ -55,9 +55,8 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
     mutationFn: () => deleteCommunityPost(post.id),
     onMutate: () => setError(null),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["community"] });
+      void invalidateCommunityQueries(queryClient);
       router.push("/community");
-      router.refresh();
     },
     onError: (mutationError) => setError(errorMessage(mutationError)),
   });
@@ -116,8 +115,7 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
     onMutate: () => setError(null),
     onSuccess: () => {
       setContent("");
-      queryClient.invalidateQueries({ queryKey: ["community", postId, "comments"] });
-      router.refresh();
+      void invalidateCommunityQueries(queryClient);
     },
     onError: (mutationError) => setError(errorMessage(mutationError)),
   });
@@ -126,8 +124,7 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
     mutationFn: (commentId: number) => deleteCommunityComment(postId, commentId),
     onMutate: () => setError(null),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["community", postId, "comments"] });
-      router.refresh();
+      void invalidateCommunityQueries(queryClient);
     },
     onError: (mutationError) => setError(errorMessage(mutationError)),
   });

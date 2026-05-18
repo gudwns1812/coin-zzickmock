@@ -16,6 +16,7 @@ type CommunityDetailViewProps = {
   comments: CommunityCommentList | null;
   unavailable: boolean;
   message: string | null;
+  isLoading?: boolean;
 };
 
 export default function CommunityDetailView({
@@ -23,7 +24,15 @@ export default function CommunityDetailView({
   comments,
   unavailable,
   message,
+  isLoading = false,
 }: CommunityDetailViewProps) {
+  if (isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-[1000px] px-main-3 pb-24 pt-4">
+        <CommunityState title="게시글을 불러오는 중입니다" message="브라우저에서 로그인 세션을 확인하고 게시글을 가져오고 있습니다." />
+      </div>
+    );
+  }
   if (unavailable || !post) {
     return (
       <div className="mx-auto w-full max-w-[1000px] px-main-3 pb-24 pt-4">

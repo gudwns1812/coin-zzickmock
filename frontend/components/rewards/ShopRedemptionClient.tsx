@@ -3,12 +3,17 @@
 import Modal from "@/components/ui/Modal";
 import {
   createRewardRedemption,
+  getFuturesRewardClient,
+  getShopItemsClient,
   purchaseShopItem,
 } from "@/lib/futures-client-api";
 import type {
   FuturesReward,
   ShopItem,
 } from "@/lib/futures-api";
+import { invalidateRewardAndShopQueries } from "@/lib/futures-query-invalidation";
+import { futuresQueryKeys } from "@/lib/futures-query-keys";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   canRedeemShopItem,
   getShopItemImagePath,
@@ -32,31 +37,42 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 type Props = {
-  reward: FuturesReward;
-  shopItems: ShopItem[];
+  reward?: FuturesReward;
+  shopItems?: ShopItem[];
 };
 
 export default function ShopRedemptionClient({
   reward,
   shopItems,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const rewardQuery = useQuery({
+    queryKey: futuresQueryKeys.reward,
+    queryFn: getFuturesRewardClient,
+    initialData: reward,
+  });
+  const shopItemsQuery = useQuery({
+    queryKey: futuresQueryKeys.shopItems,
+    queryFn: getShopItemsClient,
+    initialData: shopItems,
+  });
+  const currentReward = rewardQuery.data;
+  const currentShopItems = shopItemsQuery.data ?? [];
   const phoneError = useMemo(
     () => (phoneNumber ? validateVoucherPhoneNumber(phoneNumber) : null),
     [phoneNumber]
   );
 
   const openModal = (item: ShopItem) => {
-    if (!canRedeemShopItem(item, reward.rewardPoint)) {
-      toast.error(getDisabledReason(item, reward.rewardPoint));
+    if (!canRedeemShopItem(item, currentReward?.rewardPoint ?? 0)) {
+      toast.error(getDisabledReason(item, currentReward?.rewardPoint ?? 0));
       return;
     }
 
@@ -93,7 +109,7 @@ export default function ShopRedemptionClient({
       setSelectedItem(null);
       setPhoneNumber("");
       toast.success("교환권 신청이 접수되었습니다.");
-      router.refresh();
+      void invalidateRewardAndShopQueries(queryClient);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "교환권 신청에 실패했습니다."
@@ -120,7 +136,7 @@ export default function ShopRedemptionClient({
         );
       }
       setSelectedItem(null);
-      router.refresh();
+      void invalidateRewardAndShopQueries(queryClient);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "구매에 실패했습니다.");
     } finally {
@@ -141,7 +157,7 @@ export default function ShopRedemptionClient({
         <div className="rounded-main bg-main-blue text-white p-main-2 shadow-sm">
           <p className="text-sm-custom text-white/75">현재 포인트</p>
           <h2 className="mt-3 text-4xl-custom font-bold">
-            {reward.rewardPoint.toLocaleString("ko-KR")} P
+            {currentReward ? `${currentReward.rewardPoint.toLocaleString("ko-KR")} P` : "불러오는 중"}
           </h2>
           <Link
             className="mt-main inline-flex items-center gap-2 rounded-main bg-white/15 px-main py-2 text-sm-custom font-semibold text-white transition-colors hover:bg-white/25"
@@ -154,8 +170,8 @@ export default function ShopRedemptionClient({
       </section>
 
       <section className="grid grid-cols-[repeat(3,minmax(0,300px))] justify-start gap-main-2">
-        {shopItems.map((item) => {
-          const disabled = !canRedeemShopItem(item, reward.rewardPoint);
+        {currentShopItems.map((item) => {
+          const disabled = !canRedeemShopItem(item, currentReward?.rewardPoint ?? 0);
 
           return (
             <article
@@ -215,7 +231,7 @@ export default function ShopRedemptionClient({
                   type="button"
                 >
                   {disabled ? <Lock size={16} /> : <Send size={16} />}
-                  {getButtonLabel(item, reward.rewardPoint)}
+                  {getButtonLabel(item, currentReward?.rewardPoint ?? 0)}
                 </button>
               </div>
             </article>

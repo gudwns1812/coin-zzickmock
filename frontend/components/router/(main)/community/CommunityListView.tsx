@@ -30,6 +30,7 @@ type CommunityListViewProps = {
   searchQuery: string;
   unavailable: boolean;
   message: string | null;
+  isLoading?: boolean;
 };
 
 export default function CommunityListView({
@@ -38,7 +39,15 @@ export default function CommunityListView({
   searchQuery,
   unavailable,
   message,
+  isLoading = false,
 }: CommunityListViewProps) {
+  if (isLoading) {
+    return (
+      <CommunityShell>
+        <CommunityState title="커뮤니티를 불러오는 중입니다" message="브라우저에서 로그인 세션을 확인하고 게시글을 가져오고 있습니다." />
+      </CommunityShell>
+    );
+  }
   if (unavailable || !result) {
     return (
       <CommunityShell>

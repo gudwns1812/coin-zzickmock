@@ -8,7 +8,6 @@ import {
   type MarketSymbol,
   isSupportedMarketSymbol,
 } from "@/lib/markets";
-import { cookies } from "next/headers";
 import { FUTURES_API_BASE_URL } from "./futures-env";
 
 type ApiResponse<T> = {
@@ -449,49 +448,6 @@ export type FuturesTradingExecutionEvent = {
   message: string;
 };
 
-const SHOP_ITEM_FALLBACKS: ShopItem[] = [
-  {
-    code: "voucher.coffee",
-    name: "커피 교환권",
-    price: 50,
-    description: "커피 교환권",
-    itemType: "COFFEE_VOUCHER",
-    active: true,
-    totalStock: null,
-    soldQuantity: 0,
-    remainingStock: null,
-    perMemberPurchaseLimit: null,
-    remainingPurchaseLimit: null,
-  },
-];
-
-const ACCOUNT_REFILL_FALLBACK: AccountRefillStatus = {
-  remainingCount: 0,
-  refillable: false,
-  disabledReason: "리필 상태를 불러오지 못했습니다.",
-  targetWalletBalance: 100_000,
-  targetAvailableMargin: 100_000,
-  nextResetAt: new Date().toISOString(),
-};
-
-const ACCOUNT_FALLBACK: FuturesAccountSummary = {
-  memberId: 0,
-  account: "test",
-  memberName: "demo-trader",
-  nickname: "demo-trader",
-  usdtBalance: 100_000,
-  walletBalance: 100_000,
-  available: 100_000,
-  totalUnrealizedPnl: 0,
-  roi: 0,
-  rewardPoint: 0,
-};
-
-const REWARD_FALLBACK: FuturesReward = {
-  rewardPoint: 0,
-  tierLabel: "POINT_WALLET",
-};
-
 export function isSupportedFuturesSymbol(
   value: string
 ): value is MarketSymbol {
@@ -552,232 +508,6 @@ export async function getFuturesMarket(
   return mergeMarketSnapshot(response.symbol, response);
 }
 
-export async function getFuturesAccountSummary(): Promise<FuturesAccountSummary> {
-  const response = await readApi<FuturesAccountSummary>("/api/futures/account/me");
-  return response ?? ACCOUNT_FALLBACK;
-}
-
-export async function getAccountRefillStatus(): Promise<AccountRefillStatus> {
-  const response = await readApi<AccountRefillStatus>("/api/futures/account/me/refill");
-  return response ?? ACCOUNT_REFILL_FALLBACK;
-}
-
-export async function getFuturesWalletHistory(): Promise<FuturesWalletHistoryPoint[]> {
-  const response = await readApi<FuturesWalletHistoryPoint[]>(
-    "/api/futures/account/me/wallet-history"
-  );
-  return response ?? [];
-}
-
-export async function getFuturesPositions(): Promise<FuturesPosition[]> {
-  const response = await readApi<FuturesPosition[]>("/api/futures/positions/me");
-
-  if (!response) {
-    return [];
-  }
-
-  return response.filter((position) => isSupportedMarketSymbol(position.symbol));
-}
-
-export async function getFuturesOpenOrders(
-  symbol?: MarketSymbol
-): Promise<FuturesOpenOrder[]> {
-  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
-  const response = await readApi<FuturesOpenOrder[]>(
-    `/api/futures/orders/open${query}`
-  );
-
-  if (!response) {
-    return [];
-  }
-
-  return response.filter((order) => isSupportedMarketSymbol(order.symbol));
-}
-
-export async function getFuturesOrderHistory(
-  symbol?: MarketSymbol
-): Promise<FuturesOrderHistory[]> {
-  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
-  const response = await readApi<FuturesOrderHistory[]>(
-    `/api/futures/orders/history${query}`
-  );
-
-  if (!response) {
-    return [];
-  }
-
-  return filterSupportedOrderHistory(response, symbol);
-}
-
-export async function getFuturesPositionHistory(
-  symbol?: MarketSymbol
-): Promise<FuturesPositionHistory[]> {
-  const query = symbol ? `?symbol=${encodeURIComponent(symbol)}` : "";
-  const response = await readApi<FuturesPositionHistory[]>(
-    `/api/futures/positions/history${query}`
-  );
-
-  if (!response) {
-    return [];
-  }
-
-  return response.filter((history) => isSupportedMarketSymbol(history.symbol));
-}
-
-export async function getFuturesReward(): Promise<FuturesReward> {
-  const response = await readApi<FuturesReward>("/api/futures/rewards/me");
-  return response ?? REWARD_FALLBACK;
-}
-
-export async function getFuturesLeaderboard(): Promise<FuturesLeaderboard> {
-  const response = await readApi<FuturesLeaderboard>(
-    "/api/futures/leaderboard?mode=profitRate&limit=4"
-  );
-
-  return response ?? {
-    mode: "profitRate",
-    source: "empty",
-    lastRefreshedAt: null,
-    entries: [],
-    myRank: null,
-  };
-}
-
-export async function getShopItems(): Promise<ShopItem[]> {
-  const response = await readApi<ShopItem[]>("/api/futures/shop/items");
-  return response ?? SHOP_ITEM_FALLBACKS;
-}
-
-export async function getRewardPointHistory(): Promise<RewardPointHistory[]> {
-  const response = await readApi<RewardPointHistory[]>(
-    "/api/futures/rewards/history"
-  );
-  return response ?? [];
-}
-
-export async function getRewardRedemptions(): Promise<RewardRedemptionsResult> {
-  const response = await readApiResult<RewardRedemption[]>(
-    "/api/futures/shop/redemptions"
-  );
-
-  return {
-    redemptions: response.data ?? [],
-    unavailable: !response.ok,
-    message: response.message,
-  };
-}
-
-export async function getRewardShopHistory(): Promise<RewardShopHistoryResult> {
-  const response = await readApiResult<RewardShopHistoryRow[]>(
-    "/api/futures/shop/history"
-  );
-
-  return {
-    rows: response.data ?? [],
-    unavailable: !response.ok,
-    message: response.message,
-  };
-}
-
-export async function getAdminRewardRedemptions(
-  status: RewardRedemptionStatus = "PENDING"
-): Promise<AdminRewardRedemptionsResult> {
-  const response = await readApiResult<RewardRedemption[]>(
-    `/api/futures/admin/reward-redemptions?status=${encodeURIComponent(status)}`
-  );
-
-  return {
-    redemptions: response.data ?? [],
-    unavailable: !response.ok,
-    message: response.message,
-  };
-}
-
-export async function getAdminShopItems(): Promise<AdminShopItemsResult> {
-  const response = await readApiResult<AdminShopItem[]>(
-    "/api/futures/admin/shop-items"
-  );
-
-  return {
-    items: response.data ?? [],
-    unavailable: !response.ok,
-    message: response.message,
-  };
-}
-
-export async function getCommunityPosts(options: {
-  category?: Exclude<CommunityCategory, "NOTICE"> | null;
-  page?: number;
-  size?: number;
-} = {}): Promise<CommunityApiResult<CommunityPostList>> {
-  const params = new URLSearchParams({
-    page: String(options.page ?? 0),
-    size: String(options.size ?? 20),
-  });
-  if (options.category) {
-    params.set("category", options.category);
-  }
-  const response = await readApiResult<CommunityPostList>(
-    `/api/futures/community/posts?${params.toString()}`
-  );
-  return toCommunityApiResult(response);
-}
-
-export async function getCommunityPost(
-  postId: number
-): Promise<CommunityApiResult<CommunityPostDetail>> {
-  const response = await readApiResult<CommunityPostDetail>(
-    `/api/futures/community/posts/${encodeURIComponent(String(postId))}`
-  );
-  return toCommunityApiResult(response);
-}
-
-export async function getCommunityPostForEdit(
-  postId: number
-): Promise<CommunityApiResult<CommunityPostDetail>> {
-  const response = await readApiResult<CommunityPostDetail>(
-    `/api/futures/community/posts/${encodeURIComponent(String(postId))}/edit`
-  );
-  return toCommunityApiResult(response);
-}
-
-export async function getCommunityComments(
-  postId: number,
-  options: { page?: number; size?: number } = {}
-): Promise<CommunityApiResult<CommunityCommentList>> {
-  const params = new URLSearchParams({
-    page: String(options.page ?? 0),
-    size: String(options.size ?? 20),
-  });
-  const response = await readApiResult<CommunityCommentList>(
-    `/api/futures/community/posts/${encodeURIComponent(String(postId))}/comments?${params.toString()}`
-  );
-  return toCommunityApiResult(response);
-}
-
-function toCommunityApiResult<T>(response: {
-  data: T | null;
-  ok: boolean;
-  status: number | null;
-  message: string | null;
-}): CommunityApiResult<T> {
-  return {
-    data: response.data,
-    unavailable: !response.ok,
-    status: response.status,
-    message: response.message,
-  };
-}
-
-function filterSupportedOrderHistory(
-  orders: FuturesOrderHistory[],
-  symbol?: MarketSymbol
-): FuturesOrderHistory[] {
-  return orders
-    .filter((order) => isSupportedMarketSymbol(order.symbol))
-    .filter((order) => !symbol || order.symbol === symbol);
-}
-
 async function readApi<T>(path: string): Promise<T | null> {
   const response = await readApiResult<T>(path);
   return response.ok ? response.data : null;
@@ -792,10 +522,8 @@ async function readApiResult<T>(
   message: string | null;
 }> {
   try {
-    const cookieHeader = await getBackendCookieHeader();
     const response = await fetch(`${FUTURES_API_BASE_URL}${path}`, {
       cache: "no-store",
-      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
       signal: AbortSignal.timeout(2000),
     });
 
@@ -835,15 +563,6 @@ async function readApiResult<T>(
       message: null,
     };
   }
-}
-
-async function getBackendCookieHeader() {
-  const requestCookies = await cookies();
-  const cookiePairs = requestCookies
-    .getAll()
-    .map((cookie) => `${cookie.name}=${cookie.value}`);
-
-  return cookiePairs.join("; ");
 }
 
 function mergeMarketSnapshot(

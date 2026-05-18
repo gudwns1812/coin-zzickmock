@@ -7,13 +7,22 @@ import type {
 import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectStatus } from "@/hooks/resilientEventSourcePolicy";
-import type { MarketApiResponse } from "@/lib/futures-api";
+import type { FuturesAccountSummary, FuturesPosition, FuturesReward, MarketApiResponse } from "@/lib/futures-api";
 import {
   FUTURES_AUTH_CHANGED_EVENT,
   getFuturesAuthUserClient,
 } from "@/lib/futures-auth-state";
+import {
+  getFuturesAccountSummaryClient,
+  getFuturesLeaderboardClient,
+  getFuturesPositionsClient,
+  getFuturesRewardClient,
+} from "@/lib/futures-client-api";
+import { futuresQueryKeys } from "@/lib/futures-query-keys";
 import { createMarketSummarySseUrl } from "@/lib/futures-sse-url";
 import {
+  formatSignedUsd,
+  formatUsd,
   isSupportedMarketSymbol,
   type MarketRankingEntry,
   type MarketSnapshot,
@@ -26,6 +35,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 type PriceFlashTone = "rise" | "fall";
 type PriceFlashMetadata = {
@@ -38,8 +48,8 @@ type MarketsLandingRealtimeViewProps = {
   initialMarkets: [MarketSnapshot, MarketSnapshot];
   isMarketDataDegraded: boolean;
   isAuthenticated: boolean;
-  rankingEntries: MarketRankingEntry[];
-  summaryCards: DashboardSummaryCard[];
+  rankingEntries?: MarketRankingEntry[];
+  summaryCards?: DashboardSummaryCard[];
 };
 
 type MarketSnapshotMap = Record<MarketSymbol, MarketSnapshot>;
@@ -157,6 +167,31 @@ export default function MarketsLandingRealtimeView({
   const flashMetadataRef = useRef<PriceFlashMetadataMap>({});
   const animationFrameRef = useRef<number | null>(null);
   const effectiveIsAuthenticated = isAuthenticated || hasBackendSession;
+  const accountQuery = useQuery({
+    queryKey: futuresQueryKeys.account,
+    queryFn: getFuturesAccountSummaryClient,
+    enabled: effectiveIsAuthenticated,
+  });
+  const positionsQuery = useQuery({
+    queryKey: futuresQueryKeys.positions,
+    queryFn: () => getFuturesPositionsClient(),
+    enabled: effectiveIsAuthenticated,
+  });
+  const rewardQuery = useQuery({
+    queryKey: futuresQueryKeys.reward,
+    queryFn: getFuturesRewardClient,
+    enabled: effectiveIsAuthenticated,
+  });
+  const leaderboardQuery = useQuery({
+    queryKey: futuresQueryKeys.leaderboard,
+    queryFn: () => getFuturesLeaderboardClient({ limit: 4 }),
+    enabled: effectiveIsAuthenticated,
+  });
+  const personalSummaryCards = buildDashboardSummaryCards(
+    accountQuery.data,
+    positionsQuery.data ?? [],
+    rewardQuery.data
+  );
 
   useEffect(() => {
     const nextMap = toMarketMap(initialMarkets);
@@ -342,8 +377,8 @@ export default function MarketsLandingRealtimeView({
         isMarketDataDegraded={isStreamRecovering}
         isAuthenticated={effectiveIsAuthenticated}
         markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
-        rankingEntries={rankingEntries}
-        summaryCards={summaryCards}
+        rankingEntries={leaderboardQuery.data?.entries ?? rankingEntries}
+        summaryCards={personalSummaryCards ?? summaryCards ?? DASHBOARD_SUMMARY_PLACEHOLDERS}
         priceFlashBySymbol={priceFlashBySymbol}
         lastUpdatedLabel={
           isStreamRecovering
@@ -387,4 +422,73 @@ function MarketLandingStreamSubscription({
   }, [onStatusChange, status]);
 
   return null;
+}
+
+const DEMO_STARTING_BALANCE = 100_000;
+const DASHBOARD_SUMMARY_PLACEHOLDERS: DashboardSummaryCard[] = [
+  {
+    title: "총 자산",
+    value: "로그인 후 확인",
+    support: "브라우저에서 계정 정보를 불러옵니다",
+    icon: "wallet",
+    tone: "accent",
+  },
+  {
+    title: "총 수익",
+    value: "-",
+    support: "로그인 필요",
+    icon: "trophy",
+    tone: "accent",
+  },
+  {
+    title: "오늘 수익",
+    value: "-",
+    support: "열린 포지션 기준",
+    icon: "trend",
+    tone: "accent",
+  },
+];
+
+function buildDashboardSummaryCards(
+  account: FuturesAccountSummary | undefined,
+  positions: FuturesPosition[],
+  reward: FuturesReward | undefined
+): DashboardSummaryCard[] | null {
+  if (!account || !reward) {
+    return null;
+  }
+
+  const todayProfit = positions.reduce(
+    (sum, position) => sum + position.unrealizedPnl,
+    0
+  );
+  const totalAsset = account.walletBalance + todayProfit;
+  const totalProfit = totalAsset - DEMO_STARTING_BALANCE;
+
+  return [
+    {
+      title: "총 자산",
+      value: formatUsd(totalAsset),
+      support: `가용 잔고 ${formatUsd(account.available)}`,
+      icon: "wallet",
+      tone: "accent",
+    },
+    {
+      title: "총 수익",
+      value: formatSignedUsd(totalProfit),
+      support: `누적 포인트 ${reward.rewardPoint}P`,
+      icon: "trophy",
+      tone: totalProfit >= 0 ? "positive" : "negative",
+    },
+    {
+      title: "오늘 수익",
+      value: formatSignedUsd(todayProfit),
+      support:
+        positions.length > 0
+          ? `열린 포지션 ${positions.length}건 기준`
+          : "열린 포지션 없음",
+      icon: "trend",
+      tone: todayProfit >= 0 ? "positive" : "negative",
+    },
+  ];
 }

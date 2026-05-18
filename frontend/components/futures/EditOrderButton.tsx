@@ -4,8 +4,9 @@ import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/shared/Button";
 import Input from "@/components/ui/shared/Input";
 import { modifyFuturesOrderPrice } from "@/lib/futures-client-api";
+import { invalidateTradingQueries } from "@/lib/futures-query-invalidation";
+import { useQueryClient } from "@tanstack/react-query";
 import { submitOrderPriceEdit } from "@/lib/futures-order-edit";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "react-toastify";
 
@@ -20,7 +21,7 @@ export default function EditOrderButton({
   symbol,
   currentLimitPrice,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [limitPrice, setLimitPrice] = useState(() => String(currentLimitPrice));
   const [isPending, setIsPending] = useState(false);
@@ -39,7 +40,7 @@ export default function EditOrderButton({
         orderId,
         limitPrice,
         modifyOrderPrice: modifyFuturesOrderPrice,
-        refresh: () => router.refresh(),
+        refresh: () => { void invalidateTradingQueries(queryClient); },
         closeModal: () => setIsOpen(false),
         showSuccess: toast.success,
         showError: toast.error,

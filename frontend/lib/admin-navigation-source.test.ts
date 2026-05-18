@@ -54,7 +54,7 @@ test("exchange history uses user-facing labels and routes", () => {
     "components/rewards/ShopRedemptionClient.tsx"
   );
   const redemptionsPageSource = readFrontendSource(
-    "app/(main)/mypage/redemptions/page.tsx"
+    "components/mypage/MyPageRedemptionsClient.tsx"
   );
 
   assert.match(shopClientSource, /href="\/mypage\/redemptions"/);

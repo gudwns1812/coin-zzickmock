@@ -12,13 +12,15 @@ function readFrontendSource(relativePath: string): string {
 }
 
 test("shop history API uses the unified purchase and redemption endpoint", () => {
-  const apiSource = readFrontendSource("lib/futures-api.ts");
+  const apiTypesSource = readFrontendSource("lib/futures-api.ts");
+  const clientApiSource = readFrontendSource("lib/futures-client-api.ts");
 
-  assert.match(apiSource, /type RewardShopHistoryKind/);
-  assert.match(apiSource, /"INSTANT_PURCHASE"/);
-  assert.match(apiSource, /"REDEMPTION_REQUEST"/);
-  assert.match(apiSource, /function getRewardShopHistory/);
-  assert.match(apiSource, /\/api\/futures\/shop\/history/);
+  assert.match(apiTypesSource, /type RewardShopHistoryKind/);
+  assert.match(apiTypesSource, /"INSTANT_PURCHASE"/);
+  assert.match(apiTypesSource, /"REDEMPTION_REQUEST"/);
+  assert.match(clientApiSource, /function getRewardShopHistoryClient/);
+  assert.match(clientApiSource, /createFuturesBackendApiUrl\(path\)/);
+  assert.match(clientApiSource, /\/shop\/history/);
 });
 
 test("redemption history renders instant purchases without cancel or contact details", () => {
@@ -37,7 +39,7 @@ test("redemption history renders instant purchases without cancel or contact det
 
 test("point history maps internal source references to user-facing labels", () => {
   const pointsPageSource = readFrontendSource(
-    "app/(main)/mypage/points/page.tsx"
+    "components/mypage/MyPagePointsClient.tsx"
   );
 
   assert.doesNotMatch(

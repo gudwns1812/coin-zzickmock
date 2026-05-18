@@ -37,13 +37,13 @@ test("frontend authenticated-user lookup uses the non-mutating auth me endpoint"
   assert.doesNotMatch(futuresApiSource, /getAccessTokenCookieHeader/);
 });
 
-test("server-rendered futures data forwards request cookies to the backend", () => {
+test("server-rendered futures public data does not forward request cookies to the backend", () => {
   const futuresApiSource = readFrontendSource("lib/futures-api.ts");
 
-  assert.match(futuresApiSource, /from "next\/headers"/);
-  assert.match(futuresApiSource, /await cookies\(\)/);
-  assert.match(futuresApiSource, /headers: cookieHeader \? \{ Cookie: cookieHeader \} : undefined/);
-  assert.match(futuresApiSource, /getBackendCookieHeader\(\)/);
+  assert.doesNotMatch(futuresApiSource, /from "next\/headers"/);
+  assert.doesNotMatch(futuresApiSource, /await cookies\(\)/);
+  assert.doesNotMatch(futuresApiSource, /Cookie: cookieHeader/);
+  assert.doesNotMatch(futuresApiSource, /getBackendCookieHeader\(\)/);
 });
 
 test("authenticated screens re-check backend auth after login/logout events", () => {

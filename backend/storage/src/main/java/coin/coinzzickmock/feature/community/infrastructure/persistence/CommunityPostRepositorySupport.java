@@ -16,8 +16,8 @@ class CommunityPostRepositorySupport {
         if (postId == null) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-        postEntityRepository.findWithLockingByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST))
-                .decrementCommentCount();
+        if (postEntityRepository.decrementCommentCountIfActive(postId) == 0) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
     }
 }

@@ -71,6 +71,28 @@ test("community write UI keeps NOTICE behind the admin flag", () => {
   assert.match(editor, /공지사항은 관리자만 작성할 수 있습니다/);
 });
 
+
+test("community save navigation pushes detail without forcing a duplicate refresh", () => {
+  const editor = source(
+    "components/router/(main)/community/CommunityPostEditorClient.tsx"
+  );
+
+  assert.match(editor, /router\.push\(`\/community\/\$\{result\.postId\}`\)/);
+  assert.doesNotMatch(editor, /router\.refresh\(\)/);
+});
+
+test("community edit page uses the no-view-count edit preload helper", () => {
+  const api = source("lib/futures-api.ts");
+  const editPage = source("app/(main)/community/[postId]/edit/page.tsx");
+  const detailPage = source("app/(main)/community/[postId]/page.tsx");
+
+  assert.match(api, /getCommunityPostForEdit/);
+  assert.match(api, /community\/posts\/\$\{encodeURIComponent\(String\(postId\)\)\}\/edit/);
+  assert.match(editPage, /getCommunityPostForEdit\(postId\)/);
+  assert.doesNotMatch(editPage, /getCommunityPost\(postId\)/);
+  assert.match(detailPage, /getCommunityPost\(postId\)/);
+});
+
 test("community detail enables mutations without raw HTML rendering", () => {
   const detail = source("components/router/(main)/community/CommunityDetailView.tsx");
   const interactions = source(

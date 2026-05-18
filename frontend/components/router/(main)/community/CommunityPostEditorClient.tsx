@@ -285,7 +285,6 @@ export default function CommunityPostEditorClient({
           ? await updateCommunityPost(post.id, input)
           : await createCommunityPost(input);
         router.push(`/community/${result.postId}`);
-        router.refresh();
       } catch (saveError) {
         setError(errorMessage(saveError));
       } finally {

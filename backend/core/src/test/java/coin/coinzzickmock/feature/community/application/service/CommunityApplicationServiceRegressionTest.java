@@ -18,6 +18,8 @@ import coin.coinzzickmock.feature.community.application.repository.CommunityPost
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
+import coin.coinzzickmock.feature.community.application.view.CommunityPostReadIntent;
+import coin.coinzzickmock.feature.community.application.view.CommunityPostViewThrottle;
 import coin.coinzzickmock.feature.community.application.dto.CommunityCommentMutationResult;
 import coin.coinzzickmock.feature.community.application.dto.CommunityCommentResult;
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostDetailResult;
@@ -34,6 +36,7 @@ import coin.coinzzickmock.feature.community.domain.content.TiptapContentPolicy;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -80,7 +83,7 @@ class CommunityApplicationServiceRegressionTest {
     void postDeleteAllowsAuthorOrAdminAndHidesSoftDeletedPostFromUseCases() {
         CreateCommunityPostService create = new CreateCommunityPostService(posts, images, CLOCK);
         DeleteCommunityPostService delete = new DeleteCommunityPostService(posts, CLOCK);
-        GetCommunityPostService get = new GetCommunityPostService(posts, likes, CLOCK);
+        GetCommunityPostService get = new GetCommunityPostService(posts, likes, CommunityPostViewThrottle.alwaysClaim());
         ListCommunityPostsService list = new ListCommunityPostsService(posts);
 
         Long authorPostId = create.execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages())).postId();
@@ -93,6 +96,72 @@ class CommunityApplicationServiceRegressionTest {
         Long adminDeletedId = create.execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages())).postId();
         delete.execute(new DeleteCommunityPostCommand(adminDeletedId, 99L, true));
         assertThat(posts.findActiveById(adminDeletedId)).isEmpty();
+    }
+
+    @Test
+    void detailViewClaimsThrottleBeforeBestEffortCountIncrementAndReturnsStoredCount() {
+        Long postId = new CreateCommunityPostService(posts, images, CLOCK)
+                .execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages()))
+                .postId();
+        InMemoryViewThrottle throttle = new InMemoryViewThrottle();
+        GetCommunityPostService get = new GetCommunityPostService(posts, likes, throttle);
+
+        CommunityPostDetailResult first = get.execute(new GetCommunityPostQuery(postId, 7L, false));
+        CommunityPostDetailResult second = get.execute(new GetCommunityPostQuery(postId, 7L, false));
+
+        assertThat(first.viewCount()).isZero();
+        assertThat(second.viewCount()).isEqualTo(1L);
+        assertThat(posts.findActiveById(postId)).map(CommunityPost::viewCount).contains(1L);
+        assertThat(throttle.claimAttempts()).isEqualTo(2);
+    }
+
+    @Test
+    void detailReadSucceedsAndSkipsCountWhenThrottleFailsClosed() {
+        Long postId = new CreateCommunityPostService(posts, images, CLOCK)
+                .execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages()))
+                .postId();
+        GetCommunityPostService get = new GetCommunityPostService(posts, likes, (ignoredPostId, ignoredActorId, ignoredWindow) -> {
+            throw new IllegalStateException("redis unavailable");
+        });
+
+        CommunityPostDetailResult result = get.execute(new GetCommunityPostQuery(postId, 7L, false));
+
+        assertThat(result.id()).isEqualTo(postId);
+        assertThat(result.viewCount()).isZero();
+        assertThat(posts.findActiveById(postId)).map(CommunityPost::viewCount).contains(0L);
+    }
+
+    @Test
+    void editPreloadDoesNotRecordViewAndRequiresEditPermission() {
+        Long postId = new CreateCommunityPostService(posts, images, CLOCK)
+                .execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages()))
+                .postId();
+        InMemoryViewThrottle throttle = new InMemoryViewThrottle();
+        GetCommunityPostService get = new GetCommunityPostService(posts, likes, throttle);
+
+        CommunityPostDetailResult authorResult = get.execute(new GetCommunityPostQuery(
+                postId,
+                1L,
+                false,
+                CommunityPostReadIntent.EDIT_PRELOAD
+        ));
+        CommunityPostDetailResult adminResult = get.execute(new GetCommunityPostQuery(
+                postId,
+                99L,
+                true,
+                CommunityPostReadIntent.EDIT_PRELOAD
+        ));
+
+        assertThat(authorResult.canEdit()).isTrue();
+        assertThat(adminResult.canEdit()).isTrue();
+        assertThat(posts.findActiveById(postId)).map(CommunityPost::viewCount).contains(0L);
+        assertThat(throttle.claimAttempts()).isZero();
+        assertCore(ErrorCode.FORBIDDEN, () -> get.execute(new GetCommunityPostQuery(
+                postId,
+                2L,
+                false,
+                CommunityPostReadIntent.EDIT_PRELOAD
+        )));
     }
 
     @Test
@@ -231,6 +300,21 @@ class CommunityApplicationServiceRegressionTest {
     @FunctionalInterface
     private interface ThrowingCallable {
         void call();
+    }
+
+    private static final class InMemoryViewThrottle implements CommunityPostViewThrottle {
+        private final Set<String> claims = new HashSet<>();
+        private int claimAttempts;
+
+        @Override
+        public boolean tryClaim(Long postId, Long actorMemberId, Duration window) {
+            claimAttempts++;
+            return claims.add(postId + ":" + actorMemberId);
+        }
+
+        int claimAttempts() {
+            return claimAttempts;
+        }
     }
 
     private static final class InMemoryPostRepository implements CommunityPostRepository {

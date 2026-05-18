@@ -87,19 +87,19 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
     @Override
     @Transactional
     public void incrementLikeCount(Long postId) {
-        requireActivePostWithLock(postId).incrementLikeCount();
+        requireUpdated(postEntityRepository.incrementLikeCountIfActive(postId));
     }
 
     @Override
     @Transactional
     public void decrementLikeCount(Long postId) {
-        requireActivePostWithLock(postId).decrementLikeCount();
+        requireUpdated(postEntityRepository.decrementLikeCountIfActive(postId));
     }
 
     @Override
     @Transactional
     public void incrementCommentCount(Long postId) {
-        requireActivePostWithLock(postId).incrementCommentCount();
+        requireUpdated(postEntityRepository.incrementCommentCountIfActive(postId));
     }
 
     @Override
@@ -111,7 +111,7 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
     @Override
     @Transactional
     public void incrementViewCount(Long postId) {
-        requireActivePostWithLock(postId).incrementViewCount();
+        requireUpdated(postEntityRepository.incrementViewCountIfActive(postId));
     }
 
     @Override
@@ -217,6 +217,12 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
     private CommunityPostEntity requireActivePostWithLock(Long postId) {
         return postEntityRepository.findWithLockingByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(CommunityPostPersistenceRepository::invalidRequest);
+    }
+
+    private static void requireUpdated(int updatedRows) {
+        if (updatedRows == 0) {
+            throw invalidRequest();
+        }
     }
 
     private static CoreException invalidRequest() {

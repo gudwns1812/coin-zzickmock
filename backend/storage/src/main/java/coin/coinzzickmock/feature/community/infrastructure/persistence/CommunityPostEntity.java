@@ -12,9 +12,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
 @Table(name = "community_posts")
+@DynamicUpdate
 public class CommunityPostEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -91,9 +93,6 @@ public class CommunityPostEntity extends AuditableEntity {
         this.category = post.category().name();
         this.title = post.title();
         this.contentJson = post.content().value();
-        this.viewCount = post.viewCount();
-        this.likeCount = post.likeCount();
-        this.commentCount = post.commentCount();
         this.deletedAt = post.deletedAt();
     }
 

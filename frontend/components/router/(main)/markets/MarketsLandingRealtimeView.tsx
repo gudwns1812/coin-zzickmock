@@ -6,6 +6,7 @@ import type {
 } from "@/components/router/(main)/markets/MarketsLanding";
 import MarketsLanding from "@/components/router/(main)/markets/MarketsLanding";
 import AppLoadingScreen from "@/components/ui/shared/AppLoadingScreen";
+import PageReveal from "@/components/ui/shared/PageReveal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectStatus } from "@/hooks/resilientEventSourcePolicy";
 import type { FuturesAccountSummary, FuturesPosition, FuturesReward, MarketApiResponse } from "@/lib/futures-api";
@@ -378,7 +379,7 @@ export default function MarketsLandingRealtimeView({
   }
 
   return (
-    <>
+    <PageReveal variant="markets">
       <MarketLandingStreamSubscription
         symbols={initialMarkets.map((market) => market.symbol)}
         onMessage={handleMarketMessage}
@@ -402,7 +403,7 @@ export default function MarketsLandingRealtimeView({
               }).format(lastUpdatedAt)
         }
       />
-    </>
+    </PageReveal>
   );
 }
 

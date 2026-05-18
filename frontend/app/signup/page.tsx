@@ -1,6 +1,7 @@
 "use client";
 
 import Modal from "@/components/ui/Modal";
+import PageReveal from "@/components/ui/shared/PageReveal";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import RegisterStep1 from "@/components/router/siginup/RegisterStep1";
@@ -82,7 +83,10 @@ const SignUpPage = () => {
         hasBackdropBlur={false}
         isClickOutsideClose={false}
       >
-        <div className="grid grid-cols-[auto_1fr] gap-main-2">
+        <PageReveal
+          className="grid grid-cols-[auto_1fr] gap-main-2"
+          variant="auth"
+        >
           <div className="flex flex-col gap-main-4 items-center justify-center px-main-4">
             <div className="size-[200px] rounded-full bg-main-blue text-white flex items-center justify-center shadow-lg">
               <TrendingUp size={84} />
@@ -135,7 +139,7 @@ const SignUpPage = () => {
               </TabPanel>
             </TabPanels>
           </TabGroup>
-        </div>
+        </PageReveal>
       </Modal>
     </>
   );

@@ -18,6 +18,7 @@ import {
 } from "@/components/futures/marketStreamEnvelope";
 import QuickLimitPriceSelector from "@/components/futures/QuickLimitPriceSelector";
 import AppLoadingScreen from "@/components/ui/shared/AppLoadingScreen";
+import PageReveal from "@/components/ui/shared/PageReveal";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
@@ -464,7 +465,10 @@ export default function MarketDetailRealtimeView({
   }
 
   return (
-    <div className="flex w-full flex-col gap-main-2 px-main-2 pb-24">
+    <PageReveal
+      className="flex w-full flex-col gap-main-2 px-main-2 pb-24"
+      variant="trading"
+    >
       <section className="grid w-full grid-cols-[minmax(0,1fr)_180px_360px] gap-main-2 pt-4">
         <div className="flex min-w-0 flex-col gap-main-2">
           <div className="rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm">
@@ -603,7 +607,7 @@ export default function MarketDetailRealtimeView({
           />
         </aside>
       </section>
-    </div>
+    </PageReveal>
   );
 }
 

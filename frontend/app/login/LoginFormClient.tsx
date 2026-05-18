@@ -2,6 +2,7 @@
 
 import Button from "@/components/ui/shared/Button";
 import Input from "@/components/ui/shared/Input";
+import PageReveal from "@/components/ui/shared/PageReveal";
 import { notifyFuturesAuthChanged } from "@/lib/futures-auth-state";
 import { loginToFutures } from "@/lib/futures-auth-client";
 import Link from "next/link";
@@ -44,7 +45,10 @@ export default function LoginFormClient() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-main-light-gray/40 px-main">
-      <div className="w-full max-w-[480px] rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray">
+      <PageReveal
+        className="w-full max-w-[480px] rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray"
+        variant="auth"
+      >
         <p className="text-sm-custom text-main-dark-gray/60">Login</p>
         <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
           코인 선물 계정 로그인
@@ -80,7 +84,7 @@ export default function LoginFormClient() {
             마켓 먼저 보기
           </Link>
         </div>
-      </div>
+      </PageReveal>
     </main>
   );
 }

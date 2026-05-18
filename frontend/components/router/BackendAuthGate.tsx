@@ -5,6 +5,7 @@ import {
   getFuturesAuthUserClient,
 } from "@/lib/futures-auth-state";
 import AppLoadingScreen from "@/components/ui/shared/AppLoadingScreen";
+import PageReveal from "@/components/ui/shared/PageReveal";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -77,5 +78,5 @@ export default function BackendAuthGate({
     );
   }
 
-  return children;
+  return <PageReveal>{children}</PageReveal>;
 }

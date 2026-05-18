@@ -1,4 +1,4 @@
-const DEFAULT_FUTURES_API_BASE_URL = "http://127.0.0.1:8080";
+const DEFAULT_FUTURES_API_BASE_URL = "http://127.0.0.1:18080";
 
 export function getFuturesApiBaseUrl() {
   const configuredBaseUrl = process.env.FUTURES_API_BASE_URL;

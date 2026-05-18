@@ -1,19 +1,14 @@
+import BackendAuthGate from "@/components/router/BackendAuthGate";
 import { getFuturesMarkets } from "@/lib/futures-api";
 import { formatRatioPercent, formatUsd } from "@/lib/markets";
-import { getJwtToken } from "@/utils/auth";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export default async function WatchlistPage() {
-  const token = await getJwtToken();
-  if (!token) {
-    redirect("/login");
-  }
-
   const markets = await getFuturesMarkets();
 
   return (
-    <div className="px-main-2 pb-24 flex flex-col gap-8 pt-4">
+    <BackendAuthGate>
+      <div className="px-main-2 pb-24 flex flex-col gap-8 pt-4">
       <section className="rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray">
         <p className="text-sm-custom text-main-dark-gray/60">Watchlist</p>
         <h1 className="mt-2 text-3xl-custom font-bold text-main-dark-gray">
@@ -52,7 +47,8 @@ export default async function WatchlistPage() {
           </Link>
         ))}
       </section>
-    </div>
+      </div>
+    </BackendAuthGate>
   );
 }
 

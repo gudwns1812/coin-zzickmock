@@ -82,15 +82,15 @@ test("community save navigation pushes detail without forcing a duplicate refres
 });
 
 test("community edit page uses the no-view-count edit preload helper", () => {
-  const api = source("lib/futures-api.ts");
-  const editPage = source("app/(main)/community/[postId]/edit/page.tsx");
-  const detailPage = source("app/(main)/community/[postId]/page.tsx");
+  const clientApi = source("lib/futures-client-api.ts");
+  const editClient = source("components/router/(main)/community/CommunityEditClient.tsx");
+  const detailClient = source("components/router/(main)/community/CommunityDetailClient.tsx");
 
-  assert.match(api, /getCommunityPostForEdit/);
-  assert.match(api, /community\/posts\/\$\{encodeURIComponent\(String\(postId\)\)\}\/edit/);
-  assert.match(editPage, /getCommunityPostForEdit\(postId\)/);
-  assert.doesNotMatch(editPage, /getCommunityPost\(postId\)/);
-  assert.match(detailPage, /getCommunityPost\(postId\)/);
+  assert.match(clientApi, /community\/posts\/\$\{encodeURIComponent\(String\(postId\)\)\}\/edit/);
+  assert.match(clientApi, /getCommunityPostForEditClient/);
+  assert.match(editClient, /getCommunityPostForEditClient\(postId\)/);
+  assert.doesNotMatch(editClient, /getCommunityPostClient\(postId\)/);
+  assert.match(detailClient, /getCommunityPostClient\(postId\)/);
 });
 
 test("community detail enables mutations without raw HTML rendering", () => {

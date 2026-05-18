@@ -1,8 +1,5 @@
 import AdminRewardRedemptionsClient from "@/components/rewards/AdminRewardRedemptionsClient";
-import {
-  getAdminRewardRedemptions,
-  type RewardRedemptionStatus,
-} from "@/lib/futures-api";
+import type { RewardRedemptionStatus } from "@/lib/futures-api";
 
 const REDEMPTION_STATUSES: RewardRedemptionStatus[] = [
   "PENDING",
@@ -12,41 +9,20 @@ const REDEMPTION_STATUSES: RewardRedemptionStatus[] = [
 ];
 
 type Props = {
-  searchParams?: Promise<{
-    status?: string;
-  }>;
+  searchParams?: Promise<{ status?: string }>;
 };
 
-export default async function AdminRewardRedemptionsPage({
-  searchParams,
-}: Props) {
+export default async function AdminRewardRedemptionsPage({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const status = parseStatus(resolvedSearchParams?.status);
-  const result = await getAdminRewardRedemptions(status);
-
-  return (
-    <AdminRewardRedemptionsClient
-      message={result.message}
-      redemptions={result.redemptions}
-      status={status}
-      unavailable={result.unavailable}
-    />
-  );
+  return <AdminRewardRedemptionsClient status={status} />;
 }
 
 function parseStatus(value: string | undefined): RewardRedemptionStatus {
-  if (value === "SENT") {
-    return "APPROVED";
-  }
-  if (value === "CANCELLED_REFUNDED") {
-    return "REJECTED";
-  }
-  if (
-    value &&
-    REDEMPTION_STATUSES.includes(value as RewardRedemptionStatus)
-  ) {
+  if (value === "SENT") return "APPROVED";
+  if (value === "CANCELLED_REFUNDED") return "REJECTED";
+  if (value && REDEMPTION_STATUSES.includes(value as RewardRedemptionStatus)) {
     return value as RewardRedemptionStatus;
   }
-
   return "PENDING";
 }

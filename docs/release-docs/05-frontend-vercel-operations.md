@@ -83,8 +83,8 @@ Next.js는 이미 존재하는 `process.env` 값을 가장 먼저 사용한다.
 
 | Name | Value | Visibility | Purpose |
 | --- | --- | --- | --- |
-| `FUTURES_API_BASE_URL` | `https://coin-zzickmock.duckdns.org` | Server/Public injected by Next config | Next.js rewrite, server fetch, browser SSE가 사용할 backend base URL |
-| `NEXT_PUBLIC_FUTURES_API_BASE_URL` | optional override | Public | 브라우저의 market/candle/order SSE와 직접 backend auth 호출 origin. 설정하지 않으면 `FUTURES_API_BASE_URL`에서 주입 |
+| `FUTURES_API_BASE_URL` | `https://coin-zzickmock.duckdns.org` | Server/Public injected by Next config | Next.js rewrite, server fetch, SSE proxy가 사용할 backend base URL |
+| `NEXT_PUBLIC_FUTURES_API_BASE_URL` | optional override | Public | 브라우저의 direct backend auth/API/SSE 호출 origin. 설정하지 않으면 `FUTURES_API_BASE_URL`에서 주입 |
 | `NEXT_PUBLIC_API_MOCKING` | unset | Public | production에서는 MSW를 켜지 않는다 |
 | `NEXT_PUBLIC_BASE_URL` | 운영 legacy stock API base URL, 필요한 경우만 | Public | 남아 있는 legacy stock route용 |
 | `NEXT_PUBLIC_BASE_URL2` | 운영 legacy stock API base URL, 필요한 경우만 | Public | 남아 있는 legacy stock API 호출용 |
@@ -93,10 +93,14 @@ Next.js는 이미 존재하는 `process.env` 값을 가장 먼저 사용한다.
 강한 규칙:
 
 - `FUTURES_API_BASE_URL`에는 `/api/futures`를 붙이지 않는다. `frontend/next.config.ts`와 URL helper가 path를 붙인다.
-- `NEXT_PUBLIC_FUTURES_API_BASE_URL`을 별도로 설정하는 경우에도 `/api/futures`를 붙이지 않는다. SSE/auth URL helper가 path를 붙인다.
-- Production에서는 `next.config.ts`가 `FUTURES_API_BASE_URL`을 브라우저용 SSE/auth origin으로 주입해 market/candle/order SSE가 Vercel 함수 실행 시간을 점유하지 않게 한다.
+- `NEXT_PUBLIC_FUTURES_API_BASE_URL`을 별도로 설정하는 경우에도 `/api/futures`를 붙이지 않는다. URL helper가 path를 붙인다.
+- Production에서는 `next.config.ts`가 `FUTURES_API_BASE_URL`을 브라우저용 backend origin으로 주입한다. Auth와 authenticated SSE/API 호출은 backend origin으로 직접 보내 backend-owned cookie를 사용한다.
+- Server-rendered frontend code는 개인화 인증 API를 호출하지 않는다. 공개 market shell 같은 익명 안전 데이터만 SSR에서 읽고, 계정/포지션/주문/포인트/상점 개인 상태/커뮤니티/관리자 데이터는 브라우저 CSR 요청이 `credentials: "include"`로 backend origin에 직접 호출한다.
+- `BackendAuthGate`는 Preview/Production에서 client UI gate로만 사용한다. backend 401/403 응답은 정상적인 실패 상태로 렌더링해야 하며, frontend-domain cookie 복제나 demo member fallback으로 보완하지 않는다.
 - Backend CORS의 `coin.web.cors.allowed-origin-patterns`는 Vercel frontend origin을 허용해야 한다. 기본값은 `https://coin-zzickmock-frontend*.vercel.app`와 local 개발 origin을 포함한다.
-- Backend auth cookie는 cross-origin SSE 인증을 위해 `SameSite=None; Secure`로 발급한다.
+- Backend auth cookie는 cross-origin frontend에서 backend API/SSE 인증에 사용할 수 있도록 `SameSite=None; Secure`로 발급한다. Frontend는 이 쿠키를 앱 도메인 쿠키로 복제하거나 정규화하지 않는다.
+- Backend는 `SameSite=None` 쿠키의 CSRF 위험을 줄이기 위해 unsafe method의 `/api/futures/**` 요청에서 `Origin` 또는 `Referer` origin을 검사한다. 허용 origin은 `https://coin-zzickmock-frontend.vercel.app`, `http://localhost:3000` 두 개만 둔다.
+- 로컬 HTTP Compose 검증에서는 browser가 backend cookie를 저장할 수 있도록 `APP_AUTH_COOKIE_SECURE=false`, `APP_AUTH_COOKIE_SAME_SITE=Lax` 기본값을 사용한다. Production에서는 `docker-compose.prod.yml`/`.env.prod` 계약이 `true`/`None`을 유지해야 한다.
 - Vercel 배포에서 `FUTURES_API_BASE_URL`이 없으면 frontend build/runtime은 실패해야 한다. 조용히 localhost fallback으로 배포하지 않는다.
 - `NEXT_PUBLIC_*`에는 공개 가능한 값만 둔다.
 - production Vercel env에서 `NEXT_PUBLIC_API_MOCKING=enabled`를 설정하지 않는다.
@@ -114,6 +118,7 @@ Preview 환경도 기본값은 production backend URL을 사용한다.
 주의:
 
 - Preview가 production backend를 호출하면 테스트 로그인, 주문, 포인트, 관리자 조작이 운영 데이터에 영향을 줄 수 있다.
+- Preview smoke에서는 Network 패널에서 SSR document/RSC 요청이 개인화 `/account/me`, `/positions/me`, `/orders/*`, `/rewards/me`, `/community/*`, `/admin/*` 데이터를 선조회하지 않고, 로그인 이후 browser-origin XHR/fetch만 해당 API를 호출하는지 확인한다.
 - staging backend가 생기면 Preview의 `FUTURES_API_BASE_URL`을 staging backend URL로 바꾸고 이 문서를 갱신한다.
 - 운영 데이터에 쓰기 영향을 줄 수 있는 Preview 검증은 테스트 계정과 낮은 위험 흐름으로 제한한다.
 
@@ -145,9 +150,11 @@ vercel env pull frontend/.env.local --environment=development --yes
 Preview smoke checks:
 
 - `/login` 진입
-- `/markets` 진입
-- `/markets/[symbol]`에서 market stream 또는 candle stream이 깨지지 않는지 확인
+- `/markets` 진입: 공개 market shell은 SSR로 표시되고 계정 요약은 로그인 이후 CSR로 표시되는지 확인
+- `/markets/[symbol]`에서 market stream 또는 candle stream이 깨지지 않는지 확인하고, 주문 패널/내 포지션/내 주문은 CSR backend request로만 로드되는지 확인
 - `/portfolio` 진입
+- `/mypage/assets`, `/shop`, `/community` 보호 화면이 로그인 gate 뒤에서 CSR 데이터를 표시하는지 확인
+- non-admin 계정으로 `/admin/*` 접근 시 admin API request와 admin row fallback이 없는지 확인
 - 주문 관련 UI가 production backend에 연결되는지 확인하되, 실제 운영 영향이 있는 write는 테스트 계정으로만 수행
 - 브라우저 콘솔 치명 오류와 Vercel runtime error가 없는지 확인
 

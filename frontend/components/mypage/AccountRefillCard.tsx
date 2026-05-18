@@ -2,13 +2,14 @@
 
 import Modal from "@/components/ui/Modal";
 import { refillFuturesAccount } from "@/lib/futures-client-api";
+import { invalidateRewardAndShopQueries, invalidateTradingQueries } from "@/lib/futures-query-invalidation";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   AccountRefillStatus,
   FuturesAccountSummary,
 } from "@/lib/futures-api";
 import { formatUsd } from "@/lib/markets";
 import { RotateCcw, Loader2, WalletCards } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
@@ -18,7 +19,7 @@ type Props = {
 };
 
 export default function AccountRefillCard({ account, refillStatus }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const disabled = !refillStatus.refillable || isSubmitting;
@@ -44,7 +45,7 @@ export default function AccountRefillCard({ account, refillStatus }: Props) {
         `지갑 잔고와 사용 가능 금액을 ${formatUsd(result.walletBalance)}로 리필했습니다.`
       );
       setIsConfirmOpen(false);
-      router.refresh();
+      void Promise.all([invalidateTradingQueries(queryClient), invalidateRewardAndShopQueries(queryClient)]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "리필에 실패했습니다.");
     } finally {

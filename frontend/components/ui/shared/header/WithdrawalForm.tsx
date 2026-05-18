@@ -2,23 +2,24 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { useFormStatus } from "react-dom";
-import { JwtToken } from "@/type/jwt";
 import Modal from "../../Modal";
 import { useRouter } from "next/navigation";
 import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { notifyFuturesAuthChanged } from "@/lib/futures-auth-state";
+import type { HeaderUser } from "./UserInfo";
 
 const WithdrawalForm = ({
-  action,
+  onWithdrawn,
   token,
 }: {
-  action: (formData: FormData) => void;
-  token: JwtToken;
+  onWithdrawn: () => void;
+  token: HeaderUser;
 }) => {
   const { pending } = useFormStatus();
   const [isOpenModal, setIsOpenModal] = useState(false);
   const router = useRouter();
 
-  const handleWithdrawal = async (formData: FormData) => {
+  const handleWithdrawal = async () => {
     const res = await fetch(createFuturesBackendApiUrl("/auth/withdraw"), {
       method: "DELETE",
       credentials: "include",
@@ -31,7 +32,8 @@ const WithdrawalForm = ({
     });
 
     if (res.ok) {
-      action(formData);
+      onWithdrawn();
+      notifyFuturesAuthChanged();
       toast.success("탈퇴 되었습니다", { delay: 500 });
       setIsOpenModal(false);
       router.refresh();

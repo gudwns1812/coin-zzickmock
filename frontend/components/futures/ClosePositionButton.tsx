@@ -2,8 +2,13 @@
 
 import Button from "@/components/ui/shared/Button";
 import Modal from "@/components/ui/Modal";
+import {
+  invalidateRewardAndShopQueries,
+  invalidateTradingQueries,
+} from "@/lib/futures-query-invalidation";
+import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatUsd } from "@/lib/markets";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -39,7 +44,7 @@ export default function ClosePositionButton({
   markPrice,
   disabled = false,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [isPending, setIsPending] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [orderType, setOrderType] = useState<CloseOrderType>("MARKET");
@@ -82,8 +87,9 @@ export default function ClosePositionButton({
     setIsPending(true);
 
     try {
-      const response = await fetch("/proxy-futures/positions/close", {
+      const response = await fetch(createFuturesBackendApiUrl("/positions/close"), {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -110,7 +116,10 @@ export default function ClosePositionButton({
           : `${payload.data.symbol} 포지션 종료 완료 · 손익 ${payload.data.realizedPnl.toFixed(2)} USDT`
       );
       setIsOpen(false);
-      router.refresh();
+      void Promise.all([
+        invalidateTradingQueries(queryClient),
+        invalidateRewardAndShopQueries(queryClient),
+      ]);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "포지션 종료에 실패했습니다."

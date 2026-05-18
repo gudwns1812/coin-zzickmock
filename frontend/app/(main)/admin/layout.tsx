@@ -1,5 +1,4 @@
-import { getJwtToken } from "@/utils/auth";
-import { redirect } from "next/navigation";
+import BackendAuthGate from "@/components/router/BackendAuthGate";
 import type { ReactNode } from "react";
 
 export default async function AdminLayout({
@@ -7,10 +6,5 @@ export default async function AdminLayout({
 }: {
   children: ReactNode;
 }) {
-  const token = await getJwtToken();
-  if (!token) {
-    redirect("/login");
-  }
-
-  return children;
+  return <BackendAuthGate requireAdmin>{children}</BackendAuthGate>;
 }

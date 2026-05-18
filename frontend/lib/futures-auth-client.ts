@@ -29,5 +29,14 @@ export async function logoutFromFutures() {
     credentials: "include",
   });
 
-  return response.ok;
+  if (!response.ok) {
+    return false;
+  }
+
+  const authStateResponse = await fetch(createFuturesBackendApiUrl("/auth/me"), {
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  return authStateResponse.status === 401 || authStateResponse.status === 403;
 }

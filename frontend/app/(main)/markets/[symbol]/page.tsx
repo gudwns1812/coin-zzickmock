@@ -1,14 +1,8 @@
 import MarketDetailRealtimeView from "@/components/futures/MarketDetailRealtimeView";
 import {
-  getFuturesAccountSummary,
   getFuturesMarket,
-  getFuturesOpenOrders,
-  getFuturesOrderHistory,
-  getFuturesPositionHistory,
-  getFuturesPositions,
   isSupportedFuturesSymbol,
 } from "@/lib/futures-api";
-import { getJwtToken } from "@/utils/auth";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({
@@ -41,29 +35,20 @@ export default async function MarketDetailPage({
     notFound();
   }
 
-  const [market, positions, openOrders, orderHistory, positionHistory, user] =
-    await Promise.all([
-    getFuturesMarket(symbol),
-    getFuturesPositions(),
-    getFuturesOpenOrders(),
-    getFuturesOrderHistory(),
-    getFuturesPositionHistory(),
-    getJwtToken(),
-  ]);
-  const accountSummary = user ? await getFuturesAccountSummary() : null;
+  const market = await getFuturesMarket(symbol);
 
   return (
     <MarketDetailRealtimeView
       initialMarket={market}
-      isAuthenticated={user !== null}
+      isAuthenticated={false}
       key={market.symbol}
-      accountSummary={accountSummary}
-      chartOpenOrders={openOrders.filter((order) => order.symbol === symbol)}
-      chartPositions={positions.filter((position) => position.symbol === symbol)}
-      openOrders={openOrders}
-      positions={positions}
-      positionHistory={positionHistory}
-      orderHistory={orderHistory}
+      accountSummary={null}
+      chartOpenOrders={[]}
+      chartPositions={[]}
+      openOrders={[]}
+      positions={[]}
+      positionHistory={[]}
+      orderHistory={[]}
     />
   );
 }

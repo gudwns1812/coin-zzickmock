@@ -8,6 +8,8 @@ import type {
   OrderPreviewResponse,
 } from "@/lib/futures-api";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
+import { invalidateRewardAndShopQueries, invalidateTradingQueries } from "@/lib/futures-query-invalidation";
+import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 import {
   formatPercent,
   formatSignedUsd,
@@ -23,10 +25,10 @@ import { deriveLiveAccountSummaryDisplay } from "@/components/futures/livePositi
 import Modal from "@/components/ui/Modal";
 import { CircleHelp } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { useQueryClient } from "@tanstack/react-query";
 
 type QuickLimitPriceSelection = {
   price: number;
@@ -93,7 +95,7 @@ export default function OrderEntryPanel({
   positions = [],
   quickLimitPriceSelection = null,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [ticketPreference, setTicketPreference] = useState<TicketPreference>(
     DEFAULT_TICKET_PREFERENCE
   );
@@ -271,8 +273,9 @@ export default function OrderEntryPanel({
       setIsPreviewPending(true);
 
       try {
-        const response = await fetch("/proxy-futures/orders/preview", {
+        const response = await fetch(createFuturesBackendApiUrl("/orders/preview"), {
           body: JSON.stringify(orderPayload),
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
@@ -366,8 +369,9 @@ export default function OrderEntryPanel({
   }
 
   async function submitOpenOrder(payload: OrderPreviewRequest) {
-    const response = await fetch("/proxy-futures/orders", {
+    const response = await fetch(createFuturesBackendApiUrl("/orders"), {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -388,12 +392,13 @@ export default function OrderEntryPanel({
         ? `${symbol} 주문이 즉시 체결되었습니다.`
         : `${symbol} 지정가 주문이 대기열에 등록되었습니다.`
     );
-    router.refresh();
+    void Promise.all([invalidateTradingQueries(queryClient), invalidateRewardAndShopQueries(queryClient)]);
   }
 
   async function submitCloseOrder(payload: OrderPreviewRequest) {
-    const response = await fetch("/proxy-futures/positions/close", {
+    const response = await fetch(createFuturesBackendApiUrl("/positions/close"), {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -419,7 +424,7 @@ export default function OrderEntryPanel({
         ? `${symbol} 포지션 종료가 완료되었습니다.`
         : `${symbol} 종료 지정가 주문이 등록되었습니다.`
     );
-    router.refresh();
+    void Promise.all([invalidateTradingQueries(queryClient), invalidateRewardAndShopQueries(queryClient)]);
   }
 
   async function handleApplyLeverage(nextLeverage: number) {
@@ -441,8 +446,9 @@ export default function OrderEntryPanel({
     setInlineErrorMessage(null);
 
     try {
-      const response = await fetch("/proxy-futures/positions/leverage", {
+      const response = await fetch(createFuturesBackendApiUrl("/positions/leverage"), {
         method: "PATCH",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -470,7 +476,7 @@ export default function OrderEntryPanel({
       toast.success(
         `${symbol} 레버리지를 ${updatedPosition.leverage}x로 적용했습니다.`
       );
-      router.refresh();
+      void Promise.all([invalidateTradingQueries(queryClient), invalidateRewardAndShopQueries(queryClient)]);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "레버리지 변경에 실패했습니다.";

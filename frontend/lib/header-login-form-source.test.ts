@@ -22,3 +22,16 @@ test("header login form submits from Enter in login inputs", () => {
   assert.match(loginFormSource, /e\.currentTarget\.requestSubmit\(\)/);
   assert.match(loginFormSource, /onKeyDown=\{handleLoginInputKeyDown\}/);
 });
+
+test("header logout form uses explicit client submit handling", () => {
+  const logoutFormSource = readFrontendSource(
+    "components/ui/shared/header/LogoutForm.tsx"
+  );
+
+  assert.doesNotMatch(logoutFormSource, /useFormStatus/);
+  assert.match(logoutFormSource, /event\.preventDefault\(\)/);
+  assert.match(logoutFormSource, /logoutFromFutures\(\)/);
+  assert.match(logoutFormSource, /notifyFuturesAuthChanged\(\)/);
+  assert.match(logoutFormSource, /router\.refresh\(\)/);
+  assert.match(logoutFormSource, /<form onSubmit=\{handleLogout\}>/);
+});

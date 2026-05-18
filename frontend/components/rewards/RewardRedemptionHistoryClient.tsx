@@ -1,12 +1,13 @@
 "use client";
 
 import { cancelOwnRewardRedemption } from "@/lib/futures-client-api";
+import { invalidateRewardAndShopQueries } from "@/lib/futures-query-invalidation";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   RewardShopHistoryResult,
   RewardShopHistoryRow,
 } from "@/lib/futures-api";
 import { CheckCircle2, Clock3, Loader2, RotateCcw, ShoppingBag } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
@@ -17,7 +18,7 @@ type Props = {
 export default function RewardRedemptionHistoryClient({
   history,
 }: Props) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [cancellingRequestId, setCancellingRequestId] = useState<string | null>(
     null
   );
@@ -30,7 +31,7 @@ export default function RewardRedemptionHistoryClient({
     try {
       await cancelOwnRewardRedemption(row.entryId);
       toast.success("교환 신청을 취소했습니다.");
-      router.refresh();
+      void invalidateRewardAndShopQueries(queryClient);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "교환 신청 취소에 실패했습니다."

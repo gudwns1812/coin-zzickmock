@@ -1,25 +1,9 @@
 import React from "react";
 import Link from "next/link";
-import { getJwtToken } from "@/utils/auth";
-import { getFuturesLeaderboard } from "@/lib/futures-api";
-import LoginForm from "./LoginForm";
-import { cookies } from "next/headers";
-import UserInfo from "./UserInfo";
-import LogoutForm from "./LogoutForm";
 import Navigation from "./Navigation";
-import WithdrawalForm from "./WithdrawalForm";
+import HeaderAuthControls from "./HeaderAuthControls";
 
 const Header = async () => {
-  const token = await getJwtToken();
-  const leaderboard = token ? await getFuturesLeaderboard() : null;
-
-  const handleLogout = async () => {
-    "use server";
-
-    const cookieStore = await cookies();
-    cookieStore.delete("accessToken");
-  };
-
   return (
     <header className="absolute w-full py-3 px-main-2 z-50 backdrop-blur-sm min-w-[1200px]">
       <div className="w-full flex relative gap-5 justify-between items-center">
@@ -44,14 +28,7 @@ const Header = async () => {
 
         <Navigation />
 
-        {!token && <LoginForm />}
-
-        {token && (
-          <UserInfo token={token} myRank={leaderboard?.myRank ?? null}>
-            <LogoutForm action={handleLogout} />
-            <WithdrawalForm action={handleLogout} token={token} />
-          </UserInfo>
-        )}
+        <HeaderAuthControls />
       </div>
     </header>
   );

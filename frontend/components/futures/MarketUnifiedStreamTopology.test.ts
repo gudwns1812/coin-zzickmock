@@ -57,14 +57,14 @@ test("market detail opens direct-capable market and order SSE streams", () => {
   assert.equal(source.includes("MARKET_HISTORY_FINALIZED"), true);
   assert.match(
     source,
-    /useResilientEventSource\(\{\s*onMessage: handleMarketStreamMessage,\s*reconnectKey: isAuthenticated \? "authenticated" : "anonymous",\s*url: marketStreamUrl,/,
+    /useResilientEventSource\(\{\s*onMessage: handleMarketStreamMessage,\s*reconnectKey: effectiveIsAuthenticated \? "authenticated" : "anonymous",\s*url: marketStreamUrl,/,
     "unified market stream must reopen when auth identity changes without changing the URL"
   );
   assert.equal(source.includes("handlePublicMarketSummaryMessage"), false);
   assert.equal(source.includes("handlePublicMarketCandleMessage"), false);
   assert.match(
     source,
-    /useResilientEventSource\(\{\s*enabled: isAuthenticated,\s*onMessage: handleOrderStreamMessage,[\s\S]*?url: orderStreamUrl,/,
+    /useResilientEventSource\(\{\s*enabled: effectiveIsAuthenticated,\s*onMessage: handleOrderStreamMessage,[\s\S]*?url: orderStreamUrl,/,
     "order execution stream must remain gated by authentication"
   );
 });
@@ -95,7 +95,7 @@ test("futures price chart consumes parent unified candle events instead of openi
   assert.equal(source.includes("MARKET_HISTORY_FINALIZED") || source.includes("historyFinalized"), true);
 });
 
-test("unified market stream URL helper can bypass Vercel route handlers", () => {
+test("unified market stream URL helper can bypass Vercel route handlers for public streams", () => {
   const source = read("lib/futures-sse-url.ts");
 
   assert.equal(source.includes("symbol"), true);

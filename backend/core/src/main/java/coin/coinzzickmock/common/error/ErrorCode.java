@@ -16,6 +16,10 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(401, "아이디 또는 비밀번호가 올바르지 않습니다.", Level.DEBUG),
     UNAUTHORIZED(401, "로그인이 필요합니다.", Level.DEBUG),
     FORBIDDEN(403, "요청한 작업을 수행할 권한이 없습니다.", Level.INFO),
+    COMMUNITY_POST_INVALID_CATEGORY(400, "게시글 카테고리가 올바르지 않습니다.", Level.DEBUG),
+    COMMUNITY_POST_INVALID_TITLE(400, "게시글 제목이 올바르지 않습니다.", Level.DEBUG),
+    COMMUNITY_POST_INVALID_CONTENT(400, "게시글 내용이 올바르지 않습니다.", Level.DEBUG),
+    COMMUNITY_POST_IMAGE_NOT_ATTACHABLE(400, "게시글 이미지를 첨부할 수 없습니다. 다시 업로드 후 시도해주세요.", Level.DEBUG),
     TOO_MANY_REQUESTS(429, "요청이 너무 많습니다.", Level.INFO),
     INVALID_REQUEST(400, "잘못된 요청입니다.", Level.DEBUG),
     INTERNAL_SERVER_ERROR(500, "서버 내부 오류가 발생했습니다.", Level.ERROR);

@@ -10,7 +10,48 @@ import type {
   PositionPeekStatus,
   RewardRedemption,
   ShopPurchaseResult,
+  CommunityCategory,
 } from "@/lib/futures-api";
+
+
+export type CommunityPostInput = {
+  category: CommunityCategory;
+  title: string;
+  contentJson: unknown;
+  imageObjectKeys: string[];
+};
+
+export type CommunityPostMutationResult = {
+  postId: number;
+};
+
+export type CommunityCommentMutationResult = {
+  commentId: number;
+};
+
+export type CommunityDeleteResult = {
+  deleted: boolean;
+};
+
+export type CommunityLikeResult = {
+  postId: number;
+  likedByMe: boolean;
+};
+
+export type CommunityImageUploadPresignRequest = {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+};
+
+export type CommunityImageUploadPresignResult = {
+  uploadUrl: string;
+  objectKey: string;
+  publicUrl: string;
+  contentType: string;
+  expiresAt: string;
+  maxBytes: number;
+};
 
 type ClientApiResponse<T> = {
   success: boolean;
@@ -162,6 +203,106 @@ export async function modifyFuturesOrderPrice(
   );
 }
 
+
+export async function createCommunityPost(
+  input: CommunityPostInput
+): Promise<CommunityPostMutationResult> {
+  return requestFuturesApi<CommunityPostMutationResult>(
+    "/community/posts",
+    "POST",
+    input
+  );
+}
+
+export async function updateCommunityPost(
+  postId: number,
+  input: CommunityPostInput
+): Promise<CommunityPostMutationResult> {
+  return requestFuturesApi<CommunityPostMutationResult>(
+    `/community/posts/${encodeURIComponent(String(postId))}`,
+    "PUT",
+    input
+  );
+}
+
+export async function deleteCommunityPost(
+  postId: number
+): Promise<CommunityDeleteResult> {
+  return requestFuturesApi<CommunityDeleteResult>(
+    `/community/posts/${encodeURIComponent(String(postId))}`,
+    "DELETE"
+  );
+}
+
+export async function presignCommunityImageUpload(
+  input: CommunityImageUploadPresignRequest
+): Promise<CommunityImageUploadPresignResult> {
+  return requestFuturesApi<CommunityImageUploadPresignResult>(
+    "/community/images/presign",
+    "POST",
+    input
+  );
+}
+
+export async function uploadCommunityImageToPresignedUrl(
+  file: File,
+  presign: CommunityImageUploadPresignResult
+): Promise<void> {
+  const response = await fetch(presign.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": presign.contentType,
+    },
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new FuturesClientApiError(
+      "이미지를 업로드하지 못했습니다. 잠시 후 다시 시도해주세요.",
+      response.status
+    );
+  }
+}
+
+export async function createCommunityComment(
+  postId: number,
+  content: string
+): Promise<CommunityCommentMutationResult> {
+  return requestFuturesApi<CommunityCommentMutationResult>(
+    `/community/posts/${encodeURIComponent(String(postId))}/comments`,
+    "POST",
+    { content }
+  );
+}
+
+export async function deleteCommunityComment(
+  postId: number,
+  commentId: number
+): Promise<CommunityDeleteResult> {
+  return requestFuturesApi<CommunityDeleteResult>(
+    `/community/posts/${encodeURIComponent(String(postId))}/comments/${encodeURIComponent(String(commentId))}`,
+    "DELETE"
+  );
+}
+
+export async function likeCommunityPost(
+  postId: number
+): Promise<CommunityLikeResult> {
+  return requestFuturesApi<CommunityLikeResult>(
+    `/community/posts/${encodeURIComponent(String(postId))}/like`,
+    "POST"
+  );
+}
+
+export async function unlikeCommunityPost(
+  postId: number
+): Promise<CommunityLikeResult> {
+  return requestFuturesApi<CommunityLikeResult>(
+    `/community/posts/${encodeURIComponent(String(postId))}/like`,
+    "DELETE"
+  );
+}
+
 export async function createAdminShopItem(
   input: AdminShopItemInput
 ): Promise<AdminShopItem> {
@@ -205,13 +346,24 @@ async function writeFuturesApi<T>(
   path: string,
   body: unknown
 ): Promise<T> {
+  return requestFuturesApi(path, "POST", body);
+}
+
+async function requestFuturesApi<T>(
+  path: string,
+  method: "POST" | "PUT" | "DELETE",
+  body?: unknown
+): Promise<T> {
   const response = await fetch(`/proxy-futures${path}`, {
-    method: "POST",
+    method,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    headers:
+      body === undefined
+        ? undefined
+        : {
+            "Content-Type": "application/json",
+          },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 
   const payload = (await response.json().catch(() => null)) as

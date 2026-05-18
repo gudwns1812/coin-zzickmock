@@ -37,11 +37,10 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
-  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
-  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
-  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
-  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
-  [RewardShopPurchaseEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopPurchaseEntity.java)
+  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
+  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
+  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
+  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
 - Query layer 기준:
   [PositionPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/PositionPersistenceRepository.java)
 - migration 파일:
@@ -75,11 +74,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql)
   [V29__add_position_peek_entry_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V29__add_position_peek_entry_price.sql)
   [V30__lower_position_peek_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V30__lower_position_peek_price.sql)
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-  [V32__add_reward_shop_purchases.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V32__add_reward_shop_purchases.sql)
-  [V33__add_trading_account_non_negative_checks.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V33__add_trading_account_non_negative_checks.sql)
 - 수동 SQL 기준 여부: 없음
-- 참고: `V31__add_community_posts.sql`는 main history에 한 번 포함된 뒤 제거된 migration을 Flyway continuity를 위해 복구한 것이다. 현재 브랜치는 community application code를 되살리지 않으며, 상점 구매 원장은 충돌을 피하기 위해 `V32`를 사용한다.
 
 읽기/수정 규칙:
 
@@ -123,15 +118,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `member_email`, `member_name`, `wallet_balance`, `available_margin`, `version`, `created_at`, `updated_at`
 - 동시성:
   `version`은 주문 체결, 포지션 종료, 레버리지 변경처럼 잔고/증거금을 바꾸는 거래성 mutation의 낙관적 잠금 조건으로 사용한다. 버전 불일치 시 계정 이력과 후속 상태 변경을 진행하지 않고 재조회가 필요한 충돌로 처리한다.
-- 제약:
-  DB CHECK constraint가 `wallet_balance >= 0`과 `available_margin >= 0`을 함께 보장한다. 마이그레이션 전 preflight는 기존 음수 잔고/증거금 row가 있으면 실패한다.
 - 관련 엔티티/모듈:
   `feature.account`
 - 관련 migration 또는 schema 파일:
   [V1__initial_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V1__initial_schema.sql),
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [V21__add_account_version_and_position_symbol_index.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V21__add_account_version_and_position_symbol_index.sql),
-  [V33__add_trading_account_non_negative_checks.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V33__add_trading_account_non_negative_checks.sql),
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
 
 ### `account_refill_states`
@@ -293,7 +285,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V17__shorten_coffee_voucher_description.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V17__shorten_coffee_voucher_description.sql),
   [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql),
   [V30__lower_position_peek_price.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V30__lower_position_peek_price.sql),
-  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
+  [RewardShopItemEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopItemEntity.java)
 
 ### `reward_shop_member_item_usages`
 
@@ -306,12 +298,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 주요 컬럼:
   `member_id`, `shop_item_id`, `purchase_count`, `version`, `created_at`, `updated_at`
 - 구매 제한 기준:
-  `purchase_count`는 즉시 구매 성공과 `PENDING`/`APPROVED` 요청을 카운트한다. `REJECTED`/`CANCELLED` 전환은 guarded decrement로 카운트를 한 번만 복구한다.
+  `purchase_count`는 `PENDING`/`APPROVED` 요청만 카운트한다. `REJECTED`/`CANCELLED` 전환은 guarded decrement로 카운트를 한 번만 복구한다.
 - 관련 엔티티/모듈:
   `feature.reward`
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
-  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
+  [RewardShopMemberItemUsageEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopMemberItemUsageEntity.java)
 
 ### `reward_item_balances`
 
@@ -331,30 +323,6 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V28__add_position_peek_inventory_and_snapshots.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V28__add_position_peek_inventory_and_snapshots.sql),
   [RewardItemBalanceEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardItemBalanceEntity.java)
 
-### `reward_shop_purchases`
-
-- 목적:
-  `ACCOUNT_REFILL_COUNT`, `POSITION_PEEK` 같은 즉시 구매 상품의 성공 구매 event를 불변 원장으로 저장한다. 교환권 신청 lifecycle과 섞지 않으며 row 존재 자체가 구매 효과와 포인트 차감이 같은 transaction에서 성공했다는 의미다.
-- PK:
-  `id` (auto increment)
-- 유니크:
-  `purchase_id`
-- 주요 컬럼:
-  `purchase_id`, `member_id`, `shop_item_id`, `item_code`, `item_name`, `item_type`, `item_price`, `point_amount`, `quantity`, `purchased_at`, `created_at`, `updated_at`
-- 스냅샷:
-  `item_code`, `item_name`, `item_type`, `item_price`, `point_amount`는 구매 시점의 상품/가격 스냅샷이다.
-- 수량 제약:
-  현재 MVP 즉시 구매는 단건 구매만 지원하므로 `quantity = 1`이다.
-- correlation:
-  `purchase_id`는 같은 구매에서 생성한 `reward_point_histories.source_reference`와 일치한다. 과거 `INSTANT_SHOP_PURCHASE` 포인트 이력은 item snapshot이 없어 이 테이블로 백필하지 않는다.
-- 조회 인덱스:
-  `idx_reward_shop_purchases_member_purchased(member_id, purchased_at, id)`는 `/api/futures/shop/history` 통합 내역의 `eventAt DESC`, 내부 sort sequence 정렬을 보조한다.
-- 관련 엔티티/모듈:
-  `feature.reward`
-- 관련 migration 또는 schema 파일:
-  [V32__add_reward_shop_purchases.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V32__add_reward_shop_purchases.sql),
-  [RewardShopPurchaseEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardShopPurchaseEntity.java)
-
 ### `reward_point_histories`
 
 - 목적:
@@ -370,7 +338,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
-  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
+  [RewardPointHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointHistoryEntity.java)
 
 ### `reward_redemption_requests`
 
@@ -393,71 +361,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 관련 migration 또는 schema 파일:
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [V14__rename_reward_redemption_statuses.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V14__rename_reward_redemption_statuses.sql),
-  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
-
-### `community_posts`
-
-- 목적:
-  로그인 회원이 작성한 커뮤니티 게시글과 관리자 공지사항의 source of truth를 저장한다. 삭제는 `deleted_at` 기반 soft delete로 처리한다.
-- PK:
-  `id` (auto increment)
-- 주요 컬럼:
-  `author_member_id`, `author_nickname`, `category`, `title`, `content_json`, `view_count`, `like_count`, `comment_count`, `deleted_at`, `version`, `created_at`, `updated_at`
-- 카테고리:
-  `NOTICE`, `CHART_ANALYSIS`, `COIN_INFORMATION`, `CHAT`
-- 관련 엔티티/모듈:
-  현재 브랜치는 migration continuity만 복구하며 community application/entity code는 포함하지 않는다.
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `idx_community_posts_category_deleted_created`, `idx_community_posts_deleted_created`, `idx_community_posts_author_created`
-
-### `community_comments`
-
-- 목적:
-  커뮤니티 게시글의 댓글을 저장한다. 삭제는 `deleted_at` 기반 soft delete로 처리한다.
-- PK:
-  `id` (auto increment)
-- 주요 컬럼:
-  `post_id`, `author_member_id`, `author_nickname`, `content`, `deleted_at`, `created_at`, `updated_at`
-- 관련 엔티티/모듈:
-  현재 브랜치는 migration continuity만 복구하며 community application/entity code는 포함하지 않는다.
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `idx_community_comments_post_deleted_created`, `idx_community_comments_author_created`
-
-### `community_post_likes`
-
-- 목적:
-  회원별 게시글 좋아요 상태를 저장한다. `(post_id, member_id)` 복합 PK로 POST/DELETE idempotency의 저장소 기준을 제공한다.
-- PK:
-  `(post_id, member_id)`
-- 주요 컬럼:
-  `post_id`, `member_id`, `created_at`
-- 관련 엔티티/모듈:
-  현재 브랜치는 migration continuity만 복구하며 community application/entity code는 포함하지 않는다.
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `idx_community_post_likes_member_created`
-
-### `community_post_images`
-
-- 목적:
-  S3 presigned upload로 생성된 커뮤니티 이미지 intent와 게시글 attach 상태를 저장한다. `object_key`는 서버 생성 key의 유일성 기준이다.
-- PK:
-  `id` (auto increment)
-- 주요 컬럼:
-  `post_id`, `uploader_member_id`, `object_key`, `public_url`, `content_type`, `size_bytes`, `status`, `created_at`, `updated_at`
-- 상태:
-  `PRESIGNED`, `ATTACHED`, `ORPHANED`
-- 관련 엔티티/모듈:
-  현재 브랜치는 migration continuity만 복구하며 community application/entity code는 포함하지 않는다.
-- 관련 migration 또는 schema 파일:
-  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
-- 인덱스:
-  `uk_community_post_images_object_key`, `idx_community_post_images_post_status`, `idx_community_post_images_uploader_status_created`
+  [RewardRedemptionRequestEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardRedemptionRequestEntity.java)
 
 ### `futures_orders`
 
@@ -643,8 +547,92 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - Redis wakeup:
   Redis List는 repair event id만 담는 wakeup queue이며, durable 상태와 idempotency는 이 테이블이 소유한다.
 
+
+### `community_posts`
+
+- 목적:
+  로그인 회원이 작성한 커뮤니티 게시글과 관리자 공지사항의 source of truth를 저장한다. 삭제는 `deleted_at` 기반 soft delete로 처리한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `author_member_id`, `author_nickname`, `category`, `title`, `content_json`, `view_count`, `like_count`, `comment_count`, `deleted_at`, `version`, `created_at`, `updated_at`
+- 카테고리:
+  `NOTICE`, `CHART_ANALYSIS`, `COIN_INFORMATION`, `CHAT`
+- 관련 엔티티/모듈:
+  [CommunityPostEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostEntity.java),
+  [CommunityPostEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostEntityRepository.java)
+- 관련 migration 또는 schema 파일:
+  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
+- 인덱스:
+  `idx_community_posts_category_deleted_created`로 카테고리별 삭제 제외 최신 목록과 공지 조회를 지원하고,
+  `idx_community_posts_deleted_created`로 일반 최신 목록을 지원하며,
+  `idx_community_posts_author_created`로 작성자별 운영 조회를 지원한다.
+
+### `community_comments`
+
+- 목적:
+  커뮤니티 게시글의 댓글을 저장한다. 삭제는 `deleted_at` 기반 soft delete로 처리한다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `post_id`, `author_member_id`, `author_nickname`, `content`, `deleted_at`, `created_at`, `updated_at`
+- 관련 엔티티/모듈:
+  [CommunityCommentEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityCommentEntity.java),
+  [CommunityCommentEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityCommentEntityRepository.java)
+- 관련 migration 또는 schema 파일:
+  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
+- 인덱스:
+  `idx_community_comments_post_deleted_created`로 게시글별 삭제 제외 댓글 페이지를 지원하고,
+  `idx_community_comments_author_created`로 작성자별 운영 조회를 지원한다.
+
+### `community_post_likes`
+
+- 목적:
+  회원별 게시글 좋아요 상태를 저장한다. `(post_id, member_id)` 복합 PK로 POST/DELETE idempotency의 저장소 기준을 제공한다.
+- PK:
+  `(post_id, member_id)`
+- 주요 컬럼:
+  `post_id`, `member_id`, `created_at`
+- 관련 엔티티/모듈:
+  [CommunityPostLikeEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostLikeEntity.java),
+  [CommunityPostLikeEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostLikeEntityRepository.java)
+- 관련 migration 또는 schema 파일:
+  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
+- 인덱스:
+  `idx_community_post_likes_member_created`로 회원별 좋아요 이력 조회를 지원한다.
+
+### `community_post_images`
+
+- 목적:
+  S3 presigned upload로 생성된 커뮤니티 이미지 intent와 게시글 attach 상태를 저장한다. `object_key`는 서버 생성 key의 유일성 기준이다.
+- PK:
+  `id` (auto increment)
+- 주요 컬럼:
+  `post_id`, `uploader_member_id`, `object_key`, `public_url`, `content_type`, `size_bytes`, `status`, `created_at`, `updated_at`
+- 상태:
+  `PRESIGNED`, `ATTACHED`, `ORPHANED`
+- 관련 엔티티/모듈:
+  [CommunityPostImageEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostImageEntity.java),
+  [CommunityPostImageEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/community/infrastructure/persistence/CommunityPostImageEntityRepository.java)
+- 관련 migration 또는 schema 파일:
+  [V31__add_community_posts.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V31__add_community_posts.sql)
+- 인덱스:
+  `uk_community_post_images_object_key`로 object key 중복을 막고,
+  `idx_community_post_images_post_status`로 게시글별 attached 이미지 조회를 지원하며,
+  `idx_community_post_images_uploader_status_created`로 uploader ownership/status 검증과 orphan cleanup 후보 조회를 지원한다.
+
 ## Relationships
 
+- `community_posts.author_member_id -> member_credentials.id`:
+  게시글 작성자는 내부 회원 surrogate key를 참조하며, `author_nickname`은 작성 시점 표시명 snapshot이다.
+- `community_comments.post_id -> community_posts.id`:
+  댓글은 게시글에 속하며, 댓글과 게시글 삭제는 soft delete로 일반 조회에서 숨긴다.
+- `community_comments.author_member_id -> member_credentials.id`:
+  댓글 작성자는 내부 회원 surrogate key를 참조하며, `author_nickname`은 작성 시점 표시명 snapshot이다.
+- `community_post_likes.post_id -> community_posts.id`, `community_post_likes.member_id -> member_credentials.id`:
+  한 회원의 한 게시글 좋아요는 `(post_id, member_id)`로 하나만 존재한다.
+- `community_post_images.post_id -> community_posts.id`, `community_post_images.uploader_member_id -> member_credentials.id`:
+  이미지는 업로더 회원에 속하며, 게시글 저장 전에는 `post_id`가 비어 있을 수 있다.
 - `trading_accounts.member_id -> member_credentials.id`:
   선물 계정은 내부 회원 surrogate key를 참조한다.
 - `account_refill_states.member_id -> member_credentials.id`:
@@ -673,23 +661,11 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   DAU raw 활동 row는 회원 자격 증명에 속한다. 탈퇴는 soft delete라 이 row를 즉시 삭제하지 않으며, 실제 회원 row를 물리 삭제하는 별도 purge가 생길 때만 FK cascade 대상이 된다.
 - `daily_active_user_summary.activity_date`:
   회원 식별자 없는 날짜별 DAU 집계 snapshot이다.
-- `community_posts.author_member_id -> member_credentials.id`:
-  게시글 작성자는 내부 회원 surrogate key를 참조하며, `author_nickname`은 작성 시점 표시명 snapshot이다.
-- `community_comments.post_id -> community_posts.id`:
-  댓글은 게시글에 속하며, 댓글과 게시글 삭제는 soft delete로 일반 조회에서 숨긴다.
-- `community_comments.author_member_id -> member_credentials.id`:
-  댓글 작성자는 내부 회원 surrogate key를 참조하며, `author_nickname`은 작성 시점 표시명 snapshot이다.
-- `community_post_likes.post_id -> community_posts.id`, `community_post_likes.member_id -> member_credentials.id`:
-  한 회원의 한 게시글 좋아요는 `(post_id, member_id)`로 하나만 존재한다.
-- `community_post_images.post_id -> community_posts.id`, `community_post_images.uploader_member_id -> member_credentials.id`:
-  이미지는 업로더 회원에 속하며, 게시글 저장 전에는 `post_id`가 비어 있을 수 있다.
 
 ## Change Log
 
-- 2026-05-15:
-  `V33__add_trading_account_non_negative_checks.sql`로 `trading_accounts.wallet_balance`와 `available_margin`의 DB 비음수 CHECK를 추가했다.
 - 2026-05-14:
-  `V31__add_community_posts.sql`를 Flyway continuity를 위해 복구하고, `V32__add_reward_shop_purchases.sql`로 상점 즉시 구매 성공 원장을 추가했다.
+  `V31__add_community_posts.sql`로 커뮤니티 게시글, 댓글, 좋아요, 이미지 intent 저장 테이블과 soft-delete/list/ownership 검증 인덱스를 추가했다.
 - 2026-05-13:
   `V27__weekly_account_refill_description.sql`로 리필 추가권 운영 데이터 설명을 다음 KST 월요일 00:00 리셋 정책에 맞췄다.
 - 2026-05-07:

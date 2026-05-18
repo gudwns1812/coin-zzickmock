@@ -26,6 +26,8 @@
   주문 체결, 수수료, 손익, 마진, 펀딩비, 포인트 적립 규칙을 고정하는 계산 명세.
 - [coin-futures-candle-timeframe-spec.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/coin-futures-candle-timeframe-spec.md)
   과거 가격 차트가 지원해야 하는 기간 목록과, 현재 DB의 `1m`/`1h` 저장 구조에서 어떤 기간을 어떻게 파생해야 하는지 정리한 명세.
+- [community-feature.md](/Users/hj.park/projects/coin-zzickmock/docs/product-specs/community-feature.md)
+  로그인 전용 커뮤니티 MVP의 라우트, 권한, 게시글/댓글/좋아요/조회수, Tiptap JSON, S3 이미지 업로드, API/DB 계약 초안을 고정하는 명세.
 
 ## Recommended Files
 

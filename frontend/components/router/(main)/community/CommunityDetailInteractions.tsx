@@ -16,7 +16,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, Pencil, ThumbsUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatCommunityCount, formatCommunityDate } from "./community-format";
 
 type CommunityPostActionsProps = {
@@ -31,15 +31,15 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
   const [error, setError] = useState<string | null>(null);
 
   const likeMutation = useMutation({
-    mutationFn: async () => {
-      return likedByMe
-        ? unlikeCommunityPost(post.id)
-        : likeCommunityPost(post.id);
+    mutationFn: async (desiredLikedByMe: boolean) => {
+      return desiredLikedByMe
+        ? likeCommunityPost(post.id)
+        : unlikeCommunityPost(post.id);
     },
-    onMutate: () => {
+    onMutate: (desiredLikedByMe) => {
       setError(null);
-      setLikedByMe((current) => !current);
-      setLikeCount((current) => current + (likedByMe ? -1 : 1));
+      setLikedByMe(desiredLikedByMe);
+      setLikeCount((current) => Math.max(0, current + (desiredLikedByMe ? 1 : -1)));
     },
     onError: (mutationError) => {
       setLikedByMe(post.likedByMe);
@@ -50,6 +50,14 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
       void invalidateCommunityQueries(queryClient);
     },
   });
+
+  useEffect(() => {
+    if (likeMutation.isPending) {
+      return;
+    }
+    setLikedByMe(post.likedByMe);
+    setLikeCount(post.likeCount);
+  }, [likeMutation.isPending, post.id, post.likedByMe, post.likeCount]);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteCommunityPost(post.id),
@@ -73,7 +81,7 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
         <button
           className={likedByMe ? activeButtonClass : neutralButtonClass}
           disabled={likeMutation.isPending}
-          onClick={() => likeMutation.mutate()}
+          onClick={() => likeMutation.mutate(!likedByMe)}
           type="button"
         >
           <ThumbsUp size={15} /> 좋아요 {formatCommunityCount(likeCount)}

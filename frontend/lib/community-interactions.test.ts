@@ -108,3 +108,13 @@ test("community detail enables mutations without raw HTML rendering", () => {
   assert.match(interactions, /createCommunityComment/);
   assert.doesNotMatch(renderer, /dangerouslySetInnerHTML/);
 });
+
+test("community like mutation sends the intended next liked state", () => {
+  const interactions = source(
+    "components/router/(main)/community/CommunityDetailInteractions.tsx"
+  );
+
+  assert.match(interactions, /mutationFn:\s*async\s*\(desiredLikedByMe: boolean\)/);
+  assert.match(interactions, /desiredLikedByMe\s*\?\s*likeCommunityPost\(post\.id\)\s*:\s*unlikeCommunityPost\(post\.id\)/);
+  assert.match(interactions, /likeMutation\.mutate\(!likedByMe\)/);
+});

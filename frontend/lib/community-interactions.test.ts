@@ -118,3 +118,14 @@ test("community like mutation sends the intended next liked state", () => {
   assert.match(interactions, /desiredLikedByMe\s*\?\s*likeCommunityPost\(post\.id\)\s*:\s*unlikeCommunityPost\(post\.id\)/);
   assert.match(interactions, /likeMutation\.mutate\(!likedByMe\)/);
 });
+
+test("community like optimistic state is not reset by mutation settle timing", () => {
+  const interactions = source(
+    "components/router/(main)/community/CommunityDetailInteractions.tsx"
+  );
+
+  assert.match(interactions, /cancelQueries\(\{ queryKey: futuresQueryKeys\.community \}\)/);
+  assert.match(interactions, /snapshotCommunityLikeQueries\(queryClient, post\.id\)/);
+  assert.match(interactions, /updateCommunityLikeQueries\(queryClient, post\.id, desiredLikedByMe\)/);
+  assert.doesNotMatch(interactions, /\}, \[likeMutation\.isPending,/);
+});

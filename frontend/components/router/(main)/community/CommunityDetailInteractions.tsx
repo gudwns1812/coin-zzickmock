@@ -1,8 +1,10 @@
 "use client";
 
 import type {
+  CommunityApiResult,
   CommunityCommentList,
   CommunityPostDetail,
+  CommunityPostList,
 } from "@/lib/futures-api";
 import {
   createCommunityComment,
@@ -12,7 +14,8 @@ import {
   unlikeCommunityPost,
 } from "@/lib/futures-client-api";
 import { invalidateCommunityQueries } from "@/lib/futures-query-invalidation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { futuresQueryKeys } from "@/lib/futures-query-keys";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { MessageCircle, Pencil, ThumbsUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,17 +39,23 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
         ? likeCommunityPost(post.id)
         : unlikeCommunityPost(post.id);
     },
-    onMutate: (desiredLikedByMe) => {
+    onMutate: async (desiredLikedByMe) => {
       setError(null);
+      await queryClient.cancelQueries({ queryKey: futuresQueryKeys.community });
+      const rollback = snapshotCommunityLikeQueries(queryClient, post.id);
+      updateCommunityLikeQueries(queryClient, post.id, desiredLikedByMe);
       setLikedByMe(desiredLikedByMe);
       setLikeCount((current) => Math.max(0, current + (desiredLikedByMe ? 1 : -1)));
+      return rollback;
     },
-    onError: (mutationError) => {
+    onError: (mutationError, _desiredLikedByMe, rollback) => {
+      restoreCommunityLikeQueries(queryClient, rollback);
       setLikedByMe(post.likedByMe);
       setLikeCount(post.likeCount);
       setError(errorMessage(mutationError));
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      updateCommunityLikeQueries(queryClient, post.id, result.likedByMe);
       void invalidateCommunityQueries(queryClient);
     },
   });
@@ -57,7 +66,7 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
     }
     setLikedByMe(post.likedByMe);
     setLikeCount(post.likeCount);
-  }, [likeMutation.isPending, post.id, post.likedByMe, post.likeCount]);
+  }, [post.id, post.likedByMe, post.likeCount]);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteCommunityPost(post.id),
@@ -105,6 +114,103 @@ export function CommunityPostActions({ post }: CommunityPostActionsProps) {
       {error ? <p className="text-sm-custom text-main-red">{error}</p> : null}
     </div>
   );
+}
+
+type CommunityLikeQuerySnapshot = {
+  postId: number;
+  detail: CommunityApiResult<CommunityPostDetail> | undefined;
+  lists: Array<[
+    readonly unknown[],
+    CommunityApiResult<CommunityPostList> | undefined,
+  ]>;
+};
+
+function snapshotCommunityLikeQueries(queryClient: QueryClient, postId: number): CommunityLikeQuerySnapshot {
+  return {
+    postId,
+    detail: queryClient.getQueryData<CommunityApiResult<CommunityPostDetail>>(
+      communityPostDetailQueryKey(postId)
+    ),
+    lists: queryClient.getQueriesData<CommunityApiResult<CommunityPostList>>({
+      queryKey: [...futuresQueryKeys.community, "posts"],
+    }),
+  };
+}
+
+function restoreCommunityLikeQueries(
+  queryClient: QueryClient,
+  snapshot: CommunityLikeQuerySnapshot | undefined
+) {
+  if (!snapshot) {
+    return;
+  }
+
+  queryClient.setQueryData(communityPostDetailQueryKey(snapshot.postId), snapshot.detail);
+  for (const [queryKey, data] of snapshot.lists) {
+    queryClient.setQueryData(queryKey, data);
+  }
+}
+
+function updateCommunityLikeQueries(
+  queryClient: QueryClient,
+  postId: number,
+  likedByMe: boolean
+) {
+  queryClient.setQueryData<CommunityApiResult<CommunityPostDetail>>(
+    communityPostDetailQueryKey(postId),
+    (current) => {
+      if (!current?.data) {
+        return current;
+      }
+
+      return {
+        ...current,
+        data: updateCommunityPostLikeFields(current.data, likedByMe),
+      };
+    }
+  );
+
+  queryClient.setQueriesData<CommunityApiResult<CommunityPostList>>(
+    { queryKey: [...futuresQueryKeys.community, "posts"] },
+    (current) => {
+      if (!current?.data) {
+        return current;
+      }
+
+      return {
+        ...current,
+        data: {
+          ...current.data,
+          pinnedNotices: current.data.pinnedNotices.map((post) =>
+            post.id === postId ? updateCommunityPostLikeFields(post, likedByMe) : post
+          ),
+          posts: current.data.posts.map((post) =>
+            post.id === postId ? updateCommunityPostLikeFields(post, likedByMe) : post
+          ),
+        },
+      };
+    }
+  );
+}
+
+function updateCommunityPostLikeFields<T extends { likedByMe?: boolean; likeCount: number }>(
+  post: T,
+  likedByMe: boolean
+): T {
+  const previousLikedByMe = Boolean(post.likedByMe);
+  const likeCount = previousLikedByMe === likedByMe
+    ? post.likeCount
+    : Math.max(0, post.likeCount + (likedByMe ? 1 : -1));
+
+  return {
+    ...post,
+    likedByMe,
+    likeCount,
+  };
+}
+
+function communityPostDetailQueryKey(postId: number) {
+  return [...futuresQueryKeys.community, postId] as const;
 }
 
 type CommunityCommentsProps = {

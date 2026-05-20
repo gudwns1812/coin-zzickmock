@@ -66,8 +66,6 @@ public interface MarketHistoryRepository {
 
     void saveMinuteCandle(MarketHistoryCandle candle);
 
-    boolean createMinuteCandleIfAbsent(MarketHistoryCandle candle);
-
     void saveHourlyCandle(HourlyMarketCandle candle);
 
 }

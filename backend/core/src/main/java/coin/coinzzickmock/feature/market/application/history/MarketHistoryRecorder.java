@@ -2,7 +2,6 @@ package coin.coinzzickmock.feature.market.application.history;
 
 import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
-import coin.coinzzickmock.feature.market.application.dto.MarketHistoryPersistenceStatus;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
@@ -89,74 +88,37 @@ public class MarketHistoryRecorder {
     }
 
     @Transactional
-    public Map<String, MarketHistoryPersistenceStatus> recordClosedMinuteCandlesBySymbol(
+    public Map<String, Boolean> recordClosedMinuteCandlesBySymbol(
             Map<String, List<MarketMinuteCandleSnapshot>> minuteCandlesBySymbol,
             Instant openTime,
             Instant closeTime
     ) {
-        if (minuteCandlesBySymbol == null || minuteCandlesBySymbol.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol =
-                nonEmptyMinuteCandlesBySymbol(minuteCandlesBySymbol);
-        if (nonEmptyMinuteCandlesBySymbol.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<String, Long> symbolIds = loadSymbolIds(nonEmptyMinuteCandlesBySymbol);
-        Map<String, MarketHistoryPersistenceStatus> results = recordClosedMinuteCandlesByKnownSymbols(
-                nonEmptyMinuteCandlesBySymbol,
-                symbolIds
-        );
-        publishFinalizedEvents(results, openTime, closeTime);
-        return results;
-    }
-
-    private Map<String, MarketHistoryPersistenceStatus> recordClosedMinuteCandlesByKnownSymbols(
-            Map<String, List<MarketMinuteCandleSnapshot>> nonEmptyMinuteCandlesBySymbol,
-            Map<String, Long> symbolIds
-    ) {
-        Map<String, MarketHistoryPersistenceStatus> saveResults = new LinkedHashMap<>();
-        nonEmptyMinuteCandlesBySymbol.forEach((symbol, minuteCandles) -> {
-            Long symbolId = symbolIds.get(symbol);
-            if (symbolId == null) {
-                saveResults.put(symbol, MarketHistoryPersistenceStatus.FAILED);
-                return;
-            }
-
-            boolean inserted = recordHistoricalMinuteCandles(symbolId, minuteCandles);
-            saveResults.put(symbol, inserted
-                    ? MarketHistoryPersistenceStatus.PERSISTED
-                    : MarketHistoryPersistenceStatus.ALREADY_RECORDED);
-        });
+        Map<String, Boolean> saveResults = recordHistoricalMinuteCandlesBySymbol(minuteCandlesBySymbol);
+        publishFinalizedEvents(saveResults, openTime, closeTime);
         return saveResults;
     }
 
     private void publishFinalizedEvents(
-            Map<String, MarketHistoryPersistenceStatus> saveResults,
+            Map<String, Boolean> saveResults,
             Instant openTime,
             Instant closeTime
     ) {
-        saveResults.forEach((symbol, status) -> {
-            if (status == MarketHistoryPersistenceStatus.PERSISTED) {
+        saveResults.forEach((symbol, wasSaved) -> {
+            if (Boolean.TRUE.equals(wasSaved)) {
                 afterCommitEventPublisher.publish(new MarketHistoryFinalizedEvent(symbol, openTime, closeTime));
             }
         });
     }
 
     @Transactional
-    public boolean recordHistoricalMinuteCandles(long symbolId, List<MarketMinuteCandleSnapshot> minuteCandles) {
+    public void recordHistoricalMinuteCandles(long symbolId, List<MarketMinuteCandleSnapshot> minuteCandles) {
         if (minuteCandles == null || minuteCandles.isEmpty()) {
-            return false;
+            return;
         }
 
         List<MarketHistoryCandle> historicalCandles = toSortedHistoryCandles(symbolId, minuteCandles);
-        boolean inserted = historicalCandles.stream()
-                .map(marketHistoryRepository::createMinuteCandleIfAbsent)
-                .reduce(false, Boolean::logicalOr);
+        historicalCandles.forEach(marketHistoryRepository::saveMinuteCandle);
         rebuildAffectedHourlyCandles(symbolId, historicalCandles);
-        return inserted;
     }
 
     private List<MarketHistoryCandle> toSortedHistoryCandles(

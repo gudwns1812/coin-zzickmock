@@ -499,28 +499,35 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `uk_market_candles_1m_symbol_open_time`로 심볼별 시각 중복을 막고,
   `idx_market_candles_1m_open_time_symbol`로 시간 구간 기준 롤업 조회를 빠르게 한다.
 
-### `market_candles_1h`
+### `market_completed_candles`
 
 - 목적:
-  1분봉 원본에서 만들어진 REST-visible completed 1시간봉 롤업 데이터를 저장해 차트 조회 비용을 줄인다.
-  이 테이블의 row는 해당 hour의 60개 연속 `market_candles_1m` row가 저장 또는 재빌드 시점에 확인된 경우에만 남는다.
+  REST-visible completed 캔들을 interval discriminator로 저장해 차트 조회 비용과 calendar rollup 비용을 줄인다.
+  현재 저장 interval은 `ONE_HOUR`, `ONE_DAY`, `ONE_MONTH`이며 API label `1h`, `1D`, `1M`과 DB token을 분리한다.
+  `ONE_HOUR` row는 해당 hour의 60개 연속 `market_candles_1m` row가 저장 또는 재빌드 시점에 확인된 경우에만 남는다.
+  `ONE_DAY`/`ONE_MONTH` row는 해당 UTC day/month bucket의 모든 completed `ONE_HOUR` row가 확인된 경우에만 남는다.
   partial 후보 row는 저장하지 않는다.
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `symbol_id`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`
+  `symbol_id`, `candle_interval`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `source_interval`, `source_open_time`, `source_close_time`, `source_candle_count`, `created_at`, `updated_at`
+- interval token:
+  `candle_interval`은 `ONE_HOUR`, `ONE_DAY`, `ONE_MONTH`를 사용한다.
+  `source_interval`은 `ONE_HOUR` row에 `ONE_MINUTE`, `ONE_DAY`/`ONE_MONTH` row에 `ONE_HOUR`를 사용한다.
+  `source_candle_count`는 저장 시점에 완전성이 증명된 원천 candle 수다. `ONE_HOUR`는 60, `ONE_DAY`는 24, `ONE_MONTH`는 UTC 월 경계의 실제 hour 수다.
 - 시간 기준:
-  `open_time`, `close_time`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
+  `open_time`, `close_time`, `source_open_time`, `source_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
-  [MarketCandle1hEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1hEntity.java),
-  [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
+  `MarketHistoryPersistenceRepository`가 interval-aware completed candle 저장과 조회를 담당한다.
+  기존 `market_candles_1h` row는 generic completed table로 이관되어 `candle_interval=ONE_HOUR`, `source_interval=ONE_MINUTE`, `source_candle_count=60`으로 보존된다.
 - 관련 migration 또는 schema 파일:
   [V3__add_market_history_schema.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V3__add_market_history_schema.sql),
   [V4__remove_trade_count_from_market_history.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V4__remove_trade_count_from_market_history.sql),
-  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql)
+  [V13__store_market_candle_times_as_utc_datetime.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V13__store_market_candle_times_as_utc_datetime.sql),
+  `V34__generalize_completed_market_candles.sql`
 - 인덱스:
-  `uk_market_candles_1h_symbol_open_time`로 심볼별 시각 중복을 막고,
-  `idx_market_candles_1h_open_time_symbol`로 completed hourly 시간 구간 기준 조회와 재롤업 범위 탐색을 빠르게 한다.
+  `uk_market_completed_candles_symbol_interval_open_time`로 동일 심볼/interval/시각 중복을 막고,
+  이 unique index를 심볼+interval+시간 범위 조회와 calendar catch-up cursor 조회에도 사용한다.
 
 
 ### `market_history_repair_events`
@@ -649,12 +656,12 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   한 계정에서 동일 심볼/방향 조합은 하나의 집계 포지션만 가진다. 마진 모드는 열린 포지션 값으로 잠기며 다른 마진 모드 포지션을 동시에 만들 수 없다.
 - `market_candles_1m.symbol_id -> market_symbols.id`:
   1분봉은 반드시 등록된 거래 심볼에 속한다.
-- `market_candles_1h.symbol_id -> market_symbols.id`:
-  1시간봉 롤업도 반드시 등록된 거래 심볼에 속한다.
+- `market_completed_candles.symbol_id -> market_symbols.id`:
+  completed `ONE_HOUR`/`ONE_DAY`/`ONE_MONTH` 캔들은 반드시 등록된 거래 심볼에 속한다.
 - `market_candles_1m(symbol_id, open_time)`:
   동일 심볼에서 같은 시작 시각의 1분봉은 하나만 존재한다.
-- `market_candles_1h(symbol_id, open_time)`:
-  동일 심볼에서 같은 시작 시각의 1시간봉은 하나만 존재한다.
+- `market_completed_candles(symbol_id, candle_interval, open_time)`:
+  동일 심볼과 completed interval에서 같은 시작 시각의 completed candle은 하나만 존재한다.
 - `market_history_repair_events(symbol, candle_interval, open_time)`:
   같은 심볼/봉 간격/시작 시각의 복구 작업은 하나의 durable event로 합쳐진다.
 - `member_daily_activity.member_id -> member_credentials.id`:
@@ -664,6 +671,8 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 ## Change Log
 
+- 2026-05-20:
+  `V34__generalize_completed_market_candles.sql`로 `market_candles_1h` 중심 저장 구조를 `market_completed_candles` generic completed candle table로 확장했다. 기존 1시간봉은 `candle_interval=ONE_HOUR`, `source_interval=ONE_MINUTE`, `source_candle_count=60`으로 보존하고, `ONE_DAY`/`ONE_MONTH` persisted calendar candle 저장 기준을 추가했다.
 - 2026-05-14:
   `V31__add_community_posts.sql`로 커뮤니티 게시글, 댓글, 좋아요, 이미지 intent 저장 테이블과 soft-delete/list/ownership 검증 인덱스를 추가했다.
 - 2026-05-13:
@@ -679,7 +688,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 2026-04-16:
   `V2__add_member_credentials.sql`로 로그인/회원가입 동기화를 위한 `member_credentials` 테이블을 추가했다.
 - 2026-04-16:
-  `V3__add_market_history_schema.sql`로 `market_symbols`, `market_candles_1m`, `market_candles_1h`와 시간축 인덱스를 추가했다.
+  `V3__add_market_history_schema.sql`로 `market_symbols`, `market_candles_1m`, legacy `market_candles_1h`와 시간축 인덱스를 추가했다.
 - 2026-04-16:
   `trading_accounts`, `reward_point_wallets`, `futures_orders`, `open_positions` entity를 source of truth로 연결했다.
 - 2026-04-16:

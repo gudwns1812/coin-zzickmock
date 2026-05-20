@@ -100,7 +100,7 @@
 - 브라우저 새로고침 또는 서버 재기동으로 in-memory live candle state가 비어 있으면, 첫 candle stream 구독 시 서버가 source interval을 lazy bootstrap할 수 있다.
 - `1m`, `3m`, `5m`, `15m`의 live bootstrap source는 `1m`이며, `1h`, `4h`, `12h`, `1D`, `1W`, `1M`의 live bootstrap source는 live-only `1h`이다.
 - hourly 계열 bootstrap은 가능한 경우 현재 hour의 `1m` candle들을 먼저 rollup하고, 그 값이 없을 때만 provider `1h` candle을 화면 표시용 fallback으로 사용한다.
-- bootstrap으로 얻은 `1h`는 live display seed일 뿐이며, `market_candles_1h`에 저장하거나 REST history의 provider source로 사용하지 않는다.
+- bootstrap으로 얻은 `1h`는 live display seed일 뿐이며, `market_completed_candles`에 저장하거나 REST history의 provider source로 사용하지 않는다.
 - bootstrap은 같은 `(symbol, sourceInterval)` 요청을 coalescing하고 짧은 TTL로 반복 호출을 제한해야 하며, 이미 수락된 WebSocket candle을 덮어쓰면 안 된다. bootstrap이 먼저 들어온 경우에도 이후 WebSocket candle이 같은 key의 최신 상태를 이겨야 한다.
 - 현재 live candle state와 SSE fan-out은 애플리케이션 메모리 기반 단일 인스턴스 상태다. 다중 인스턴스 운영으로 확장할 때는 공유 스트림/캐시 또는 sticky routing 정책을 별도로 결정해야 한다.
 
@@ -132,7 +132,7 @@ REST history에서 `1h`, `1D`, `1M`은 `market_completed_candles`에 저장된 R
 중복 `open_time`은 `market_candles_1m(symbol_id, open_time)` unique key로 차단되어야 하지만, 구현은 그래도 60개 기대 timestamp를 순회하거나 동등한 set 비교로 검증해야 한다.
 기대 open time 중 하나라도 없으면 gap으로 보고 해당 hour의 `market_completed_candles(ONE_HOUR)` 저장 또는 재빌드를 거부하여 partial row가 REST-visible completed row로 남지 않게 한다.
 검증에 실패한 hour는 partial 후보 row를 REST-visible completed row로 남기지 않는다.
-현재 schema에는 candle status나 soft-delete column이 없으므로 이 저장 경로는 기존 `market_candles_1h` row를 자동 삭제하거나 별도 backup/audit table을 생성하지 않는다.
+현재 schema에는 candle status나 soft-delete column이 없으므로 이 저장 경로는 기존 `market_completed_candles` row를 자동 삭제하거나 별도 backup/audit table을 생성하지 않는다.
 검증 실패는 symbol id, hour open time, source count를 포함한 warning log로 남긴다.
 MVP에서는 metric counter, alert, backfill enqueue를 추가하지 않고 log only로 둔다.
 복구 가능성이 운영 요구가 되면 기존 row 삭제 방식이나 side table로 재사용하지 말고 `candle_status='stale'` 또는 `soft_deleted=true`, source-gap audit entry, purge grace period, admin restore/delete operation을 먼저 설계한 뒤 전환한다.

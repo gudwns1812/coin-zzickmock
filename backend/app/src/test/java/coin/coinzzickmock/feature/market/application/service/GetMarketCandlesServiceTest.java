@@ -15,6 +15,7 @@ import coin.coinzzickmock.feature.market.application.history.MarketPersistedCand
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
@@ -152,22 +153,16 @@ class GetMarketCandlesServiceTest {
     @Test
     void rollsUpDailyCandlesOnUtcCalendarBoundary() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        for (int hour = 0; hour < 24; hour++) {
-            Instant openTime = Instant.parse("2026-04-22T00:00:00Z").plusSeconds(hour * 3600L);
-            repository.saveHourlyCandle(new HourlyMarketCandle(
-                    1L,
-                    openTime,
-                    openTime.plusSeconds(3600),
-                    100 + hour,
-                    101 + hour,
-                    99 + hour,
-                    100.5 + hour,
-                    10,
-                    1000,
-                    openTime,
-                    openTime.plusSeconds(3600)
-            ));
-        }
+        repository.saveCompletedCandle(completed(
+                MarketCandleInterval.ONE_DAY,
+                "2026-04-22T00:00:00Z",
+                "2026-04-23T00:00:00Z",
+                100,
+                124,
+                99,
+                123.5,
+                240
+        ));
         repository.saveHourlyCandle(hourly(1L, "2026-04-23T00:00:00Z", 300, 301, 299, 300.5, 10));
 
         GetMarketCandlesService service = service(repository);
@@ -214,7 +209,26 @@ class GetMarketCandlesServiceTest {
     @Test
     void dailyRollupUsesLatestCompleteBucketBeforeHistoricalFallback() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        saveHourlyRange(repository, "2026-04-27T00:00:00Z", "2026-04-29T00:00:00Z");
+        repository.saveCompletedCandle(completed(
+                MarketCandleInterval.ONE_DAY,
+                "2026-04-27T00:00:00Z",
+                "2026-04-28T00:00:00Z",
+                100,
+                101,
+                99,
+                100.5,
+                240
+        ));
+        repository.saveCompletedCandle(completed(
+                MarketCandleInterval.ONE_DAY,
+                "2026-04-28T00:00:00Z",
+                "2026-04-29T00:00:00Z",
+                100,
+                101,
+                99,
+                100.5,
+                240
+        ));
         saveHourlyRange(repository, "2026-04-29T00:00:00Z", "2026-04-29T19:00:00Z");
         FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
         GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
@@ -246,7 +260,26 @@ class GetMarketCandlesServiceTest {
     @Test
     void monthlyRollupUsesLatestCompleteBucketBeforeHistoricalFallback() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        saveHourlyRange(repository, "2026-02-01T00:00:00Z", "2026-04-01T00:00:00Z");
+        repository.saveCompletedCandle(completed(
+                MarketCandleInterval.ONE_MONTH,
+                "2026-02-01T00:00:00Z",
+                "2026-03-01T00:00:00Z",
+                100,
+                101,
+                99,
+                100.5,
+                6_720
+        ));
+        repository.saveCompletedCandle(completed(
+                MarketCandleInterval.ONE_MONTH,
+                "2026-03-01T00:00:00Z",
+                "2026-04-01T00:00:00Z",
+                100,
+                101,
+                99,
+                100.5,
+                7_440
+        ));
         saveHourlyRange(repository, "2026-04-01T00:00:00Z", "2026-04-15T00:00:00Z");
         FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
         GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
@@ -494,6 +527,36 @@ class GetMarketCandlesServiceTest {
         );
     }
 
+    private static CompletedMarketCandle completed(
+            MarketCandleInterval interval,
+            String openTime,
+            String closeTime,
+            double open,
+            double high,
+            double low,
+            double close,
+            double volume
+    ) {
+        Instant openInstant = Instant.parse(openTime);
+        Instant closeInstant = Instant.parse(closeTime);
+        return new CompletedMarketCandle(
+                1L,
+                interval,
+                openInstant,
+                closeInstant,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                volume * close,
+                MarketCandleInterval.ONE_HOUR,
+                openInstant,
+                closeInstant,
+                (int) java.time.temporal.ChronoUnit.HOURS.between(openInstant, closeInstant)
+        );
+    }
+
     private static void saveHourlyRange(
             InMemoryMarketHistoryRepository repository,
             String fromInclusive,
@@ -511,6 +574,7 @@ class GetMarketCandlesServiceTest {
         private final Map<String, Long> symbolIds = Map.of("BTCUSDT", 1L);
         private final Map<String, MarketHistoryCandle> minuteCandles = new LinkedHashMap<>();
         private final Map<String, HourlyMarketCandle> hourlyCandles = new LinkedHashMap<>();
+        private final Map<String, CompletedMarketCandle> completedCandles = new LinkedHashMap<>();
 
         @Override
         public Map<String, Long> findSymbolIdsBySymbols(List<String> symbols) {
@@ -593,6 +657,45 @@ class GetMarketCandlesServiceTest {
         }
 
         @Override
+        public Optional<Instant> findLatestCompletedCandleOpenTime(long symbolId, MarketCandleInterval interval) {
+            return completedCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .filter(candle -> candle.interval() == interval)
+                    .map(CompletedMarketCandle::openTime)
+                    .max(Instant::compareTo);
+        }
+
+        @Override
+        public Optional<Instant> findLatestCompletedCandleOpenTimeBefore(
+                long symbolId,
+                MarketCandleInterval interval,
+                Instant beforeExclusive
+        ) {
+            return completedCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .filter(candle -> candle.interval() == interval)
+                    .map(CompletedMarketCandle::openTime)
+                    .filter(openTime -> openTime.isBefore(beforeExclusive))
+                    .max(Instant::compareTo);
+        }
+
+        @Override
+        public List<CompletedMarketCandle> findCompletedCandles(
+                long symbolId,
+                MarketCandleInterval interval,
+                Instant fromInclusive,
+                Instant toExclusive
+        ) {
+            return completedCandles.values().stream()
+                    .filter(candle -> candle.symbolId() == symbolId)
+                    .filter(candle -> candle.interval() == interval)
+                    .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                    .filter(candle -> candle.openTime().isBefore(toExclusive))
+                    .sorted(java.util.Comparator.comparing(CompletedMarketCandle::openTime))
+                    .toList();
+        }
+
+        @Override
         public void saveMinuteCandle(MarketHistoryCandle candle) {
             minuteCandles.put(key(candle.symbolId(), candle.openTime()), candle);
         }
@@ -600,10 +703,20 @@ class GetMarketCandlesServiceTest {
         @Override
         public void saveHourlyCandle(HourlyMarketCandle candle) {
             hourlyCandles.put(key(candle.symbolId(), candle.openTime()), candle);
+            saveCompletedCandle(CompletedMarketCandle.fromHourly(candle));
+        }
+
+        @Override
+        public void saveCompletedCandle(CompletedMarketCandle candle) {
+            completedCandles.put(key(candle.symbolId(), candle.interval(), candle.openTime()), candle);
         }
 
         private String key(long symbolId, Instant openTime) {
             return symbolId + ":" + openTime;
+        }
+
+        private String key(long symbolId, MarketCandleInterval interval, Instant openTime) {
+            return symbolId + ":" + interval + ":" + openTime;
         }
     }
 

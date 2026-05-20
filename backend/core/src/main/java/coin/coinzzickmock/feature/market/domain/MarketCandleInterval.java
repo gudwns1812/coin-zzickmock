@@ -25,6 +25,23 @@ public enum MarketCandleInterval {
         return value;
     }
 
+    public boolean isPersistedCompletedInterval() {
+        return this == ONE_HOUR || this == ONE_DAY || this == ONE_MONTH;
+    }
+
+    public boolean isPersistedCalendarInterval() {
+        return this == ONE_DAY || this == ONE_MONTH;
+    }
+
+    public String completedCandleDbToken() {
+        return switch (this) {
+            case ONE_HOUR -> "ONE_HOUR";
+            case ONE_DAY -> "ONE_DAY";
+            case ONE_MONTH -> "ONE_MONTH";
+            default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
+        };
+    }
+
     public static MarketCandleInterval from(String value) {
         for (MarketCandleInterval interval : values()) {
             if (interval.value.equals(value)) {

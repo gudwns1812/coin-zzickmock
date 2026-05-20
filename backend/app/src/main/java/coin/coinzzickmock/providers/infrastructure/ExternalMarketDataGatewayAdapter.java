@@ -13,12 +13,14 @@ import coin.coinzzickmock.providers.connector.ProviderMarketMinuteCandleSnapshot
 import coin.coinzzickmock.providers.connector.ProviderMarketSnapshot;
 import java.time.Instant;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 public class ExternalMarketDataGatewayAdapter implements MarketDataGateway {
+    private static final Logger log = LoggerFactory.getLogger(ExternalMarketDataGatewayAdapter.class);
+
     private final coin.coinzzickmock.providers.connector.MarketDataGateway delegate;
 
     public ExternalMarketDataGatewayAdapter(coin.coinzzickmock.providers.connector.MarketDataGateway delegate) {

@@ -1,7 +1,9 @@
 package coin.coinzzickmock.testsupport;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import java.time.Instant;
 import java.util.List;
@@ -55,6 +57,26 @@ public abstract class TestMarketHistoryRepository implements MarketHistoryReposi
     }
 
     @Override
+    public Optional<Instant> findLatestCompletedCandleOpenTime(long symbolId, MarketCandleInterval interval) {
+        if (interval == MarketCandleInterval.ONE_HOUR) {
+            return findLatestCompletedHourlyCandleOpenTime(symbolId);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<Instant> findLatestCompletedCandleOpenTimeBefore(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant beforeExclusive
+    ) {
+        if (interval == MarketCandleInterval.ONE_HOUR) {
+            return findLatestCompletedHourlyCandleOpenTimeBefore(symbolId, beforeExclusive);
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<MarketHistoryCandle> findMinuteCandle(long symbolId, Instant openTime) {
         return Optional.empty();
     }
@@ -84,13 +106,32 @@ public abstract class TestMarketHistoryRepository implements MarketHistoryReposi
     }
 
     @Override
+    public boolean existsCompletedCandle(long symbolId, MarketCandleInterval interval) {
+        return false;
+    }
+
+    @Override
+    public List<CompletedMarketCandle> findCompletedCandles(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        return List.of();
+    }
+
+    @Override
     public void saveMinuteCandle(MarketHistoryCandle candle) {
-        throw new UnsupportedOperationException("saveMinuteCandle is not implemented for this test fake");
+        throw new UnsupportedOperationException("saveMinuteCandle");
     }
 
     @Override
     public void saveHourlyCandle(HourlyMarketCandle candle) {
-        throw new UnsupportedOperationException("saveHourlyCandle is not implemented for this test fake");
+        throw new UnsupportedOperationException("saveHourlyCandle");
     }
 
+    @Override
+    public void saveCompletedCandle(CompletedMarketCandle candle) {
+        throw new UnsupportedOperationException("saveCompletedCandle");
+    }
 }

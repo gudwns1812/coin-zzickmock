@@ -1,6 +1,8 @@
 package coin.coinzzickmock.feature.market.application.realtime;
 
+import coin.coinzzickmock.feature.market.application.history.MarketCalendarCandleBackfill;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
+import coin.coinzzickmock.feature.market.application.implement.CompletedCalendarCandleBuilder;
 import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -216,6 +218,19 @@ class MarketHistoryRecorderTransactionTest {
         @Bean
         CompletedHourlyCandleBuilder completedHourlyCandleBuilder() {
             return new CompletedHourlyCandleBuilder();
+        }
+
+        @Bean
+        CompletedCalendarCandleBuilder completedCalendarCandleBuilder() {
+            return new CompletedCalendarCandleBuilder();
+        }
+
+        @Bean
+        MarketCalendarCandleBackfill marketCalendarCandleBackfill(
+                MarketHistoryRepository marketHistoryRepository,
+                CompletedCalendarCandleBuilder completedCalendarCandleBuilder
+        ) {
+            return new MarketCalendarCandleBackfill(marketHistoryRepository, completedCalendarCandleBuilder);
         }
 
         @Bean

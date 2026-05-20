@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
@@ -122,6 +123,51 @@ class MarketPersistedCandleReaderTest {
                 .isEqualTo(bucketStart);
     }
 
+    @Test
+    void calendarIntervalReadsPersistedCompletedCalendarRowsDirectly() {
+        TrackingMarketHistoryRepository repository = new TrackingMarketHistoryRepository();
+        Instant dayStart = Instant.parse("2026-04-17T00:00:00Z");
+        repository.completedCandles.add(completed(MarketCandleInterval.ONE_DAY, dayStart, dayStart.plusSeconds(86_400)));
+        repository.latestCompletedOpenTimes.put(MarketCandleInterval.ONE_DAY, dayStart);
+        MarketPersistedCandleReader reader = new MarketPersistedCandleReader(
+                repository,
+                new MarketCandleRollupProjector()
+        );
+
+        List<MarketCandleResult> results = reader.read(1L, MarketCandleInterval.ONE_DAY, 1, null);
+
+        assertThat(results).singleElement()
+                .extracting(MarketCandleResult::openTime)
+                .isEqualTo(dayStart);
+        assertThat(repository.completedCandleRangeCalls).isEqualTo(1);
+        assertThat(repository.completedHourlyRangeCalls).isZero();
+        assertThat(repository.rawHourlyRangeCalls).isZero();
+    }
+
+    @Test
+    void calendarIntervalBeforeCursorUsesPersistedCompletedCalendarCursor() {
+        TrackingMarketHistoryRepository repository = new TrackingMarketHistoryRepository();
+        Instant firstMonth = Instant.parse("2026-04-01T00:00:00Z");
+        Instant secondMonth = Instant.parse("2026-05-01T00:00:00Z");
+        repository.completedCandles.add(completed(MarketCandleInterval.ONE_MONTH, firstMonth, secondMonth));
+        repository.completedCandles.add(completed(MarketCandleInterval.ONE_MONTH, secondMonth, Instant.parse("2026-06-01T00:00:00Z")));
+        MarketPersistedCandleReader reader = new MarketPersistedCandleReader(
+                repository,
+                new MarketCandleRollupProjector()
+        );
+
+        List<MarketCandleResult> results = reader.read(
+                1L,
+                MarketCandleInterval.ONE_MONTH,
+                1,
+                secondMonth
+        );
+
+        assertThat(results).singleElement()
+                .extracting(MarketCandleResult::openTime)
+                .isEqualTo(firstMonth);
+    }
+
     private static HourlyMarketCandle hourly(Instant openTime) {
         return new HourlyMarketCandle(
                 1L,
@@ -138,11 +184,39 @@ class MarketPersistedCandleReaderTest {
         );
     }
 
+    private static CompletedMarketCandle completed(
+            MarketCandleInterval interval,
+            Instant openTime,
+            Instant closeTime
+    ) {
+        return new CompletedMarketCandle(
+                1L,
+                interval,
+                openTime,
+                closeTime,
+                100,
+                101,
+                99,
+                100.5,
+                10,
+                1005,
+                MarketCandleInterval.ONE_HOUR,
+                openTime,
+                closeTime,
+                (int) java.time.temporal.ChronoUnit.HOURS.between(openTime, closeTime)
+        );
+    }
+
     private static class TrackingMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final List<HourlyMarketCandle> completedHourlyCandles = new ArrayList<>();
+        private final List<CompletedMarketCandle> completedCandles = new ArrayList<>();
+        private final Map<MarketCandleInterval, Instant> latestCompletedOpenTimes = new java.util.EnumMap<>(
+                MarketCandleInterval.class
+        );
         private Instant latestCompletedHourlyOpenTime;
         private int completedHourlyRangeCalls;
         private int rawHourlyRangeCalls;
+        private int completedCandleRangeCalls;
 
         @Override
         public Map<String, Long> findSymbolIdsBySymbols(List<String> symbols) {
@@ -223,6 +297,39 @@ class MarketPersistedCandleReaderTest {
         ) {
             completedHourlyRangeCalls++;
             return completedHourlyCandles.stream()
+                    .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                    .filter(candle -> candle.openTime().isBefore(toExclusive))
+                    .toList();
+        }
+
+        @Override
+        public Optional<Instant> findLatestCompletedCandleOpenTime(long symbolId, MarketCandleInterval interval) {
+            return Optional.ofNullable(latestCompletedOpenTimes.get(interval));
+        }
+
+        @Override
+        public Optional<Instant> findLatestCompletedCandleOpenTimeBefore(
+                long symbolId,
+                MarketCandleInterval interval,
+                Instant beforeExclusive
+        ) {
+            return completedCandles.stream()
+                    .filter(candle -> candle.interval() == interval)
+                    .map(CompletedMarketCandle::openTime)
+                    .filter(openTime -> openTime.isBefore(beforeExclusive))
+                    .max(Instant::compareTo);
+        }
+
+        @Override
+        public List<CompletedMarketCandle> findCompletedCandles(
+                long symbolId,
+                MarketCandleInterval interval,
+                Instant fromInclusive,
+                Instant toExclusive
+        ) {
+            completedCandleRangeCalls++;
+            return completedCandles.stream()
+                    .filter(candle -> candle.interval() == interval)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
                     .toList();

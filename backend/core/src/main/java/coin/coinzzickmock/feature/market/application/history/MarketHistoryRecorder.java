@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MarketHistoryRecorder {
     private final MarketHistoryRepository marketHistoryRepository;
     private final CompletedHourlyCandleBuilder completedHourlyCandleBuilder;
+    private final MarketCalendarCandleBackfill marketCalendarCandleBackfill;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final MarketHistoryRepairRequestRecorder marketHistoryRepairRequestRecorder;
     private final Clock clock = Clock.systemUTC();
@@ -147,7 +148,9 @@ public class MarketHistoryRecorder {
         HourlyCandleRebuild rebuild = loadCompletedHourlyCandle(symbolId, hourlyOpenTime);
         if (rebuild.completedCandle().isPresent()) {
             try {
-                marketHistoryRepository.saveHourlyCandle(rebuild.completedCandle().orElseThrow());
+                HourlyMarketCandle completedHourlyCandle = rebuild.completedCandle().orElseThrow();
+                marketHistoryRepository.saveHourlyCandle(completedHourlyCandle);
+                marketCalendarCandleBackfill.rebuildClosedCalendarCandlesForHour(symbolId, hourlyOpenTime);
             } catch (RuntimeException exception) {
                 recordHourlyRepairRequest(symbolId, hourlyOpenTime, rebuild.closeTime(), exception);
             }
@@ -168,7 +171,9 @@ public class MarketHistoryRecorder {
         if (rebuild.completedCandle().isEmpty()) {
             return false;
         }
-        marketHistoryRepository.saveHourlyCandle(rebuild.completedCandle().orElseThrow());
+        HourlyMarketCandle completedHourlyCandle = rebuild.completedCandle().orElseThrow();
+        marketHistoryRepository.saveHourlyCandle(completedHourlyCandle);
+        marketCalendarCandleBackfill.rebuildClosedCalendarCandlesForHour(symbolId, hourlyOpenTime);
         return true;
     }
 

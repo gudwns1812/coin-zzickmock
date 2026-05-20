@@ -67,6 +67,42 @@ public class MarketCandleRollupProjector {
                 .toList();
     }
 
+    public List<MarketCandleResult> rollupFixedHourlyResults(
+            List<HourlyMarketCandle> rawCandles,
+            MarketCandleInterval interval,
+            Instant earliestBucketStart,
+            Instant latestBucketStart
+    ) {
+        if (rawCandles == null || rawCandles.isEmpty() || latestBucketStart.isBefore(earliestBucketStart)) {
+            return List.of();
+        }
+
+        Map<Instant, HourlyMarketCandle> byOpenTime = new LinkedHashMap<>();
+        for (HourlyMarketCandle candle : rawCandles) {
+            byOpenTime.putIfAbsent(candle.openTime(), candle);
+        }
+
+        List<MarketCandleResult> results = new ArrayList<>();
+        int expectedHours = expectedHourlyBucketSize(earliestBucketStart, interval);
+        Instant bucketStart = earliestBucketStart;
+        while (!bucketStart.isAfter(latestBucketStart)) {
+            List<HourlyMarketCandle> bucketCandles = new ArrayList<>();
+            for (int index = 0; index < expectedHours; index++) {
+                HourlyMarketCandle candle = byOpenTime.get(bucketStart.plus(index, ChronoUnit.HOURS));
+                if (candle == null) {
+                    bucketCandles.clear();
+                    break;
+                }
+                bucketCandles.add(candle);
+            }
+            if (bucketCandles.size() == expectedHours) {
+                results.add(rollupHourlyBucket(bucketStart, interval, bucketCandles));
+            }
+            bucketStart = bucketStart.plus(expectedHours, ChronoUnit.HOURS);
+        }
+        return results;
+    }
+
     private boolean isCompleteMinuteBucket(
             Instant bucketStart,
             int bucketMinutes,

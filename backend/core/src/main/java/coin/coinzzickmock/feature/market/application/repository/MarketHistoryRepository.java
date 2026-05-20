@@ -1,7 +1,9 @@
 package coin.coinzzickmock.feature.market.application.repository;
 
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -67,5 +69,24 @@ public interface MarketHistoryRepository {
     void saveMinuteCandle(MarketHistoryCandle candle);
 
     void saveHourlyCandle(HourlyMarketCandle candle);
+
+    Optional<Instant> findLatestCompletedCandleOpenTime(long symbolId, MarketCandleInterval interval);
+
+    Optional<Instant> findLatestCompletedCandleOpenTimeBefore(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant beforeExclusive
+    );
+
+    boolean existsCompletedCandle(long symbolId, MarketCandleInterval interval);
+
+    List<CompletedMarketCandle> findCompletedCandles(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive
+    );
+
+    void saveCompletedCandle(CompletedMarketCandle candle);
 
 }

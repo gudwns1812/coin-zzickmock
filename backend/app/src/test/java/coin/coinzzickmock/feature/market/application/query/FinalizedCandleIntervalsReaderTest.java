@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.application.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.time.Instant;
@@ -56,6 +57,33 @@ class FinalizedCandleIntervalsReaderTest {
         );
     }
 
+    @Test
+    void calendarIntervalsRequirePersistedCompletedCalendarRows() {
+        RecordingMarketHistoryRepository repository = new RecordingMarketHistoryRepository(Map.of("BTCUSDT", 1L));
+        Instant dayStart = Instant.parse("2026-04-30T00:00:00Z");
+        for (int hour = 0; hour < 24; hour++) {
+            repository.completedHourlyCandles.add(hourly(dayStart.plusSeconds(hour * 3600L)));
+        }
+        FinalizedCandleIntervalsReader reader = new FinalizedCandleIntervalsReader(repository);
+
+        List<MarketCandleInterval> intervalsWithoutPersistedDay = reader.readAffectedIntervals(
+                "BTCUSDT",
+                Instant.parse("2026-04-30T23:59:00Z"),
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(intervalsWithoutPersistedDay).doesNotContain(MarketCandleInterval.ONE_DAY);
+
+        repository.completedCandles.add(completed(MarketCandleInterval.ONE_DAY, dayStart, dayStart.plusSeconds(86_400)));
+        List<MarketCandleInterval> intervalsWithPersistedDay = reader.readAffectedIntervals(
+                "BTCUSDT",
+                Instant.parse("2026-04-30T23:59:00Z"),
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(intervalsWithPersistedDay).contains(MarketCandleInterval.ONE_DAY);
+    }
+
     private static HourlyMarketCandle hourly(Instant openTime) {
         return new HourlyMarketCandle(
                 1L,
@@ -72,9 +100,33 @@ class FinalizedCandleIntervalsReaderTest {
         );
     }
 
+    private static CompletedMarketCandle completed(
+            MarketCandleInterval interval,
+            Instant openTime,
+            Instant closeTime
+    ) {
+        return new CompletedMarketCandle(
+                1L,
+                interval,
+                openTime,
+                closeTime,
+                100,
+                101,
+                99,
+                100.5,
+                10,
+                1005,
+                MarketCandleInterval.ONE_HOUR,
+                openTime,
+                closeTime,
+                (int) java.time.temporal.ChronoUnit.HOURS.between(openTime, closeTime)
+        );
+    }
+
     private static class RecordingMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
         private final Map<String, Long> symbolIds;
         private final List<HourlyMarketCandle> completedHourlyCandles = new ArrayList<>();
+        private final List<CompletedMarketCandle> completedCandles = new ArrayList<>();
 
         private RecordingMarketHistoryRepository(Map<String, Long> symbolIds) {
             this.symbolIds = symbolIds;
@@ -92,6 +144,20 @@ class FinalizedCandleIntervalsReaderTest {
                 Instant toExclusive
         ) {
             return completedHourlyCandles.stream()
+                    .filter(candle -> !candle.openTime().isBefore(fromInclusive))
+                    .filter(candle -> candle.openTime().isBefore(toExclusive))
+                    .toList();
+        }
+
+        @Override
+        public List<CompletedMarketCandle> findCompletedCandles(
+                long symbolId,
+                MarketCandleInterval interval,
+                Instant fromInclusive,
+                Instant toExclusive
+        ) {
+            return completedCandles.stream()
+                    .filter(candle -> candle.interval() == interval)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))
                     .filter(candle -> candle.openTime().isBefore(toExclusive))
                     .toList();

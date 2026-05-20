@@ -29,8 +29,10 @@ public class FinalizedCandleIntervalsReader {
             MarketCandleInterval.ONE_HOUR,
             MarketCandleInterval.FOUR_HOURS,
             MarketCandleInterval.TWELVE_HOURS,
+            MarketCandleInterval.ONE_WEEK
+    );
+    private static final List<MarketCandleInterval> CALENDAR_COMPLETED_INTERVALS = List.of(
             MarketCandleInterval.ONE_DAY,
-            MarketCandleInterval.ONE_WEEK,
             MarketCandleInterval.ONE_MONTH
     );
 
@@ -47,6 +49,11 @@ public class FinalizedCandleIntervalsReader {
         List<HourlyMarketCandle> completedHourlyCandles = completedHourlyCandles(symbolId, bucketRanges);
         for (MarketCandleInterval interval : HOURLY_DERIVED_INTERVALS) {
             if (isCompletedBucketVisible(completedHourlyCandles, bucketRanges.get(interval))) {
+                affectedIntervals.add(interval);
+            }
+        }
+        for (MarketCandleInterval interval : CALENDAR_COMPLETED_INTERVALS) {
+            if (hasCompletedCalendarCandle(symbolId, openTime, interval)) {
                 affectedIntervals.add(interval);
             }
         }
@@ -95,6 +102,17 @@ public class FinalizedCandleIntervalsReader {
                 toExclusive
         );
         return completedHourlyCandles == null ? List.of() : completedHourlyCandles;
+    }
+
+    private boolean hasCompletedCalendarCandle(long symbolId, Instant eventOpenTime, MarketCandleInterval interval) {
+        Instant bucketOpenTime = bucketOpenTime(eventOpenTime, interval);
+        Instant bucketCloseTime = bucketCloseTime(bucketOpenTime, interval);
+        return !marketHistoryRepository.findCompletedCandles(
+                symbolId,
+                interval,
+                bucketOpenTime,
+                bucketCloseTime
+        ).isEmpty();
     }
 
     private boolean isCompletedBucketVisible(List<HourlyMarketCandle> completedHourlyCandles, BucketRange bucketRange) {

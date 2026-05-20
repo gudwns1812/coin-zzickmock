@@ -73,6 +73,10 @@ class MarketHistoryRecorderTest {
         return new MarketHistoryRecorder(
                 repository,
                 new CompletedHourlyCandleBuilder(),
+                new coin.coinzzickmock.feature.market.application.history.MarketCalendarCandleBackfill(
+                        repository,
+                        new coin.coinzzickmock.feature.market.application.implement.CompletedCalendarCandleBuilder()
+                ),
                 mock(AfterCommitEventPublisher.class),
                 mock(MarketHistoryRepairRequestRecorder.class)
         );

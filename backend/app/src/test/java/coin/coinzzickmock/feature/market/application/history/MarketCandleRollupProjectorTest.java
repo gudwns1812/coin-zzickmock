@@ -53,6 +53,28 @@ class MarketCandleRollupProjectorTest {
     }
 
     @Test
+    void fixedHourlyRollupWalksExpectedBucketsWithoutRegroupingEachCandle() {
+        Instant firstBucketStart = Instant.parse("2026-04-17T00:00:00Z");
+        Instant secondBucketStart = Instant.parse("2026-04-17T04:00:00Z");
+        List<HourlyMarketCandle> rawCandles = new java.util.ArrayList<>();
+        rawCandles.addAll(hourlyCandles(firstBucketStart, 4));
+        rawCandles.add(hourly(secondBucketStart, 0));
+        rawCandles.add(hourly(secondBucketStart.plusSeconds(3600), 1));
+        rawCandles.add(hourly(secondBucketStart.plusSeconds(3 * 3600), 3));
+
+        List<MarketCandleResult> results = projector.rollupFixedHourlyResults(
+                rawCandles,
+                MarketCandleInterval.FOUR_HOURS,
+                firstBucketStart,
+                secondBucketStart
+        );
+
+        assertThat(results).singleElement()
+                .extracting(MarketCandleResult::openTime)
+                .isEqualTo(firstBucketStart);
+    }
+
+    @Test
     void rejectsMinuteBucketWhenOpenTimesAreNotContiguousEvenIfCountMatches() {
         Instant bucketStart = Instant.parse("2026-04-17T04:00:00Z");
         List<MarketHistoryCandle> duplicatedGapCandles = List.of(

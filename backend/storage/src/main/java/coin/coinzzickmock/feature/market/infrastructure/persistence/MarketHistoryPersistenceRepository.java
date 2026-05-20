@@ -1,7 +1,9 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -21,9 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @RequiredArgsConstructor
 public class MarketHistoryPersistenceRepository implements MarketHistoryRepository {
-    private static final String ONE_HOUR_CANDLE_INTERVAL = "ONE_HOUR";
     private static final String ONE_MINUTE_SOURCE_INTERVAL = "ONE_MINUTE";
-    private static final int ONE_HOUR_SOURCE_CANDLE_COUNT = 60;
 
     private final MarketSymbolEntityRepository marketSymbolEntityRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -92,7 +92,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                         LIMIT 1
                         """,
                 symbolId,
-                ONE_HOUR_CANDLE_INTERVAL
+                MarketCandleInterval.ONE_HOUR.completedCandleDbToken()
         );
     }
 
@@ -108,7 +108,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                         LIMIT 1
                 """,
                 symbolId,
-                ONE_HOUR_CANDLE_INTERVAL,
+                MarketCandleInterval.ONE_HOUR.completedCandleDbToken(),
                 databaseDateTime(beforeExclusive)
         );
     }
@@ -174,7 +174,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                                 """,
                         this::hourlyCandle,
                         symbolId,
-                        ONE_HOUR_CANDLE_INTERVAL,
+                        MarketCandleInterval.ONE_HOUR.completedCandleDbToken(),
                         databaseDateTime(openTime)
                 )
                 .stream()
@@ -195,7 +195,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                         """,
                 this::hourlyCandle,
                 symbolId,
-                ONE_HOUR_CANDLE_INTERVAL,
+                MarketCandleInterval.ONE_HOUR.completedCandleDbToken(),
                 databaseDateTime(fromInclusive),
                 databaseDateTime(toExclusive)
         );
@@ -250,6 +250,90 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional
     public void saveHourlyCandle(HourlyMarketCandle candle) {
+        saveCompletedCandle(CompletedMarketCandle.fromHourly(candle));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findLatestCompletedCandleOpenTime(long symbolId, MarketCandleInterval interval) {
+        return findLatestOpenTime(
+                """
+                        SELECT open_time
+                        FROM market_completed_candles
+                        WHERE symbol_id = ? AND candle_interval = ?
+                        ORDER BY open_time DESC
+                        LIMIT 1
+                        """,
+                symbolId,
+                interval.completedCandleDbToken()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findLatestCompletedCandleOpenTimeBefore(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant beforeExclusive
+    ) {
+        return findLatestOpenTime(
+                """
+                        SELECT open_time
+                        FROM market_completed_candles
+                        WHERE symbol_id = ? AND candle_interval = ? AND open_time < ?
+                        ORDER BY open_time DESC
+                        LIMIT 1
+                        """,
+                symbolId,
+                interval.completedCandleDbToken(),
+                databaseDateTime(beforeExclusive)
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsCompletedCandle(long symbolId, MarketCandleInterval interval) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(*)
+                        FROM market_completed_candles
+                        WHERE symbol_id = ? AND candle_interval = ?
+                        """,
+                Integer.class,
+                symbolId,
+                interval.completedCandleDbToken()
+        );
+        return count != null && count > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CompletedMarketCandle> findCompletedCandles(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        return jdbcTemplate.query(
+                """
+                        SELECT symbol_id, candle_interval, open_time, close_time, open_price, high_price, low_price,
+                               close_price, volume, quote_volume, source_interval, source_open_time,
+                               source_close_time, source_candle_count
+                        FROM market_completed_candles
+                        WHERE symbol_id = ? AND candle_interval = ? AND open_time >= ? AND open_time < ?
+                        ORDER BY open_time ASC
+                        """,
+                this::completedCandle,
+                symbolId,
+                interval.completedCandleDbToken(),
+                databaseDateTime(fromInclusive),
+                databaseDateTime(toExclusive)
+        );
+    }
+
+    @Override
+    @Transactional
+    public void saveCompletedCandle(CompletedMarketCandle candle) {
         LocalDateTime now = databaseDateTime(Instant.now());
         jdbcTemplate.update(
                 """
@@ -274,7 +358,7 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                             updated_at = ?
                 """,
                 candle.symbolId(),
-                ONE_HOUR_CANDLE_INTERVAL,
+                candle.interval().completedCandleDbToken(),
                 databaseDateTime(candle.openTime()),
                 databaseDateTime(candle.closeTime()),
                 decimal(candle.openPrice()),
@@ -283,10 +367,12 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                 decimal(candle.closePrice()),
                 decimal(candle.volume()),
                 decimal(candle.quoteVolume()),
-                ONE_MINUTE_SOURCE_INTERVAL,
-                databaseDateTime(candle.sourceMinuteOpenTime()),
-                databaseDateTime(candle.sourceMinuteCloseTime()),
-                ONE_HOUR_SOURCE_CANDLE_COUNT,
+                candle.sourceInterval() == MarketCandleInterval.ONE_MINUTE
+                        ? ONE_MINUTE_SOURCE_INTERVAL
+                        : candle.sourceInterval().completedCandleDbToken(),
+                databaseDateTime(candle.sourceOpenTime()),
+                databaseDateTime(candle.sourceCloseTime()),
+                candle.sourceCandleCount(),
                 now,
                 now,
                 now
@@ -312,6 +398,42 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                 requiredDecimal(resultSet, "volume").doubleValue(),
                 quoteVolume == null ? 0.0 : quoteVolume.doubleValue()
         );
+    }
+
+    private CompletedMarketCandle completedCandle(ResultSet resultSet, int rowNumber) throws SQLException {
+        BigDecimal quoteVolume = resultSet.getBigDecimal("quote_volume");
+        return new CompletedMarketCandle(
+                resultSet.getLong("symbol_id"),
+                completedInterval(resultSet.getString("candle_interval")),
+                databaseInstant(resultSet, "open_time"),
+                databaseInstant(resultSet, "close_time"),
+                requiredDecimal(resultSet, "open_price").doubleValue(),
+                requiredDecimal(resultSet, "high_price").doubleValue(),
+                requiredDecimal(resultSet, "low_price").doubleValue(),
+                requiredDecimal(resultSet, "close_price").doubleValue(),
+                requiredDecimal(resultSet, "volume").doubleValue(),
+                quoteVolume == null ? 0.0 : quoteVolume.doubleValue(),
+                sourceInterval(resultSet.getString("source_interval")),
+                databaseInstant(resultSet, "source_open_time"),
+                databaseInstant(resultSet, "source_close_time"),
+                resultSet.getInt("source_candle_count")
+        );
+    }
+
+    private MarketCandleInterval completedInterval(String token) {
+        return switch (token) {
+            case "ONE_HOUR" -> MarketCandleInterval.ONE_HOUR;
+            case "ONE_DAY" -> MarketCandleInterval.ONE_DAY;
+            case "ONE_MONTH" -> MarketCandleInterval.ONE_MONTH;
+            default -> throw new IllegalArgumentException("Unsupported completed candle interval: " + token);
+        };
+    }
+
+    private MarketCandleInterval sourceInterval(String token) {
+        if ("ONE_MINUTE".equals(token)) {
+            return MarketCandleInterval.ONE_MINUTE;
+        }
+        return completedInterval(token);
     }
 
     private HourlyMarketCandle hourlyCandle(ResultSet resultSet, int rowNumber) throws SQLException {

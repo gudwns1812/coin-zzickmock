@@ -21,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @RequiredArgsConstructor
 public class MarketHistoryPersistenceRepository implements MarketHistoryRepository {
+    private static final String ONE_HOUR_CANDLE_INTERVAL = "ONE_HOUR";
+    private static final String ONE_MINUTE_SOURCE_INTERVAL = "ONE_MINUTE";
+    private static final int ONE_HOUR_SOURCE_CANDLE_COUNT = 60;
+
     private final MarketSymbolEntityRepository marketSymbolEntityRepository;
     private final JdbcTemplate jdbcTemplate;
 
@@ -80,8 +84,15 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId) {
         return findLatestOpenTime(
-                "SELECT open_time FROM market_candles_1h WHERE symbol_id = ? ORDER BY open_time DESC LIMIT 1",
-                symbolId
+                """
+                        SELECT open_time
+                        FROM market_completed_candles
+                        WHERE symbol_id = ? AND candle_interval = ?
+                        ORDER BY open_time DESC
+                        LIMIT 1
+                        """,
+                symbolId,
+                ONE_HOUR_CANDLE_INTERVAL
         );
     }
 
@@ -91,12 +102,13 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
         return findLatestOpenTime(
                 """
                         SELECT open_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ? AND open_time < ?
+                        FROM market_completed_candles
+                        WHERE symbol_id = ? AND candle_interval = ? AND open_time < ?
                         ORDER BY open_time DESC
                         LIMIT 1
                 """,
                 symbolId,
+                ONE_HOUR_CANDLE_INTERVAL,
                 databaseDateTime(beforeExclusive)
         );
     }
@@ -155,13 +167,14 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
         return jdbcTemplate.query(
                         """
                                 SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                                       close_price, volume, quote_volume, source_minute_open_time,
-                                       source_minute_close_time
-                                FROM market_candles_1h
-                                WHERE symbol_id = ? AND open_time = ?
+                                       close_price, volume, quote_volume, source_open_time AS source_minute_open_time,
+                                       source_close_time AS source_minute_close_time
+                                FROM market_completed_candles
+                                WHERE symbol_id = ? AND candle_interval = ? AND open_time = ?
                                 """,
                         this::hourlyCandle,
                         symbolId,
+                        ONE_HOUR_CANDLE_INTERVAL,
                         databaseDateTime(openTime)
                 )
                 .stream()
@@ -174,14 +187,15 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
         return jdbcTemplate.query(
                 """
                         SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                               close_price, volume, quote_volume, source_minute_open_time,
-                               source_minute_close_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ? AND open_time >= ? AND open_time < ?
+                               close_price, volume, quote_volume, source_open_time AS source_minute_open_time,
+                               source_close_time AS source_minute_close_time
+                        FROM market_completed_candles
+                        WHERE symbol_id = ? AND candle_interval = ? AND open_time >= ? AND open_time < ?
                         ORDER BY open_time ASC
                         """,
                 this::hourlyCandle,
                 symbolId,
+                ONE_HOUR_CANDLE_INTERVAL,
                 databaseDateTime(fromInclusive),
                 databaseDateTime(toExclusive)
         );
@@ -239,12 +253,12 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
         LocalDateTime now = databaseDateTime(Instant.now());
         jdbcTemplate.update(
                 """
-                        INSERT INTO market_candles_1h (
-                            symbol_id, open_time, close_time, open_price, high_price, low_price,
-                            close_price, volume, quote_volume, source_minute_open_time,
-                            source_minute_close_time, created_at, updated_at
+                        INSERT INTO market_completed_candles (
+                            symbol_id, candle_interval, open_time, close_time, open_price, high_price,
+                            low_price, close_price, volume, quote_volume, source_interval,
+                            source_open_time, source_close_time, source_candle_count, created_at, updated_at
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             close_time = VALUES(close_time),
                             open_price = VALUES(open_price),
@@ -253,11 +267,14 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                             close_price = VALUES(close_price),
                             volume = VALUES(volume),
                             quote_volume = VALUES(quote_volume),
-                            source_minute_open_time = VALUES(source_minute_open_time),
-                            source_minute_close_time = VALUES(source_minute_close_time),
+                            source_interval = VALUES(source_interval),
+                            source_open_time = VALUES(source_open_time),
+                            source_close_time = VALUES(source_close_time),
+                            source_candle_count = VALUES(source_candle_count),
                             updated_at = ?
                 """,
                 candle.symbolId(),
+                ONE_HOUR_CANDLE_INTERVAL,
                 databaseDateTime(candle.openTime()),
                 databaseDateTime(candle.closeTime()),
                 decimal(candle.openPrice()),
@@ -266,8 +283,10 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                 decimal(candle.closePrice()),
                 decimal(candle.volume()),
                 decimal(candle.quoteVolume()),
+                ONE_MINUTE_SOURCE_INTERVAL,
                 databaseDateTime(candle.sourceMinuteOpenTime()),
                 databaseDateTime(candle.sourceMinuteCloseTime()),
+                ONE_HOUR_SOURCE_CANDLE_COUNT,
                 now,
                 now,
                 now

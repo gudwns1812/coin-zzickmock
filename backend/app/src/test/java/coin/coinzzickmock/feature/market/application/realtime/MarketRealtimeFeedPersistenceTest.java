@@ -61,6 +61,7 @@ class MarketRealtimeFeedPersistenceTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM market_completed_candles");
         jdbcTemplate.update("DELETE FROM market_candles_1h");
         jdbcTemplate.update("DELETE FROM market_candles_1m");
         marketDataGateway.clearObservedTransactions();
@@ -82,7 +83,7 @@ class MarketRealtimeFeedPersistenceTest {
         ));
 
         assertThat(count("market_candles_1m")).isEqualTo(2);
-        assertThat(count("market_candles_1h")).isZero();
+        assertThat(count("market_completed_candles")).isZero();
         assertThat(volume("market_candles_1m")).isGreaterThan(0.0);
         assertThat(marketDataGateway.minuteCandleLoadTransactionStates())
                 .hasSize(2)

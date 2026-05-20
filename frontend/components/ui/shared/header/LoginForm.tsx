@@ -35,7 +35,7 @@ const LoginForm = () => {
 
     if (res.ok) {
       toast.success("로그인에 성공했습니다");
-      notifyFuturesAuthChanged();
+      notifyFuturesAuthChanged("login");
       setIsOpenForm(false);
       router.refresh();
     } else {

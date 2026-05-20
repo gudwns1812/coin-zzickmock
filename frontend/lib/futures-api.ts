@@ -9,6 +9,8 @@ import {
   isSupportedMarketSymbol,
 } from "@/lib/markets";
 import { FUTURES_API_BASE_URL } from "./futures-env";
+import { normalizeFuturesApiPath } from "./futures-api-request";
+import { fetchWithFrontendTiming } from "./frontend-performance-log";
 
 type ApiResponse<T> = {
   success: boolean;
@@ -522,10 +524,16 @@ async function readApiResult<T>(
   message: string | null;
 }> {
   try {
-    const response = await fetch(`${FUTURES_API_BASE_URL}${path}`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(2000),
-    });
+    const response = await fetchWithFrontendTiming(
+      `${FUTURES_API_BASE_URL}${path}`,
+      {
+        cache: "no-store",
+        signal: AbortSignal.timeout(2000),
+      },
+      {
+        pathPattern: normalizeFuturesApiPath(path),
+      }
+    );
 
     const payload = (await response.json().catch(() => null)) as
       | ApiResponse<T>

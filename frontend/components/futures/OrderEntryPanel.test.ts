@@ -21,7 +21,7 @@ test("limit price follows live price until the user edits it", () => {
 
 test("close mode submits through the position close endpoint", () => {
   assert.equal(source.includes('{ label: "Close", value: "CLOSE" }'), true);
-  assert.equal(source.includes('createFuturesBackendApiUrl("/positions/close")'), true);
+  assert.equal(source.includes('fetchFuturesBackendApi("/positions/close"'), true);
   assert.equal(source.includes('ticketMode !== "OPEN"'), true);
 });
 
@@ -101,7 +101,7 @@ test("existing selected-side position locks margin mode and drives leverage", ()
 });
 
 test("leverage modal applies existing-position leverage through the position endpoint", () => {
-  assert.equal(source.includes('createFuturesBackendApiUrl("/positions/leverage")'), true);
+  assert.equal(source.includes('fetchFuturesBackendApi("/positions/leverage"'), true);
   assert.equal(source.includes("onApply={handleApplyLeverage}"), true);
   assert.equal(source.includes("draftLeverage"), true);
 });
@@ -160,8 +160,8 @@ test("order ticket still builds payload through existing limit and market branch
     ),
     true
   );
-  assert.equal(source.includes('createFuturesBackendApiUrl("/orders")'), true);
-  assert.equal(source.includes('createFuturesBackendApiUrl("/positions/close")'), true);
+  assert.equal(source.includes('fetchFuturesBackendApi("/orders"'), true);
+  assert.equal(source.includes('fetchFuturesBackendApi("/positions/close"'), true);
 });
 
 test("order account summary uses displayed positions for live mark-to-market values", () => {

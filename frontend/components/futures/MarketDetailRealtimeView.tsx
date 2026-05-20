@@ -17,11 +17,11 @@ import {
   type MarketStreamHistoryFinalized,
 } from "@/components/futures/marketStreamEnvelope";
 import QuickLimitPriceSelector from "@/components/futures/QuickLimitPriceSelector";
-import AppLoadingScreen from "@/components/ui/shared/AppLoadingScreen";
 import PageReveal from "@/components/ui/shared/PageReveal";
 import Modal from "@/components/ui/Modal";
 import { useResilientEventSource } from "@/hooks/useResilientEventSource";
 import type { EventSourceReconnectReason } from "@/hooks/resilientEventSourcePolicy";
+import { useFuturesAuthUser } from "@/hooks/useFuturesAuthUser";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import {
   getFuturesAccountSummaryClient,
@@ -33,14 +33,10 @@ import {
 import { futuresQueryKeys } from "@/lib/futures-query-keys";
 import { invalidateTradingQueries } from "@/lib/futures-query-invalidation";
 import {
-  FUTURES_AUTH_CHANGED_EVENT,
-  getFuturesAuthUserClient,
-} from "@/lib/futures-auth-state";
-import {
-  createFuturesBackendApiUrl,
   createOrderExecutionSseUrl,
   createUnifiedMarketSseUrl,
 } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 import type {
   FuturesAccountSummary,
   FuturesOpenOrder,
@@ -114,7 +110,6 @@ type DisplayedExecutionEvent = FuturesTradingExecutionEvent & {
 
 export default function MarketDetailRealtimeView({
   initialMarket,
-  isAuthenticated,
   accountSummary,
   chartOpenOrders,
   chartPositions,
@@ -133,8 +128,6 @@ export default function MarketDetailRealtimeView({
     Date.now()
   );
   const [activeTab, setActiveTab] = useState<TradingTab>("POSITIONS");
-  const [hasBackendSession, setHasBackendSession] = useState(isAuthenticated);
-  const [isAuthResolved, setIsAuthResolved] = useState(isAuthenticated);
   const [executionEvents, setExecutionEvents] = useState<
     DisplayedExecutionEvent[]
   >([]);
@@ -162,67 +155,57 @@ export default function MarketDetailRealtimeView({
     return createUnifiedMarketSseUrl(initialMarket.symbol, selectedInterval);
   }, [initialMarket.symbol, selectedInterval]);
   const orderStreamUrl = useMemo(() => createOrderExecutionSseUrl(), []);
-  const effectiveIsAuthenticated = isAuthenticated || hasBackendSession;
+  const authQuery = useFuturesAuthUser();
+  const authUser = authQuery.data ?? null;
+  const effectiveIsAuthenticated = Boolean(authUser);
   const accountQuery = useQuery({
     queryKey: futuresQueryKeys.account,
     queryFn: getFuturesAccountSummaryClient,
-    enabled: effectiveIsAuthenticated,
+    enabled: Boolean(authUser),
   });
   const positionsQuery = useQuery({
     queryKey: futuresQueryKeys.positions,
     queryFn: () => getFuturesPositionsClient(),
-    enabled: effectiveIsAuthenticated,
+    enabled: Boolean(authUser),
   });
   const openOrdersQuery = useQuery({
     queryKey: futuresQueryKeys.openOrders,
     queryFn: () => getFuturesOpenOrdersClient(),
-    enabled: effectiveIsAuthenticated,
+    enabled: Boolean(authUser),
   });
   const orderHistoryQuery = useQuery({
     queryKey: futuresQueryKeys.orderHistory,
     queryFn: () => getFuturesOrderHistoryClient(),
-    enabled: effectiveIsAuthenticated,
+    enabled: Boolean(authUser),
   });
   const positionHistoryQuery = useQuery({
     queryKey: futuresQueryKeys.positionHistory,
     queryFn: () => getFuturesPositionHistoryClient(),
-    enabled: effectiveIsAuthenticated,
+    enabled: Boolean(authUser),
   });
-  const effectiveAccountSummary = accountQuery.data ?? accountSummary;
-  const effectivePositions = positionsQuery.data ?? positions;
-  const effectiveOpenOrders = openOrdersQuery.data ?? openOrders;
-  const effectiveOrderHistory = orderHistoryQuery.data ?? orderHistory;
-  const effectivePositionHistory = positionHistoryQuery.data ?? positionHistory;
-  const effectiveChartOpenOrders = effectiveOpenOrders.filter(
-    (order) => order.symbol === initialMarket.symbol
-  );
-  const effectiveChartPositions = effectivePositions.filter(
-    (position) => position.symbol === initialMarket.symbol
-  );
-
-  useEffect(() => {
-    let isActive = true;
-
-    async function resolveBackendSession() {
-      const authUser = await getFuturesAuthUserClient().catch(() => null);
-      if (isActive) {
-        setHasBackendSession(Boolean(authUser));
-        setIsAuthResolved(true);
-      }
-    }
-
-    const handleAuthChanged = () => {
-      void resolveBackendSession();
-    };
-
-    void resolveBackendSession();
-    window.addEventListener(FUTURES_AUTH_CHANGED_EVENT, handleAuthChanged);
-
-    return () => {
-      isActive = false;
-      window.removeEventListener(FUTURES_AUTH_CHANGED_EVENT, handleAuthChanged);
-    };
-  }, []);
+  const effectiveAccountSummary = authUser
+    ? accountQuery.data ?? accountSummary
+    : null;
+  const effectivePositions = authUser ? positionsQuery.data ?? positions : [];
+  const effectiveOpenOrders = authUser
+    ? openOrdersQuery.data ?? openOrders
+    : [];
+  const effectiveOrderHistory = authUser
+    ? orderHistoryQuery.data ?? orderHistory
+    : [];
+  const effectivePositionHistory = authUser
+    ? positionHistoryQuery.data ?? positionHistory
+    : [];
+  const effectiveChartOpenOrders = authUser
+    ? (openOrdersQuery.data ?? chartOpenOrders).filter(
+        (order) => order.symbol === initialMarket.symbol
+      )
+    : [];
+  const effectiveChartPositions = authUser
+    ? (positionsQuery.data ?? chartPositions).filter(
+        (position) => position.symbol === initialMarket.symbol
+      )
+    : [];
 
   const applyMarketSummary = useCallback(
     (symbol: string, data: MarketApiResponse, receivedAt: number) => {
@@ -454,15 +437,6 @@ export default function MarketDetailRealtimeView({
     [fundingCountdownNow, market.nextFundingAt, market.serverTime, marketUpdatedAt]
   );
   const displayedLatestPrice = latestCandleClosePrice ?? market.lastPrice;
-
-  if (!isAuthResolved) {
-    return (
-      <AppLoadingScreen
-        title="트레이딩 화면을 준비하고 있습니다"
-        description="실시간 시세와 계정 상태를 맞춘 뒤 주문 화면을 보여드립니다."
-      />
-    );
-  }
 
   return (
     <PageReveal
@@ -962,7 +936,7 @@ function PositionTpslEditor({
     setIsPending(true);
 
     try {
-      const response = await fetch(createFuturesBackendApiUrl("/positions/tpsl"), {
+      const response = await fetchFuturesBackendApi("/positions/tpsl", {
         method: "PATCH",
         credentials: "include",
         headers: {

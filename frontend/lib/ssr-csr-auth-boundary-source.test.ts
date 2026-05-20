@@ -78,13 +78,22 @@ test("personalized reads live in the client API boundary with credentialed reque
   assert.match(clientApiSource, /readClientApiData\(response, payload\)/);
 });
 
-test("auth change events clear personalized react-query caches", () => {
+test("auth change events apply explicit react-query cache policy", () => {
   const providerSource = readFrontendSource("components/router/QueryClientProvider.tsx");
   const queryKeysSource = readFrontendSource("lib/futures-query-keys.ts");
+  const authHookSource = readFrontendSource("hooks/useFuturesAuthUser.ts");
 
   assert.match(providerSource, /FUTURES_AUTH_CHANGED_EVENT/);
   assert.match(providerSource, /client\.removeQueries\(\{ queryKey \}\)/);
+  assert.match(providerSource, /client\.setQueryData\(futuresQueryKeys\.authMe, null\)/);
+  assert.match(providerSource, /client\.invalidateQueries\(\{ queryKey: futuresQueryKeys\.authMe \}\)/);
+  assert.match(providerSource, /action === "login"/);
+  assert.match(providerSource, /action === "logout" \|\| action === "withdraw"/);
+  assert.match(queryKeysSource, /authMe: \["futures", "auth", "me"\]/);
   assert.match(queryKeysSource, /personalizedQueryKeyPrefixes/);
   assert.match(queryKeysSource, /futuresQueryKeys\.admin/);
   assert.match(queryKeysSource, /futuresQueryKeys\.community/);
+  assert.match(authHookSource, /queryKey: futuresQueryKeys\.authMe/);
+  assert.match(authHookSource, /retry: false/);
+  assert.match(authHookSource, /30_000/);
 });

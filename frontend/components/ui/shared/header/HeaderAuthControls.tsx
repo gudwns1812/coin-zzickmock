@@ -1,48 +1,24 @@
 "use client";
 
-import {
-  FUTURES_AUTH_CHANGED_EVENT,
-  getFuturesAuthUserClient,
-  getFuturesLeaderboardClient,
-} from "@/lib/futures-auth-state";
-import type { AuthUser } from "@/lib/futures-api";
-import type { MarketRankingMemberRank } from "@/lib/markets";
-import { useCallback, useEffect, useState } from "react";
+import { useFuturesAuthUser } from "@/hooks/useFuturesAuthUser";
+import { getFuturesLeaderboardClient } from "@/lib/futures-client-api";
+import { futuresQueryKeys } from "@/lib/futures-query-keys";
+import { useQuery } from "@tanstack/react-query";
 import LoginForm from "./LoginForm";
 import LogoutForm from "./LogoutForm";
 import UserInfo from "./UserInfo";
 import WithdrawalForm from "./WithdrawalForm";
 
 export default function HeaderAuthControls() {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [myRank, setMyRank] = useState<MarketRankingMemberRank | null>(null);
-  const [isResolved, setIsResolved] = useState(false);
+  const authQuery = useFuturesAuthUser();
+  const authUser = authQuery.data ?? null;
+  const leaderboardQuery = useQuery({
+    queryKey: [...futuresQueryKeys.leaderboard, "me"],
+    queryFn: () => getFuturesLeaderboardClient({ limit: 4 }),
+    enabled: Boolean(authUser),
+  });
 
-  const refreshAuthState = useCallback(async () => {
-    const nextAuthUser = await getFuturesAuthUserClient();
-    setAuthUser(nextAuthUser);
-
-    if (!nextAuthUser) {
-      setMyRank(null);
-      setIsResolved(true);
-      return;
-    }
-
-    const leaderboard = await getFuturesLeaderboardClient();
-    setMyRank(leaderboard?.myRank ?? null);
-    setIsResolved(true);
-  }, []);
-
-  useEffect(() => {
-    void refreshAuthState();
-    window.addEventListener(FUTURES_AUTH_CHANGED_EVENT, refreshAuthState);
-
-    return () => {
-      window.removeEventListener(FUTURES_AUTH_CHANGED_EVENT, refreshAuthState);
-    };
-  }, [refreshAuthState]);
-
-  if (!isResolved) {
+  if (authQuery.isLoading) {
     return <div className="h-10 w-[86px]" aria-hidden="true" />;
   }
 
@@ -51,9 +27,9 @@ export default function HeaderAuthControls() {
   }
 
   return (
-    <UserInfo token={authUser} myRank={myRank}>
-      <LogoutForm onLoggedOut={() => setAuthUser(null)} />
-      <WithdrawalForm onWithdrawn={() => setAuthUser(null)} token={authUser} />
+    <UserInfo token={authUser} myRank={leaderboardQuery.data?.myRank ?? null}>
+      <LogoutForm onLoggedOut={() => undefined} />
+      <WithdrawalForm onWithdrawn={() => undefined} token={authUser} />
     </UserInfo>
   );
 }

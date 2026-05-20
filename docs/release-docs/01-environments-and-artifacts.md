@@ -156,6 +156,10 @@
 - 운영 자격증명은 코드, 샘플 파일, 문서 예시에 넣지 않는다.
 - 설정값이 바뀌면 적용 대상 환경과 주입 위치를 릴리즈 기록에 남긴다.
 - 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
+- Backend container resource 기본값은 Compose에서 `BACKEND_CPUS=2.0`, `BACKEND_MEMORY_LIMIT=1g`로 고정한다.
+  운영 `t4g.small`의 2 vCPU 형태를 따르되, Redis, Nginx, 관측성 컨테이너가 쓸 host memory를 남기기 위해 backend memory는 1GB로 제한한다.
+- `BACKEND_JAVA_TOOL_OPTIONS` 기본값은 `-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError`다.
+  JVM heap은 1GB container limit 기준으로 잡고 native memory 여유를 남긴다.
 - Backend-owned auth cookie는 runtime 환경별로 `APP_AUTH_COOKIE_SECURE`, `APP_AUTH_COOKIE_SAME_SITE`를 명시한다.
   로컬 Compose 기본값은 HTTP 개발을 위해 `false`/`Lax`이고, 운영 Compose 기본값은 Vercel frontend에서 backend origin API 인증에 사용할 수 있도록 `true`/`None`이다.
 - 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며

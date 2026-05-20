@@ -35,7 +35,7 @@ export default function LoginFormClient() {
       }
 
       toast.success("로그인되었습니다.");
-      notifyFuturesAuthChanged();
+      notifyFuturesAuthChanged("login");
       router.push("/markets");
       router.refresh();
     } finally {

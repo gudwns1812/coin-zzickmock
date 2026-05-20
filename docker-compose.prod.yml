@@ -18,10 +18,13 @@ services:
   backend:
     image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE}
     restart: unless-stopped
+    cpus: "${BACKEND_CPUS:-2.0}"
+    mem_limit: "${BACKEND_MEMORY_LIMIT:-1g}"
     labels:
       coin.zzickmock.application: coin-zzickmock
       coin.zzickmock.environment: ${APP_ENV:-prod}
     environment:
+      JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError}
       SPRING_PROFILES_ACTIVE: prod
       APP_ENV: prod
       MYSQL_HOST: ${MYSQL_HOST}

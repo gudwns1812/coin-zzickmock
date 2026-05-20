@@ -19,7 +19,7 @@ test("shop history API uses the unified purchase and redemption endpoint", () =>
   assert.match(apiTypesSource, /"INSTANT_PURCHASE"/);
   assert.match(apiTypesSource, /"REDEMPTION_REQUEST"/);
   assert.match(clientApiSource, /function getRewardShopHistoryClient/);
-  assert.match(clientApiSource, /createFuturesBackendApiUrl\(path\)/);
+  assert.match(clientApiSource, /fetchFuturesBackendApi\(path/);
   assert.match(clientApiSource, /\/shop\/history/);
 });
 

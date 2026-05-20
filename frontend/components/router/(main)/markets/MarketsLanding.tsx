@@ -128,7 +128,6 @@ type MarketsLandingProps = {
   isAuthenticated: boolean;
   markets: [MarketSnapshot, MarketSnapshot];
   summaryCards: DashboardSummaryCard[];
-  lastUpdatedLabel: string;
   rankingEntries?: MarketRankingEntry[];
   priceFlashBySymbol?: Partial<Record<MarketSymbol, PriceFlashRenderState>>;
 };
@@ -138,7 +137,6 @@ export default function MarketsLanding({
   isAuthenticated,
   markets,
   summaryCards,
-  lastUpdatedLabel,
   rankingEntries = [],
   priceFlashBySymbol,
 }: MarketsLandingProps) {
@@ -187,9 +185,6 @@ export default function MarketsLanding({
             포트폴리오 및 시장 현황
           </p>
         </div>
-        <p className="text-xs-custom text-main-dark-gray">
-          Last update: {lastUpdatedLabel}
-        </p>
       </section>
 
       <section className="grid grid-cols-3 gap-main-2">

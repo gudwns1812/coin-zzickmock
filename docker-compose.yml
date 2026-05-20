@@ -41,10 +41,13 @@ services:
     build:
       context: ./backend
       target: source-runtime
+    cpus: "${BACKEND_CPUS:-2.0}"
+    mem_limit: "${BACKEND_MEMORY_LIMIT:-1g}"
     labels:
       coin.zzickmock.application: coin-zzickmock
       coin.zzickmock.environment: ${APP_ENV:-local}
     environment:
+      JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError}
       APP_ENV: ${APP_ENV:-local}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306

@@ -1,4 +1,5 @@
 export const futuresQueryKeys = {
+  authMe: ["futures", "auth", "me"] as const,
   account: ["futures", "account"] as const,
   refillStatus: ["futures", "account", "refill"] as const,
   walletHistory: ["futures", "account", "wallet-history"] as const,

@@ -1,4 +1,5 @@
 import BackendAuthGate from "@/components/router/BackendAuthGate";
+import ProtectedPageSkeleton from "@/components/ui/shared/ProtectedPageSkeleton";
 import { getFuturesMarkets } from "@/lib/futures-api";
 import { formatRatioPercent, formatUsd } from "@/lib/markets";
 import Link from "next/link";
@@ -7,7 +8,7 @@ export default async function WatchlistPage() {
   const markets = await getFuturesMarkets();
 
   return (
-    <BackendAuthGate>
+    <BackendAuthGate fallback={<ProtectedPageSkeleton variant="watchlist" />}>
       <div className="px-main-2 pb-24 flex flex-col gap-8 pt-4">
       <section className="rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray">
         <p className="text-sm-custom text-main-dark-gray/60">Watchlist</p>

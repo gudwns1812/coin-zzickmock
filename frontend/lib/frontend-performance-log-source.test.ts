@@ -20,6 +20,13 @@ test("frontend API wrapper joins browser and backend request logs", () => {
   assert.match(apiRequestSource, /fetchWithFrontendTiming/);
 });
 
+test("frontend performance logs are disabled in production builds", () => {
+  const wrapperSource = readFrontendSource("lib/frontend-performance-log.ts");
+
+  assert.match(wrapperSource, /process\.env\.NODE_ENV === "production"/);
+  assert.match(wrapperSource, /console\.info/);
+});
+
 test("frontend API path patterns mask dynamic identifiers", () => {
   const apiRequestSource = readFrontendSource("lib/futures-api-request.ts");
 

@@ -74,6 +74,10 @@ function logFrontendPerformance(
   event: "frontend.page.completed" | "frontend.api.completed",
   fields: Record<string, FrontendLogValue>
 ) {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
   if (typeof console === "undefined") {
     return;
   }

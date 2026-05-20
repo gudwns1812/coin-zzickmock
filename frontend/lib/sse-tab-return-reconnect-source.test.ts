@@ -96,6 +96,7 @@ test("event sources include credentials for direct backend SSE", () => {
 
 test("client auth requests target the backend origin for backend-owned cookies", () => {
   const authSource = readFrontendSource("lib/futures-auth-client.ts");
+  const authStateSource = readFrontendSource("lib/futures-auth-state.ts");
   const urlSource = readFrontendSource("lib/futures-sse-url.ts");
   const pageLoginSource = readFrontendSource("app/login/LoginFormClient.tsx");
   const headerLoginSource = readFrontendSource("components/ui/shared/header/LoginForm.tsx");
@@ -103,7 +104,7 @@ test("client auth requests target the backend origin for backend-owned cookies",
 
   assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/login"'), true);
   assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/logout"'), true);
-  assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/me"'), true);
+  assert.equal(authStateSource.includes('fetchFuturesBackendApi("/auth/me"'), true);
   assert.equal(urlSource.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
   assert.equal(urlSource.includes("window.location.hostname"), true);
   assert.equal(urlSource.includes("isLoopbackHost(apiUrl.hostname)"), true);
@@ -111,7 +112,8 @@ test("client auth requests target the backend origin for backend-owned cookies",
   assert.equal(urlSource.includes("`${publicBaseUrl}${relativeUrl}`"), true);
   assert.equal(refreshSource.includes('fetchFuturesBackendApi("/auth/refresh"'), true);
   assert.equal(authSource.includes("credentials: \"include\""), true);
-  assert.equal(authSource.includes("cache: \"no-store\""), true);
+  assert.equal(authStateSource.includes("credentials: \"include\""), true);
+  assert.equal(authStateSource.includes("cache: \"no-store\""), true);
   assert.equal(pageLoginSource.includes("loginToFutures"), true);
   assert.equal(headerLoginSource.includes("loginToFutures"), true);
 });

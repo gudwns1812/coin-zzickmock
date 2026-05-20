@@ -33,7 +33,7 @@ const WithdrawalForm = ({
 
     if (res.ok) {
       onWithdrawn();
-      notifyFuturesAuthChanged();
+      notifyFuturesAuthChanged("withdraw");
       toast.success("탈퇴 되었습니다", { delay: 500 });
       setIsOpenModal(false);
       router.refresh();

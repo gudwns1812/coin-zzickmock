@@ -27,7 +27,7 @@ const LogoutForm = ({ onLoggedOut }: { onLoggedOut: () => void }) => {
       }
 
       onLoggedOut();
-      notifyFuturesAuthChanged();
+      notifyFuturesAuthChanged("logout");
       router.refresh();
       toast.success("로그아웃 되었습니다");
     } catch {

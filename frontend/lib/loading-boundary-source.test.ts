@@ -25,9 +25,10 @@ test("main routes render a loading boundary instead of flashing default content"
   assert.match(authGateSource, /<AppLoadingScreen/);
 
   for (const source of [marketsLandingSource, marketDetailSource]) {
-    assert.match(source, /isAuthResolved/);
-    assert.match(source, /setIsAuthResolved\(true\)/);
-    assert.match(source, /<AppLoadingScreen/);
+    assert.doesNotMatch(source, /isAuthResolved/);
+    assert.doesNotMatch(source, /setIsAuthResolved\(true\)/);
+    assert.doesNotMatch(source, /<AppLoadingScreen/);
+    assert.match(source, /useFuturesAuthUser/);
   }
 });
 
@@ -47,7 +48,7 @@ test("protected routes provide route-specific auth fallbacks without mounting ch
   ] as const;
 
   assert.match(authGateSource, /fallback\?: ReactNode/);
-  assert.match(authGateSource, /state === "checking"/);
+  assert.match(authGateSource, /authQuery\.isLoading/);
   assert.match(authGateSource, /fallback \?\?/);
   assert.match(skeletonSource, /role="status"/);
   assert.match(skeletonSource, /aria-busy="true"/);

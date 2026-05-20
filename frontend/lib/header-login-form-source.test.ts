@@ -31,7 +31,7 @@ test("header logout form uses explicit client submit handling", () => {
   assert.doesNotMatch(logoutFormSource, /useFormStatus/);
   assert.match(logoutFormSource, /event\.preventDefault\(\)/);
   assert.match(logoutFormSource, /logoutFromFutures\(\)/);
-  assert.match(logoutFormSource, /notifyFuturesAuthChanged\(\)/);
+  assert.match(logoutFormSource, /notifyFuturesAuthChanged\("logout"\)/);
   assert.match(logoutFormSource, /router\.refresh\(\)/);
   assert.match(logoutFormSource, /<form onSubmit=\{handleLogout\}>/);
 });

@@ -1,10 +1,13 @@
 import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 import { fetchWithFrontendTiming } from "@/lib/frontend-performance-log";
+import { ensureMswReady } from "@/lib/msw-ready";
 
-export function fetchFuturesBackendApi(
+export async function fetchFuturesBackendApi(
   path: string,
   init: RequestInit = {}
 ): Promise<Response> {
+  await ensureMswReady();
+
   return fetchWithFrontendTiming(createFuturesBackendApiUrl(path), init, {
     method: init.method ?? "GET",
     pathPattern: normalizeFuturesApiPath(path),

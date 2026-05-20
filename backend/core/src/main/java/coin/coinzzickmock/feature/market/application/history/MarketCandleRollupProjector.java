@@ -43,7 +43,7 @@ public class MarketCandleRollupProjector {
         }
 
         return grouped.entrySet().stream()
-                .filter(entry -> entry.getValue().size() == bucketMinutes)
+                .filter(entry -> isCompleteMinuteBucket(entry.getKey(), bucketMinutes, entry.getValue()))
                 .map(entry -> rollupMinuteBucket(entry.getKey(), bucketMinutes, entry.getValue()))
                 .toList();
     }
@@ -62,9 +62,46 @@ public class MarketCandleRollupProjector {
         }
 
         return grouped.entrySet().stream()
-                .filter(entry -> entry.getValue().size() == expectedHourlyBucketSize(entry.getKey(), interval))
+                .filter(entry -> isCompleteHourlyBucket(entry.getKey(), interval, entry.getValue()))
                 .map(entry -> rollupHourlyBucket(entry.getKey(), interval, entry.getValue()))
                 .toList();
+    }
+
+    private boolean isCompleteMinuteBucket(
+            Instant bucketStart,
+            int bucketMinutes,
+            List<MarketHistoryCandle> candles
+    ) {
+        if (candles.size() != bucketMinutes) {
+            return false;
+        }
+
+        return expectedOpenTimes(bucketStart, bucketMinutes, ChronoUnit.MINUTES).stream()
+                .allMatch(expectedOpenTime -> candles.stream()
+                        .anyMatch(candle -> expectedOpenTime.equals(candle.openTime())));
+    }
+
+    private boolean isCompleteHourlyBucket(
+            Instant bucketStart,
+            MarketCandleInterval interval,
+            List<HourlyMarketCandle> candles
+    ) {
+        int expectedHours = expectedHourlyBucketSize(bucketStart, interval);
+        if (candles.size() != expectedHours) {
+            return false;
+        }
+
+        return expectedOpenTimes(bucketStart, expectedHours, ChronoUnit.HOURS).stream()
+                .allMatch(expectedOpenTime -> candles.stream()
+                        .anyMatch(candle -> expectedOpenTime.equals(candle.openTime())));
+    }
+
+    private List<Instant> expectedOpenTimes(Instant bucketStart, int count, ChronoUnit unit) {
+        List<Instant> openTimes = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            openTimes.add(bucketStart.plus(index, unit));
+        }
+        return openTimes;
     }
 
     private MarketCandleResult rollupMinuteBucket(

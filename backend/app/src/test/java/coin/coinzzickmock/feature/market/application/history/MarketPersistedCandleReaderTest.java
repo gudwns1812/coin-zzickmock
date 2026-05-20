@@ -57,6 +57,71 @@ class MarketPersistedCandleReaderTest {
         assertThat(repository.rawHourlyRangeCalls).isZero();
     }
 
+    @Test
+    void fourHourRollupSkipsIncompleteCurrentFixedWindow() {
+        TrackingMarketHistoryRepository repository = new TrackingMarketHistoryRepository();
+        Instant completedBucketStart = Instant.parse("2026-04-17T00:00:00Z");
+        for (int hour = 0; hour < 4; hour++) {
+            repository.completedHourlyCandles.add(hourly(completedBucketStart.plusSeconds(hour * 3600L)));
+        }
+        repository.completedHourlyCandles.add(hourly(Instant.parse("2026-04-17T04:00:00Z")));
+        repository.completedHourlyCandles.add(hourly(Instant.parse("2026-04-17T05:00:00Z")));
+        repository.latestCompletedHourlyOpenTime = Instant.parse("2026-04-17T05:00:00Z");
+        MarketPersistedCandleReader reader = new MarketPersistedCandleReader(
+                repository,
+                new MarketCandleRollupProjector()
+        );
+
+        List<MarketCandleResult> results = reader.read(1L, MarketCandleInterval.FOUR_HOURS, 1, null);
+
+        assertThat(results).singleElement()
+                .extracting(MarketCandleResult::openTime)
+                .isEqualTo(completedBucketStart);
+    }
+
+    @Test
+    void twelveHourRollupSkipsIncompleteCurrentFixedWindow() {
+        TrackingMarketHistoryRepository repository = new TrackingMarketHistoryRepository();
+        Instant completedBucketStart = Instant.parse("2026-04-17T00:00:00Z");
+        for (int hour = 0; hour < 12; hour++) {
+            repository.completedHourlyCandles.add(hourly(completedBucketStart.plusSeconds(hour * 3600L)));
+        }
+        for (int hour = 12; hour < 23; hour++) {
+            repository.completedHourlyCandles.add(hourly(completedBucketStart.plusSeconds(hour * 3600L)));
+        }
+        repository.latestCompletedHourlyOpenTime = Instant.parse("2026-04-17T22:00:00Z");
+        MarketPersistedCandleReader reader = new MarketPersistedCandleReader(
+                repository,
+                new MarketCandleRollupProjector()
+        );
+
+        List<MarketCandleResult> results = reader.read(1L, MarketCandleInterval.TWELVE_HOURS, 1, null);
+
+        assertThat(results).singleElement()
+                .extracting(MarketCandleResult::openTime)
+                .isEqualTo(completedBucketStart);
+    }
+
+    @Test
+    void twelveHourRollupReturnsLatestClosedFixedWindow() {
+        TrackingMarketHistoryRepository repository = new TrackingMarketHistoryRepository();
+        Instant bucketStart = Instant.parse("2026-04-17T12:00:00Z");
+        for (int hour = 0; hour < 12; hour++) {
+            repository.completedHourlyCandles.add(hourly(bucketStart.plusSeconds(hour * 3600L)));
+        }
+        repository.latestCompletedHourlyOpenTime = Instant.parse("2026-04-17T23:00:00Z");
+        MarketPersistedCandleReader reader = new MarketPersistedCandleReader(
+                repository,
+                new MarketCandleRollupProjector()
+        );
+
+        List<MarketCandleResult> results = reader.read(1L, MarketCandleInterval.TWELVE_HOURS, 1, null);
+
+        assertThat(results).singleElement()
+                .extracting(MarketCandleResult::openTime)
+                .isEqualTo(bucketStart);
+    }
+
     private static HourlyMarketCandle hourly(Instant openTime) {
         return new HourlyMarketCandle(
                 1L,

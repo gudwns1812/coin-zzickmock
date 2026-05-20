@@ -249,6 +249,33 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional
+    public boolean createMinuteCandleIfAbsent(MarketHistoryCandle candle) {
+        LocalDateTime now = databaseDateTime(Instant.now());
+        int affectedRows = jdbcTemplate.update(
+                """
+                        INSERT IGNORE INTO market_candles_1m (
+                            symbol_id, open_time, close_time, open_price, high_price, low_price,
+                            close_price, volume, quote_volume, created_at, updated_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                candle.symbolId(),
+                databaseDateTime(candle.openTime()),
+                databaseDateTime(candle.closeTime()),
+                decimal(candle.openPrice()),
+                decimal(candle.highPrice()),
+                decimal(candle.lowPrice()),
+                decimal(candle.closePrice()),
+                decimal(candle.volume()),
+                decimal(candle.quoteVolume()),
+                now,
+                now
+        );
+        return affectedRows > 0;
+    }
+
+    @Override
+    @Transactional
     public void saveHourlyCandle(HourlyMarketCandle candle) {
         LocalDateTime now = databaseDateTime(Instant.now());
         jdbcTemplate.update(

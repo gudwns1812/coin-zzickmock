@@ -1,4 +1,4 @@
-import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 
 type LoginCredentials = {
   account: string;
@@ -17,14 +17,11 @@ function jsonPostInit(body: unknown): RequestInit {
 }
 
 export async function loginToFutures(credentials: LoginCredentials) {
-  return fetch(
-    createFuturesBackendApiUrl("/auth/login"),
-    jsonPostInit(credentials)
-  );
+  return fetchFuturesBackendApi("/auth/login", jsonPostInit(credentials));
 }
 
 export async function logoutFromFutures() {
-  const response = await fetch(createFuturesBackendApiUrl("/auth/logout"), {
+  const response = await fetchFuturesBackendApi("/auth/logout", {
     method: "POST",
     credentials: "include",
   });
@@ -33,7 +30,7 @@ export async function logoutFromFutures() {
     return false;
   }
 
-  const authStateResponse = await fetch(createFuturesBackendApiUrl("/auth/me"), {
+  const authStateResponse = await fetchFuturesBackendApi("/auth/me", {
     cache: "no-store",
     credentials: "include",
   });

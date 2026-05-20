@@ -1,7 +1,7 @@
 "use client";
 
-import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
 import type { AuthUser, FuturesLeaderboard } from "@/lib/futures-api";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 
 type ClientApiResponse<T> = {
   success: boolean;
@@ -16,7 +16,7 @@ export function notifyFuturesAuthChanged() {
 }
 
 export async function getFuturesAuthUserClient(): Promise<AuthUser | null> {
-  const response = await fetch(createFuturesBackendApiUrl("/auth/me"), {
+  const response = await fetchFuturesBackendApi("/auth/me", {
     cache: "no-store",
     credentials: "include",
   });
@@ -33,7 +33,7 @@ export async function getFuturesAuthUserClient(): Promise<AuthUser | null> {
 }
 
 export async function getFuturesLeaderboardClient(): Promise<FuturesLeaderboard | null> {
-  const response = await fetch(createFuturesBackendApiUrl("/leaderboard"), {
+  const response = await fetchFuturesBackendApi("/leaderboard", {
     cache: "no-store",
     credentials: "include",
   });

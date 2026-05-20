@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { useFormStatus } from "react-dom";
 import Modal from "../../Modal";
 import { useRouter } from "next/navigation";
-import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 import { notifyFuturesAuthChanged } from "@/lib/futures-auth-state";
 import type { HeaderUser } from "./UserInfo";
 
@@ -20,7 +20,7 @@ const WithdrawalForm = ({
   const router = useRouter();
 
   const handleWithdrawal = async () => {
-    const res = await fetch(createFuturesBackendApiUrl("/auth/withdraw"), {
+    const res = await fetchFuturesBackendApi("/auth/withdraw", {
       method: "DELETE",
       credentials: "include",
       headers: {

@@ -34,7 +34,7 @@ import type {
   ShopItem,
 } from "@/lib/futures-api";
 import { isSupportedMarketSymbol, type MarketSymbol } from "@/lib/markets";
-import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 
 export type CommunityPostInput = {
   category: CommunityCategory;
@@ -517,7 +517,7 @@ async function readFuturesApiResult<T, R extends object>(
   path: string,
   toResult: (data: T | null) => R
 ): Promise<R & { unavailable: boolean; message: string | null }> {
-  const response = await fetch(createFuturesBackendApiUrl(path), {
+  const response = await fetchFuturesBackendApi(path, {
     method: "GET",
     credentials: "include",
   });
@@ -538,7 +538,7 @@ async function readFuturesApiResult<T, R extends object>(
 }
 
 async function readCommunityApi<T>(path: string): Promise<CommunityApiResult<T>> {
-  const response = await fetch(createFuturesBackendApiUrl(path), {
+  const response = await fetchFuturesBackendApi(path, {
     method: "GET",
     credentials: "include",
   });
@@ -566,7 +566,7 @@ async function readCommunityApi<T>(path: string): Promise<CommunityApiResult<T>>
 }
 
 async function readFuturesApi<T>(path: string): Promise<T> {
-  const response = await fetch(createFuturesBackendApiUrl(path), {
+  const response = await fetchFuturesBackendApi(path, {
     method: "GET",
     credentials: "include",
   });
@@ -591,7 +591,7 @@ async function requestFuturesApi<T>(
   method: "POST" | "PUT" | "DELETE",
   body?: unknown
 ): Promise<T> {
-  const response = await fetch(createFuturesBackendApiUrl(path), {
+  const response = await fetchFuturesBackendApi(path, {
     method,
     credentials: "include",
     headers:

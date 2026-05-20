@@ -5,7 +5,7 @@ import {
   invalidateRewardAndShopQueries,
   invalidateTradingQueries,
 } from "@/lib/futures-query-invalidation";
-import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "react-toastify";
@@ -34,7 +34,7 @@ export default function CancelOrderButton({ orderId }: Props) {
     setIsPending(true);
 
     try {
-      const response = await fetch(createFuturesBackendApiUrl(`/orders/${orderId}/cancel`), {
+      const response = await fetchFuturesBackendApi(`/orders/${orderId}/cancel`, {
         method: "POST",
         credentials: "include",
       });

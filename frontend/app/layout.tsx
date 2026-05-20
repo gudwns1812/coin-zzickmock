@@ -4,6 +4,7 @@ import { ToastContainer } from "react-toastify";
 import "./globals.css";
 import "driver.js/dist/driver.css";
 import QueryClientProvider from "../components/router/QueryClientProvider";
+import FrontendPerformanceLogger from "../components/router/FrontendPerformanceLogger";
 import { MSWProvider } from "./MSWProvider";
 
 const pretendard = localFont({
@@ -43,6 +44,7 @@ export default async function RootLayout({
               newestOnTop={false}
               closeOnClick
             />
+            <FrontendPerformanceLogger />
             {children}
           </MSWProvider>
         </QueryClientProvider>

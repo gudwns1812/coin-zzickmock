@@ -9,10 +9,13 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @SpringBootTest(classes = HttpRequestTelemetryFilterTest.TestApplication.class)
 @AutoConfigureMockMvc
+@ExtendWith(OutputCaptureExtension.class)
 class HttpRequestTelemetryFilterTest {
     @Autowired
     private MockMvc mockMvc;
@@ -88,6 +92,39 @@ class HttpRequestTelemetryFilterTest {
                 "size_bucket",
                 "le_1kb"
         ).count()).isEqualTo(1);
+    }
+
+    @Test
+    void logsRequestCompletionWithSafeCorrelationContext(CapturedOutput output) throws Exception {
+        mockMvc.perform(get("/api/futures/test/123?memberId=456")
+                        .header("X-Request-Id", "frontend-123")
+                        .header("X-Correlation-Id", "page-abc"))
+                .andExpect(status().isOk());
+
+        assertThat(output)
+                .contains("event=http.request.completed")
+                .contains("service=backend")
+                .contains("method=GET")
+                .contains("pathPattern=/api/futures/test/{id}")
+                .contains("endpointGroup=unknown")
+                .contains("status=200")
+                .contains("statusFamily=2xx")
+                .contains("result=success")
+                .contains("requestId=frontend-123")
+                .contains("correlationId=page-abc")
+                .doesNotContain("memberId=456")
+                .doesNotContain("/api/futures/test/123?memberId=456");
+    }
+
+    @Test
+    void returnsRequestHeadersForFrontendLogJoin() throws Exception {
+        mockMvc.perform(get("/api/futures/test/123")
+                        .header("X-Request-Id", "frontend-123"))
+                .andExpect(status().isOk())
+                .andExpect(result -> assertThat(result.getResponse().getHeader("X-Request-Id"))
+                        .isEqualTo("frontend-123"))
+                .andExpect(result -> assertThat(result.getResponse().getHeader("X-Correlation-Id"))
+                        .isEqualTo("frontend-123"));
     }
 
     @SpringBootConfiguration

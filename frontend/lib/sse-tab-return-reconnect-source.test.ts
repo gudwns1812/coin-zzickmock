@@ -101,15 +101,15 @@ test("client auth requests target the backend origin for backend-owned cookies",
   const headerLoginSource = readFrontendSource("components/ui/shared/header/LoginForm.tsx");
   const refreshSource = readFrontendSource("hooks/useSessionActivityRefresh.ts");
 
-  assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/login")'), true);
-  assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/logout")'), true);
-  assert.equal(authSource.includes('createFuturesBackendApiUrl("/auth/me")'), true);
+  assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/login"'), true);
+  assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/logout"'), true);
+  assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/me"'), true);
   assert.equal(urlSource.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
   assert.equal(urlSource.includes("window.location.hostname"), true);
   assert.equal(urlSource.includes("isLoopbackHost(apiUrl.hostname)"), true);
   assert.equal(urlSource.includes("apiUrl.hostname = pageHostname"), true);
   assert.equal(urlSource.includes("`${publicBaseUrl}${relativeUrl}`"), true);
-  assert.equal(refreshSource.includes('createFuturesBackendApiUrl("/auth/refresh")'), true);
+  assert.equal(refreshSource.includes('fetchFuturesBackendApi("/auth/refresh"'), true);
   assert.equal(authSource.includes("credentials: \"include\""), true);
   assert.equal(authSource.includes("cache: \"no-store\""), true);
   assert.equal(pageLoginSource.includes("loginToFutures"), true);

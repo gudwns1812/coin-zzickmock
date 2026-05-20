@@ -6,7 +6,7 @@ import {
   SESSION_ACTIVITY_REFRESH_EXTENSION_SECONDS,
   shouldRefreshSessionOnActivity,
 } from "@/lib/session-activity-refresh";
-import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 
 const ACTIVITY_EVENTS = [
   "pointerdown",
@@ -43,7 +43,7 @@ function useSessionActivityRefresh(expiresAt?: number) {
     lastAttemptedAtMsRef.current = nowMs;
 
     try {
-      const response = await fetch(createFuturesBackendApiUrl("/auth/refresh"), {
+      const response = await fetchFuturesBackendApi("/auth/refresh", {
         cache: "no-store",
         credentials: "include",
       });

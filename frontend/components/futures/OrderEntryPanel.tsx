@@ -9,7 +9,7 @@ import type {
 } from "@/lib/futures-api";
 import { getSignedFinancialTextClassName } from "@/lib/financial-tone";
 import { invalidateRewardAndShopQueries, invalidateTradingQueries } from "@/lib/futures-query-invalidation";
-import { createFuturesBackendApiUrl } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 import {
   formatPercent,
   formatSignedUsd,
@@ -273,7 +273,7 @@ export default function OrderEntryPanel({
       setIsPreviewPending(true);
 
       try {
-        const response = await fetch(createFuturesBackendApiUrl("/orders/preview"), {
+        const response = await fetchFuturesBackendApi("/orders/preview", {
           body: JSON.stringify(orderPayload),
           credentials: "include",
           headers: {
@@ -369,7 +369,7 @@ export default function OrderEntryPanel({
   }
 
   async function submitOpenOrder(payload: OrderPreviewRequest) {
-    const response = await fetch(createFuturesBackendApiUrl("/orders"), {
+    const response = await fetchFuturesBackendApi("/orders", {
       method: "POST",
       credentials: "include",
       headers: {
@@ -396,7 +396,7 @@ export default function OrderEntryPanel({
   }
 
   async function submitCloseOrder(payload: OrderPreviewRequest) {
-    const response = await fetch(createFuturesBackendApiUrl("/positions/close"), {
+    const response = await fetchFuturesBackendApi("/positions/close", {
       method: "POST",
       credentials: "include",
       headers: {
@@ -446,7 +446,7 @@ export default function OrderEntryPanel({
     setInlineErrorMessage(null);
 
     try {
-      const response = await fetch(createFuturesBackendApiUrl("/positions/leverage"), {
+      const response = await fetchFuturesBackendApi("/positions/leverage", {
         method: "PATCH",
         credentials: "include",
         headers: {

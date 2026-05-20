@@ -37,10 +37,10 @@ import {
   getFuturesAuthUserClient,
 } from "@/lib/futures-auth-state";
 import {
-  createFuturesBackendApiUrl,
   createOrderExecutionSseUrl,
   createUnifiedMarketSseUrl,
 } from "@/lib/futures-sse-url";
+import { fetchFuturesBackendApi } from "@/lib/futures-api-request";
 import type {
   FuturesAccountSummary,
   FuturesOpenOrder,
@@ -962,7 +962,7 @@ function PositionTpslEditor({
     setIsPending(true);
 
     try {
-      const response = await fetch(createFuturesBackendApiUrl("/positions/tpsl"), {
+      const response = await fetchFuturesBackendApi("/positions/tpsl", {
         method: "PATCH",
         credentials: "include",
         headers: {

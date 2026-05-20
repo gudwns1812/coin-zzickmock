@@ -28,11 +28,11 @@ test("frontend authenticated-user lookup uses the non-mutating auth me endpoint"
   const authStateSource = readFrontendSource("lib/futures-auth-state.ts");
   const futuresApiSource = readFrontendSource("lib/futures-api.ts");
 
-  assert.match(authStateSource, /createFuturesBackendApiUrl\("\/auth\/me"\)/);
+  assert.match(authStateSource, /fetchFuturesBackendApi\("\/auth\/me"/);
   assert.match(authStateSource, /credentials: "include"/);
   assert.doesNotMatch(
     authStateSource,
-    /createFuturesBackendApiUrl\("\/auth\/refresh"\)/
+    /fetchFuturesBackendApi\("\/auth\/refresh"/
   );
   assert.doesNotMatch(futuresApiSource, /getAccessTokenCookieHeader/);
 });

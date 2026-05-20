@@ -12,7 +12,7 @@ public class HttpRequestTelemetry {
     private static final String REQUEST_DURATION = "http.request.duration";
     private static final String SLOW_REQUEST_TOTAL = "http.request.slow.total";
     private static final String PAYLOAD_SIZE_BUCKET_TOTAL = "http.payload.size.bucket.total";
-    private static final Duration SLOW_REQUEST_THRESHOLD = Duration.ofSeconds(1);
+    static final Duration SLOW_REQUEST_THRESHOLD = Duration.ofSeconds(1);
 
     private final MeterRegistry meterRegistry;
 
@@ -107,7 +107,7 @@ public class HttpRequestTelemetry {
         ));
     }
 
-    private String endpointGroup(String routePattern) {
+    String endpointGroup(String routePattern) {
         if (routePattern.startsWith("/api/futures/account")) {
             return "account";
         }
@@ -134,7 +134,7 @@ public class HttpRequestTelemetry {
         return "unknown";
     }
 
-    private String sizeBucket(long bytes) {
+    String sizeBucket(long bytes) {
         if (bytes < 0) {
             return "unknown";
         }

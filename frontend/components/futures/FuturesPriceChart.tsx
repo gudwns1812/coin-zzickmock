@@ -1,6 +1,7 @@
 "use client";
 
 import type { FuturesOpenOrder, FuturesPosition } from "@/lib/futures-api";
+import { fetchWithFrontendTiming } from "@/lib/frontend-performance-log";
 import { formatPercent, formatUsd, type MarketSymbol } from "@/lib/markets";
 import Modal from "@/components/ui/Modal";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -235,15 +236,19 @@ export default function FuturesPriceChart({
     enabled: isIntervalPreferenceHydrated,
     initialPageParam: undefined,
     queryFn: async ({ pageParam }) => {
-      const response = await fetch(
-        buildCandleRequestUrl(
-          symbol,
-          selectedInterval,
-          selectedConfig.limit,
-          typeof pageParam === "string" ? pageParam : undefined
-        ),
+      const requestUrl = buildCandleRequestUrl(
+        symbol,
+        selectedInterval,
+        selectedConfig.limit,
+        typeof pageParam === "string" ? pageParam : undefined
+      );
+      const response = await fetchWithFrontendTiming(
+        requestUrl,
         {
           cache: "no-store",
+        },
+        {
+          pathPattern: "/proxy-futures/markets/{symbol}/candles",
         }
       );
 

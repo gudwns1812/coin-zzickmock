@@ -13,9 +13,11 @@ type AuthGateState = "checking" | "allowed" | "denied";
 
 export default function BackendAuthGate({
   children,
+  fallback,
   requireAdmin = false,
 }: {
   children: ReactNode;
+  fallback?: ReactNode;
   requireAdmin?: boolean;
 }) {
   const router = useRouter();
@@ -59,10 +61,12 @@ export default function BackendAuthGate({
 
   if (state === "checking") {
     return (
-      <AppLoadingScreen
-        title="로그인 상태를 확인하고 있습니다"
-        description="보호된 화면을 열기 전에 계정 권한을 확인하고 있습니다."
-      />
+      fallback ?? (
+        <AppLoadingScreen
+          title="로그인 상태를 확인하고 있습니다"
+          description="보호된 화면을 열기 전에 계정 권한을 확인하고 있습니다."
+        />
+      )
     );
   }
 

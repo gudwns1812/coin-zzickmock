@@ -53,6 +53,7 @@ class MarketHistoryPersistenceRepositoryTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM market_completed_candles");
         jdbcTemplate.update("DELETE FROM market_candles_1h");
         jdbcTemplate.update("DELETE FROM market_candles_1m");
     }
@@ -111,7 +112,11 @@ class MarketHistoryPersistenceRepositoryTest {
         ).get(0);
 
         assertEquals(1, count("market_candles_1m"), "Expected 1 minute candle but found " + count("market_candles_1m"));
-        assertEquals(1, count("market_candles_1h"), "Expected 1 hourly candle but found " + count("market_candles_1h"));
+        assertEquals(
+                1,
+                count("market_completed_candles"),
+                "Expected 1 completed hourly candle but found " + count("market_completed_candles")
+        );
         assertEquals(102500, storedMinute.highPrice(), 0.0001);
         assertEquals(102500, storedMinute.closePrice(), 0.0001);
     }
@@ -174,6 +179,52 @@ class MarketHistoryPersistenceRepositoryTest {
     }
 
     @Test
+    void completedHourlyReadsAreFilteredByDbIntervalToken() {
+        Long symbolId = jdbcTemplate.queryForObject(
+                "SELECT id FROM market_symbols WHERE symbol = 'BTCUSDT'", Long.class);
+
+        Instant sharedOpenTime = Instant.parse("2026-04-17T06:00:00Z");
+        marketHistoryRepository.saveHourlyCandle(hourly(symbolId, sharedOpenTime));
+        insertCompletedCalendarCandle(symbolId, "ONE_DAY", sharedOpenTime, 24);
+        insertCompletedCalendarCandle(symbolId, "ONE_MONTH", sharedOpenTime, 720);
+
+        List<HourlyMarketCandle> completedCandles = marketHistoryRepository.findCompletedHourlyCandles(
+                symbolId,
+                sharedOpenTime,
+                sharedOpenTime.plusSeconds(3600)
+        );
+
+        assertEquals(3, count("market_completed_candles"));
+        assertEquals(List.of(sharedOpenTime), completedCandles.stream().map(HourlyMarketCandle::openTime).toList());
+        assertEquals(
+                "ONE_MINUTE",
+                jdbcTemplate.queryForObject(
+                        """
+                                SELECT source_interval
+                                FROM market_completed_candles
+                                WHERE symbol_id = ? AND candle_interval = 'ONE_HOUR' AND open_time = ?
+                                """,
+                        String.class,
+                        symbolId,
+                        LocalDateTime.parse("2026-04-17T06:00:00")
+                )
+        );
+        assertEquals(
+                60,
+                jdbcTemplate.queryForObject(
+                        """
+                                SELECT source_candle_count
+                                FROM market_completed_candles
+                                WHERE symbol_id = ? AND candle_interval = 'ONE_HOUR' AND open_time = ?
+                                """,
+                        Integer.class,
+                        symbolId,
+                        LocalDateTime.parse("2026-04-17T06:00:00")
+                )
+        );
+    }
+
+    @Test
     @ResourceLock(Resources.TIME_ZONE)
     void mapsCandleTimesAsUtcWhenJvmDefaultTimezoneIsNotUtc() {
         TimeZone originalTimeZone = TimeZone.getDefault();
@@ -204,7 +255,7 @@ class MarketHistoryPersistenceRepositoryTest {
                     .orElseThrow()
                     .openTime());
             assertEquals(LocalDateTime.parse("2026-04-17T06:00:00"), rawOpenTime("market_candles_1m"));
-            assertEquals(LocalDateTime.parse("2026-04-17T07:00:00"), rawOpenTime("market_candles_1h"));
+            assertEquals(LocalDateTime.parse("2026-04-17T07:00:00"), rawOpenTime("market_completed_candles"));
         } finally {
             TimeZone.setDefault(originalTimeZone);
         }
@@ -220,6 +271,10 @@ class MarketHistoryPersistenceRepositoryTest {
                     "SELECT open_time FROM market_candles_1h",
                     LocalDateTime.class
             );
+            case "market_completed_candles" -> () -> jdbcTemplate.queryForObject(
+                    "SELECT open_time FROM market_completed_candles",
+                    LocalDateTime.class
+            );
             default -> throw new AssertionError("Unsupported market candle table: " + tableName);
         };
         LocalDateTime openTime = query.get();
@@ -232,6 +287,35 @@ class MarketHistoryPersistenceRepositoryTest {
     private int count(String tableName) {
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + tableName, Integer.class);
         return count == null ? 0 : count;
+    }
+
+    private void insertCompletedCalendarCandle(Long symbolId, String candleInterval, Instant openTime, int sourceCount) {
+        jdbcTemplate.update(
+                """
+                        INSERT INTO market_completed_candles (
+                            symbol_id, candle_interval, open_time, close_time, open_price, high_price,
+                            low_price, close_price, volume, quote_volume, source_interval,
+                            source_open_time, source_close_time, source_candle_count, created_at, updated_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                symbolId,
+                candleInterval,
+                LocalDateTime.ofInstant(openTime, java.time.ZoneOffset.UTC),
+                LocalDateTime.ofInstant(openTime.plusSeconds(3600), java.time.ZoneOffset.UTC),
+                java.math.BigDecimal.valueOf(101000),
+                java.math.BigDecimal.valueOf(101500),
+                java.math.BigDecimal.valueOf(100500),
+                java.math.BigDecimal.valueOf(101250),
+                java.math.BigDecimal.valueOf(10.0),
+                java.math.BigDecimal.valueOf(1012500.0),
+                "ONE_HOUR",
+                LocalDateTime.ofInstant(openTime, java.time.ZoneOffset.UTC),
+                LocalDateTime.ofInstant(openTime.plusSeconds(3600), java.time.ZoneOffset.UTC),
+                sourceCount,
+                LocalDateTime.ofInstant(openTime, java.time.ZoneOffset.UTC),
+                LocalDateTime.ofInstant(openTime, java.time.ZoneOffset.UTC)
+        );
     }
 
     private static HourlyMarketCandle hourly(Long symbolId, Instant hourOpenTime) {

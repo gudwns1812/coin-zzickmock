@@ -7,7 +7,6 @@ import {
   formatUsd,
   getMarketLogoPath,
   getMarketRankIconPath,
-  MARKET_RANKING_FALLBACKS,
   type MarketRankingEntry,
   type MarketSnapshot,
   type MarketSymbol,
@@ -140,7 +139,7 @@ export default function MarketsLanding({
   markets,
   summaryCards,
   lastUpdatedLabel,
-  rankingEntries = MARKET_RANKING_FALLBACKS,
+  rankingEntries = [],
   priceFlashBySymbol,
 }: MarketsLandingProps) {
   const [sortKey, setSortKey] = useState<MarketSortKey>("default");

@@ -188,7 +188,6 @@ export default function MarketsLandingRealtimeView({
   const leaderboardQuery = useQuery({
     queryKey: futuresQueryKeys.leaderboard,
     queryFn: () => getFuturesLeaderboardClient({ limit: 4 }),
-    enabled: effectiveIsAuthenticated,
   });
   const personalSummaryCards = buildDashboardSummaryCards(
     accountQuery.data,
@@ -390,7 +389,7 @@ export default function MarketsLandingRealtimeView({
         isMarketDataDegraded={isStreamRecovering}
         isAuthenticated={effectiveIsAuthenticated}
         markets={[marketMap.BTCUSDT, marketMap.ETHUSDT]}
-        rankingEntries={leaderboardQuery.data?.entries ?? rankingEntries}
+        rankingEntries={leaderboardQuery.data?.entries ?? rankingEntries ?? []}
         summaryCards={personalSummaryCards ?? summaryCards ?? DASHBOARD_SUMMARY_PLACEHOLDERS}
         priceFlashBySymbol={priceFlashBySymbol}
         lastUpdatedLabel={

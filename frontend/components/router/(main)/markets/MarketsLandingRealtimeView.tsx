@@ -158,7 +158,6 @@ export default function MarketsLandingRealtimeView({
     useState<RecoveredSymbolMap>({});
   const [streamStatus, setStreamStatus] =
     useState<EventSourceReconnectStatus>("idle");
-  const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
   const marketMapRef = useRef(marketMap);
   const flashMetadataRef = useRef<PriceFlashMetadataMap>({});
   const animationFrameRef = useRef<number | null>(null);
@@ -309,7 +308,6 @@ export default function MarketsLandingRealtimeView({
             marketMapRef.current = updated;
             return updated;
           });
-          setLastUpdatedAt(new Date());
 
           if (!priceFlashTone) {
             return;
@@ -354,15 +352,6 @@ export default function MarketsLandingRealtimeView({
         rankingEntries={leaderboardQuery.data?.entries ?? rankingEntries ?? []}
         summaryCards={personalSummaryCards ?? summaryCards ?? DASHBOARD_SUMMARY_PLACEHOLDERS}
         priceFlashBySymbol={priceFlashBySymbol}
-        lastUpdatedLabel={
-          isStreamRecovering
-            ? "데이터 복구 중"
-            : new Intl.DateTimeFormat("ko-KR", {
-                hour: "numeric",
-                minute: "2-digit",
-                second: "2-digit",
-              }).format(lastUpdatedAt)
-        }
       />
     </PageReveal>
   );

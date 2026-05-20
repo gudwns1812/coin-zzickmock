@@ -23,6 +23,15 @@ export function logFrontendPageTiming(fields: {
   durationMs: number;
   source: "initial_load" | "route_change";
   ttfbMs?: number | null;
+  requestStartMs?: number | null;
+  responseStartMs?: number | null;
+  responseEndMs?: number | null;
+  responseDownloadMs?: number | null;
+  browserRenderMs?: number | null;
+  domInteractiveMs?: number | null;
+  domContentLoadedMs?: number | null;
+  loadEventMs?: number | null;
+  navigationIntentGapMs?: number | null;
 }) {
   logFrontendPerformance("frontend.page.completed", {
     service: "frontend",
@@ -30,6 +39,30 @@ export function logFrontendPageTiming(fields: {
     source: fields.source,
     durationMs: Math.round(fields.durationMs),
     ttfbMs: fields.ttfbMs == null ? null : Math.round(fields.ttfbMs),
+    requestStartMs:
+      fields.requestStartMs == null ? null : Math.round(fields.requestStartMs),
+    responseStartMs:
+      fields.responseStartMs == null ? null : Math.round(fields.responseStartMs),
+    responseEndMs:
+      fields.responseEndMs == null ? null : Math.round(fields.responseEndMs),
+    responseDownloadMs:
+      fields.responseDownloadMs == null
+        ? null
+        : Math.round(fields.responseDownloadMs),
+    browserRenderMs:
+      fields.browserRenderMs == null ? null : Math.round(fields.browserRenderMs),
+    domInteractiveMs:
+      fields.domInteractiveMs == null ? null : Math.round(fields.domInteractiveMs),
+    domContentLoadedMs:
+      fields.domContentLoadedMs == null
+        ? null
+        : Math.round(fields.domContentLoadedMs),
+    loadEventMs:
+      fields.loadEventMs == null ? null : Math.round(fields.loadEventMs),
+    navigationIntentGapMs:
+      fields.navigationIntentGapMs == null
+        ? null
+        : Math.round(fields.navigationIntentGapMs),
   });
 }
 
@@ -40,6 +73,7 @@ export async function fetchWithFrontendTiming(
 ): Promise<Response> {
   const startedAt = now();
   const method = timing.method ?? init.method ?? "GET";
+  const route = timing.route ?? currentRoute();
   const requestId = createFrontendRequestId();
   const headers = new Headers(init.headers);
   headers.set(REQUEST_ID_HEADER, requestId);
@@ -57,14 +91,16 @@ export async function fetchWithFrontendTiming(
     result = response.ok ? "success" : response.status >= 500 ? "server_error" : "client_error";
     return response;
   } finally {
+    const responseHeadersMs = now() - startedAt;
     logFrontendPerformance("frontend.api.completed", {
       service: "frontend",
       method,
       pathPattern: timing.pathPattern,
-      route: timing.route ?? currentRoute(),
+      route,
       status,
       result,
-      durationMs: Math.round(now() - startedAt),
+      durationMs: Math.round(responseHeadersMs),
+      responseHeadersMs: Math.round(responseHeadersMs),
       requestId,
     });
   }

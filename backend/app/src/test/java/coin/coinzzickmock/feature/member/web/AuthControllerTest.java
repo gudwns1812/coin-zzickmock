@@ -257,6 +257,132 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.admin").value(true));
     }
 
+
+    @Test
+    void authRecoveryEndpointsIgnoreMalformedAccessTokenCookie() throws Exception {
+        Cookie malformedCookie = new Cookie("accessToken", "not-a-jwt");
+
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
+                        .cookie(malformedCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "test@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("accessToken=")));
+
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/logout")
+                        .cookie(malformedCookie))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")));
+    }
+
+    @Test
+    void publicReadAllowsAnonymousAndRejectsMalformedCookie() throws Exception {
+        mockMvc.perform(get("/api/futures/leaderboard"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(get("/api/futures/leaderboard")
+                        .cookie(new Cookie("accessToken", "not-a-jwt")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다."));
+    }
+
+    @Test
+    void publicReadRejectsStaleWithdrawnMemberToken() throws Exception {
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "public-stale-user",
+                                  "password": "withdraw@1234",
+                                  "name": "public-stale-user",
+                                  "nickname": "public-stale-user",
+                                  "phoneNumber": "010-7777-9999",
+                                  "email": "public-stale-user@coinzzickmock.dev",
+                                  "fgOffset": "unused",
+                                  "address": {
+                                    "zipcode": "06236",
+                                    "address": "서울 강남구 논현로 507",
+                                    "addressDetail": "7층"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "public-stale-user",
+                                  "password": "withdraw@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie staleAccessToken = accessTokenCookie(loginResult);
+        Long memberId = memberId(loginResult);
+
+        mockMvc.perform(deleteWithTrustedOrigin("/api/futures/auth/withdraw")
+                        .cookie(staleAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memberId": %d
+                                }
+                                """.formatted(memberId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/futures/leaderboard").cookie(staleAccessToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void adminApisRejectAuthenticatedNonAdminInSecurityLayer() throws Exception {
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "plain-user-admin-denied",
+                                  "password": "hello@1234",
+                                  "name": "plain-user-admin-denied",
+                                  "nickname": "plain-user-admin-denied",
+                                  "phoneNumber": "010-2222-3333",
+                                  "email": "plain-user-admin-denied@coinzzickmock.dev",
+                                  "fgOffset": "unused",
+                                  "address": {
+                                    "zipcode": "04524",
+                                    "address": "서울 중구 세종대로 110",
+                                    "addressDetail": "12층"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "plain-user-admin-denied",
+                                  "password": "hello@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(get("/api/futures/admin/shop-items")
+                        .cookie(accessTokenCookie(loginResult)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
     @Test
     void meRejectsAnonymousRequest() throws Exception {
         mockMvc.perform(get("/api/futures/auth/me"))

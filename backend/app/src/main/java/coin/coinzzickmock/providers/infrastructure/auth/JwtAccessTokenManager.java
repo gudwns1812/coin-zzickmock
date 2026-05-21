@@ -52,7 +52,7 @@ public class JwtAccessTokenManager implements AccessTokenManager {
                 .subject(accessTokenSubject(sessionClaims))
                 .issuedAt(now)
                 .expiresAt(expiresAt)
-                .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
+                .claim(AccessTokenTypeValidator.TOKEN_TYPE_CLAIM, AccessTokenTypeValidator.ACCESS_TOKEN_TYPE)
                 .claim("memberId", sessionClaims.memberId())
                 .claim("account", sessionClaims.account())
                 .claim("nickname", sessionClaims.nickname())
@@ -66,10 +66,6 @@ public class JwtAccessTokenManager implements AccessTokenManager {
     public AuthSessionClaims parse(String token) {
         try {
             Jwt jwt = jwtDecoder.decode(token);
-
-            if (!ACCESS_TOKEN_TYPE.equals(jwt.getClaimAsString(TOKEN_TYPE_CLAIM))) {
-                throw new CoreException(ErrorCode.UNAUTHORIZED);
-            }
 
             return new AuthSessionClaims(
                     parseSubjectMemberId(jwt),

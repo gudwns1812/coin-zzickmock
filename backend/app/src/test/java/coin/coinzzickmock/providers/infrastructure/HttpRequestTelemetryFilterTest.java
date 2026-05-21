@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
+import coin.coinzzickmock.testsupport.PermitAllSecurityTestConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -128,7 +129,7 @@ class HttpRequestTelemetryFilterTest {
     }
 
     @SpringBootConfiguration
-    @Import({HttpRequestTelemetry.class, HttpRequestTelemetryFilter.class, TestController.class})
+    @Import({PermitAllSecurityTestConfiguration.class, HttpRequestTelemetry.class, HttpRequestTelemetryFilter.class, TestController.class})
     static class TestApplication {
         @Bean
         MeterRegistry meterRegistry() {

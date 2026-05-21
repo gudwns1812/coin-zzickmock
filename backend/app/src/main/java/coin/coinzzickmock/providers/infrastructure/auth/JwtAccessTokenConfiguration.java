@@ -8,10 +8,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
@@ -43,10 +47,19 @@ public class JwtAccessTokenConfiguration {
     }
 
     @Bean
-    JwtDecoder accessTokenJwtDecoder(JwtAccessTokenSigningMaterial signingMaterial) {
-        return NimbusJwtDecoder.withSecretKey(signingMaterial.secretKey())
+    JwtDecoder accessTokenJwtDecoder(
+            JwtAccessTokenSigningMaterial signingMaterial,
+            AccessTokenTypeValidator accessTokenTypeValidator
+    ) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(signingMaterial.secretKey())
                 .macAlgorithm(signingMaterial.macAlgorithm())
                 .build();
+        OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefault(),
+                accessTokenTypeValidator
+        );
+        decoder.setJwtValidator(validator);
+        return decoder;
     }
 
     @Bean

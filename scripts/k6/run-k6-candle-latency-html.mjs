@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, "..");
-const k6ScriptPath = path.join(repoRoot, "scripts", "k6-candle-latency.js");
+const repoRoot = path.resolve(__dirname, "../..");
+const k6ScriptPath = path.join(__dirname, "k6-candle-latency.js");
 
 const runner = (process.env.K6_RUNNER || "auto").toLowerCase();
 const dockerImage = process.env.K6_DOCKER_IMAGE || "grafana/k6:0.49.0";

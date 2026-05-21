@@ -9,6 +9,7 @@ import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
+import coin.coinzzickmock.feature.market.web.MarketCandleSnapshotReader;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
@@ -20,6 +21,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
@@ -309,6 +311,12 @@ class MarketHistoryPersistenceRepositoryTest {
         @Primary
         FakeMarketDataGateway fakeMarketDataGateway() {
             return new FakeMarketDataGateway();
+        }
+
+        @Bean
+        @Primary
+        MarketCandleSnapshotReader marketCandleSnapshotReader() {
+            return (symbol, interval) -> Optional.empty();
         }
 
         @Bean

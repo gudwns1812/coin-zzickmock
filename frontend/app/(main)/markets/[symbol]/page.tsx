@@ -1,8 +1,5 @@
-import MarketDetailRealtimeView from "@/components/futures/MarketDetailRealtimeView";
-import {
-  getFuturesMarketResult,
-  isSupportedFuturesSymbol,
-} from "@/lib/futures-api";
+import MarketDetailRouteShell from "@/components/futures/MarketDetailRouteShell";
+import { isSupportedFuturesSymbol } from "@/lib/futures-api";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({
@@ -35,21 +32,5 @@ export default async function MarketDetailPage({
     notFound();
   }
 
-  const { market, isFallback } = await getFuturesMarketResult(symbol);
-
-  return (
-    <MarketDetailRealtimeView
-      initialMarket={market}
-      isInitialMarketDataDegraded={isFallback}
-      isAuthenticated={false}
-      key={market.symbol}
-      accountSummary={null}
-      chartOpenOrders={[]}
-      chartPositions={[]}
-      openOrders={[]}
-      positions={[]}
-      positionHistory={[]}
-      orderHistory={[]}
-    />
-  );
+  return <MarketDetailRouteShell symbol={symbol} />;
 }

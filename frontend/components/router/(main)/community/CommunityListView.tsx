@@ -42,11 +42,7 @@ export default function CommunityListView({
   isLoading = false,
 }: CommunityListViewProps) {
   if (isLoading) {
-    return (
-      <CommunityShell>
-        <CommunityState title="커뮤니티를 불러오는 중입니다" message="브라우저에서 로그인 세션을 확인하고 게시글을 가져오고 있습니다." />
-      </CommunityShell>
-    );
+    return <CommunityListLoadingShell category={category} searchQuery={searchQuery} />;
   }
   if (unavailable || !result) {
     return (
@@ -164,6 +160,82 @@ function CommunityShell({ children }: { children: ReactNode }) {
     <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-main-2 px-main-2 pb-24 pt-main-3">
       {children}
     </div>
+  );
+}
+
+function CommunityListLoadingShell({
+  category,
+  searchQuery,
+}: {
+  category: Exclude<CommunityCategory, "NOTICE"> | null;
+  searchQuery: string;
+}) {
+  return (
+    <CommunityShell>
+      <h1 className="text-3xl-custom font-extrabold leading-tight text-[#111827]">투자자 커뮤니티</h1>
+
+      <div className="grid gap-main xl:grid-cols-[minmax(0,1fr)_128px]">
+        <form
+          action="/community"
+          className="relative"
+          method="get"
+          role="search"
+        >
+          {category ? <input name="category" type="hidden" value={category} /> : null}
+          <button
+            aria-label="검색"
+            className="absolute left-5 top-1/2 -translate-y-1/2 text-main-dark-gray/50 transition-colors hover:text-main-blue focus:outline-none focus:ring-2 focus:ring-main-blue/20"
+            type="submit"
+          >
+            <Search aria-hidden className="size-5" />
+          </button>
+          <input
+            aria-label="게시글 검색"
+            className="h-11 w-full rounded-main border border-main-light-gray bg-white pl-12 pr-main-2 text-base-custom font-medium text-[#111827] outline-none transition-colors placeholder:text-main-dark-gray/55 focus:border-main-blue/60 focus:ring-2 focus:ring-main-blue/15"
+            defaultValue={searchQuery}
+            name="q"
+            placeholder="게시글 검색..."
+            type="search"
+          />
+        </form>
+
+        <Link
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-main bg-main-blue px-main text-base-custom font-bold text-white shadow-sm transition-colors hover:bg-main-blue/90 focus:outline-none focus:ring-2 focus:ring-main-blue/30"
+          href="/community/write"
+        >
+          <Plus aria-hidden className="size-4" /> 글쓰기
+        </Link>
+      </div>
+
+      <nav className="flex flex-wrap items-center gap-2" aria-label="커뮤니티 카테고리">
+        <CategoryTab href="/community" active={category === null} label="전체" />
+        {COMMUNITY_POST_CATEGORIES.map((item) => (
+          <CategoryTab
+            active={category === item}
+            href={`/community?category=${item}`}
+            key={item}
+            label={COMMUNITY_CATEGORY_LABELS[item]}
+          />
+        ))}
+      </nav>
+
+      <section className="grid gap-main">
+        {[1, 2, 3, 4].map((item) => (
+          <div
+            aria-hidden="true"
+            className="grid min-h-[104px] gap-2 rounded-main bg-white p-main-2 shadow-sm ring-1 ring-main-light-gray"
+            key={item}
+          >
+            <span className="h-6 w-24 rounded-full bg-main-light-gray/50" />
+            <div>
+              <div className="h-6 w-2/3 rounded-full bg-main-light-gray/75" />
+              <div className="mt-3 h-4 w-32 rounded-full bg-main-light-gray/55" />
+            </div>
+            <div className="ml-auto h-4 w-56 rounded-full bg-main-light-gray/50" />
+          </div>
+        ))}
+      </section>
+    </CommunityShell>
   );
 }
 

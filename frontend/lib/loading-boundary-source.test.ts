@@ -41,9 +41,15 @@ test("main route transitions do not show a visual loading interstitial", () => {
   }
 });
 
-test("public market routes keep static identity and degrade dynamic market fields", () => {
+test("public market routes keep static identity and do not block trading navigation on server market data", () => {
   const marketsPageSource = readFrontendSource("app/(main)/markets/page.tsx");
   const detailPageSource = readFrontendSource("app/(main)/markets/[symbol]/page.tsx");
+  const detailLoadingSource = readFrontendSource(
+    "app/(main)/markets/[symbol]/loading.tsx"
+  );
+  const detailRouteShellSource = readFrontendSource(
+    "components/futures/MarketDetailRouteShell.tsx"
+  );
   const watchlistPageSource = readFrontendSource("app/(main)/watchlist/page.tsx");
   const futuresApiSource = readFrontendSource("lib/futures-api.ts");
   const marketDetailSource = readFrontendSource(
@@ -51,13 +57,16 @@ test("public market routes keep static identity and degrade dynamic market field
   );
 
   assert.match(marketsPageSource, /getFuturesMarketsResult/);
-  assert.match(detailPageSource, /getFuturesMarketResult/);
+  assert.match(detailPageSource, /<MarketDetailRouteShell symbol=\{symbol\} \/>/);
+  assert.doesNotMatch(detailPageSource, /getFuturesMarketResult/);
+  assert.match(detailLoadingSource, /<MarketDetailRouteShell symbol=\{resolveMarketSymbolFromPathname\(\)\} \/>/);
+  assert.match(detailRouteShellSource, /MARKET_SNAPSHOTS\[symbol\]/);
+  assert.match(detailRouteShellSource, /isInitialMarketDataDegraded/);
   assert.match(watchlistPageSource, /getFuturesMarketsResult/);
 
   assert.match(marketsPageSource, /<MarketsLandingRealtimeView/);
   assert.doesNotMatch(marketsPageSource, /hasCompleteMarketData/);
   assert.doesNotMatch(marketsPageSource, /마켓 데이터가 아직 없습니다/);
-  assert.match(detailPageSource, /isInitialMarketDataDegraded={isFallback}/);
   assert.doesNotMatch(detailPageSource, /마켓 데이터가 아직 없습니다/);
   assert.doesNotMatch(watchlistPageSource, /MARKET_SNAPSHOT_LIST/);
   assert.match(watchlistPageSource, /isFallback \? "" : formatUsd/);

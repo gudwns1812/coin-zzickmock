@@ -8,10 +8,17 @@ import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Entity
 @IdClass(CommunityPostLikeEntity.Key.class)
 @Table(name = "community_post_likes")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class CommunityPostLikeEntity {
     @Id
     @Column(name = "post_id", nullable = false)
@@ -24,25 +31,10 @@ public class CommunityPostLikeEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected CommunityPostLikeEntity() {
-    }
-
     public CommunityPostLikeEntity(Long postId, Long memberId, Instant createdAt) {
         this.postId = postId;
         this.memberId = memberId;
         this.createdAt = createdAt;
-    }
-
-    public Long postId() {
-        return postId;
-    }
-
-    public Long memberId() {
-        return memberId;
-    }
-
-    public Instant createdAt() {
-        return createdAt;
     }
 
     public static class Key implements Serializable {

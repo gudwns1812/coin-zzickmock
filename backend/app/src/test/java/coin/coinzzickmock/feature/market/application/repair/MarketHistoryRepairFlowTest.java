@@ -74,6 +74,7 @@ class MarketHistoryRepairFlowTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate.update("DELETE FROM market_history_repair_events");
+        jdbcTemplate.update("DELETE FROM market_completed_candles");
         jdbcTemplate.update("DELETE FROM market_candles_1h");
         jdbcTemplate.update("DELETE FROM market_candles_1m");
         marketDataGateway.reset();
@@ -151,7 +152,7 @@ class MarketHistoryRepairFlowTest {
 
         assertThat(processed).isTrue();
         assertThat(status(event.id())).isEqualTo("WAITING_FOR_MINUTES");
-        assertThat(count("market_candles_1h")).isZero();
+        assertThat(count("market_completed_candles")).isZero();
     }
 
     @Test
@@ -170,7 +171,7 @@ class MarketHistoryRepairFlowTest {
                 "BTCUSDT",
                 minuteCandles(HOUR_OPEN_TIME.plus(1, ChronoUnit.MINUTES), HOUR_CLOSE_TIME)
         ));
-        assertThat(count("market_candles_1h")).isZero();
+        assertThat(count("market_completed_candles")).isZero();
         assertThat(status(hourlyEvent.id())).isEqualTo("WAITING_FOR_MINUTES");
         MarketHistoryRepairEvent minuteEvent = marketHistoryRepairRequestRecorder.recordOneMinuteFailure(
                 "BTCUSDT",

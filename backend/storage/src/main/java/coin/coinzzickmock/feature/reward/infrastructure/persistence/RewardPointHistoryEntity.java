@@ -11,9 +11,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "reward_point_histories")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RewardPointHistoryEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,9 +40,6 @@ public class RewardPointHistoryEntity extends AuditableEntity {
 
     @Column(name = "source_reference", length = 100)
     private String sourceReference;
-
-    protected RewardPointHistoryEntity() {
-    }
 
     public static RewardPointHistoryEntity from(RewardPointHistory history) {
         RewardPointHistoryEntity entity = new RewardPointHistoryEntity();

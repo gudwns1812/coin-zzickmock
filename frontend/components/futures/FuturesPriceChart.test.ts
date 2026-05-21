@@ -51,6 +51,18 @@ test("chart loading-empty mode does not render live points", () => {
   );
 });
 
+test("chart renders stale persisted candles instead of blanking the series", () => {
+  assert.equal(source.includes("const historicalCandles = candles;"), true);
+  assert.equal(source.includes("hasFreshHistory ? candles : []"), false);
+  assert.equal(source.includes("historyStatus === \"stale\""), false);
+  assert.equal(
+    source.includes(
+      "chartRenderMode !== \"candles\" ||\n      historyStatus !== \"ready\""
+    ),
+    false
+  );
+});
+
 test("chart consumes parent unified candle events instead of opening its own backend candle stream", () => {
   assert.equal(source.includes("/candles/stream?"), false);
   assert.equal(source.includes("marketStreamCandle"), true);

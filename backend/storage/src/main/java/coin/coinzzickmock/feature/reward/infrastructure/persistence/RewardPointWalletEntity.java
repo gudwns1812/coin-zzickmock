@@ -7,9 +7,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "reward_point_wallets")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RewardPointWalletEntity extends AuditableEntity {
     @Id
     @Column(name = "member_id", nullable = false)
@@ -21,9 +24,6 @@ public class RewardPointWalletEntity extends AuditableEntity {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
-
-    protected RewardPointWalletEntity() {
-    }
 
     public static RewardPointWalletEntity from(RewardPointWallet rewardPointWallet) {
         RewardPointWalletEntity entity = new RewardPointWalletEntity();

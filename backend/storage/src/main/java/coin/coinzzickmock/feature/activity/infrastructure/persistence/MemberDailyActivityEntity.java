@@ -13,9 +13,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "member_daily_activity")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberDailyActivityEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,9 +47,6 @@ public class MemberDailyActivityEntity extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "last_source", nullable = false, length = 40)
     private ActivitySource lastSource;
-
-    protected MemberDailyActivityEntity() {
-    }
 
     public MemberDailyActivityEntity(
             Long id,

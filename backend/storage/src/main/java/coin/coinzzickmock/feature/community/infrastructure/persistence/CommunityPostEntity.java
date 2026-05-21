@@ -12,11 +12,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
 @Table(name = "community_posts")
 @DynamicUpdate
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class CommunityPostEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,9 +61,6 @@ public class CommunityPostEntity extends AuditableEntity {
     @Column(name = "version", nullable = false)
     private long version;
 
-    protected CommunityPostEntity() {
-    }
-
     public CommunityPostEntity(
             Long id,
             Long authorMemberId,
@@ -80,7 +84,6 @@ public class CommunityPostEntity extends AuditableEntity {
         this.commentCount = commentCount;
         this.deletedAt = deletedAt;
     }
-
 
     public static CommunityPostEntity from(CommunityPost post) {
         return new CommunityPostEntity(null, post.authorMemberId(), post.authorNickname(), post.category().name(),
@@ -136,47 +139,4 @@ public class CommunityPostEntity extends AuditableEntity {
         }
     }
 
-    public Long id() {
-        return id;
-    }
-
-    public Long authorMemberId() {
-        return authorMemberId;
-    }
-
-    public String authorNickname() {
-        return authorNickname;
-    }
-
-    public String category() {
-        return category;
-    }
-
-    public String title() {
-        return title;
-    }
-
-    public String contentJson() {
-        return contentJson;
-    }
-
-    public long viewCount() {
-        return viewCount;
-    }
-
-    public long likeCount() {
-        return likeCount;
-    }
-
-    public long commentCount() {
-        return commentCount;
-    }
-
-    public Instant deletedAt() {
-        return deletedAt;
-    }
-
-    public long version() {
-        return version;
-    }
 }

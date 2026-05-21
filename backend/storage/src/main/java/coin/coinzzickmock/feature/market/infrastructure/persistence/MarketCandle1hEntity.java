@@ -12,9 +12,16 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Entity
 @Table(name = "market_candles_1h")
+@Getter
+@Accessors(fluent = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MarketCandle1hEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,9 +59,6 @@ public class MarketCandle1hEntity extends AuditableEntity {
 
     @Column(name = "source_minute_close_time", nullable = false, columnDefinition = "DATETIME(6)")
     private LocalDateTime sourceMinuteCloseTime;
-
-    protected MarketCandle1hEntity() {
-    }
 
     private MarketCandle1hEntity(HourlyMarketCandle candle) {
         apply(candle);

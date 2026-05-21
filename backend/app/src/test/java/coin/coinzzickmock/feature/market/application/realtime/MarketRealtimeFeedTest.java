@@ -330,6 +330,10 @@ class MarketRealtimeFeedTest {
         MarketHistoryRecorder marketHistoryRecorder = new MarketHistoryRecorder(
                 marketHistoryRepository,
                 new CompletedHourlyCandleBuilder(),
+                new coin.coinzzickmock.feature.market.application.history.MarketCalendarCandleBackfill(
+                        marketHistoryRepository,
+                        new coin.coinzzickmock.feature.market.application.implement.CompletedCalendarCandleBuilder()
+                ),
                 mock(AfterCommitEventPublisher.class),
                 mock(MarketHistoryRepairRequestRecorder.class)
         );

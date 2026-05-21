@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
@@ -33,8 +34,9 @@ public class MarketPersistedCandleReader {
             case FIVE_MINUTES -> rollupMinuteResults(symbolId, limit, beforeOpenTime, 5);
             case FIFTEEN_MINUTES -> rollupMinuteResults(symbolId, limit, beforeOpenTime, 15);
             case ONE_HOUR -> hourlyResults(symbolId, limit, beforeOpenTime);
-            case FOUR_HOURS, TWELVE_HOURS, ONE_DAY, ONE_WEEK, ONE_MONTH ->
-                    rollupHourlyResults(symbolId, limit, interval, beforeOpenTime);
+            case FOUR_HOURS, TWELVE_HOURS -> rollupHourlyResults(symbolId, limit, interval, beforeOpenTime);
+            case ONE_DAY, ONE_MONTH -> completedCalendarResults(symbolId, interval, limit, beforeOpenTime);
+            case ONE_WEEK -> rollupDailyResults(symbolId, limit, beforeOpenTime);
         };
     }
 
@@ -106,7 +108,71 @@ public class MarketPersistedCandleReader {
                 earliestBucketStart,
                 MarketTime.bucketClose(latestCompleteBucketStart, interval)
         );
+        if (interval == MarketCandleInterval.FOUR_HOURS || interval == MarketCandleInterval.TWELVE_HOURS) {
+            return rollupProjector.rollupFixedHourlyResults(
+                    rawCandles,
+                    interval,
+                    earliestBucketStart,
+                    latestCompleteBucketStart
+            );
+        }
+
         return rollupProjector.rollupHourlyResults(rawCandles, interval);
+    }
+
+    private List<MarketCandleResult> completedCalendarResults(
+            long symbolId,
+            MarketCandleInterval interval,
+            int limit,
+            Instant beforeOpenTime
+    ) {
+        Instant latestOpenTime = resolveLatestCompletedOpenTime(symbolId, interval, beforeOpenTime);
+        if (latestOpenTime == null) {
+            return List.of();
+        }
+
+        return marketHistoryRepository.findCompletedCandles(
+                        symbolId,
+                        interval,
+                        earliestCompletedCalendarOpenTime(latestOpenTime, interval, limit),
+                        MarketTime.bucketClose(latestOpenTime, interval)
+                )
+                .stream()
+                .map(this::toCompletedResult)
+                .toList();
+    }
+
+    private List<MarketCandleResult> rollupDailyResults(
+            long symbolId,
+            int limit,
+            Instant beforeOpenTime
+    ) {
+        Instant latestDayOpenTime = resolveLatestCompletedOpenTime(
+                symbolId,
+                MarketCandleInterval.ONE_DAY,
+                beforeOpenTime
+        );
+        if (latestDayOpenTime == null) {
+            return List.of();
+        }
+
+        Instant latestCompleteWeekStart = latestCompleteDailyBucketStart(
+                latestDayOpenTime,
+                MarketCandleInterval.ONE_WEEK
+        );
+        Instant earliestWeekStart = MarketTime.atStorageZone(latestCompleteWeekStart)
+                .minusWeeks(limit - 1L)
+                .toInstant();
+
+        return rollupProjector.rollupDailyResults(
+                marketHistoryRepository.findCompletedCandles(
+                        symbolId,
+                        MarketCandleInterval.ONE_DAY,
+                        earliestWeekStart,
+                        MarketTime.bucketClose(latestCompleteWeekStart, MarketCandleInterval.ONE_WEEK)
+                ),
+                MarketCandleInterval.ONE_WEEK
+        );
     }
 
     private Instant resolveLatestMinuteOpenTime(long symbolId, Instant beforeOpenTime) {
@@ -118,6 +184,19 @@ public class MarketPersistedCandleReader {
                 .orElse(null);
     }
 
+    private Instant resolveLatestCompletedOpenTime(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant beforeOpenTime
+    ) {
+        if (beforeOpenTime == null) {
+            return marketHistoryRepository.findLatestCompletedCandleOpenTime(symbolId, interval).orElse(null);
+        }
+
+        return marketHistoryRepository.findLatestCompletedCandleOpenTimeBefore(symbolId, interval, beforeOpenTime)
+                .orElse(null);
+    }
+
     private Instant resolveLatestCompletedHourlyOpenTime(long symbolId, Instant beforeOpenTime) {
         if (beforeOpenTime == null) {
             return marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId).orElse(null);
@@ -125,6 +204,19 @@ public class MarketPersistedCandleReader {
 
         return marketHistoryRepository.findLatestCompletedHourlyCandleOpenTimeBefore(symbolId, beforeOpenTime)
                 .orElse(null);
+    }
+
+    private Instant earliestCompletedCalendarOpenTime(
+            Instant latestOpenTime,
+            MarketCandleInterval interval,
+            int limit
+    ) {
+        ZonedDateTime latestBucket = MarketTime.atStorageZone(latestOpenTime);
+        return switch (interval) {
+            case ONE_DAY -> latestBucket.minusDays(limit - 1L).toInstant();
+            case ONE_MONTH -> latestBucket.minusMonths(limit - 1L).toInstant();
+            default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
+        };
     }
 
     private Instant earliestHourlyBucketStart(Instant latestHourOpenTime, MarketCandleInterval interval, int limit) {
@@ -150,6 +242,29 @@ public class MarketPersistedCandleReader {
         }
 
         return previousHourlyBucketStart(latestBucketStart, interval);
+    }
+
+    private Instant latestCompleteDailyBucketStart(Instant latestDayOpenTime, MarketCandleInterval interval) {
+        Instant latestBucketStart = MarketTime.bucketStart(latestDayOpenTime, interval);
+        Instant latestBucketClose = MarketTime.bucketClose(latestBucketStart, interval);
+        Instant latestKnownClose = latestDayOpenTime.plus(1, ChronoUnit.DAYS);
+        if (!latestKnownClose.isBefore(latestBucketClose)) {
+            return latestBucketStart;
+        }
+
+        return MarketTime.atStorageZone(latestBucketStart).minusWeeks(1).toInstant();
+    }
+
+    private MarketCandleResult toCompletedResult(CompletedMarketCandle candle) {
+        return new MarketCandleResult(
+                candle.openTime(),
+                candle.closeTime(),
+                candle.openPrice(),
+                candle.highPrice(),
+                candle.lowPrice(),
+                candle.closePrice(),
+                candle.volume()
+        );
     }
 
     private Instant previousHourlyBucketStart(Instant bucketStart, MarketCandleInterval interval) {

@@ -13,11 +13,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "reward_redemption_requests")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class RewardRedemptionRequestEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -72,9 +76,6 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
-
-    protected RewardRedemptionRequestEntity() {
-    }
 
     public static RewardRedemptionRequestEntity from(RewardRedemptionRequest request, RewardShopItemEntity shopItem) {
         RewardRedemptionRequestEntity entity = new RewardRedemptionRequestEntity();
@@ -152,71 +153,4 @@ public class RewardRedemptionRequestEntity extends AuditableEntity {
         );
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getRequestId() {
-        return requestId;
-    }
-
-    public Long getMemberId() {
-        return memberId;
-    }
-
-    public RewardShopItemEntity getShopItem() {
-        return shopItem;
-    }
-
-    public String getItemCode() {
-        return itemCode;
-    }
-
-    public String getItemName() {
-        return itemName;
-    }
-
-    public int getItemPrice() {
-        return itemPrice;
-    }
-
-    public int getPointAmount() {
-        return pointAmount;
-    }
-
-    public String getSubmittedPhoneNumber() {
-        return submittedPhoneNumber;
-    }
-
-    public String getNormalizedPhoneNumber() {
-        return normalizedPhoneNumber;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public Instant getRequestedAt() {
-        return requestedAt;
-    }
-
-    public Instant getSentAt() {
-        return sentAt;
-    }
-
-    public Instant getCancelledAt() {
-        return cancelledAt;
-    }
-
-    public Long getAdminMemberId() {
-        return adminMemberId;
-    }
-
-    public String getAdminMemo() {
-        return adminMemo;
-    }
-
-    public long getVersion() {
-        return version;
-    }
 }

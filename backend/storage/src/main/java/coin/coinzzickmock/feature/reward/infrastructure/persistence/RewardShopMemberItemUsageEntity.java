@@ -12,9 +12,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "reward_shop_member_item_usages")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class RewardShopMemberItemUsageEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,9 +38,6 @@ public class RewardShopMemberItemUsageEntity extends AuditableEntity {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
-
-    protected RewardShopMemberItemUsageEntity() {
-    }
 
     public static RewardShopMemberItemUsageEntity from(RewardShopMemberItemUsage usage, RewardShopItemEntity shopItem) {
         return new RewardShopMemberItemUsageEntity(usage.memberId(), shopItem, usage.purchaseCount());
@@ -74,23 +76,4 @@ public class RewardShopMemberItemUsageEntity extends AuditableEntity {
         return new RewardShopMemberItemUsage(id, memberId, shopItem.getId(), purchaseCount);
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public Long getMemberId() {
-        return memberId;
-    }
-
-    public RewardShopItemEntity getShopItem() {
-        return shopItem;
-    }
-
-    public int getPurchaseCount() {
-        return purchaseCount;
-    }
-
-    public long getVersion() {
-        return version;
-    }
 }

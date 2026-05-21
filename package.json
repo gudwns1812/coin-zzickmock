@@ -7,6 +7,7 @@
     "build": "npm run build --workspace frontend",
     "start": "npm run start --workspace frontend",
     "lint": "npm run lint --workspace frontend",
-    "check:branch": "node .github/branch-policy/validate-branch-name.cjs"
+    "check:branch": "node .github/branch-policy/validate-branch-name.cjs",
+    "k6:candle:html": "node scripts/run-k6-candle-latency-html.mjs"
   }
 }

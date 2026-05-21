@@ -12,9 +12,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "member_credentials")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberCredentialEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,9 +60,6 @@ public class MemberCredentialEntity extends AuditableEntity {
 
     @Column(name = "withdrawn_at")
     private Instant withdrawnAt;
-
-    protected MemberCredentialEntity() {
-    }
 
     public MemberCredentialEntity(
             Long id,

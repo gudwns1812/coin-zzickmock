@@ -9,9 +9,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-
 import java.math.BigDecimal;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Entity
 @Table(
@@ -21,6 +24,9 @@ import java.time.Instant;
                 columnNames = {"member_id", "symbol", "position_side"}
         )
 )
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class OpenPositionEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -89,9 +95,6 @@ public class OpenPositionEntity extends AuditableEntity {
     @Column(name = "version", nullable = false)
     private long version;
 
-    protected OpenPositionEntity() {
-    }
-
     public static OpenPositionEntity from(Long memberId, PositionSnapshot positionSnapshot) {
         OpenPositionEntity entity = new OpenPositionEntity();
         entity.memberId = memberId;
@@ -145,14 +148,6 @@ public class OpenPositionEntity extends AuditableEntity {
                 stopLossPrice == null ? null : stopLossPrice.doubleValue(),
                 version
         );
-    }
-
-    public Long memberId() {
-        return memberId;
-    }
-
-    public long version() {
-        return version;
     }
 
     private static BigDecimal decimal(double value) {

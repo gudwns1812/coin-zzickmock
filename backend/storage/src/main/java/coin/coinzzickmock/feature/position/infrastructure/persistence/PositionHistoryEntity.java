@@ -9,10 +9,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "position_history")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class PositionHistoryEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -79,9 +86,6 @@ public class PositionHistoryEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected PositionHistoryEntity() {
-    }
-
     public static PositionHistoryEntity from(Long memberId, PositionHistory history) {
         PositionHistoryEntity entity = new PositionHistoryEntity();
         entity.memberId = memberId;
@@ -127,10 +131,6 @@ public class PositionHistoryEntity {
                 closedAt,
                 closeReason
         );
-    }
-
-    public Long memberId() {
-        return memberId;
     }
 
     private static BigDecimal decimal(double value) {

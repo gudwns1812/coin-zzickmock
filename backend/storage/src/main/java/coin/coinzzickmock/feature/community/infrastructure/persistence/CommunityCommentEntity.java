@@ -9,9 +9,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Entity
 @Table(name = "community_comments")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class CommunityCommentEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,9 +40,6 @@ public class CommunityCommentEntity extends AuditableEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    protected CommunityCommentEntity() {
-    }
-
     public CommunityCommentEntity(
             Long id,
             Long postId,
@@ -51,7 +55,6 @@ public class CommunityCommentEntity extends AuditableEntity {
         this.content = content;
         this.deletedAt = deletedAt;
     }
-
 
     public static CommunityCommentEntity from(CommunityComment comment) {
         return new CommunityCommentEntity(null, comment.postId(), comment.authorMemberId(), comment.authorNickname(),
@@ -72,27 +75,4 @@ public class CommunityCommentEntity extends AuditableEntity {
         this.deletedAt = deletedAt;
     }
 
-    public Long id() {
-        return id;
-    }
-
-    public Long postId() {
-        return postId;
-    }
-
-    public Long authorMemberId() {
-        return authorMemberId;
-    }
-
-    public String authorNickname() {
-        return authorNickname;
-    }
-
-    public String content() {
-        return content;
-    }
-
-    public Instant deletedAt() {
-        return deletedAt;
-    }
 }

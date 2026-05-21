@@ -9,9 +9,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "reward_shop_items")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class RewardShopItemEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,9 +56,6 @@ public class RewardShopItemEntity extends AuditableEntity {
     @Column(name = "version", nullable = false)
     private long version;
 
-    protected RewardShopItemEntity() {
-    }
-
     public static RewardShopItemEntity fromDomain(RewardShopItem item) {
         RewardShopItemEntity entity = new RewardShopItemEntity();
         entity.apply(item);
@@ -88,10 +90,6 @@ public class RewardShopItemEntity extends AuditableEntity {
                 sortOrder
         );
         this.soldQuantity = validated.soldQuantity();
-    }
-
-    public Long getId() {
-        return id;
     }
 
     public RewardShopItem toDomain() {

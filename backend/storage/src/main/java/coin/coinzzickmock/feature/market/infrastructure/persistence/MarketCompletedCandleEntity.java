@@ -1,28 +1,32 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
 import coin.coinzzickmock.common.persistence.AuditableEntity;
-import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
+import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "market_candles_1m")
+@Table(name = "market_completed_candles")
 @Getter
 @Accessors(fluent = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class MarketCandle1mEntity extends AuditableEntity {
+public class MarketCompletedCandleEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,11 +34,17 @@ public class MarketCandle1mEntity extends AuditableEntity {
     @Column(name = "symbol_id", nullable = false)
     private Long symbolId;
 
-    @Column(name = "open_time", nullable = false, columnDefinition = "DATETIME(6)")
-    private LocalDateTime openTime;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "candle_interval", nullable = false, length = 30)
+    private MarketCandleInterval interval;
 
+    @JdbcTypeCode(SqlTypes.TIMESTAMP)
+    @Column(name = "open_time", nullable = false, columnDefinition = "DATETIME(6)")
+    private Instant openTime;
+
+    @JdbcTypeCode(SqlTypes.TIMESTAMP)
     @Column(name = "close_time", nullable = false, columnDefinition = "DATETIME(6)")
-    private LocalDateTime closeTime;
+    private Instant closeTime;
 
     @Column(name = "open_price", nullable = false, precision = 19, scale = 4)
     private BigDecimal openPrice;
@@ -54,18 +64,19 @@ public class MarketCandle1mEntity extends AuditableEntity {
     @Column(name = "quote_volume", precision = 19, scale = 4)
     private BigDecimal quoteVolume;
 
-    private MarketCandle1mEntity(MarketHistoryCandle candle) {
+    private MarketCompletedCandleEntity(CompletedMarketCandle candle) {
         apply(candle);
     }
 
-    public static MarketCandle1mEntity from(MarketHistoryCandle candle) {
-        return new MarketCandle1mEntity(candle);
+    public static MarketCompletedCandleEntity from(CompletedMarketCandle candle) {
+        return new MarketCompletedCandleEntity(candle);
     }
 
-    public void apply(MarketHistoryCandle candle) {
+    public void apply(CompletedMarketCandle candle) {
         this.symbolId = candle.symbolId();
-        this.openTime = utcDateTime(candle.openTime());
-        this.closeTime = utcDateTime(candle.closeTime());
+        this.interval = candle.interval();
+        this.openTime = candle.openTime();
+        this.closeTime = candle.closeTime();
         this.openPrice = decimal(candle.openPrice());
         this.highPrice = decimal(candle.highPrice());
         this.lowPrice = decimal(candle.lowPrice());
@@ -74,11 +85,12 @@ public class MarketCandle1mEntity extends AuditableEntity {
         this.quoteVolume = decimal(candle.quoteVolume());
     }
 
-    public MarketHistoryCandle toDomain() {
-        return new MarketHistoryCandle(
+    public CompletedMarketCandle toDomain() {
+        return new CompletedMarketCandle(
                 symbolId,
-                jpaInstant(openTime),
-                jpaInstant(closeTime),
+                interval,
+                openTime,
+                closeTime,
                 openPrice.doubleValue(),
                 highPrice.doubleValue(),
                 lowPrice.doubleValue(),
@@ -88,15 +100,12 @@ public class MarketCandle1mEntity extends AuditableEntity {
         );
     }
 
+    public HourlyMarketCandle toHourlyMarketCandle() {
+        return toDomain().toHourlyMarketCandle();
+    }
+
     private static BigDecimal decimal(double value) {
         return BigDecimal.valueOf(value);
     }
 
-    private static LocalDateTime utcDateTime(Instant instant) {
-        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
-    }
-
-    private static Instant jpaInstant(LocalDateTime dateTime) {
-        return dateTime.toInstant(ZoneOffset.UTC);
-    }
 }

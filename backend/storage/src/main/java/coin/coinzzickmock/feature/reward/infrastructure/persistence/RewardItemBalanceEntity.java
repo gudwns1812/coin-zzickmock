@@ -12,9 +12,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "reward_item_balances")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RewardItemBalanceEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,9 +36,6 @@ public class RewardItemBalanceEntity extends AuditableEntity {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
-
-    protected RewardItemBalanceEntity() {
-    }
 
     private RewardItemBalanceEntity(Long memberId, RewardShopItemEntity shopItem, int remainingQuantity) {
         applyValues(memberId, shopItem, remainingQuantity);

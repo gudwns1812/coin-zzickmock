@@ -6,9 +6,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Entity
 @Table(name = "market_symbols")
+@Getter
+@Accessors(fluent = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MarketSymbolEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,27 +32,4 @@ public class MarketSymbolEntity {
 
     @Column(name = "funding_time_zone", nullable = false, length = 40)
     private String fundingTimeZone;
-
-    protected MarketSymbolEntity() {
-    }
-
-    public Long id() {
-        return id;
-    }
-
-    public String symbol() {
-        return symbol;
-    }
-
-    public int fundingIntervalHours() {
-        return fundingIntervalHours;
-    }
-
-    public int fundingAnchorHour() {
-        return fundingAnchorHour;
-    }
-
-    public String fundingTimeZone() {
-        return fundingTimeZone;
-    }
 }

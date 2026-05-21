@@ -15,9 +15,14 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "position_peek_snapshots")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class PositionPeekSnapshotEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,9 +56,6 @@ public class PositionPeekSnapshotEntity extends AuditableEntity {
     @OrderBy("id ASC")
     private List<PositionPeekSnapshotPositionEntity> positions = new ArrayList<>();
 
-    protected PositionPeekSnapshotEntity() {
-    }
-
     public static PositionPeekSnapshotEntity from(PositionPeekSnapshotRecord record) {
         PositionPeekSnapshotEntity entity = new PositionPeekSnapshotEntity();
         entity.apply(record);
@@ -80,10 +82,6 @@ public class PositionPeekSnapshotEntity extends AuditableEntity {
         snapshotPositions.stream()
                 .map(position -> new PositionPeekSnapshotPositionEntity(this, position))
                 .forEach(this.positions::add);
-    }
-
-    public Long getId() {
-        return id;
     }
 
     public PositionPeekSnapshotRecord toRecord() {

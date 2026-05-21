@@ -1,7 +1,9 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MarketHistoryPersistenceRepository implements MarketHistoryRepository {
     private final MarketSymbolEntityRepository marketSymbolEntityRepository;
+    private final MarketCompletedCandleEntityRepository marketCompletedCandleEntityRepository;
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -79,25 +82,16 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestHourlyCandleOpenTime(long symbolId) {
-        return findLatestOpenTime(
-                "SELECT open_time FROM market_candles_1h WHERE symbol_id = ? ORDER BY open_time DESC LIMIT 1",
-                symbolId
-        );
+        return findLatestCompletedCandleOpenTime(symbolId, MarketCandleInterval.ONE_HOUR);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Instant> findLatestHourlyCandleOpenTimeBefore(long symbolId, Instant beforeExclusive) {
-        return findLatestOpenTime(
-                """
-                        SELECT open_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ? AND open_time < ?
-                        ORDER BY open_time DESC
-                        LIMIT 1
-                """,
+        return findLatestCompletedCandleOpenTimeBefore(
                 symbolId,
-                databaseDateTime(beforeExclusive)
+                MarketCandleInterval.ONE_HOUR,
+                beforeExclusive
         );
     }
 
@@ -152,39 +146,28 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional(readOnly = true)
     public Optional<HourlyMarketCandle> findHourlyCandle(long symbolId, Instant openTime) {
-        return jdbcTemplate.query(
-                        """
-                                SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                                       close_price, volume, quote_volume, source_minute_open_time,
-                                       source_minute_close_time
-                                FROM market_candles_1h
-                                WHERE symbol_id = ? AND open_time = ?
-                                """,
-                        this::hourlyCandle,
+        return marketCompletedCandleEntityRepository
+                .findBySymbolIdAndIntervalAndOpenTime(
                         symbolId,
-                        databaseDateTime(openTime)
+                        MarketCandleInterval.ONE_HOUR,
+                        openTime
                 )
-                .stream()
-                .findFirst();
+                .map(MarketCompletedCandleEntity::toHourlyMarketCandle);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<HourlyMarketCandle> findHourlyCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
-        return jdbcTemplate.query(
-                """
-                        SELECT symbol_id, open_time, close_time, open_price, high_price, low_price,
-                               close_price, volume, quote_volume, source_minute_open_time,
-                               source_minute_close_time
-                        FROM market_candles_1h
-                        WHERE symbol_id = ? AND open_time >= ? AND open_time < ?
-                        ORDER BY open_time ASC
-                        """,
-                this::hourlyCandle,
-                symbolId,
-                databaseDateTime(fromInclusive),
-                databaseDateTime(toExclusive)
-        );
+        return marketCompletedCandleEntityRepository
+                .findAllBySymbolIdAndIntervalAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
+                        symbolId,
+                        MarketCandleInterval.ONE_HOUR,
+                        fromInclusive,
+                        toExclusive
+                )
+                .stream()
+                .map(MarketCompletedCandleEntity::toHourlyMarketCandle)
+                .toList();
     }
 
     @Override
@@ -236,42 +219,72 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
     @Override
     @Transactional
     public void saveHourlyCandle(HourlyMarketCandle candle) {
-        LocalDateTime now = databaseDateTime(Instant.now());
-        jdbcTemplate.update(
-                """
-                        INSERT INTO market_candles_1h (
-                            symbol_id, open_time, close_time, open_price, high_price, low_price,
-                            close_price, volume, quote_volume, source_minute_open_time,
-                            source_minute_close_time, created_at, updated_at
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE
-                            close_time = VALUES(close_time),
-                            open_price = VALUES(open_price),
-                            high_price = VALUES(high_price),
-                            low_price = VALUES(low_price),
-                            close_price = VALUES(close_price),
-                            volume = VALUES(volume),
-                            quote_volume = VALUES(quote_volume),
-                            source_minute_open_time = VALUES(source_minute_open_time),
-                            source_minute_close_time = VALUES(source_minute_close_time),
-                            updated_at = ?
-                """,
-                candle.symbolId(),
-                databaseDateTime(candle.openTime()),
-                databaseDateTime(candle.closeTime()),
-                decimal(candle.openPrice()),
-                decimal(candle.highPrice()),
-                decimal(candle.lowPrice()),
-                decimal(candle.closePrice()),
-                decimal(candle.volume()),
-                decimal(candle.quoteVolume()),
-                databaseDateTime(candle.sourceMinuteOpenTime()),
-                databaseDateTime(candle.sourceMinuteCloseTime()),
-                now,
-                now,
-                now
-        );
+        saveCompletedCandle(CompletedMarketCandle.fromHourly(candle));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findLatestCompletedCandleOpenTime(long symbolId, MarketCandleInterval interval) {
+        return marketCompletedCandleEntityRepository
+                .findTopBySymbolIdAndIntervalOrderByOpenTimeDesc(symbolId, interval)
+                .map(MarketCompletedCandleEntity::openTime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findLatestCompletedCandleOpenTimeBefore(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant beforeExclusive
+    ) {
+        return marketCompletedCandleEntityRepository
+                .findTopBySymbolIdAndIntervalAndOpenTimeLessThanOrderByOpenTimeDesc(
+                        symbolId,
+                        interval,
+                        beforeExclusive
+                )
+                .map(MarketCompletedCandleEntity::openTime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsCompletedCandle(long symbolId, MarketCandleInterval interval) {
+        return marketCompletedCandleEntityRepository.existsBySymbolIdAndInterval(symbolId, interval);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CompletedMarketCandle> findCompletedCandles(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        return marketCompletedCandleEntityRepository
+                .findAllBySymbolIdAndIntervalAndOpenTimeGreaterThanEqualAndOpenTimeLessThanOrderByOpenTimeAsc(
+                        symbolId,
+                        interval,
+                        fromInclusive,
+                        toExclusive
+                )
+                .stream()
+                .map(MarketCompletedCandleEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void saveCompletedCandle(CompletedMarketCandle candle) {
+        marketCompletedCandleEntityRepository
+                .findBySymbolIdAndIntervalAndOpenTime(
+                        candle.symbolId(),
+                        candle.interval(),
+                        candle.openTime()
+                )
+                .ifPresentOrElse(
+                        entity -> entity.apply(candle),
+                        () -> marketCompletedCandleEntityRepository.save(MarketCompletedCandleEntity.from(candle))
+                );
     }
 
     private Optional<Instant> findLatestOpenTime(String sql, Object... args) {
@@ -292,23 +305,6 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
                 requiredDecimal(resultSet, "close_price").doubleValue(),
                 requiredDecimal(resultSet, "volume").doubleValue(),
                 quoteVolume == null ? 0.0 : quoteVolume.doubleValue()
-        );
-    }
-
-    private HourlyMarketCandle hourlyCandle(ResultSet resultSet, int rowNumber) throws SQLException {
-        BigDecimal quoteVolume = resultSet.getBigDecimal("quote_volume");
-        return new HourlyMarketCandle(
-                resultSet.getLong("symbol_id"),
-                databaseInstant(resultSet, "open_time"),
-                databaseInstant(resultSet, "close_time"),
-                requiredDecimal(resultSet, "open_price").doubleValue(),
-                requiredDecimal(resultSet, "high_price").doubleValue(),
-                requiredDecimal(resultSet, "low_price").doubleValue(),
-                requiredDecimal(resultSet, "close_price").doubleValue(),
-                requiredDecimal(resultSet, "volume").doubleValue(),
-                quoteVolume == null ? 0.0 : quoteVolume.doubleValue(),
-                databaseInstant(resultSet, "source_minute_open_time"),
-                databaseInstant(resultSet, "source_minute_close_time")
         );
     }
 

@@ -8,9 +8,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "daily_active_user_summary")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DailyActiveUserSummaryEntity extends AuditableEntity {
     @Id
     @Column(name = "activity_date", nullable = false)
@@ -21,9 +24,6 @@ public class DailyActiveUserSummaryEntity extends AuditableEntity {
 
     @Column(name = "sampled_at", nullable = false)
     private Instant sampledAt;
-
-    protected DailyActiveUserSummaryEntity() {
-    }
 
     public DailyActiveUserSummaryEntity(LocalDate activityDate, long activeUserCount, Instant sampledAt) {
         this.activityDate = activityDate;

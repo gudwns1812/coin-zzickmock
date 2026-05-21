@@ -292,13 +292,15 @@ export default function FuturesPriceChart({
   }, [candles, selectedInterval]);
 
   const hasFreshHistory = historyStatus === "ready";
-  const historicalCandles = hasFreshHistory ? candles : [];
+  const historicalCandles = candles;
   const displayCandles = useMemo(() => {
-    if (!hasFreshHistory) {
+    if (historicalCandles.length === 0) {
       return historicalCandles;
     }
 
-    return mergeCandlesWithRealtimeCandle(historicalCandles, realtimeCandle);
+    return hasFreshHistory
+      ? mergeCandlesWithRealtimeCandle(historicalCandles, realtimeCandle)
+      : historicalCandles;
   }, [hasFreshHistory, historicalCandles, realtimeCandle]);
   const latestVisibleCandle = displayCandles.at(-1) ?? null;
   const displayedOhlc = hoveredOhlc ?? toOhlcSnapshot(latestVisibleCandle);
@@ -678,8 +680,7 @@ export default function FuturesPriceChart({
 
     if (
       appliedInitialViewportKeyRef.current === initialViewportKey ||
-      chartRenderMode !== "candles" ||
-      historyStatus !== "ready"
+      chartRenderMode !== "candles"
     ) {
       return;
     }
@@ -1076,7 +1077,7 @@ export default function FuturesPriceChart({
         </div>
       </Modal>
 
-      {(isLoading || isError || historyStatus === "stale") && (
+      {(isLoading || isError) && (
         <div className="mt-4 rounded-main border border-main-light-gray bg-main-light-gray/30 px-main py-3 text-sm-custom text-main-dark-gray/70">
           {getChartHistoryBannerMessage(isLoading, isError)}
         </div>
@@ -1313,7 +1314,7 @@ function getChartHistoryBannerMessage(
     return "차트 히스토리 응답을 받지 못해 실시간 가격선만 표시합니다.";
   }
 
-  return "차트 히스토리 시간이 현재 기준으로 너무 오래되어 실시간 가격선만 표시합니다.";
+  return "";
 }
 
 function getOhlcTone(snapshot: OhlcSnapshot | null): OhlcTone {

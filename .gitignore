@@ -68,6 +68,7 @@ backend/spy.log
 scripts/*
 !scripts/k6-candle-latency.js
 !scripts/k6-candle-latency-report.html
+!scripts/run-k6-candle-latency-html.mjs
 .omx/
 .codex/*
 !.codex/hooks.json

@@ -7,13 +7,19 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.math.BigDecimal;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "futures_orders")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class FuturesOrderEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -80,9 +86,6 @@ public class FuturesOrderEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected FuturesOrderEntity() {
-    }
-
     public static FuturesOrderEntity from(Long memberId, FuturesOrder futuresOrder) {
         FuturesOrderEntity entity = new FuturesOrderEntity();
         entity.orderId = futuresOrder.orderId();
@@ -128,10 +131,6 @@ public class FuturesOrderEntity {
                 triggerSource,
                 ocoGroupId
         );
-    }
-
-    public Long memberId() {
-        return memberId;
     }
 
     public void updateStatus(String status) {

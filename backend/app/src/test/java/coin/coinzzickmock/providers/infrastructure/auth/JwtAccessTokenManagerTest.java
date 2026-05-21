@@ -147,7 +147,7 @@ class JwtAccessTokenManagerTest {
         JwtAccessTokenConfiguration.JwtAccessTokenSigningMaterial signingMaterial =
                 configuration.accessTokenSigningMaterial();
         JwtEncoder encoder = configuration.accessTokenJwtEncoder(signingMaterial);
-        JwtDecoder decoder = configuration.accessTokenJwtDecoder(signingMaterial);
+        JwtDecoder decoder = configuration.accessTokenJwtDecoder(signingMaterial, new AccessTokenTypeValidator());
         JwsHeader jwsHeader = configuration.accessTokenJwsHeader(signingMaterial);
         return new JwtBeans(encoder, decoder, jwsHeader);
     }

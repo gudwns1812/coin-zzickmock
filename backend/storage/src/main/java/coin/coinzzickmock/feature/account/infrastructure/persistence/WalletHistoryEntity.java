@@ -12,9 +12,12 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "wallet_history")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WalletHistoryEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,9 +43,6 @@ public class WalletHistoryEntity extends AuditableEntity {
 
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
-
-    protected WalletHistoryEntity() {
-    }
 
     private WalletHistoryEntity(
             Long memberId,

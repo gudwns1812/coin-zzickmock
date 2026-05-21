@@ -11,9 +11,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "position_peek_snapshot_positions")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PositionPeekSnapshotPositionEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,9 +49,6 @@ public class PositionPeekSnapshotPositionEntity extends AuditableEntity {
 
     @Column(name = "roi", nullable = false)
     private double roi;
-
-    protected PositionPeekSnapshotPositionEntity() {
-    }
 
     public PositionPeekSnapshotPositionEntity(
             PositionPeekSnapshotEntity snapshot,

@@ -11,9 +11,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Entity
 @Table(name = "community_post_images")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class CommunityPostImageEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,9 +47,6 @@ public class CommunityPostImageEntity extends AuditableEntity {
 
     @Column(name = "status", nullable = false, length = 32)
     private String status;
-
-    protected CommunityPostImageEntity() {
-    }
 
     public CommunityPostImageEntity(
             Long id,
@@ -78,42 +82,9 @@ public class CommunityPostImageEntity extends AuditableEntity {
         this.status = CommunityPostImageStatus.ORPHANED.name();
     }
 
-
     public CommunityPostImageIntent toDomain() {
         return new CommunityPostImageIntent(id, postId, uploaderMemberId, objectKey, publicUrl, contentType, sizeBytes,
                 CommunityPostImageStatus.valueOf(status), createdAt(), updatedAt());
-    }
-
-    public Long id() {
-        return id;
-    }
-
-    public Long postId() {
-        return postId;
-    }
-
-    public Long uploaderMemberId() {
-        return uploaderMemberId;
-    }
-
-    public String objectKey() {
-        return objectKey;
-    }
-
-    public String publicUrl() {
-        return publicUrl;
-    }
-
-    public String contentType() {
-        return contentType;
-    }
-
-    public long sizeBytes() {
-        return sizeBytes;
-    }
-
-    public String status() {
-        return status;
     }
 
     private static String requireText(String value, String name) {

@@ -12,9 +12,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "reward_shop_purchases")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RewardShopPurchaseEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -50,9 +53,6 @@ public class RewardShopPurchaseEntity extends AuditableEntity {
 
     @Column(name = "purchased_at", nullable = false)
     private Instant purchasedAt;
-
-    protected RewardShopPurchaseEntity() {
-    }
 
     public static RewardShopPurchaseEntity from(RewardShopPurchase purchase, RewardShopItemEntity shopItem) {
         RewardShopPurchaseEntity entity = new RewardShopPurchaseEntity();

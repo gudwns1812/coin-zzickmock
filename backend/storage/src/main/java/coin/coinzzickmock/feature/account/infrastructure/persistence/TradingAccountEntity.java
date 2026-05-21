@@ -7,11 +7,17 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-
 import java.math.BigDecimal;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 @Entity
 @Table(name = "trading_accounts")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+@Accessors(fluent = true)
 public class TradingAccountEntity extends AuditableEntity {
     @Id
     @Column(name = "member_id", nullable = false)
@@ -32,9 +38,6 @@ public class TradingAccountEntity extends AuditableEntity {
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
-
-    protected TradingAccountEntity() {
-    }
 
     public TradingAccountEntity(
             Long memberId,
@@ -76,14 +79,6 @@ public class TradingAccountEntity extends AuditableEntity {
                 availableMargin.doubleValue(),
                 version()
         );
-    }
-
-    public Long memberId() {
-        return memberId;
-    }
-
-    public String memberEmail() {
-        return memberEmail;
     }
 
     public long version() {

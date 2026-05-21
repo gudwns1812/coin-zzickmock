@@ -12,7 +12,7 @@ import org.springframework.context.event.EventListener;
         prefix = "coin.market.calendar-candle-backfill",
         name = "enabled",
         havingValue = "true",
-        matchIfMissing = true
+        matchIfMissing = false
 )
 @RequiredArgsConstructor
 public class MarketCalendarCandleBackfillReadyEventListener {

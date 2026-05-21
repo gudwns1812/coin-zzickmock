@@ -168,6 +168,37 @@ class MarketPersistedCandleReaderTest {
                 .isEqualTo(firstMonth);
     }
 
+    @Test
+    void weeklyReadRollsUpPersistedDailyRows() {
+        TrackingMarketHistoryRepository repository = new TrackingMarketHistoryRepository();
+        Instant weekStart = Instant.parse("2026-04-20T00:00:00Z");
+        for (int day = 0; day < 7; day++) {
+            Instant dayStart = weekStart.plusSeconds(day * 86_400L);
+            repository.completedCandles.add(completed(
+                    MarketCandleInterval.ONE_DAY,
+                    dayStart,
+                    dayStart.plusSeconds(86_400)
+            ));
+        }
+        repository.latestCompletedOpenTimes.put(
+                MarketCandleInterval.ONE_DAY,
+                Instant.parse("2026-04-26T00:00:00Z")
+        );
+        MarketPersistedCandleReader reader = new MarketPersistedCandleReader(
+                repository,
+                new MarketCandleRollupProjector()
+        );
+
+        List<MarketCandleResult> results = reader.read(1L, MarketCandleInterval.ONE_WEEK, 1, null);
+
+        assertThat(results).singleElement()
+                .extracting(MarketCandleResult::openTime)
+                .isEqualTo(weekStart);
+        assertThat(repository.completedCandleRangeCalls).isEqualTo(1);
+        assertThat(repository.completedHourlyRangeCalls).isZero();
+        assertThat(repository.rawHourlyRangeCalls).isZero();
+    }
+
     private static HourlyMarketCandle hourly(Instant openTime) {
         return new HourlyMarketCandle(
                 1L,
@@ -199,11 +230,7 @@ class MarketPersistedCandleReaderTest {
                 99,
                 100.5,
                 10,
-                1005,
-                MarketCandleInterval.ONE_HOUR,
-                openTime,
-                closeTime,
-                (int) java.time.temporal.ChronoUnit.HOURS.between(openTime, closeTime)
+                1005
         );
     }
 

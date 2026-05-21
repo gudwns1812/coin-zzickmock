@@ -13,11 +13,7 @@ public record CompletedMarketCandle(
         double lowPrice,
         double closePrice,
         double volume,
-        double quoteVolume,
-        MarketCandleInterval sourceInterval,
-        Instant sourceOpenTime,
-        Instant sourceCloseTime,
-        int sourceCandleCount
+        double quoteVolume
 ) {
     public static CompletedMarketCandle fromHourly(HourlyMarketCandle candle) {
         return new CompletedMarketCandle(
@@ -30,11 +26,7 @@ public record CompletedMarketCandle(
                 candle.lowPrice(),
                 candle.closePrice(),
                 candle.volume(),
-                candle.quoteVolume(),
-                MarketCandleInterval.ONE_MINUTE,
-                candle.sourceMinuteOpenTime(),
-                candle.sourceMinuteCloseTime(),
-                60
+                candle.quoteVolume()
         );
     }
 
@@ -76,11 +68,7 @@ public record CompletedMarketCandle(
                 lowPrice,
                 last.closePrice(),
                 volume,
-                quoteVolume,
-                MarketCandleInterval.ONE_HOUR,
-                first.openTime(),
-                last.closeTime(),
-                hourlyCandles.size()
+                quoteVolume
         );
     }
 
@@ -98,8 +86,8 @@ public record CompletedMarketCandle(
                 closePrice,
                 volume,
                 quoteVolume,
-                sourceOpenTime,
-                sourceCloseTime
+                openTime,
+                closeTime
         );
     }
 }

@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.application.history;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
+import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
@@ -103,6 +104,25 @@ public class MarketCandleRollupProjector {
         return results;
     }
 
+    public List<MarketCandleResult> rollupDailyResults(
+            List<CompletedMarketCandle> rawCandles,
+            MarketCandleInterval interval
+    ) {
+        Map<Instant, List<CompletedMarketCandle>> grouped = new LinkedHashMap<>();
+        for (CompletedMarketCandle candle : rawCandles) {
+            grouped.computeIfAbsent(
+                            MarketTime.bucketStart(candle.openTime(), interval),
+                            key -> new ArrayList<>()
+                    )
+                    .add(candle);
+        }
+
+        return grouped.entrySet().stream()
+                .filter(entry -> isCompleteDailyBucket(entry.getKey(), interval, entry.getValue()))
+                .map(entry -> rollupDailyBucket(entry.getKey(), interval, entry.getValue()))
+                .toList();
+    }
+
     private boolean isCompleteMinuteBucket(
             Instant bucketStart,
             int bucketMinutes,
@@ -128,6 +148,21 @@ public class MarketCandleRollupProjector {
         }
 
         return expectedOpenTimes(bucketStart, expectedHours, ChronoUnit.HOURS).stream()
+                .allMatch(expectedOpenTime -> candles.stream()
+                        .anyMatch(candle -> expectedOpenTime.equals(candle.openTime())));
+    }
+
+    private boolean isCompleteDailyBucket(
+            Instant bucketStart,
+            MarketCandleInterval interval,
+            List<CompletedMarketCandle> candles
+    ) {
+        int expectedDays = expectedDailyBucketSize(bucketStart, interval);
+        if (candles.size() != expectedDays) {
+            return false;
+        }
+
+        return expectedOpenTimes(bucketStart, expectedDays, ChronoUnit.DAYS).stream()
                 .allMatch(expectedOpenTime -> candles.stream()
                         .anyMatch(candle -> expectedOpenTime.equals(candle.openTime())));
     }
@@ -208,6 +243,40 @@ public class MarketCandleRollupProjector {
         );
     }
 
+    private MarketCandleResult rollupDailyBucket(
+            Instant bucketStart,
+            MarketCandleInterval interval,
+            List<CompletedMarketCandle> candles
+    ) {
+        CompletedMarketCandle first = candles.get(0);
+        CompletedMarketCandle last = candles.get(0);
+        double high = first.highPrice();
+        double low = first.lowPrice();
+        double volume = 0.0;
+
+        for (CompletedMarketCandle candle : candles) {
+            if (candle.openTime().isBefore(first.openTime())) {
+                first = candle;
+            }
+            if (candle.openTime().isAfter(last.openTime())) {
+                last = candle;
+            }
+            high = Math.max(high, candle.highPrice());
+            low = Math.min(low, candle.lowPrice());
+            volume += candle.volume();
+        }
+
+        return new MarketCandleResult(
+                bucketStart,
+                MarketTime.bucketClose(bucketStart, interval),
+                first.openPrice(),
+                high,
+                low,
+                last.closePrice(),
+                volume
+        );
+    }
+
     private int expectedHourlyBucketSize(Instant bucketStart, MarketCandleInterval interval) {
         return switch (interval) {
             case FOUR_HOURS -> 4;
@@ -217,6 +286,13 @@ public class MarketCandleRollupProjector {
                     bucketStart,
                     MarketTime.bucketClose(bucketStart, interval)
             );
+            default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
+        };
+    }
+
+    private int expectedDailyBucketSize(Instant bucketStart, MarketCandleInterval interval) {
+        return switch (interval) {
+            case ONE_WEEK -> 7;
             default -> throw new CoreException(ErrorCode.INVALID_REQUEST);
         };
     }

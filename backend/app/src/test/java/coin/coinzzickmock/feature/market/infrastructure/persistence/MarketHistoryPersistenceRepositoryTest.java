@@ -185,8 +185,8 @@ class MarketHistoryPersistenceRepositoryTest {
 
         Instant sharedOpenTime = Instant.parse("2026-04-17T06:00:00Z");
         marketHistoryRepository.saveHourlyCandle(hourly(symbolId, sharedOpenTime));
-        insertCompletedCalendarCandle(symbolId, "ONE_DAY", sharedOpenTime, 24);
-        insertCompletedCalendarCandle(symbolId, "ONE_MONTH", sharedOpenTime, 720);
+        insertCompletedCalendarCandle(symbolId, "ONE_DAY", sharedOpenTime);
+        insertCompletedCalendarCandle(symbolId, "ONE_MONTH", sharedOpenTime);
 
         List<HourlyMarketCandle> completedCandles = marketHistoryRepository.findCompletedHourlyCandles(
                 symbolId,
@@ -196,32 +196,6 @@ class MarketHistoryPersistenceRepositoryTest {
 
         assertEquals(3, count("market_completed_candles"));
         assertEquals(List.of(sharedOpenTime), completedCandles.stream().map(HourlyMarketCandle::openTime).toList());
-        assertEquals(
-                "ONE_MINUTE",
-                jdbcTemplate.queryForObject(
-                        """
-                                SELECT source_interval
-                                FROM market_completed_candles
-                                WHERE symbol_id = ? AND candle_interval = 'ONE_HOUR' AND open_time = ?
-                                """,
-                        String.class,
-                        symbolId,
-                        LocalDateTime.parse("2026-04-17T06:00:00")
-                )
-        );
-        assertEquals(
-                60,
-                jdbcTemplate.queryForObject(
-                        """
-                                SELECT source_candle_count
-                                FROM market_completed_candles
-                                WHERE symbol_id = ? AND candle_interval = 'ONE_HOUR' AND open_time = ?
-                                """,
-                        Integer.class,
-                        symbolId,
-                        LocalDateTime.parse("2026-04-17T06:00:00")
-                )
-        );
     }
 
     @Test
@@ -289,15 +263,14 @@ class MarketHistoryPersistenceRepositoryTest {
         return count == null ? 0 : count;
     }
 
-    private void insertCompletedCalendarCandle(Long symbolId, String candleInterval, Instant openTime, int sourceCount) {
+    private void insertCompletedCalendarCandle(Long symbolId, String candleInterval, Instant openTime) {
         jdbcTemplate.update(
                 """
                         INSERT INTO market_completed_candles (
                             symbol_id, candle_interval, open_time, close_time, open_price, high_price,
-                            low_price, close_price, volume, quote_volume, source_interval,
-                            source_open_time, source_close_time, source_candle_count, created_at, updated_at
+                            low_price, close_price, volume, quote_volume, created_at, updated_at
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                 symbolId,
                 candleInterval,
@@ -309,10 +282,6 @@ class MarketHistoryPersistenceRepositoryTest {
                 java.math.BigDecimal.valueOf(101250),
                 java.math.BigDecimal.valueOf(10.0),
                 java.math.BigDecimal.valueOf(1012500.0),
-                "ONE_HOUR",
-                LocalDateTime.ofInstant(openTime, java.time.ZoneOffset.UTC),
-                LocalDateTime.ofInstant(openTime.plusSeconds(3600), java.time.ZoneOffset.UTC),
-                sourceCount,
                 LocalDateTime.ofInstant(openTime, java.time.ZoneOffset.UTC),
                 LocalDateTime.ofInstant(openTime, java.time.ZoneOffset.UTC)
         );

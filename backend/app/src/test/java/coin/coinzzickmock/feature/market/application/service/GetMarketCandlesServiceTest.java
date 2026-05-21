@@ -176,24 +176,13 @@ class GetMarketCandlesServiceTest {
     }
 
     @Test
-    void rollsUpWeeklyCandlesOnUtcCalendarBoundary() {
+    void readsWeeklyCandlesOnUtcCalendarBoundary() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        for (int hour = 0; hour < 168; hour++) {
-            Instant openTime = Instant.parse("2026-04-20T00:00:00Z").plusSeconds(hour * 3600L);
-            repository.saveHourlyCandle(new HourlyMarketCandle(
-                    1L,
-                    openTime,
-                    openTime.plusSeconds(3600),
-                    100 + hour,
-                    101 + hour,
-                    99 + hour,
-                    100.5 + hour,
-                    10,
-                    1000,
-                    openTime,
-                    openTime.plusSeconds(3600)
-            ));
-        }
+        saveDailyRange(
+                repository,
+                "2026-04-20T00:00:00Z",
+                "2026-04-27T00:00:00Z"
+        );
         repository.saveHourlyCandle(hourly(1L, "2026-04-27T00:00:00Z", 300, 301, 299, 300.5, 10));
 
         GetMarketCandlesService service = service(repository);
@@ -202,7 +191,7 @@ class GetMarketCandlesServiceTest {
 
         assertEquals(1, results.size());
         assertEquals(Instant.parse("2026-04-20T00:00:00Z"), results.get(0).openTime());
-        assertEquals(267.5, results.get(0).closePrice(), 0.0001);
+        assertEquals(100.5, results.get(0).closePrice(), 0.0001);
         assertEquals(1680.0, results.get(0).volume(), 0.0001);
     }
 
@@ -244,7 +233,16 @@ class GetMarketCandlesServiceTest {
     @Test
     void weeklyRollupUsesLatestCompleteBucketBeforeHistoricalFallback() {
         InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
-        saveHourlyRange(repository, "2026-04-06T00:00:00Z", "2026-04-20T00:00:00Z");
+        saveDailyRange(
+                repository,
+                "2026-04-06T00:00:00Z",
+                "2026-04-13T00:00:00Z"
+        );
+        saveDailyRange(
+                repository,
+                "2026-04-13T00:00:00Z",
+                "2026-04-20T00:00:00Z"
+        );
         saveHourlyRange(repository, "2026-04-20T00:00:00Z", "2026-04-22T00:00:00Z");
         FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
         GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
@@ -549,11 +547,7 @@ class GetMarketCandlesServiceTest {
                 low,
                 close,
                 volume,
-                volume * close,
-                MarketCandleInterval.ONE_HOUR,
-                openInstant,
-                closeInstant,
-                (int) java.time.temporal.ChronoUnit.HOURS.between(openInstant, closeInstant)
+                volume * close
         );
     }
 
@@ -567,6 +561,28 @@ class GetMarketCandlesServiceTest {
         while (cursor.isBefore(end)) {
             repository.saveHourlyCandle(hourly(1L, cursor.toString(), 100, 101, 99, 100.5, 10));
             cursor = cursor.plusSeconds(3600);
+        }
+    }
+
+    private static void saveDailyRange(
+            InMemoryMarketHistoryRepository repository,
+            String fromInclusive,
+            String toExclusive
+    ) {
+        Instant cursor = Instant.parse(fromInclusive);
+        Instant end = Instant.parse(toExclusive);
+        while (cursor.isBefore(end)) {
+            repository.saveCompletedCandle(completed(
+                    MarketCandleInterval.ONE_DAY,
+                    cursor.toString(),
+                    cursor.plusSeconds(86_400).toString(),
+                    100,
+                    101,
+                    99,
+                    100.5,
+                    240
+            ));
+            cursor = cursor.plusSeconds(86_400);
         }
     }
 

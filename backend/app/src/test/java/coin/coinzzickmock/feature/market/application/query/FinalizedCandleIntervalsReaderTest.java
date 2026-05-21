@@ -115,11 +115,7 @@ class FinalizedCandleIntervalsReaderTest {
                 99,
                 100.5,
                 10,
-                1005,
-                MarketCandleInterval.ONE_HOUR,
-                openTime,
-                closeTime,
-                (int) java.time.temporal.ChronoUnit.HOURS.between(openTime, closeTime)
+                1005
         );
     }
 

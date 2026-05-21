@@ -28,11 +28,11 @@ public class FinalizedCandleIntervalsReader {
     private static final List<MarketCandleInterval> HOURLY_DERIVED_INTERVALS = List.of(
             MarketCandleInterval.ONE_HOUR,
             MarketCandleInterval.FOUR_HOURS,
-            MarketCandleInterval.TWELVE_HOURS,
-            MarketCandleInterval.ONE_WEEK
+            MarketCandleInterval.TWELVE_HOURS
     );
     private static final List<MarketCandleInterval> CALENDAR_COMPLETED_INTERVALS = List.of(
             MarketCandleInterval.ONE_DAY,
+            MarketCandleInterval.ONE_WEEK,
             MarketCandleInterval.ONE_MONTH
     );
 

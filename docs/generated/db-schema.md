@@ -503,7 +503,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `uk_market_candles_1m_symbol_open_time`로 심볼별 시각 중복을 막고,
   `idx_market_candles_1m_open_time_symbol`로 시간 구간 기준 롤업 조회를 빠르게 한다.
 
-### `market_completed_candles`
+### `market_candles_1h`
 
 - 목적:
   V34 이전 REST-visible completed 1시간봉 롤업 저장 테이블이다. V34에서 기존 row를 `market_completed_candles(candle_interval='ONE_HOUR')`로 복사했으며, 새 application read/write 경로는 generic completed table을 사용한다.
@@ -511,13 +511,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `symbol_id`, `candle_interval`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `source_interval`, `source_open_time`, `source_close_time`, `source_candle_count`, `created_at`, `updated_at`
-- interval token:
-  `candle_interval`은 `ONE_HOUR`, `ONE_DAY`, `ONE_MONTH`를 사용한다.
-  `source_interval`은 `ONE_HOUR` row에 `ONE_MINUTE`, `ONE_DAY`/`ONE_MONTH` row에 `ONE_HOUR`를 사용한다.
-  `source_candle_count`는 저장 시점에 완전성이 증명된 원천 candle 수다. `ONE_HOUR`는 60, `ONE_DAY`는 24, `ONE_MONTH`는 UTC 월 경계의 실제 hour 수다.
+  `symbol_id`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`
 - 시간 기준:
-  `open_time`, `close_time`, `source_open_time`, `source_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
+  `open_time`, `close_time`, `source_minute_open_time`, `source_minute_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - 관련 엔티티/모듈:
   [MarketCandle1hEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCandle1hEntity.java),
   [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
@@ -534,23 +530,25 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 
 - 목적:
   REST-visible completed 캔들을 interval-discriminator 방식으로 저장한다. 현재 저장 대상은 `ONE_HOUR`, `ONE_DAY`, `ONE_MONTH`이며 API label은 각각 `1h`, `1D`, `1M`이다.
-  `ONE_HOUR` row는 60개 연속 `market_candles_1m` row가 저장 또는 재빌드 시점에 확인된 경우에만 저장한다. `ONE_DAY`/`ONE_MONTH` row는 해당 UTC calendar bucket의 completed `ONE_HOUR` row가 모두 확인된 경우에만 저장한다.
+  `ONE_HOUR` row는 60개 연속 `market_candles_1m` row가 저장 또는 재빌드 시점에 확인된 경우에만 저장한다. V34 초기 적재는 기존 `ONE_HOUR.open_time`을 UTC 일/월 경계로 잘라 `ONE_DAY`/`ONE_MONTH` row를 SQL로 생성한다.
 - PK:
   `id` (auto increment)
 - 주요 컬럼:
-  `symbol_id`, `candle_interval`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `source_interval`, `source_open_time`, `source_close_time`, `source_candle_count`, `created_at`, `updated_at`
+  `symbol_id`, `candle_interval`, `open_time`, `close_time`, `open_price`, `high_price`, `low_price`, `close_price`, `volume`, `quote_volume`, `created_at`, `updated_at`
 - 시간 기준:
-  `open_time`, `close_time`, `source_open_time`, `source_close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
+  `open_time`, `close_time`, `created_at`, `updated_at`은 UTC 값 자체를 `DATETIME(6)`에 저장해 DB 세션 timezone 변환을 받지 않는다.
 - interval token:
-  `candle_interval`은 DB-safe token `ONE_HOUR`, `ONE_DAY`, `ONE_MONTH`를 사용한다. `source_interval`은 `ONE_HOUR` row에서 `ONE_MINUTE`, calendar row에서 `ONE_HOUR`를 사용한다. `source_candle_count`는 검증된 source row 수이며 `ONE_HOUR`는 `60`, `ONE_DAY`는 `24`, `ONE_MONTH`는 UTC 월 길이에 따른 hour 수다.
+  `candle_interval`은 DB-safe token `ONE_HOUR`, `ONE_DAY`, `ONE_MONTH`를 사용한다.
 - 관련 엔티티/모듈:
+  [MarketCompletedCandleEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCompletedCandleEntity.java),
+  [MarketCompletedCandleEntityRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketCompletedCandleEntityRepository.java),
   [MarketHistoryPersistenceRepository](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/market/infrastructure/persistence/MarketHistoryPersistenceRepository.java)
 - 관련 migration 또는 schema 파일:
   [V34__generalize_completed_market_candles.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V34__generalize_completed_market_candles.sql)
 - 인덱스:
   `uk_market_completed_candles_symbol_interval_open_time`로 같은 심볼/interval/open time의 completed row 중복을 막고, interval별 range/latest 조회의 기준 index로 사용한다.
 - legacy copy:
-  V34는 기존 `market_candles_1h` row를 `candle_interval='ONE_HOUR'`, `source_interval='ONE_MINUTE'`, `source_open_time=source_minute_open_time`, `source_close_time=source_minute_close_time`, `source_candle_count=60`으로 복사한다.
+  V34는 기존 `market_candles_1h` row를 `candle_interval='ONE_HOUR'`로 복사한 뒤, 시간 버킷 기준으로 `ONE_DAY`, `ONE_MONTH` 초기 row를 생성한다.
 
 
 ### `market_history_repair_events`
@@ -699,7 +697,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ## Change Log
 
 - 2026-05-20:
-  `V34__generalize_completed_market_candles.sql`로 `market_completed_candles` generic completed candle table을 추가하고 기존 `market_candles_1h` row를 `candle_interval=ONE_HOUR`, `source_interval=ONE_MINUTE`, `source_candle_count=60`으로 복사했다.
+  `V34__generalize_completed_market_candles.sql`로 `market_completed_candles` generic completed candle table을 추가하고 기존 `market_candles_1h` row를 `candle_interval=ONE_HOUR`로 복사한 뒤 `ONE_DAY`/`ONE_MONTH` 초기 row를 시간 버킷 기준으로 생성했다.
 - 2026-05-14:
   `V31__add_community_posts.sql`로 커뮤니티 게시글, 댓글, 좋아요, 이미지 intent 저장 테이블과 soft-delete/list/ownership 검증 인덱스를 추가했다.
 - 2026-05-13:

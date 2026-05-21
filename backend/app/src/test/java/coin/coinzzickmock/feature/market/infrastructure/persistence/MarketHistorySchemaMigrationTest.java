@@ -59,7 +59,7 @@ class MarketHistorySchemaMigrationTest {
     }
 
     @Test
-    void addsCompletedCandleDiscriminatorAndSourceAuditColumns() throws SQLException {
+    void addsCompletedCandleDiscriminatorColumns() throws SQLException {
         assertThat(columnsOf("MARKET_COMPLETED_CANDLES"))
                 .contains(
                         "SYMBOL_ID",
@@ -72,17 +72,19 @@ class MarketHistorySchemaMigrationTest {
                         "CLOSE_PRICE",
                         "VOLUME",
                         "QUOTE_VOLUME",
+                        "CREATED_AT",
+                        "UPDATED_AT"
+                )
+                .doesNotContain(
                         "SOURCE_INTERVAL",
                         "SOURCE_OPEN_TIME",
                         "SOURCE_CLOSE_TIME",
-                        "SOURCE_CANDLE_COUNT",
-                        "CREATED_AT",
-                        "UPDATED_AT"
+                        "SOURCE_CANDLE_COUNT"
                 );
     }
 
     @Test
-    void copiesExistingHourlyCandlesIntoGenericCompletedTable() throws SQLException {
+    void copiesExistingHourlyCandlesAndSeedsCalendarCandlesIntoGenericCompletedTable() throws SQLException {
         String databaseName = "market_history_copy_" + System.nanoTime();
         String url = "jdbc:h2:mem:" + databaseName + ";MODE=MySQL;DB_CLOSE_DELAY=-1";
 
@@ -172,34 +174,34 @@ class MarketHistorySchemaMigrationTest {
             );
 
             try (var statement = connection.prepareStatement("""
-                    SELECT COUNT(*) AS copied_count,
-                           MIN(open_time) AS min_open_time,
-                           MAX(open_time) AS max_open_time,
-                           MIN(candle_interval) AS candle_interval,
-                           MIN(source_interval) AS source_interval,
-                           MIN(source_candle_count) AS source_candle_count,
-                           MIN(open_price) AS open_price,
-                           MIN(close_price) AS close_price,
-                           MIN(source_open_time) AS source_open_time,
-                           MIN(source_close_time) AS source_close_time
+                    SELECT candle_interval, open_time, close_time, open_price, close_price
                     FROM market_completed_candles
+                    ORDER BY candle_interval
                     """);
                  var resultSet = statement.executeQuery()) {
-                assertThat(resultSet.next()).isTrue();
-                assertThat(resultSet.getInt("copied_count")).isEqualTo(1);
-                assertThat(utcInstant(resultSet, "min_open_time"))
-                        .isEqualTo(Instant.parse("2026-04-17T06:00:00Z"));
-                assertThat(utcInstant(resultSet, "max_open_time"))
-                        .isEqualTo(Instant.parse("2026-04-17T06:00:00Z"));
-                assertThat(resultSet.getString("candle_interval")).isEqualTo("ONE_HOUR");
-                assertThat(resultSet.getString("source_interval")).isEqualTo("ONE_MINUTE");
-                assertThat(resultSet.getInt("source_candle_count")).isEqualTo(60);
-                assertThat(resultSet.getBigDecimal("open_price")).isEqualByComparingTo("101000");
-                assertThat(resultSet.getBigDecimal("close_price")).isEqualByComparingTo("101250");
-                assertThat(utcInstant(resultSet, "source_open_time"))
-                        .isEqualTo(Instant.parse("2026-04-17T06:00:00Z"));
-                assertThat(utcInstant(resultSet, "source_close_time"))
-                        .isEqualTo(Instant.parse("2026-04-17T07:00:00Z"));
+                Map<String, Instant> openTimes = new LinkedHashMap<>();
+                Map<String, Instant> closeTimes = new LinkedHashMap<>();
+                Map<String, BigDecimal> openPrices = new LinkedHashMap<>();
+                Map<String, BigDecimal> closePrices = new LinkedHashMap<>();
+                while (resultSet.next()) {
+                    String interval = resultSet.getString("candle_interval");
+                    openTimes.put(interval, utcInstant(resultSet, "open_time"));
+                    closeTimes.put(interval, utcInstant(resultSet, "close_time"));
+                    openPrices.put(interval, resultSet.getBigDecimal("open_price"));
+                    closePrices.put(interval, resultSet.getBigDecimal("close_price"));
+                }
+                assertThat(openTimes)
+                        .containsEntry("ONE_HOUR", Instant.parse("2026-04-17T06:00:00Z"))
+                        .containsEntry("ONE_DAY", Instant.parse("2026-04-17T00:00:00Z"))
+                        .containsEntry("ONE_MONTH", Instant.parse("2026-04-01T00:00:00Z"));
+                assertThat(openTimes).doesNotContainKey("ONE_WEEK");
+                assertThat(closeTimes)
+                        .containsEntry("ONE_HOUR", Instant.parse("2026-04-17T07:00:00Z"))
+                        .containsEntry("ONE_DAY", Instant.parse("2026-04-18T00:00:00Z"))
+                        .containsEntry("ONE_MONTH", Instant.parse("2026-05-01T00:00:00Z"));
+                assertThat(closeTimes).doesNotContainKey("ONE_WEEK");
+                assertThat(openPrices.values()).allSatisfy(price -> assertThat(price).isEqualByComparingTo("101000"));
+                assertThat(closePrices.values()).allSatisfy(price -> assertThat(price).isEqualByComparingTo("101250"));
             }
         }
     }

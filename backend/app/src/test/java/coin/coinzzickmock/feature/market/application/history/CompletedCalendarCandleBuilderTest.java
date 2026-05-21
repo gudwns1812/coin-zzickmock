@@ -38,8 +38,6 @@ class CompletedCalendarCandleBuilderTest {
         assertThat(candle.closePrice()).isEqualTo(123.5);
         assertThat(candle.highPrice()).isEqualTo(124.0);
         assertThat(candle.lowPrice()).isEqualTo(99.0);
-        assertThat(candle.sourceInterval()).isEqualTo(MarketCandleInterval.ONE_HOUR);
-        assertThat(candle.sourceCandleCount()).isEqualTo(24);
     }
 
     @Test

@@ -112,11 +112,7 @@ class MarketCalendarCandleBackfillTest {
                 99,
                 100.5,
                 10,
-                1000,
-                MarketCandleInterval.ONE_HOUR,
-                openTime,
-                closeTime,
-                (int) java.time.temporal.ChronoUnit.HOURS.between(openTime, closeTime)
+                1000
         );
     }
 

@@ -10,6 +10,7 @@ type Props = {
   markPrice: number;
   indexPrice: number;
   change24h: number;
+  isMarketDataDegraded?: boolean;
   onSelectPrice: (price: number) => void;
 };
 
@@ -62,6 +63,7 @@ export default function QuickLimitPriceSelector({
   markPrice,
   indexPrice,
   change24h,
+  isMarketDataDegraded = false,
   onSelectPrice,
 }: Props) {
   const unitOptions = SYMBOL_UNIT_OPTIONS[symbol];
@@ -75,10 +77,22 @@ export default function QuickLimitPriceSelector({
 
   const resolvedSelectedUnit = resolveUnit(symbol, selectedUnit);
   const rows = useMemo(
-    () => buildQuickLimitPriceRows(lastPrice, symbol, resolvedSelectedUnit),
-    [lastPrice, resolvedSelectedUnit, symbol]
+    () =>
+      isMarketDataDegraded
+        ? EMPTY_PRICE_ROWS
+        : buildQuickLimitPriceRows(lastPrice, symbol, resolvedSelectedUnit),
+    [isMarketDataDegraded, lastPrice, resolvedSelectedUnit, symbol]
   );
   const hasSelectablePrice = rows.lastPrice !== null;
+
+  if (isMarketDataDegraded) {
+    return (
+      <aside
+        aria-hidden="true"
+        className="sticky top-4 h-fit min-h-[420px] rounded-main border border-main-light-gray bg-white p-main shadow-sm"
+      />
+    );
+  }
 
   return (
     <aside
@@ -152,12 +166,9 @@ export default function QuickLimitPriceSelector({
         </div>
       ) : (
         <div
-          aria-live="polite"
-          className="rounded-main border border-dashed border-main-light-gray bg-main-light-gray/20 px-3 py-4 text-xs-custom leading-relaxed text-main-dark-gray/55"
-        >
-          Price unavailable. Quick limit picks appear after a valid market
-          snapshot arrives.
-        </div>
+          aria-hidden="true"
+          className="min-h-[244px] rounded-main border border-main-light-gray bg-main-light-gray/20"
+        />
       )}
 
       <div className="mt-3 grid gap-1.5 border-t border-main-light-gray pt-3 text-[11px] font-semibold text-main-dark-gray/55">
@@ -243,7 +254,7 @@ function ReferenceLine({ label, value }: { label: string; value: number }) {
     <div className="flex items-center justify-between gap-2">
       <span>{label}</span>
       <span className="font-mono text-main-dark-gray tabular-nums">
-        {formatUsd(value)}
+        {Number.isFinite(value) && value > 0 ? formatUsd(value) : "\u00A0"}
       </span>
     </div>
   );

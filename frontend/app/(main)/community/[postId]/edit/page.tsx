@@ -1,5 +1,4 @@
 import BackendAuthGate from "@/components/router/BackendAuthGate";
-import ProtectedPageSkeleton from "@/components/ui/shared/ProtectedPageSkeleton";
 import CommunityEditClient from "@/components/router/(main)/community/CommunityEditClient";
 import { notFound } from "next/navigation";
 
@@ -10,7 +9,7 @@ export default async function CommunityEditPage({ params }: CommunityEditPagePro
   const postId = Number(rawPostId);
   if (!Number.isInteger(postId) || postId <= 0) notFound();
   return (
-    <BackendAuthGate fallback={<ProtectedPageSkeleton variant="community-editor" />}>
+    <BackendAuthGate>
       <CommunityEditClient postId={postId} />
     </BackendAuthGate>
   );

@@ -38,6 +38,7 @@ type Props = {
   symbol: MarketSymbol;
   currentPrice: number;
   isAuthenticated: boolean;
+  isMarketDataDegraded?: boolean;
   accountSummary: FuturesAccountSummary | null;
   positions?: FuturesPosition[];
   quickLimitPriceSelection?: QuickLimitPriceSelection | null;
@@ -91,6 +92,7 @@ export default function OrderEntryPanel({
   symbol,
   currentPrice,
   isAuthenticated,
+  isMarketDataDegraded = false,
   accountSummary,
   positions = [],
   quickLimitPriceSelection = null,
@@ -168,11 +170,13 @@ export default function OrderEntryPanel({
   const effectivePrice =
     orderType === "LIMIT" ? Number.parseFloat(limitPrice) : currentPrice;
   const parsedLimitPrice = Number.parseFloat(limitPrice);
-  const openOrderAffordabilityPrice = resolveOpenOrderAffordabilityPrice(
-    orderType,
-    currentPrice,
-    parsedLimitPrice
-  );
+  const openOrderAffordabilityPrice = isMarketDataDegraded
+    ? 0
+    : resolveOpenOrderAffordabilityPrice(
+        orderType,
+        currentPrice,
+        parsedLimitPrice
+      );
   const baseAsset = symbol.replace("USDT", "");
   const liveAccountSummary = useMemo(
     () => deriveLiveAccountSummaryDisplay(accountSummary, positions),
@@ -232,7 +236,7 @@ export default function OrderEntryPanel({
       symbol,
     ]
   );
-  const hasValidOrder = orderPayload !== null;
+  const hasValidOrder = orderPayload !== null && !isMarketDataDegraded;
   const orderNotionalPrice =
     ticketMode === "OPEN" ? openOrderAffordabilityPrice : effectivePrice;
   const orderNotional =
@@ -242,8 +246,12 @@ export default function OrderEntryPanel({
   const costEstimate = leverage > 0 ? orderNotional / leverage : 0;
   const valueSummaryLabel =
     quantityInputMode === "PERCENT" ? "Position value" : "Futures value";
-  const formattedOrderNotional = formatUsd(orderNotional);
-  const formattedCostEstimate = formatUsd(costEstimate);
+  const formattedOrderNotional = isMarketDataDegraded
+    ? "\u00A0"
+    : formatUsd(orderNotional);
+  const formattedCostEstimate = isMarketDataDegraded
+    ? "\u00A0"
+    : formatUsd(costEstimate);
   const closePositionLabel = matchingPosition
     ? `${formatQuantityInput(matchingPosition.quantity)} ${baseAsset}`
     : "-";
@@ -263,7 +271,12 @@ export default function OrderEntryPanel({
   }, [selectedSidePosition]);
 
   useEffect(() => {
-    if (!isAuthenticated || !orderPayload || ticketMode !== "OPEN") {
+    if (
+      isMarketDataDegraded ||
+      !isAuthenticated ||
+      !orderPayload ||
+      ticketMode !== "OPEN"
+    ) {
       setPreview(null);
       return;
     }
@@ -305,7 +318,7 @@ export default function OrderEntryPanel({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [isAuthenticated, orderPayload, ticketMode]);
+  }, [isAuthenticated, isMarketDataDegraded, orderPayload, ticketMode]);
 
   async function handleSubmit(nextSide: Side) {
     const nextSidePosition = findPositionForSide(positions, symbol, nextSide);
@@ -318,6 +331,10 @@ export default function OrderEntryPanel({
       quantity: parsedQuantity,
       limitPrice,
     });
+
+    if (isMarketDataDegraded) {
+      return;
+    }
 
     if (!isAuthenticated || !payload) {
       toast.error("수량과 가격을 다시 확인해주세요.");

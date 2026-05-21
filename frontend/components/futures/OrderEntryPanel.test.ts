@@ -51,7 +51,13 @@ test("open limit helper and summary use conservative affordability price", () =>
   assert.equal(source.includes("resolveOpenOrderAffordabilityPrice"), true);
   assert.equal(source.includes("openOrderAffordabilityPrice"), true);
   assert.equal(
-    source.includes("resolveOpenOrderAffordabilityPrice(\n    orderType,\n    currentPrice,\n    parsedLimitPrice"),
+    source.includes(
+      "resolveOpenOrderAffordabilityPrice(\n        orderType,\n        currentPrice,\n        parsedLimitPrice"
+    ),
+    true
+  );
+  assert.equal(
+    source.includes("openOrderAffordabilityPrice = isMarketDataDegraded"),
     true
   );
   assert.equal(
@@ -162,6 +168,14 @@ test("order ticket still builds payload through existing limit and market branch
   );
   assert.equal(source.includes('fetchFuturesBackendApi("/orders"'), true);
   assert.equal(source.includes('fetchFuturesBackendApi("/positions/close"'), true);
+});
+
+test("order ticket disables fallback market prices before live data recovers", () => {
+  assert.equal(source.includes("isMarketDataDegraded?: boolean"), true);
+  assert.equal(source.includes("openOrderAffordabilityPrice = isMarketDataDegraded"), true);
+  assert.equal(source.includes("orderPayload !== null && !isMarketDataDegraded"), true);
+  assert.equal(source.includes("fallback 가격으로 주문할 수 없습니다"), false);
+  assert.equal(source.includes("실시간 시세가 복구된 뒤 주문을 다시 시도해주세요."), false);
 });
 
 test("order account summary uses displayed positions for live mark-to-market values", () => {

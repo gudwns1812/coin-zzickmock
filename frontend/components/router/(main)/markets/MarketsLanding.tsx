@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 
 export type DashboardSummaryCard = {
   title: string;
@@ -166,13 +166,15 @@ export default function MarketsLanding({
       entry.targetToken === selectedPeekTarget?.targetToken
   );
   const isPeekOpen = Boolean(selectedPeekTarget);
-  const sortedMarkets = [...markets].sort((left, right) => {
-    if (sortKey === "default") {
-      return 0;
-    }
+  const sortedMarkets = isMarketDataDegraded
+    ? markets
+    : [...markets].sort((left, right) => {
+        if (sortKey === "default") {
+          return 0;
+        }
 
-    return MARKET_SORT_VALUE[sortKey](right) - MARKET_SORT_VALUE[sortKey](left);
-  });
+        return MARKET_SORT_VALUE[sortKey](right) - MARKET_SORT_VALUE[sortKey](left);
+      });
 
   return (
     <div className="px-main-3 pb-24 pt-2 flex flex-col gap-7">
@@ -221,13 +223,6 @@ export default function MarketsLanding({
             })}
           </div>
         </div>
-
-        {isMarketDataDegraded ? (
-          <div className="border-b border-main-light-gray/40 bg-[#fff6eb]/80 px-main-2 py-4 text-sm-custom text-[#9a5a00]">
-            외부 시세 수집에 실패했습니다. 현재 시장 데이터는 복구 중이며, 필드는
-            `-`로 표시됩니다.
-          </div>
-        ) : null}
 
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed">
@@ -448,27 +443,53 @@ function MarketTableRow({
             />
           ) : null}
           <p className="relative z-10 font-semibold text-main-dark-gray">
-            {isMarketDataDegraded ? "-" : formatUsd(market.lastPrice)}
+            <MarketMetricValue isHidden={isMarketDataDegraded}>
+              {formatUsd(market.lastPrice)}
+            </MarketMetricValue>
           </p>
         </div>
       </td>
       <td className={`px-main py-5 font-semibold ${changeClassName}`}>
-        {isMarketDataDegraded ? "-" : formatRatioPercent(market.change24h)}
+        <MarketMetricValue isHidden={isMarketDataDegraded}>
+          {formatRatioPercent(market.change24h)}
+        </MarketMetricValue>
       </td>
       <td className="px-main py-5 text-main-dark-gray/70">
-        {isMarketDataDegraded ? "-" : formatUsd(market.markPrice)}
+        <MarketMetricValue isHidden={isMarketDataDegraded}>
+          {formatUsd(market.markPrice)}
+        </MarketMetricValue>
       </td>
       <td className={`px-main py-5 font-semibold ${fundingClassName}`}>
-        {isMarketDataDegraded ? "-" : formatRatioPercent(market.fundingRate, 4)}
+        <MarketMetricValue isHidden={isMarketDataDegraded}>
+          {formatRatioPercent(market.fundingRate, 4)}
+        </MarketMetricValue>
       </td>
       <td className="px-main py-5 text-main-dark-gray/70">
-        {isMarketDataDegraded ? "-" : formatUsd(market.indexPrice)}
+        <MarketMetricValue isHidden={isMarketDataDegraded}>
+          {formatUsd(market.indexPrice)}
+        </MarketMetricValue>
       </td>
       <td className="px-main py-5 font-semibold text-main-dark-gray">
-        {isMarketDataDegraded ? "-" : formatCompactUsd(market.turnover24hUsdt)}
+        <MarketMetricValue isHidden={isMarketDataDegraded}>
+          {formatCompactUsd(market.turnover24hUsdt)}
+        </MarketMetricValue>
       </td>
     </tr>
   );
+}
+
+function MarketMetricValue({
+  children,
+  isHidden,
+}: {
+  children: ReactNode;
+  isHidden: boolean;
+}) {
+  if (isHidden) {
+    return <span aria-hidden="true">&nbsp;</span>;
+  }
+
+  return <>{children}</>;
 }
 
 function RankingRow({

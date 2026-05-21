@@ -153,7 +153,7 @@ public class HttpRequestTelemetryFilter extends OncePerRequestFilter {
             );
             return;
         }
-        if (status >= 400) {
+        if (status >= 400 && status != 401 && status != 403) {
             log.warn(
                     "event=http.request.client_error service=backend method={} pathPattern={} endpointGroup={} status={} statusFamily={} durationMs={} requestId={} correlationId={}",
                     request.getMethod(),

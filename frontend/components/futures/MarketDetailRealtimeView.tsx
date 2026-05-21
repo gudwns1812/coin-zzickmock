@@ -75,6 +75,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Props = {
   initialMarket: MarketSnapshot;
+  isInitialMarketDataDegraded?: boolean;
   isAuthenticated: boolean;
   accountSummary: FuturesAccountSummary | null;
   chartOpenOrders: FuturesOpenOrder[];
@@ -110,6 +111,7 @@ type DisplayedExecutionEvent = FuturesTradingExecutionEvent & {
 
 export default function MarketDetailRealtimeView({
   initialMarket,
+  isInitialMarketDataDegraded = false,
   accountSummary,
   chartOpenOrders,
   chartPositions,
@@ -120,6 +122,9 @@ export default function MarketDetailRealtimeView({
 }: Props) {
   const queryClient = useQueryClient();
   const [market, setMarket] = useState(initialMarket);
+  const [isMarketDataDegraded, setIsMarketDataDegraded] = useState(
+    isInitialMarketDataDegraded
+  );
   const [marketUpdatedAt, setMarketUpdatedAt] = useState(() => Date.now());
   const [latestCandleClosePrice, setLatestCandleClosePrice] = useState<
     number | null
@@ -135,10 +140,13 @@ export default function MarketDetailRealtimeView({
     useState<QuickLimitPriceSelection | null>(null);
   const [selectedInterval, setSelectedInterval] =
     useState<FuturesCandleInterval>("1m");
-  const [marketSnapshotsBySymbol, setMarketSnapshotsBySymbol] = useState(() =>
-    new Map<string, Pick<MarketSnapshot, "symbol" | "markPrice">>([
-      [initialMarket.symbol, initialMarket],
-    ])
+  const [marketSnapshotsBySymbol, setMarketSnapshotsBySymbol] = useState(
+    () =>
+      new Map<string, Pick<MarketSnapshot, "symbol" | "markPrice">>(
+        isInitialMarketDataDegraded
+          ? []
+          : [[initialMarket.symbol, initialMarket]]
+      )
   );
   const [marketStreamCandle, setMarketStreamCandle] = useState<
     (MarketStreamCandle & { interval: FuturesCandleInterval; serverTime: string }) | null
@@ -241,6 +249,7 @@ export default function MarketDetailRealtimeView({
           data.turnover24hUsdt ?? data.volume24h ?? current.turnover24hUsdt,
         volume24h: data.volume24h ?? data.turnover24hUsdt ?? current.volume24h,
       }));
+      setIsMarketDataDegraded(false);
       setMarketUpdatedAt(receivedAt);
       setFundingCountdownNow(receivedAt);
     },
@@ -291,11 +300,18 @@ export default function MarketDetailRealtimeView({
   });
 
   useEffect(() => {
+    setIsMarketDataDegraded(isInitialMarketDataDegraded);
     setLatestCandleClosePrice(null);
     setMarketStreamCandle(null);
     setMarketStreamHistoryFinalized(null);
-    setMarketSnapshotsBySymbol(new Map([[initialMarket.symbol, initialMarket]]));
-  }, [initialMarket]);
+    setMarketSnapshotsBySymbol(
+      new Map(
+        isInitialMarketDataDegraded
+          ? []
+          : [[initialMarket.symbol, initialMarket]]
+      )
+    );
+  }, [initialMarket, isInitialMarketDataDegraded]);
 
   const handleLatestCandleClosePriceChange = useCallback(
     (closePrice: number) => {
@@ -436,7 +452,10 @@ export default function MarketDetailRealtimeView({
       ),
     [fundingCountdownNow, market.nextFundingAt, market.serverTime, marketUpdatedAt]
   );
-  const displayedLatestPrice = latestCandleClosePrice ?? market.lastPrice;
+  const displayedLatestPrice = isMarketDataDegraded
+    ? null
+    : latestCandleClosePrice ?? market.lastPrice;
+  const liveMarketPrice = displayedLatestPrice ?? 0;
 
   return (
     <PageReveal
@@ -475,14 +494,18 @@ export default function MarketDetailRealtimeView({
               <div
                 className={[
                   "rounded-main px-main py-3 text-right",
-                  market.change24h >= 0
-                    ? "bg-emerald-50 text-emerald-600"
-                    : "bg-rose-50 text-rose-600",
+                  isMarketDataDegraded
+                    ? "bg-main-light-gray/50 text-main-dark-gray/55"
+                    : market.change24h >= 0
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-rose-50 text-rose-600",
                 ].join(" ")}
               >
                 <p className="text-xs-custom font-semibold uppercase">24H</p>
                 <p className="mt-2 text-lg-custom font-bold">
-                  {formatRatioPercent(market.change24h)}
+                  {isMarketDataDegraded
+                    ? "\u00A0"
+                    : formatRatioPercent(market.change24h)}
                 </p>
               </div>
             </div>
@@ -490,37 +513,77 @@ export default function MarketDetailRealtimeView({
             <div className="mt-6 grid grid-cols-5 gap-main">
               <Stat
                 label="최신 체결가"
-                tone={market.change24h >= 0 ? "positive" : "negative"}
-                value={formatUsd(displayedLatestPrice)}
+                tone={
+                  isMarketDataDegraded
+                    ? "neutral"
+                    : market.change24h >= 0
+                      ? "positive"
+                      : "negative"
+                }
+                value={
+                  displayedLatestPrice === null
+                    ? "\u00A0"
+                    : formatUsd(displayedLatestPrice)
+                }
               />
-              <Stat label="Mark Price" value={formatUsd(market.markPrice)} />
-              <Stat label="Index Price" value={formatUsd(market.indexPrice)} />
+              <Stat
+                label="Mark Price"
+                value={
+                  isMarketDataDegraded ? "\u00A0" : formatUsd(market.markPrice)
+                }
+              />
+              <Stat
+                label="Index Price"
+                value={
+                  isMarketDataDegraded ? "\u00A0" : formatUsd(market.indexPrice)
+                }
+              />
               <Stat
                 label="Funding"
-                tone={market.fundingRate >= 0 ? "positive" : "negative"}
-                value={formatRatioPercent(market.fundingRate, 4)}
-                subValue={`Next ${fundingCountdown}`}
+                tone={
+                  isMarketDataDegraded
+                    ? "neutral"
+                    : market.fundingRate >= 0
+                      ? "positive"
+                      : "negative"
+                }
+                value={
+                  isMarketDataDegraded
+                    ? "\u00A0"
+                    : formatRatioPercent(market.fundingRate, 4)
+                }
+                subValue={
+                  isMarketDataDegraded ? "\u00A0" : `Next ${fundingCountdown}`
+                }
               />
               <Stat
                 label="24h 거래대금"
-                value={formatCompactUsd(market.turnover24hUsdt)}
+                value={
+                  isMarketDataDegraded
+                    ? "\u00A0"
+                    : formatCompactUsd(market.turnover24hUsdt)
+                }
               />
             </div>
           </div>
 
-          <FuturesPriceChart
-            change24h={market.change24h}
-            currentPrice={displayedLatestPrice}
-            currentPriceUpdatedAt={marketUpdatedAt}
-            marketStreamCandle={marketStreamCandle}
-            marketStreamHistoryFinalized={marketStreamHistoryFinalized}
-            onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}
-            onSelectedIntervalChange={setSelectedInterval}
-            openOrders={effectiveChartOpenOrders}
-            positions={displayedChartPositions}
-            selectedInterval={selectedInterval}
-            symbol={market.symbol}
-          />
+          {isMarketDataDegraded ? (
+            <MarketChartShell />
+          ) : (
+            <FuturesPriceChart
+              change24h={market.change24h}
+              currentPrice={liveMarketPrice}
+              currentPriceUpdatedAt={marketUpdatedAt}
+              marketStreamCandle={marketStreamCandle}
+              marketStreamHistoryFinalized={marketStreamHistoryFinalized}
+              onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}
+              onSelectedIntervalChange={setSelectedInterval}
+              openOrders={effectiveChartOpenOrders}
+              positions={displayedChartPositions}
+              selectedInterval={selectedInterval}
+              symbol={market.symbol}
+            />
+          )}
 
           <ExecutionEventPanel events={executionEvents} />
 
@@ -537,8 +600,9 @@ export default function MarketDetailRealtimeView({
 
         <QuickLimitPriceSelector
           change24h={market.change24h}
+          isMarketDataDegraded={isMarketDataDegraded}
           indexPrice={market.indexPrice}
-          lastPrice={displayedLatestPrice}
+          lastPrice={liveMarketPrice}
           markPrice={market.markPrice}
           onSelectPrice={handleQuickLimitPriceSelect}
           symbol={market.symbol}
@@ -562,19 +626,22 @@ export default function MarketDetailRealtimeView({
             <span
               className={[
                 "rounded-full px-2.5 py-1 text-xs-custom font-bold",
-                market.change24h >= 0
-                  ? "bg-emerald-50 text-emerald-600"
-                  : "bg-rose-50 text-rose-600",
+                isMarketDataDegraded
+                  ? "bg-main-light-gray/50 text-main-dark-gray/55"
+                  : market.change24h >= 0
+                    ? "bg-emerald-50 text-emerald-600"
+                    : "bg-rose-50 text-rose-600",
               ].join(" ")}
             >
-              {formatRatioPercent(market.change24h)}
+              {isMarketDataDegraded ? "\u00A0" : formatRatioPercent(market.change24h)}
             </span>
           </div>
 
           <OrderEntryPanel
             accountSummary={effectiveAccountSummary}
-            currentPrice={displayedLatestPrice}
+            currentPrice={liveMarketPrice}
             isAuthenticated={effectiveIsAuthenticated}
+            isMarketDataDegraded={isMarketDataDegraded}
             positions={displayedPositions}
             quickLimitPriceSelection={quickLimitPriceSelection}
             symbol={market.symbol}
@@ -614,6 +681,17 @@ function SymbolSelector({ activeSymbol }: { activeSymbol: MarketSnapshot["symbol
         );
       })}
     </div>
+  );
+}
+
+function MarketChartShell() {
+  return (
+    <section
+      aria-hidden="true"
+      className="min-h-[420px] rounded-main border border-main-light-gray bg-white p-main-2 shadow-sm"
+    >
+      <div className="h-full min-h-[360px] rounded-main bg-main-light-gray/25" />
+    </section>
   );
 }
 

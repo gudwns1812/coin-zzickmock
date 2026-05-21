@@ -27,11 +27,7 @@ export default function CommunityDetailView({
   isLoading = false,
 }: CommunityDetailViewProps) {
   if (isLoading) {
-    return (
-      <div className="mx-auto w-full max-w-[1000px] px-main-3 pb-24 pt-4">
-        <CommunityState title="게시글을 불러오는 중입니다" message="브라우저에서 로그인 세션을 확인하고 게시글을 가져오고 있습니다." />
-      </div>
-    );
+    return <CommunityDetailLoadingShell />;
   }
   if (unavailable || !post) {
     return (
@@ -87,6 +83,31 @@ export default function CommunityDetailView({
       </section>
 
       <CommunityComments initialComments={comments} postId={post.id} />
+    </article>
+  );
+}
+
+function CommunityDetailLoadingShell() {
+  return (
+    <article
+      aria-hidden="true"
+      className="mx-auto flex w-full max-w-[1000px] flex-col gap-main-2 px-main-3 pb-24 pt-4"
+    >
+      <div className="h-9 w-32 rounded-full bg-white/70 shadow-sm ring-1 ring-white/70" />
+      <header className="relative overflow-hidden rounded-main bg-white/88 p-main-2 shadow-color ring-1 ring-white/70 backdrop-blur-md">
+        <div className="h-6 w-28 rounded-full bg-main-blue/10" />
+        <div className="mt-5 h-9 w-3/4 rounded-full bg-main-light-gray/75" />
+        <div className="mt-5 grid gap-main rounded-main bg-white/64 p-main shadow-sm ring-1 ring-main-light-gray/45 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div className="h-5 w-40 rounded-full bg-main-light-gray/60" />
+          <div className="h-5 w-44 rounded-full bg-main-light-gray/50" />
+        </div>
+      </header>
+      <section className="rounded-main bg-white/92 p-main-2 shadow-md ring-1 ring-main-light-gray/40">
+        <div className="h-4 w-full rounded-full bg-main-light-gray/60" />
+        <div className="mt-main h-4 w-5/6 rounded-full bg-main-light-gray/50" />
+        <div className="mt-main h-4 w-2/3 rounded-full bg-main-light-gray/45" />
+        <div className="mt-main-2 h-36 rounded-main bg-main-light-gray/35" />
+      </section>
     </article>
   );
 }

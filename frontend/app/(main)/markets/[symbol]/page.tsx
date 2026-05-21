@@ -1,6 +1,6 @@
 import MarketDetailRealtimeView from "@/components/futures/MarketDetailRealtimeView";
 import {
-  getFuturesMarket,
+  getFuturesMarketResult,
   isSupportedFuturesSymbol,
 } from "@/lib/futures-api";
 import { notFound } from "next/navigation";
@@ -35,11 +35,12 @@ export default async function MarketDetailPage({
     notFound();
   }
 
-  const market = await getFuturesMarket(symbol);
+  const { market, isFallback } = await getFuturesMarketResult(symbol);
 
   return (
     <MarketDetailRealtimeView
       initialMarket={market}
+      isInitialMarketDataDegraded={isFallback}
       isAuthenticated={false}
       key={market.symbol}
       accountSummary={null}

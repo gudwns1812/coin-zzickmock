@@ -51,11 +51,25 @@ test("order entry panel receives displayed positions for close orders", () => {
 
 test("latest trade price is shared by stat chart quick limit and order ticket", () => {
   assert.equal(source.includes("latestCandleClosePrice"), true);
-  assert.equal(source.includes("const displayedLatestPrice = latestCandleClosePrice ?? market.lastPrice"), true);
-  assert.equal(source.includes("value={formatUsd(displayedLatestPrice)}"), true);
+  assert.equal(source.includes("latestCandleClosePrice ?? market.lastPrice"), true);
+  assert.equal(source.includes("const liveMarketPrice = displayedLatestPrice ?? 0"), true);
+  assert.equal(source.includes("displayedLatestPrice === null"), true);
+  assert.equal(source.includes("formatUsd(displayedLatestPrice)"), true);
   assert.equal(source.includes("onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}"), true);
-  assert.equal(source.includes("lastPrice={displayedLatestPrice}"), true);
-  assert.equal(source.includes("currentPrice={displayedLatestPrice}"), true);
+  assert.equal(source.includes("lastPrice={liveMarketPrice}"), true);
+  assert.equal(source.includes("currentPrice={liveMarketPrice}"), true);
+});
+
+test("market detail degraded shell keeps identity while suppressing live-price actions", () => {
+  assert.equal(source.includes("isInitialMarketDataDegraded"), true);
+  assert.equal(source.includes("useState(\n    isInitialMarketDataDegraded"), true);
+  assert.equal(source.includes("setIsMarketDataDegraded(isInitialMarketDataDegraded)"), true);
+  assert.equal(source.includes("setIsMarketDataDegraded(false)"), true);
+  assert.equal(source.includes("isInitialMarketDataDegraded\n          ? []"), true);
+  assert.equal(source.includes("<MarketChartShell"), true);
+  assert.equal(source.includes("isMarketDataDegraded={isMarketDataDegraded}"), true);
+  assert.equal(source.includes("실시간 시세 수신 대기"), false);
+  assert.equal(source.includes("외부 시세 수집에 실패"), false);
 });
 
 test("Close amount displays accumulated closed quantity, not closeable quantity", () => {

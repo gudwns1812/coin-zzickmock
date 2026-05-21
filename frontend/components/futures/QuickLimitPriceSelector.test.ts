@@ -43,8 +43,20 @@ test("quick limit units are symbol-specific and persisted in localStorage", () =
 test("quick limit selector does not fabricate selectable prices for invalid snapshots", () => {
   assert.equal(source.includes("lastPrice: null"), true);
   assert.equal(source.includes("return EMPTY_PRICE_ROWS"), true);
-  assert.equal(source.includes("Price unavailable"), true);
+  assert.equal(source.includes("Price unavailable"), false);
+  assert.equal(source.includes("isMarketDataDegraded"), true);
+  assert.equal(source.includes("? EMPTY_PRICE_ROWS"), true);
   assert.equal(source.includes("return null;"), true);
+});
+
+test("quick limit degraded state renders only the layout shell", () => {
+  assert.equal(source.includes("if (isMarketDataDegraded)"), true);
+  assert.equal(source.includes('aria-hidden="true"'), true);
+  assert.equal(source.includes("min-h-[420px]"), true);
+  assert.equal(
+    source.indexOf("if (isMarketDataDegraded)") < source.indexOf("Quick Limit"),
+    true
+  );
 });
 
 test("quick limit price rows are buttons with accessible labels and matching price typography", () => {

@@ -40,7 +40,8 @@ test("admin pages navigate through the admin hub", () => {
   const adminLayoutSource = readFrontendSource("app/(main)/admin/layout.tsx");
 
   assert.match(adminLayoutSource, /<BackendAuthGate[^>]*requireAdmin/);
-  assert.match(adminLayoutSource, /fallback={<ProtectedPageSkeleton variant="admin" \/>}/);
+  assert.doesNotMatch(adminLayoutSource, /fallback=/);
+  assert.doesNotMatch(adminLayoutSource, /ProtectedPageSkeleton/);
 });
 
 test("shop page no longer fetches redemption history", () => {

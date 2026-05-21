@@ -1,5 +1,4 @@
 import BackendAuthGate from "@/components/router/BackendAuthGate";
-import ProtectedPageSkeleton from "@/components/ui/shared/ProtectedPageSkeleton";
 import CommunityListClient from "@/components/router/(main)/community/CommunityListClient";
 import type { CommunityCategory } from "@/lib/futures-api";
 
@@ -20,7 +19,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
   const searchQuery = parseSearchQuery(resolvedSearchParams?.q);
 
   return (
-    <BackendAuthGate fallback={<ProtectedPageSkeleton variant="community-list" />}>
+    <BackendAuthGate>
       <CommunityListClient category={category} page={page} searchQuery={searchQuery} />
     </BackendAuthGate>
   );

@@ -1,5 +1,4 @@
 import {
-  MARKET_SNAPSHOT_LIST,
   MARKET_SNAPSHOTS,
   SUPPORTED_MARKET_SYMBOLS,
   type MarketRankingMemberRank,
@@ -11,6 +10,11 @@ import {
 import { FUTURES_API_BASE_URL } from "./futures-env";
 import { normalizeFuturesApiPath } from "./futures-api-request";
 import { fetchWithFrontendTiming } from "./frontend-performance-log";
+
+const SUPPORTED_MARKET_SNAPSHOT_TUPLE: [MarketSnapshot, MarketSnapshot] = [
+  MARKET_SNAPSHOTS.BTCUSDT,
+  MARKET_SNAPSHOTS.ETHUSDT,
+];
 
 type ApiResponse<T> = {
   success: boolean;
@@ -45,7 +49,12 @@ export type MarketApiResponse = {
 };
 
 export type FuturesMarketsResult = {
-  markets: MarketSnapshot[];
+  markets: [MarketSnapshot, MarketSnapshot];
+  isFallback: boolean;
+};
+
+export type FuturesMarketResult = {
+  market: MarketSnapshot;
   isFallback: boolean;
 };
 
@@ -466,34 +475,34 @@ export async function getFuturesMarketsResult(): Promise<FuturesMarketsResult> {
 
   if (!response) {
     return {
-      markets: MARKET_SNAPSHOT_LIST,
+      markets: SUPPORTED_MARKET_SNAPSHOT_TUPLE,
       isFallback: true,
     };
   }
 
-  const supportedMarkets = response
-    .flatMap((market) => {
-      if (!isSupportedMarketSymbol(market.symbol)) {
-        return [];
-      }
+  const supportedMarketMap = new Map<MarketSymbol, MarketSnapshot>();
+  for (const market of response) {
+    if (isSupportedMarketSymbol(market.symbol)) {
+      supportedMarketMap.set(
+        market.symbol,
+        mergeMarketSnapshot(market.symbol, market)
+      );
+    }
+  }
 
-      return [mergeMarketSnapshot(market.symbol, market)];
-    })
-    .sort(
-      (left, right) =>
-        MARKET_SNAPSHOT_LIST.findIndex((market) => market.symbol === left.symbol) -
-        MARKET_SNAPSHOT_LIST.findIndex((market) => market.symbol === right.symbol)
-    );
+  const markets = SUPPORTED_MARKET_SNAPSHOT_TUPLE.map(
+    (market) => supportedMarketMap.get(market.symbol) ?? market
+  ) as [MarketSnapshot, MarketSnapshot];
 
-  if (supportedMarkets.length !== SUPPORTED_MARKET_SYMBOLS.length) {
+  if (supportedMarketMap.size !== SUPPORTED_MARKET_SYMBOLS.length) {
     return {
-      markets: MARKET_SNAPSHOT_LIST,
+      markets,
       isFallback: true,
     };
   }
 
   return {
-    markets: supportedMarkets,
+    markets,
     isFallback: false,
   };
 }
@@ -501,13 +510,33 @@ export async function getFuturesMarketsResult(): Promise<FuturesMarketsResult> {
 export async function getFuturesMarket(
   symbol: MarketSymbol
 ): Promise<MarketSnapshot> {
+  const result = await getFuturesMarketResult(symbol);
+  return result.market;
+}
+
+export async function getFuturesMarketResult(
+  symbol: MarketSymbol
+): Promise<FuturesMarketResult> {
   const response = await readApi<MarketApiResponse>(`/api/futures/markets/${symbol}`);
 
   if (!response || !isSupportedMarketSymbol(response.symbol)) {
-    return MARKET_SNAPSHOTS[symbol];
+    return {
+      market: MARKET_SNAPSHOTS[symbol],
+      isFallback: true,
+    };
   }
 
-  return mergeMarketSnapshot(response.symbol, response);
+  if (response.symbol !== symbol) {
+    return {
+      market: MARKET_SNAPSHOTS[symbol],
+      isFallback: true,
+    };
+  }
+
+  return {
+    market: mergeMarketSnapshot(response.symbol, response),
+    isFallback: false,
+  };
 }
 
 async function readApi<T>(path: string): Promise<T | null> {

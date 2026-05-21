@@ -1,5 +1,4 @@
 import BackendAuthGate from "@/components/router/BackendAuthGate";
-import ProtectedPageSkeleton from "@/components/ui/shared/ProtectedPageSkeleton";
 import type { ReactNode } from "react";
 
 export default async function AdminLayout({
@@ -8,7 +7,7 @@ export default async function AdminLayout({
   children: ReactNode;
 }) {
   return (
-    <BackendAuthGate requireAdmin fallback={<ProtectedPageSkeleton variant="admin" />}>
+    <BackendAuthGate requireAdmin>
       {children}
     </BackendAuthGate>
   );

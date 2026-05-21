@@ -1,14 +1,13 @@
 import BackendAuthGate from "@/components/router/BackendAuthGate";
-import ProtectedPageSkeleton from "@/components/ui/shared/ProtectedPageSkeleton";
-import { getFuturesMarkets } from "@/lib/futures-api";
+import { getFuturesMarketsResult } from "@/lib/futures-api";
 import { formatRatioPercent, formatUsd } from "@/lib/markets";
 import Link from "next/link";
 
 export default async function WatchlistPage() {
-  const markets = await getFuturesMarkets();
+  const { markets, isFallback } = await getFuturesMarketsResult();
 
   return (
-    <BackendAuthGate fallback={<ProtectedPageSkeleton variant="watchlist" />}>
+    <BackendAuthGate>
       <div className="px-main-2 pb-24 flex flex-col gap-8 pt-4">
       <section className="rounded-main bg-white p-main-2 shadow-sm border border-main-light-gray">
         <p className="text-sm-custom text-main-dark-gray/60">Watchlist</p>
@@ -38,11 +37,19 @@ export default async function WatchlistPage() {
               </span>
             </div>
             <div className="grid grid-cols-3 gap-main">
-              <MiniMetric label="가격" value={formatUsd(market.lastPrice)} />
-              <MiniMetric label="24h" value={formatRatioPercent(market.change24h)} />
+              <MiniMetric
+                label="가격"
+                value={isFallback ? "" : formatUsd(market.lastPrice)}
+              />
+              <MiniMetric
+                label="24h"
+                value={isFallback ? "" : formatRatioPercent(market.change24h)}
+              />
               <MiniMetric
                 label="Funding"
-                value={formatRatioPercent(market.fundingRate, 4)}
+                value={
+                  isFallback ? "" : formatRatioPercent(market.fundingRate, 4)
+                }
               />
             </div>
           </Link>
@@ -57,7 +64,9 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-main bg-main-light-gray/40 px-main py-3">
       <p className="text-xs-custom text-main-dark-gray/60">{label}</p>
-      <p className="mt-2 text-sm-custom font-semibold text-main-dark-gray">{value}</p>
+      <p className="mt-2 text-sm-custom font-semibold text-main-dark-gray">
+        {value || <span aria-hidden="true">&nbsp;</span>}
+      </p>
     </div>
   );
 }

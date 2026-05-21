@@ -286,16 +286,19 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
       {initialComments?.comments.length ? (
         <div className="mt-main grid gap-3">
           {initialComments.comments.map((comment) => (
-            <div key={comment.id} className="rounded-main bg-main-light-gray/25 p-main ring-1 ring-white/60">
-              <div className="flex items-center justify-between gap-main">
-                <span className="font-semibold text-main-dark-gray">{comment.authorNickname}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs-custom text-main-dark-gray/45">
-                    {formatCommunityDate(comment.createdAt)}
-                  </span>
+            <article
+              key={comment.id}
+              className="rounded-main bg-white/76 p-main shadow-sm ring-1 ring-main-light-gray/45"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="max-w-64 truncate text-xs-custom font-semibold text-main-blue/80">
+                  {comment.authorNickname}
+                </span>
+                <div className="flex items-center gap-2 text-xs-custom text-main-dark-gray/40">
+                  <span>{formatCommunityDate(comment.createdAt)}</span>
                   {comment.canDelete ? (
                     <button
-                      className="text-xs-custom font-semibold text-main-red disabled:opacity-50"
+                      className="font-semibold text-main-red transition-opacity hover:opacity-80 disabled:opacity-50"
                       disabled={deleteMutation.isPending}
                       onClick={() => deleteMutation.mutate(comment.id)}
                       type="button"
@@ -305,10 +308,10 @@ export function CommunityComments({ postId, initialComments }: CommunityComments
                   ) : null}
                 </div>
               </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm-custom leading-6 text-main-dark-gray/70">
+              <p className="mt-2 whitespace-pre-wrap break-words text-base-custom leading-7 text-main-dark-gray">
                 {comment.content}
               </p>
-            </div>
+            </article>
           ))}
         </div>
       ) : (

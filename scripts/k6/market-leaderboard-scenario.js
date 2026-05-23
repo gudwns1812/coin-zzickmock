@@ -1,6 +1,8 @@
 import http from "k6/http";
 import { check, sleep, group } from "k6";
 import { Trend, Counter } from "k6/metrics";
+import { supportedSymbolsFromEnv } from "./api-contract.js";
+export { handleSummary } from "./k6-report.mjs";
 
 // Custom Trends to track database lookup times and leaderboard searches
 const marketSummaryTrend = new Trend("market_summary_duration_ms");
@@ -58,7 +60,7 @@ export const options = {
 const BASE_URL = (__ENV.BASE_URL || "http://localhost:18080").replace(/\/$/, "");
 
 // Supported symbols, intervals, and search prefixes to simulate client requests
-const SYMBOLS = ["BTCUSDT", "ETHUSDT", "XRPUSDT", "SOLUSDT", "ADAUSDT"];
+const SYMBOLS = supportedSymbolsFromEnv();
 const INTERVALS = ["1m", "3m", "5m", "15m", "1h", "4h", "1D", "1W", "1M"];
 const SEARCH_QUERIES = ["coin", "king", "trade", "user", "alpha", "test", "trader"];
 

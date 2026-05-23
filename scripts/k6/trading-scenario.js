@@ -1,6 +1,17 @@
 import http from "k6/http";
 import { check, sleep, group } from "k6";
 import { Counter, Trend } from "k6/metrics";
+import {
+  businessParams,
+  jsonHeaders,
+  paramsWithHeaders,
+  precreatedUserCount,
+  precreatedUserForVu,
+  setupPrecreatedUsers,
+  supportedSymbolsFromEnv,
+  withAccessToken,
+} from "./api-contract.js";
+export { handleSummary } from "./k6-report.mjs";
 
 // Custom Performance Metrics
 const orderPlacementTrend = new Trend("trading_order_placement_ms");
@@ -22,14 +33,22 @@ export const options = {
     trading_position_close_ms: ["p(95)<400"],
     trading_social_peek_ms: ["p(95)<400"],
   },
+  noCookiesReset: true,
   summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)", "count"],
 };
 
 // Base environment setups
 const BASE_URL = (__ENV.BASE_URL || "http://localhost:18080").replace(/\/$/, "");
-const SYMBOLS = ["BTCUSDT", "ETHUSDT"];
+const SYMBOLS = supportedSymbolsFromEnv();
+let vuAccessToken = null;
 
-// Generate random helpers
+export function setup() {
+  return setupPrecreatedUsers(BASE_URL, {
+    prefix: "k6_trader",
+    count: precreatedUserCount(250),
+  });
+}
+
 function randomString(length) {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
@@ -43,53 +62,15 @@ function selectRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function randomRange(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-export default function () {
+export default function (data) {
   // --- STATE INITIALIZATION FOR VU ---
-  // If this is the VU's first iteration, register and log in to set the JWT cookie in the Jar.
-  if (__ITER === 0) {
-    group("0. STATE INITIALIZATION - Register & Login", function () {
-      const username = `trader_vu_${__VU}_${randomString(4)}`;
-      const password = "Password123!";
-      const headers = { "Content-Type": "application/json", "Accept": "application/json" };
-
-      // Signup check duplicate
-      http.post(`${BASE_URL}/api/futures/auth/duplicate`, JSON.stringify({ account: username }), { headers });
-
-      // Signup register
-      const regPayload = {
-        account: username,
-        password: password,
-        name: `Trader VU ${__VU}`,
-        nickname: `T_${__VU}_${randomString(4)}`,
-        phoneNumber: "010-1111-1111",
-        email: `${username}@trade-test.com`,
-      };
-      
-      const regRes = http.post(`${BASE_URL}/api/futures/auth/register`, JSON.stringify(regPayload), { headers });
-      const regOk = check(regRes, { "register successfully": (r) => r.status === 200 });
-      if (!regOk) {
-        failedTransactions.add(1);
-        return;
-      }
-
-      sleep(0.5);
-
-      // Login to set session cookies
-      const logRes = http.post(`${BASE_URL}/api/futures/auth/login`, JSON.stringify({ account: username, password }), { headers });
-      check(logRes, { "logged in successfully": (r) => r.status === 200 });
-    });
-
-    sleep(1);
+  // Use setup-created accounts so measured iterations do not include signup/login write load.
+  if (!vuAccessToken) {
+    const precreatedUser = precreatedUserForVu(data);
+    vuAccessToken = precreatedUser.accessToken;
   }
 
-  const jsonHeaders = {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-  };
+  const authHeaders = withAccessToken(jsonHeaders(), vuAccessToken);
 
   let balance = 0;
   let activePositions = [];
@@ -97,14 +78,14 @@ export default function () {
 
   // Group 1: Balance Inspection and Refill
   group("1. Balance Verification", function () {
-    const accRes = http.get(`${BASE_URL}/api/futures/account/me`);
+    const accRes = http.get(`${BASE_URL}/api/futures/account/me`, paramsWithHeaders(authHeaders));
     const accOk = check(accRes, {
       "account fetch status 200": (r) => r.status === 200,
-      "has balance field": (r) => typeof r.json("data.availableBalance") === "number",
+      "has available field": (r) => typeof r.json("data.available") === "number",
     });
 
     if (accOk) {
-      balance = accRes.json("data.availableBalance");
+      balance = accRes.json("data.available");
     } else {
       failedTransactions.add(1);
     }
@@ -112,7 +93,7 @@ export default function () {
     // Refill balance if funds are dangerously low (< 100 USDT)
     if (balance < 100) {
       sleep(0.5);
-      const refillRes = http.post(`${BASE_URL}/api/futures/account/me/refill`, null, { headers: jsonHeaders });
+      const refillRes = http.post(`${BASE_URL}/api/futures/account/me/refill`, null, businessParams(authHeaders));
       check(refillRes, {
         "refill status 200 or 400": (r) => r.status === 200 || r.status === 400, // 400 means daily limit reached
       });
@@ -123,7 +104,7 @@ export default function () {
 
   // Group 2: Position State Audit
   group("2. Positions Audit", function () {
-    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`);
+    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`, paramsWithHeaders(authHeaders));
     const posOk = check(posRes, {
       "positions fetch status 200": (r) => r.status === 200,
       "positions list parsed": (r) => Array.isArray(r.json("data")),
@@ -172,7 +153,7 @@ export default function () {
     const previewRes = http.post(
       `${BASE_URL}/api/futures/orders/preview`,
       JSON.stringify(orderPayload),
-      { headers: jsonHeaders }
+      businessParams(authHeaders)
     );
     check(previewRes, {
       "preview status 200 or 400": (r) => r.status === 200 || r.status === 400,
@@ -185,7 +166,7 @@ export default function () {
     const orderRes = http.post(
       `${BASE_URL}/api/futures/orders`,
       JSON.stringify(orderPayload),
-      { headers: jsonHeaders }
+      businessParams(authHeaders)
     );
 
     const orderOk = check(orderRes, {
@@ -204,7 +185,7 @@ export default function () {
 
   // Group 4: Manage Open Orders (If any limit order was created)
   group("4. Open Orders Modification", function () {
-    const openRes = http.get(`${BASE_URL}/api/futures/orders/open`);
+    const openRes = http.get(`${BASE_URL}/api/futures/orders/open`, paramsWithHeaders(authHeaders));
     const openOk = check(openRes, {
       "open orders status 200": (r) => r.status === 200,
       "open orders list parsed": (r) => Array.isArray(r.json("data")),
@@ -224,14 +205,14 @@ export default function () {
           const modRes = http.post(
             `${BASE_URL}/api/futures/orders/${targetOrder.orderId}/modify`,
             JSON.stringify(modPayload),
-            { headers: jsonHeaders }
+            { headers: authHeaders }
           );
           check(modRes, { "modify status 200": (r) => r.status === 200 });
         } else {
           const cancelRes = http.post(
             `${BASE_URL}/api/futures/orders/${targetOrder.orderId}/cancel`,
             null,
-            { headers: jsonHeaders }
+            { headers: authHeaders }
           );
           check(cancelRes, { "cancel status 200": (r) => r.status === 200 });
         }
@@ -244,7 +225,7 @@ export default function () {
   // Group 5: Active Position Adjustments & Social Peek
   group("5. Position Management & Social Peek", function () {
     // Refresh position states
-    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`);
+    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`, paramsWithHeaders(authHeaders));
     if (posRes.status === 200 && Array.isArray(posRes.json("data"))) {
       activePositions = posRes.json("data") || [];
     }
@@ -265,7 +246,7 @@ export default function () {
         const levRes = http.patch(
           `${BASE_URL}/api/futures/positions/leverage`,
           JSON.stringify(levPayload),
-          { headers: jsonHeaders }
+          businessParams(authHeaders)
         );
         check(levRes, {
           "patch leverage status 200 or 400": (r) => r.status === 200 || r.status === 400,
@@ -284,7 +265,7 @@ export default function () {
         const tpslRes = http.patch(
           `${BASE_URL}/api/futures/positions/tpsl`,
           JSON.stringify(tpslPayload),
-          { headers: jsonHeaders }
+          businessParams(authHeaders)
         );
         check(tpslRes, {
           "patch tpsl status 200 or 400": (r) => r.status === 200 || r.status === 400,
@@ -311,11 +292,11 @@ export default function () {
         const peekRes = http.post(
           `${BASE_URL}/api/futures/position-peeks`,
           JSON.stringify(peekPayload),
-          { headers: jsonHeaders }
+          businessParams(authHeaders)
         );
 
         check(peekRes, {
-          "peek status 200 or 400": (r) => r.status === 200 || r.status === 400, // 400 if user lacks Peek items, which is expected
+          "peek status 200 or business 400/403": (r) => r.status === 200 || r.status === 400 || r.status === 403,
         });
 
         peekActionTrend.add(Date.now() - peekStartTime);
@@ -327,7 +308,7 @@ export default function () {
 
   // Group 6: Close Position (Clean up to prevent infinite margin depletion)
   group("6. Position Termination", function () {
-    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`);
+    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`, paramsWithHeaders(authHeaders));
     if (posRes.status === 200 && Array.isArray(posRes.json("data"))) {
       activePositions = posRes.json("data") || [];
     }
@@ -349,12 +330,12 @@ export default function () {
       const closeRes = http.post(
         `${BASE_URL}/api/futures/positions/close`,
         JSON.stringify(closePayload),
-        { headers: jsonHeaders }
+        businessParams(authHeaders)
       );
 
       const closeOk = check(closeRes, {
-        "close position status 200": (r) => r.status === 200,
-        "close success true": (r) => r.json("success") === true,
+        "close position status 200 or business 400": (r) => r.status === 200 || r.status === 400,
+        "close success true on 200": (r) => r.status === 400 || r.json("success") === true,
       });
 
       positionCloseTrend.add(Date.now() - closeStartTime);

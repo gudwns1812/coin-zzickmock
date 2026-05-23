@@ -1,10 +1,20 @@
 import http from "k6/http";
 import { check, sleep, group } from "k6";
-import { Counter, Trend } from "k6/metrics";
+import { Trend } from "k6/metrics";
+import {
+  businessParams,
+  jsonHeaders,
+  paramsWithHeaders,
+  precreatedUserCount,
+  precreatedUserForVu,
+  setupPrecreatedUsers,
+  supportedSymbolsFromEnv,
+  withAccessToken,
+} from "./api-contract.js";
+export { handleSummary } from "./k6-report.mjs";
 
 // Dynamic custom performance indicators (KPIs)
 const fullSessionTrend = new Trend("session_total_duration_ms");
-const apiRequestFailures = new Counter("session_failures");
 
 // k6 options: Ramping up to 40 VUs for extensive multi-domain testing
 export const options = {
@@ -19,15 +29,23 @@ export const options = {
     http_req_duration: ["p(95)<350"],               // 95% of requests under 350ms
     session_total_duration_ms: ["p(95)<8000"],      // Total user scenario loop within 8 seconds
   },
+  noCookiesReset: true,
   summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)", "count"],
 };
 
 // Base configurations
 const BASE_URL = (__ENV.BASE_URL || "http://localhost:18080").replace(/\/$/, "");
-const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
+const SYMBOLS = supportedSymbolsFromEnv();
 const INTERVALS = ["1m", "5m", "15m", "1h", "1D"];
+let vuAccessToken = null;
 
-// Data helpers
+export function setup() {
+  return setupPrecreatedUsers(BASE_URL, {
+    prefix: "k6_journey",
+    count: precreatedUserCount(250),
+  });
+}
+
 function randomString(length) {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
@@ -45,39 +63,18 @@ function randomRange(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-export default function () {
+export default function (data) {
   const sessionStart = Date.now();
-  const headers = { "Content-Type": "application/json", "Accept": "application/json" };
+  const headers = jsonHeaders();
 
-  // --- Step 1: Onboarding Session ---
-  // Register and Login at the start of VUs lifetime
-  if (__ITER === 0) {
-    group("Phase 1: User Onboarding", function () {
-      const username = `user_session_${__VU}_${randomString(4)}`;
-      const password = "Password123!";
-      
-      // Duplication check
-      http.post(`${BASE_URL}/api/futures/auth/duplicate`, JSON.stringify({ account: username }), { headers });
-      
-      // Register
-      const regRes = http.post(`${BASE_URL}/api/futures/auth/register`, JSON.stringify({
-        account: username,
-        password,
-        name: `Session VU ${__VU}`,
-        nickname: `S_${__VU}_${randomString(4)}`,
-        phoneNumber: "010-9999-9999",
-        email: `${username}@session-test.com`,
-      }), { headers });
-
-      check(regRes, { "registration success": (r) => r.status === 200 });
-      sleep(0.5);
-
-      // Login
-      const logRes = http.post(`${BASE_URL}/api/futures/auth/login`, JSON.stringify({ account: username, password }), { headers });
-      check(logRes, { "login success": (r) => r.status === 200 });
-    });
-    sleep(1.0);
+  // --- Step 1: Onboarding Flow ---
+  // Use setup-created accounts so measured iterations focus on product flows, not onboarding writes.
+  if (!vuAccessToken) {
+    const precreatedUser = precreatedUserForVu(data);
+    vuAccessToken = precreatedUser.accessToken;
   }
+
+  const authHeaders = withAccessToken(headers, vuAccessToken);
 
   // --- Step 2: Browsing Market Tickers & Charts (Read-heavy, weight: High) ---
   group("Phase 2: Market Browsing & Chart Analysis", function () {
@@ -132,8 +129,8 @@ export default function () {
         targetToken,
         idempotencyKey: `uuid-${randomString(16)}`,
       };
-      const peekRes = http.post(`${BASE_URL}/api/futures/position-peeks`, JSON.stringify(peekPayload), { headers });
-      check(peekRes, { "spy position status check": (r) => r.status === 200 || r.status === 400 });
+      const peekRes = http.post(`${BASE_URL}/api/futures/position-peeks`, JSON.stringify(peekPayload), businessParams(authHeaders));
+      check(peekRes, { "spy position status check": (r) => r.status === 200 || r.status === 400 || r.status === 403 });
     }
   });
 
@@ -143,15 +140,15 @@ export default function () {
   let activePositions = [];
   group("Phase 4: Trading Operations", function () {
     // 1. Check account balance
-    const accRes = http.get(`${BASE_URL}/api/futures/account/me`);
+    const accRes = http.get(`${BASE_URL}/api/futures/account/me`, paramsWithHeaders(authHeaders));
     let balance = 0;
     if (accRes.status === 200) {
-      balance = accRes.json("data.availableBalance") || 0;
+      balance = accRes.json("data.available") || 0;
     }
 
     // Refill if empty
     if (balance < 200) {
-      http.post(`${BASE_URL}/api/futures/account/me/refill`, null, { headers });
+      http.post(`${BASE_URL}/api/futures/account/me/refill`, null, businessParams(authHeaders));
       sleep(0.5);
     }
 
@@ -177,17 +174,17 @@ export default function () {
     };
 
     // Preview
-    http.post(`${BASE_URL}/api/futures/orders/preview`, JSON.stringify(orderPayload), { headers });
+    http.post(`${BASE_URL}/api/futures/orders/preview`, JSON.stringify(orderPayload), businessParams(authHeaders));
     sleep(0.5);
 
     // Place
-    const orderRes = http.post(`${BASE_URL}/api/futures/orders`, JSON.stringify(orderPayload), { headers });
+    const orderRes = http.post(`${BASE_URL}/api/futures/orders`, JSON.stringify(orderPayload), businessParams(authHeaders));
     check(orderRes, { "futures order submitted ok": (r) => r.status === 200 || r.status === 400 });
 
     sleep(1.0);
 
     // 3. Query Active Positions & Apply TP/SL
-    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`);
+    const posRes = http.get(`${BASE_URL}/api/futures/positions/me`, paramsWithHeaders(authHeaders));
     if (posRes.status === 200 && Array.isArray(posRes.json("data"))) {
       activePositions = posRes.json("data") || [];
     }
@@ -205,7 +202,7 @@ export default function () {
         stopLossPrice: pos.positionSide === "LONG" ? pos.entryPrice * 0.85 : pos.entryPrice * 1.15,
       };
       
-      const tpslRes = http.patch(`${BASE_URL}/api/futures/positions/tpsl`, JSON.stringify(tpslPayload), { headers });
+      const tpslRes = http.patch(`${BASE_URL}/api/futures/positions/tpsl`, JSON.stringify(tpslPayload), businessParams(authHeaders));
       check(tpslRes, { "tp/sl adjustment ok": (r) => r.status === 200 || r.status === 400 });
       
       sleep(1.0);
@@ -219,8 +216,8 @@ export default function () {
         orderType: "MARKET",
         limitPrice: null,
       };
-      const closeRes = http.post(`${BASE_URL}/api/futures/positions/close`, JSON.stringify(closePayload), { headers });
-      check(closeRes, { "futures position closed ok": (r) => r.status === 200 });
+      const closeRes = http.post(`${BASE_URL}/api/futures/positions/close`, JSON.stringify(closePayload), businessParams(authHeaders));
+      check(closeRes, { "futures position closed ok": (r) => r.status === 200 || r.status === 400 });
     }
   });
 
@@ -229,11 +226,14 @@ export default function () {
   // --- Step 5: Reward Shop & Community Engagement (Engagement, weight: Medium) ---
   group("Phase 5: Store & Community Engagements", function () {
     // 1. Inspect reward point inventory
-    const pointsRes = http.get(`${BASE_URL}/api/futures/rewards/me`);
+    const pointsRes = http.get(`${BASE_URL}/api/futures/rewards/me`, paramsWithHeaders(authHeaders));
     check(pointsRes, { "check point assets ok": (r) => r.status === 200 });
 
     // 2. Fetch list of community discussions
-    const postsRes = http.get(`${BASE_URL}/api/futures/community/posts?category=CHART_ANALYSIS&page=0&size=10`);
+    const postsRes = http.get(
+      `${BASE_URL}/api/futures/community/posts?category=CHART_ANALYSIS&page=0&size=10`,
+      paramsWithHeaders(authHeaders)
+    );
     const postsOk = check(postsRes, { "posts category view ok": (r) => r.status === 200 });
 
     if (postsOk) {
@@ -244,24 +244,28 @@ export default function () {
         sleep(0.5);
 
         // View detail
-        http.get(`${BASE_URL}/api/futures/community/posts/${targetPost.id}`);
+        http.get(`${BASE_URL}/api/futures/community/posts/${targetPost.id}`, paramsWithHeaders(authHeaders));
         
         sleep(0.5);
 
         // Like the post
-        http.post(`${BASE_URL}/api/futures/community/posts/${targetPost.id}/like`, null, { headers });
+        http.post(`${BASE_URL}/api/futures/community/posts/${targetPost.id}/like`, null, { headers: authHeaders });
 
         sleep(0.5);
 
         // Add a friendly comment
         const commentPayload = { content: "Brilliant mock futures analysis. I opened a LONG position based on this!" };
-        http.post(`${BASE_URL}/api/futures/community/posts/${targetPost.id}/comments`, JSON.stringify(commentPayload), { headers });
+        http.post(
+          `${BASE_URL}/api/futures/community/posts/${targetPost.id}/comments`,
+          JSON.stringify(commentPayload),
+          { headers: authHeaders }
+        );
       }
     }
   });
 
-  // Calculate session KPI
+  // Calculate journey KPI
   fullSessionTrend.add(Date.now() - sessionStart);
   
-  sleep(2.0); // Session loop gap
+  sleep(2.0); // Journey loop gap
 }

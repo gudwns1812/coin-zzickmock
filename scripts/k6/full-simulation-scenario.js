@@ -5,6 +5,7 @@ import {
   businessParams,
   jsonHeaders,
   paramsWithHeaders,
+  positiveIntFromEnv,
   precreatedUserCount,
   precreatedUserForVu,
   setupPrecreatedUsers,
@@ -16,18 +17,27 @@ export { handleSummary } from "./k6-report.mjs";
 // Dynamic custom performance indicators (KPIs)
 const fullSessionTrend = new Trend("session_total_duration_ms");
 
-// k6 options: Ramping up to 40 VUs for extensive multi-domain testing
+const TARGET_VUS = positiveIntFromEnv("FULL_SIMULATION_TARGET_VUS", 250);
+const WARMUP_VUS = Math.max(1, Math.ceil(TARGET_VUS * 0.2));
+const RAMP_VUS = Math.max(WARMUP_VUS, Math.ceil(TARGET_VUS * 0.6));
+const TRADING_FLOW_RATE = probabilityFromEnv("FULL_SIMULATION_TRADING_RATE", 0.7);
+const SOCIAL_PEEK_RATE = probabilityFromEnv("FULL_SIMULATION_SOCIAL_PEEK_RATE", 0.35);
+const COMMUNITY_WRITE_RATE = probabilityFromEnv("FULL_SIMULATION_COMMUNITY_WRITE_RATE", 0.25);
+
+// k6 options: default 250 VUs with gradual ramping, sustained peak, and cooldown.
+// The peak can still be overridden with FULL_SIMULATION_TARGET_VUS when needed.
 export const options = {
   stages: [
-    { duration: "30s", target: 10 },  // Warm-up: ramping to 10 VUs
-    { duration: "2m", target: 30 },   // Steady peak load: 30 VUs acting like real players
-    { duration: "30s", target: 40 },  // Final pressure spike: 40 VUs
-    { duration: "20s", target: 0 },   // Cool-down
+    { duration: "1m", target: WARMUP_VUS },  // Warm-up: initialize accounts, auth cookies, caches, and DB pools
+    { duration: "2m", target: RAMP_VUS },    // Ramp: increase mixed read/write load without a sudden thundering herd
+    { duration: "3m", target: TARGET_VUS },  // Peak ramp: reach the full 250 VU target by default
+    { duration: "5m", target: TARGET_VUS },  // Sustained peak: keep enough time for scheduler/cache/DB symptoms to surface
+    { duration: "2m", target: 0 },           // Cool-down: let in-flight position/community writes drain
   ],
   thresholds: {
-    http_req_failed: ["rate<0.015"],                 // Keep failure rate below 1.5%
-    http_req_duration: ["p(95)<350"],               // 95% of requests under 350ms
-    session_total_duration_ms: ["p(95)<8000"],      // Total user scenario loop within 8 seconds
+    http_req_failed: ["rate<0.03"],                 // Full journey stress allows controlled business conflicts/fallbacks
+    http_req_duration: ["p(95)<1000"],              // Mixed endpoint p95 budget for 250 VU stress
+    session_total_duration_ms: ["p(95)<25000"],     // Includes deliberate think time across the full product journey
   },
   noCookiesReset: true,
   summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)", "count"],
@@ -42,7 +52,7 @@ let vuAccessToken = null;
 export function setup() {
   return setupPrecreatedUsers(BASE_URL, {
     prefix: "k6_journey",
-    count: precreatedUserCount(250),
+    count: Math.max(precreatedUserCount(TARGET_VUS), TARGET_VUS),
   });
 }
 
@@ -61,6 +71,18 @@ function selectRandom(array) {
 
 function randomRange(min, max) {
   return Math.random() * (max - min) + min;
+}
+
+function probabilityFromEnv(envName, fallback) {
+  const parsed = Number.parseFloat(__ENV[envName]);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(1, Math.max(0, parsed));
+}
+
+function shouldRun(rate) {
+  return Math.random() < rate;
 }
 
 export default function (data) {
@@ -123,8 +145,8 @@ export default function (data) {
 
     sleep(0.5);
 
-    // 3. Spy on ranked trader if token exists
-    if (targetToken) {
+    // 3. Spy on ranked trader if token exists. At 250 VUs, only a realistic slice performs paid/social writes.
+    if (targetToken && shouldRun(SOCIAL_PEEK_RATE)) {
       const peekPayload = {
         targetToken,
         idempotencyKey: `uuid-${randomString(16)}`,
@@ -150,6 +172,11 @@ export default function (data) {
     if (balance < 200) {
       http.post(`${BASE_URL}/api/futures/account/me/refill`, null, businessParams(authHeaders));
       sleep(0.5);
+    }
+
+    if (!shouldRun(TRADING_FLOW_RATE)) {
+      sleep(randomRange(1.5, 3.0));
+      return;
     }
 
     // 2. Place a market futures order (LONG or SHORT)
@@ -248,18 +275,20 @@ export default function (data) {
         
         sleep(0.5);
 
-        // Like the post
-        http.post(`${BASE_URL}/api/futures/community/posts/${targetPost.id}/like`, null, { headers: authHeaders });
+        if (shouldRun(COMMUNITY_WRITE_RATE)) {
+          // Like the post
+          http.post(`${BASE_URL}/api/futures/community/posts/${targetPost.id}/like`, null, { headers: authHeaders });
 
-        sleep(0.5);
+          sleep(0.5);
 
-        // Add a friendly comment
-        const commentPayload = { content: "Brilliant mock futures analysis. I opened a LONG position based on this!" };
-        http.post(
-          `${BASE_URL}/api/futures/community/posts/${targetPost.id}/comments`,
-          JSON.stringify(commentPayload),
-          { headers: authHeaders }
-        );
+          // Add a friendly comment
+          const commentPayload = { content: "Brilliant mock futures analysis. I opened a LONG position based on this!" };
+          http.post(
+            `${BASE_URL}/api/futures/community/posts/${targetPost.id}/comments`,
+            JSON.stringify(commentPayload),
+            { headers: authHeaders }
+          );
+        }
       }
     }
   });

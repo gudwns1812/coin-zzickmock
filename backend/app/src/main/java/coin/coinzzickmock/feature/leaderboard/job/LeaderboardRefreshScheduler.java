@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnExpression("'${coin.leaderboard.redis.enabled:false}' == 'true' && '${coin.leaderboard.refresh.enabled:false}' == 'true'")
+@ConditionalOnExpression("'${coin.leaderboard.refresh.enabled:false}' == 'true'")
 public class LeaderboardRefreshScheduler {
     private final RefreshLeaderboardService refreshLeaderboardService;
 

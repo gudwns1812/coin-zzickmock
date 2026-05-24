@@ -166,6 +166,11 @@ class GetWalletHistoryServiceTest {
         }
 
         @Override
+        public void createOpenedAccountBaseline(TradingAccount account, LocalDate snapshotDate) {
+            throw new AssertionError("wallet history read must not create opened-account snapshots");
+        }
+
+        @Override
         public void createBaselineIfAbsent(TradingAccount account, LocalDate snapshotDate) {
             throw new AssertionError("wallet history read must not create snapshots");
         }

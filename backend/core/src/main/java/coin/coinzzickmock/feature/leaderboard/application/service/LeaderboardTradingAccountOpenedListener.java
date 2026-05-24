@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.leaderboard.application.service;
 
-import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
+import coin.coinzzickmock.feature.account.application.event.TradingAccountOpenedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -10,16 +10,16 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class LeaderboardWalletBalanceChangedListener {
+public class LeaderboardTradingAccountOpenedListener {
     private final RefreshLeaderboardService refreshLeaderboardService;
 
     @EventListener
     @Async("walletBalanceProjectionExecutor")
-    public void onWalletBalanceChanged(WalletBalanceChangedEvent event) {
+    public void onTradingAccountOpened(TradingAccountOpenedEvent event) {
         try {
-            refreshLeaderboardService.refreshMember(event.memberId());
+            refreshLeaderboardService.recordOpenedAccount(event);
         } catch (RuntimeException exception) {
-            log.warn("Leaderboard balance projection failed. operation=wallet_balance_changed_projection", exception);
+            log.warn("Leaderboard opened account projection failed. operation=account_opened_projection", exception);
         }
     }
 }

@@ -1,8 +1,11 @@
 package coin.coinzzickmock.feature.member.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import java.time.Instant;
@@ -25,7 +28,7 @@ class MemberCredentialPersistenceRepositoryTest {
 
     @Test
     void findActiveByAccountExcludesWithdrawn() {
-        MemberCredential withdrawn = memberCredentialRepository.save(member("withdrawn-active-account"));
+        MemberCredential withdrawn = memberCredentialRepository.create(member("withdrawn-active-account"));
         memberCredentialRepository.save(withdrawn.withdraw(Instant.parse("2026-05-02T00:00:00Z")));
 
         assertThat(memberCredentialRepository.findActiveByAccount("withdrawn-active-account")).isEmpty();
@@ -37,7 +40,7 @@ class MemberCredentialPersistenceRepositoryTest {
 
     @Test
     void findActiveByMemberIdExcludesWithdrawn() {
-        MemberCredential withdrawn = memberCredentialRepository.save(member("withdrawn-active-id"));
+        MemberCredential withdrawn = memberCredentialRepository.create(member("withdrawn-active-id"));
         memberCredentialRepository.save(withdrawn.withdraw(Instant.parse("2026-05-02T00:00:00Z")));
 
         assertThat(memberCredentialRepository.findActiveByMemberId(withdrawn.memberId())).isEmpty();
@@ -45,10 +48,31 @@ class MemberCredentialPersistenceRepositoryTest {
 
     @Test
     void existsByAccountIncludesWithdrawn() {
-        MemberCredential withdrawn = memberCredentialRepository.save(member("withdrawn-duplicate"));
+        MemberCredential withdrawn = memberCredentialRepository.create(member("withdrawn-duplicate"));
         memberCredentialRepository.save(withdrawn.withdraw(Instant.parse("2026-05-02T00:00:00Z")));
 
         assertThat(memberCredentialRepository.existsByAccount("withdrawn-duplicate")).isTrue();
+    }
+
+    @Test
+    void createTranslatesDuplicateAccountUniqueConstraint() {
+        memberCredentialRepository.create(member("duplicate-account"));
+
+        assertThatThrownBy(() -> memberCredentialRepository.create(member("duplicate-account")))
+                .isInstanceOf(CoreException.class)
+                .extracting(exception -> ((CoreException) exception).errorCode())
+                .isEqualTo(ErrorCode.MEMBER_ALREADY_EXISTS);
+    }
+
+    @Test
+    void createTreatsWithdrawnAccountAsDuplicate() {
+        MemberCredential withdrawn = memberCredentialRepository.create(member("withdrawn-create-dupe"));
+        memberCredentialRepository.save(withdrawn.withdraw(Instant.parse("2026-05-02T00:00:00Z")));
+
+        assertThatThrownBy(() -> memberCredentialRepository.create(member("withdrawn-create-dupe")))
+                .isInstanceOf(CoreException.class)
+                .extracting(exception -> ((CoreException) exception).errorCode())
+                .isEqualTo(ErrorCode.MEMBER_ALREADY_EXISTS);
     }
 
     @Test

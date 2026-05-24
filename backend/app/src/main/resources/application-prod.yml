@@ -61,6 +61,12 @@ app:
     jwt-secret: ${JWT_SECRET}
 
 coin:
+  sse:
+    delivery:
+      executor:
+        core-pool-size: 4
+        max-pool-size: 16
+        queue-capacity: 1000
   bitget:
     websocket:
       enabled: ${BITGET_WEBSOCKET_ENABLED:true}
@@ -77,14 +83,24 @@ coin:
       enqueue-retry:
         max-attempts: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_MAX_ATTEMPTS:5}
         delay-ms: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_DELAY_MS:1000}
+  account:
+    wallet-balance-projection:
+      executor:
+        core-pool-size: 2
+        max-pool-size: 8
+        queue-capacity: 1000
   cache:
     redis:
       enabled: true
   leaderboard:
     redis:
-      enabled: ${LEADERBOARD_REDIS_ENABLED:true}
+      key-prefix: "coin:leaderboard:"
     refresh:
-      enabled: ${LEADERBOARD_REFRESH_ENABLED:false}
+      enabled: true
+      delay-ms: 3600000
+      initial-delay-ms: 0
+    warmup:
+      enabled: true
   community:
     images:
       allowed-mime: ${COMMUNITY_IMAGE_ALLOWED_MIME:image/png,image/jpeg,image/webp,image/gif}
@@ -97,5 +113,10 @@ coin:
       region: ${S3_REGION:ap-southeast-2}
       public-base-url: ${PUBLIC_CDN_BASE_URL:${CDN_BASE_URL:}}
   activity:
+    record:
+      executor:
+        core-pool-size: 2
+        max-pool-size: 8
+        queue-capacity: 1000
     summary:
       enabled: ${DAU_SUMMARY_ENABLED:true}

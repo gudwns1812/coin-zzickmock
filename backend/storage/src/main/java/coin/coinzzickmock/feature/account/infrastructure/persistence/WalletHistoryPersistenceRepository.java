@@ -22,6 +22,12 @@ public class WalletHistoryPersistenceRepository implements WalletHistoryReposito
 
     @Override
     @Transactional
+    public void createOpenedAccountBaseline(TradingAccount account, LocalDate snapshotDate) {
+        insertBaseline(account, snapshotDate);
+    }
+
+    @Override
+    @Transactional
     public void createBaselineIfAbsent(TradingAccount account, LocalDate snapshotDate) {
         findOrCreateBaseline(baselineAccount(account, snapshotDate), snapshotDate);
     }
@@ -29,7 +35,7 @@ public class WalletHistoryPersistenceRepository implements WalletHistoryReposito
     @Override
     @Transactional
     public void updateCurrentDay(TradingAccount account, LocalDate snapshotDate) {
-        WalletHistoryEntity entity = findOrCreateBaseline(baselineAccount(account, snapshotDate), snapshotDate);
+        WalletHistoryEntity entity = findOrCreateBaselineForUpdate(baselineAccount(account, snapshotDate), snapshotDate);
         entity.updateFrom(account, Instant.now());
     }
 
@@ -69,11 +75,25 @@ public class WalletHistoryPersistenceRepository implements WalletHistoryReposito
     }
 
     private WalletHistoryEntity findOrCreateBaseline(TradingAccount account, LocalDate snapshotDate) {
-        return walletHistoryEntityRepository.findByMemberIdAndSnapshotDateForUpdate(account.memberId(), snapshotDate)
+        return walletHistoryEntityRepository.findByMemberIdAndSnapshotDate(account.memberId(), snapshotDate)
                 .orElseGet(() -> createBaseline(account, snapshotDate));
     }
 
+    private WalletHistoryEntity findOrCreateBaselineForUpdate(TradingAccount account, LocalDate snapshotDate) {
+        return walletHistoryEntityRepository.findByMemberIdAndSnapshotDateForUpdate(account.memberId(), snapshotDate)
+                .orElseGet(() -> createBaselineForUpdate(account, snapshotDate));
+    }
+
     private WalletHistoryEntity createBaseline(TradingAccount account, LocalDate snapshotDate) {
+        insertBaseline(account, snapshotDate);
+        return walletHistoryEntityRepository.findByMemberIdAndSnapshotDate(account.memberId(), snapshotDate)
+                .orElseThrow(() -> new IllegalStateException(
+                        "wallet history baseline was inserted or already present but cannot be found. memberId="
+                                + account.memberId() + " snapshotDate=" + snapshotDate
+                ));
+    }
+
+    private void insertBaseline(TradingAccount account, LocalDate snapshotDate) {
         Instant now = Instant.now();
         jdbcTemplate.update(
                 """
@@ -95,9 +115,13 @@ public class WalletHistoryPersistenceRepository implements WalletHistoryReposito
                 Timestamp.from(now),
                 Timestamp.from(now)
         );
+    }
+
+    private WalletHistoryEntity createBaselineForUpdate(TradingAccount account, LocalDate snapshotDate) {
+        createBaseline(account, snapshotDate);
         return walletHistoryEntityRepository.findByMemberIdAndSnapshotDateForUpdate(account.memberId(), snapshotDate)
                 .orElseThrow(() -> new IllegalStateException(
-                        "wallet history baseline was inserted or already present but cannot be found. memberId="
+                        "wallet history baseline was inserted or already present but cannot be locked. memberId="
                                 + account.memberId() + " snapshotDate=" + snapshotDate
                 ));
     }

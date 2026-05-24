@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.feature.leaderboard.application.service.RefreshLeaderboardService;
 import java.lang.reflect.Method;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.annotation.Scheduled;
 
@@ -31,7 +30,7 @@ class LeaderboardRefreshSchedulerTest {
         private int refreshAllCalls;
 
         private RecordingRefreshLeaderboardService() {
-            super(null, List.of());
+            super(null, new coin.coinzzickmock.testsupport.TestLeaderboardSnapshotStore() { });
         }
 
         @Override

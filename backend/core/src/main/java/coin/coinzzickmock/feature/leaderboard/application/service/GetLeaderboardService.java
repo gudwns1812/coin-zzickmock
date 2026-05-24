@@ -17,9 +17,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GetLeaderboardService {
@@ -27,7 +29,7 @@ public class GetLeaderboardService {
     private static final int MAX_LIMIT = 50;
 
     private final LeaderboardProjectionRepository projectionRepository;
-    private final List<LeaderboardSnapshotStore> snapshotStores;
+    private final LeaderboardSnapshotStore snapshotStore;
     private final PositionPeekTargetTokenCodec targetTokenService;
 
     @Transactional(readOnly = true)
@@ -40,8 +42,8 @@ public class GetLeaderboardService {
         LeaderboardMode mode = parseMode(modeValue);
         int limit = parseLimit(limitValue);
 
-        for (LeaderboardSnapshotStore snapshotStore : snapshotStores) {
-            LeaderboardResult result = snapshotStore.findSnapshot(mode, limit, currentMemberId)
+        try {
+            LeaderboardResult snapshotResult = snapshotStore.findSnapshot(mode, limit, currentMemberId)
                     .filter(snapshot -> !snapshot.entries().isEmpty())
                     .map(snapshot -> LeaderboardResult.from(
                             mode,
@@ -51,9 +53,11 @@ public class GetLeaderboardService {
                             snapshot.myRank()
                     ))
                     .orElse(null);
-            if (result != null) {
-                return result;
+            if (snapshotResult != null) {
+                return snapshotResult;
             }
+        } catch (RuntimeException exception) {
+            log.warn("Leaderboard snapshot read failed. operation=get_leaderboard_snapshot", exception);
         }
 
         List<LeaderboardEntry> entries = projectionRepository.findAll();

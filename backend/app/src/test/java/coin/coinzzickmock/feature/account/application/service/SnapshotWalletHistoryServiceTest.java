@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.account.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import coin.coinzzickmock.feature.account.application.event.TradingAccountOpenedEvent;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
 import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
@@ -19,6 +20,34 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class SnapshotWalletHistoryServiceTest {
+    @Test
+    void recordsOpenedAccountBaselineWithoutReadingAccountRepository() {
+        InMemoryWalletHistoryRepository walletHistoryRepository = new InMemoryWalletHistoryRepository();
+        SnapshotWalletHistoryService service = new SnapshotWalletHistoryService(
+                new FailingAccountRepository(),
+                walletHistoryRepository,
+                Clock.fixed(Instant.parse("2026-05-03T12:00:00Z"), ZoneOffset.UTC)
+        );
+
+        service.recordOpenedAccount(new TradingAccountOpenedEvent(
+                1L,
+                "demo@coinzzickmock.dev",
+                "Demo",
+                "demo-trader",
+                100_000d,
+                100_000d,
+                0L,
+                Instant.parse("2026-05-03T12:00:00Z")
+        ));
+
+        assertThat(walletHistoryRepository.snapshots).hasSize(1);
+        WalletHistorySnapshot snapshot = walletHistoryRepository.snapshots.get(0);
+        assertThat(snapshot.snapshotDate()).isEqualTo(LocalDate.of(2026, 5, 3));
+        assertThat(snapshot.baselineWalletBalance()).isEqualByComparingTo("100000");
+        assertThat(snapshot.walletBalance()).isEqualByComparingTo("100000");
+        assertThat(snapshot.dailyWalletChange()).isEqualByComparingTo("0");
+    }
+
     @Test
     void recordsCurrentKstDayFromChangedAccountBalance() {
         InMemoryWalletHistoryRepository walletHistoryRepository = new InMemoryWalletHistoryRepository();
@@ -125,8 +154,51 @@ class SnapshotWalletHistoryServiceTest {
         }
     }
 
+    private static class FailingAccountRepository implements AccountRepository {
+        @Override
+        public Optional<TradingAccount> findByMemberId(Long memberId) {
+            throw new AssertionError("opened account projection must not read account repository");
+        }
+
+        @Override
+        public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
+            throw new AssertionError("opened account projection must not lock account repository");
+        }
+
+        @Override
+        public List<TradingAccount> findAll() {
+            throw new AssertionError("opened account projection must not read all accounts");
+        }
+
+        @Override
+        public TradingAccount create(TradingAccount account) {
+            throw new AssertionError("opened account projection must not create accounts");
+        }
+
+        @Override
+        public AccountMutationResult updateWithVersion(TradingAccount expectedAccount, TradingAccount nextAccount) {
+            throw new AssertionError("opened account projection must not update accounts");
+        }
+    }
+
     private static class InMemoryWalletHistoryRepository implements WalletHistoryRepository {
         private final List<WalletHistorySnapshot> snapshots = new ArrayList<>();
+
+        @Override
+        public void createOpenedAccountBaseline(TradingAccount account, LocalDate snapshotDate) {
+            if (snapshots.stream().anyMatch(snapshot -> snapshot.snapshotDate().equals(snapshotDate))) {
+                return;
+            }
+            BigDecimal walletBalance = BigDecimal.valueOf(account.walletBalance());
+            snapshots.add(new WalletHistorySnapshot(
+                    account.memberId(),
+                    snapshotDate,
+                    walletBalance,
+                    walletBalance,
+                    BigDecimal.ZERO,
+                    Instant.now()
+            ));
+        }
 
         @Override
         public void createBaselineIfAbsent(TradingAccount account, LocalDate snapshotDate) {

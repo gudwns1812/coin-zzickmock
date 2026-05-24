@@ -35,7 +35,7 @@ class WalletHistoryPersistenceRepositoryTest {
 
     @Test
     void createsBaselineOnceAndUpdatesDailySnapshot() {
-        MemberCredential member = memberCredentialRepository.save(member("wallet-history-" + System.nanoTime()));
+        MemberCredential member = memberCredentialRepository.create(member("wallet-history-" + System.nanoTime()));
         TradingAccount account = new TradingAccount(
                 member.memberId(),
                 member.memberEmail(),
@@ -67,8 +67,35 @@ class WalletHistoryPersistenceRepositoryTest {
     }
 
     @Test
+    void createsOpenedAccountBaselineWithoutDuplicateRows() {
+        MemberCredential member = memberCredentialRepository.create(member("wallet-history-opened-" + System.nanoTime()));
+        TradingAccount account = accountRepository.create(new TradingAccount(
+                member.memberId(),
+                member.memberEmail(),
+                member.memberName(),
+                100_000,
+                100_000
+        ));
+        LocalDate snapshotDate = LocalDate.of(2026, 5, 3);
+
+        walletHistoryRepository.createOpenedAccountBaseline(account, snapshotDate);
+        walletHistoryRepository.createOpenedAccountBaseline(account, snapshotDate);
+
+        List<WalletHistorySnapshot> snapshots = walletHistoryRepository.findByMemberIdBetween(
+                member.memberId(),
+                snapshotDate,
+                snapshotDate
+        );
+
+        assertThat(snapshots).hasSize(1);
+        assertThat(snapshots.get(0).baselineWalletBalance()).isEqualByComparingTo("100000");
+        assertThat(snapshots.get(0).walletBalance()).isEqualByComparingTo("100000");
+        assertThat(snapshots.get(0).dailyWalletChange()).isEqualByComparingTo("0");
+    }
+
+    @Test
     void ignoresStaleAccountVersionSnapshotUpdates() {
-        MemberCredential member = memberCredentialRepository.save(member("wallet-history-stale-" + System.nanoTime()));
+        MemberCredential member = memberCredentialRepository.create(member("wallet-history-stale-" + System.nanoTime()));
         TradingAccount account = accountRepository.create(new TradingAccount(
                 member.memberId(),
                 member.memberEmail(),
@@ -95,7 +122,7 @@ class WalletHistoryPersistenceRepositoryTest {
 
     @Test
     void rejectsDuplicateMemberSnapshotDate() {
-        MemberCredential member = memberCredentialRepository.save(member("wallet-history-unique-" + System.nanoTime()));
+        MemberCredential member = memberCredentialRepository.create(member("wallet-history-unique-" + System.nanoTime()));
         TradingAccount account = accountRepository.create(new TradingAccount(
                 member.memberId(),
                 member.memberEmail(),

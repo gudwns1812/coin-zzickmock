@@ -125,6 +125,11 @@ class WithdrawMemberServiceTest {
         }
 
         @Override
+        public MemberCredential create(MemberCredential memberCredential) {
+            return save(memberCredential);
+        }
+
+        @Override
         public MemberCredential save(MemberCredential memberCredential) {
             MemberCredential saved = memberCredential.memberId() == null
                     ? memberCredential.withMemberId(nextId++)

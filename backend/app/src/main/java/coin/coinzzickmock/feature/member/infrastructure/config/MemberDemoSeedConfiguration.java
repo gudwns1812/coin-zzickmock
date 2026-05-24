@@ -33,7 +33,7 @@ public class MemberDemoSeedConfiguration {
                     .map(existing -> existing.role().equals(MemberRole.ADMIN)
                             ? existing
                             : memberCredentialRepository.save(existing.asAdmin()))
-                    .orElseGet(() -> memberCredentialRepository.save(MemberCredential.register(
+                    .orElseGet(() -> memberCredentialRepository.create(MemberCredential.register(
                                     DEMO_ACCOUNT,
                                     memberPasswordHasher.hash(DEMO_PASSWORD),
                                     DEMO_MEMBER_NAME,
@@ -49,7 +49,8 @@ public class MemberDemoSeedConfiguration {
             tradingAccountProvisioningService.openForSeedIfMissing(
                     credential.memberId(),
                     credential.memberEmail(),
-                    credential.memberName()
+                    credential.memberName(),
+                    credential.nickname()
             );
         };
     }

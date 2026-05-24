@@ -109,6 +109,12 @@ class GetAccountSummaryServiceTest {
                     }
 
                     @Override
+                    public MemberCredential create(MemberCredential memberCredential) {
+                        fail("account summary read must not create member");
+                        return memberCredential;
+                    }
+
+                    @Override
                     public MemberCredential save(MemberCredential memberCredential) {
                         fail("account summary read must not save member");
                         return memberCredential;
@@ -276,6 +282,12 @@ class GetAccountSummaryServiceTest {
             @Override
             public boolean existsByAccount(String account) {
                 return false;
+            }
+
+            @Override
+            public MemberCredential create(MemberCredential memberCredential) {
+                fail("account summary read must not create member");
+                return memberCredential;
             }
 
             @Override

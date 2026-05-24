@@ -9,7 +9,6 @@ import coin.coinzzickmock.feature.leaderboard.application.repository.Leaderboard
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardResult;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
@@ -59,7 +58,7 @@ class GetLeaderboardServiceTest {
     void usesRedisStoreWhenSnapshotExists() {
         GetLeaderboardService service = service(
                 List.of(entry(10L, "Database", 200_000)),
-                List.of(new InMemorySnapshotStore(List.of(entry(11L, "Redis", 130_000))))
+                new InMemorySnapshotStore(List.of(entry(11L, "Redis", 130_000)))
         );
 
         LeaderboardResult result = service.get(null, null);
@@ -72,7 +71,21 @@ class GetLeaderboardServiceTest {
     void fallsBackToDatabaseWhenRedisSnapshotIsEmpty() {
         GetLeaderboardService service = service(
                 List.of(entry(10L, "Database", 200_000)),
-                List.of(new InMemorySnapshotStore(List.of()))
+                new InMemorySnapshotStore(List.of())
+        );
+
+        LeaderboardResult result = service.get("profitRate", "5");
+
+        assertEquals("database", result.source());
+        assertEquals("Database", result.entries().get(0).nickname());
+    }
+
+
+    @Test
+    void fallsBackToDatabaseWhenSnapshotStoreReadFails() {
+        GetLeaderboardService service = service(
+                List.of(entry(10L, "Database", 200_000)),
+                new FailingSnapshotStore()
         );
 
         LeaderboardResult result = service.get("profitRate", "5");
@@ -101,10 +114,10 @@ class GetLeaderboardServiceTest {
     void returnsMyRankFromRedisSnapshotWithoutDatabaseFallback() {
         GetLeaderboardService service = service(
                 List.of(entry(10L, "Database", 200_000)),
-                List.of(new InMemorySnapshotStore(
+                new InMemorySnapshotStore(
                         List.of(entry(11L, "Redis", 130_000)),
                         Optional.of(7)
-                ))
+                )
         );
 
         LeaderboardResult result = service.get("profitRate", "1", 99L);
@@ -115,7 +128,7 @@ class GetLeaderboardServiceTest {
 
     @Test
     void rejectsInvalidModeAndLimit() {
-        GetLeaderboardService service = service(List.of(), List.of());
+        GetLeaderboardService service = service(List.of());
 
         CoreException invalidMode = assertThrows(CoreException.class, () -> service.get("unrealizedPnl", "5"));
         assertEquals(ErrorCode.INVALID_REQUEST, invalidMode.errorCode());
@@ -128,13 +141,13 @@ class GetLeaderboardServiceTest {
     }
 
     private GetLeaderboardService service(List<LeaderboardEntry> entries) {
-        return service(entries, List.of());
+        return service(entries, new InMemorySnapshotStore(List.of()));
     }
 
-    private GetLeaderboardService service(List<LeaderboardEntry> entries, List<LeaderboardSnapshotStore> stores) {
+    private GetLeaderboardService service(List<LeaderboardEntry> entries, InMemorySnapshotStore store) {
         return new GetLeaderboardService(
                 new InMemoryProjectionRepository(entries),
-                stores,
+                store,
                 new PositionPeekTargetTokenCodec()
         );
     }
@@ -159,6 +172,21 @@ class GetLeaderboardServiceTest {
             return entries.stream()
                     .filter(entry -> entry.memberId().equals(memberId))
                     .findFirst();
+        }
+    }
+
+    private static class FailingSnapshotStore extends InMemorySnapshotStore {
+        private FailingSnapshotStore() {
+            super(List.of());
+        }
+
+        @Override
+        public Optional<LeaderboardSnapshotResult> findSnapshot(
+                LeaderboardMode mode,
+                int limit,
+                Long currentMemberId
+        ) {
+            throw new IllegalStateException("snapshot store read failed");
         }
     }
 

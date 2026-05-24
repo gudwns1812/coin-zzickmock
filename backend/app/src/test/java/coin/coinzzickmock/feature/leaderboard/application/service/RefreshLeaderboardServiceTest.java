@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.leaderboard.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import coin.coinzzickmock.feature.account.application.event.TradingAccountOpenedEvent;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
@@ -13,11 +14,36 @@ import org.junit.jupiter.api.Test;
 
 class RefreshLeaderboardServiceTest {
     @Test
+    void recordOpenedAccountUpdatesSnapshotWithoutProjectionLookup() {
+        RecordingSnapshotStore snapshotStore = new RecordingSnapshotStore();
+        RefreshLeaderboardService service = new RefreshLeaderboardService(
+                new FailingProjectionRepository(),
+                snapshotStore
+        );
+
+        service.recordOpenedAccount(new TradingAccountOpenedEvent(
+                7L,
+                "opened@coinzzickmock.dev",
+                "Opened",
+                "Opened Nick",
+                100_000d,
+                100_000d,
+                0L,
+                Instant.parse("2026-05-02T00:00:00Z")
+        ));
+
+        assertThat(snapshotStore.updatedEntries)
+                .extracting(LeaderboardEntry::memberId, LeaderboardEntry::nickname, LeaderboardEntry::walletBalance)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(7L, "Opened Nick", 100_000d));
+        assertThat(snapshotStore.removedMemberIds).isEmpty();
+    }
+
+    @Test
     void refreshMemberRemovesStaleSnapshotsWhenProjectionIsMissing() {
         RecordingSnapshotStore snapshotStore = new RecordingSnapshotStore();
         RefreshLeaderboardService service = new RefreshLeaderboardService(
                 new EmptyProjectionRepository(),
-                List.of(snapshotStore)
+                snapshotStore
         );
 
         service.refreshMember(7L);
@@ -32,7 +58,7 @@ class RefreshLeaderboardServiceTest {
         LeaderboardEntry entry = entry(7L, "Active", 120_000);
         RefreshLeaderboardService service = new RefreshLeaderboardService(
                 new SingleProjectionRepository(entry),
-                List.of(snapshotStore)
+                snapshotStore
         );
 
         service.refreshMember(7L);
@@ -59,6 +85,18 @@ class RefreshLeaderboardServiceTest {
         @Override
         public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
             return Optional.empty();
+        }
+    }
+
+    private static class FailingProjectionRepository implements LeaderboardProjectionRepository {
+        @Override
+        public List<LeaderboardEntry> findAll() {
+            throw new AssertionError("opened account projection must not query full leaderboard projection");
+        }
+
+        @Override
+        public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
+            throw new AssertionError("opened account projection must not query member leaderboard projection");
         }
     }
 

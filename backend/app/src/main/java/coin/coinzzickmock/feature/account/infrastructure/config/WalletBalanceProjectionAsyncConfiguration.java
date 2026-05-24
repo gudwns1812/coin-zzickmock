@@ -1,4 +1,4 @@
-package coin.coinzzickmock.feature.activity.infrastructure.config;
+package coin.coinzzickmock.feature.account.infrastructure.config;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -10,27 +10,27 @@ import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
-public class ActivityAsyncConfiguration {
-    @Bean("activityRecordExecutor")
+public class WalletBalanceProjectionAsyncConfiguration {
+    @Bean("walletBalanceProjectionExecutor")
     @Profile("!test")
-    Executor activityRecordExecutor(
-            @Value("${coin.activity.record.executor.core-pool-size:2}") int corePoolSize,
-            @Value("${coin.activity.record.executor.max-pool-size:8}") int maxPoolSize,
-            @Value("${coin.activity.record.executor.queue-capacity:1000}") int queueCapacity
+    Executor walletBalanceProjectionExecutor(
+            @Value("${coin.account.wallet-balance-projection.executor.core-pool-size:2}") int corePoolSize,
+            @Value("${coin.account.wallet-balance-projection.executor.max-pool-size:8}") int maxPoolSize,
+            @Value("${coin.account.wallet-balance-projection.executor.queue-capacity:1000}") int queueCapacity
     ) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setThreadNamePrefix("activity-record-");
+        executor.setThreadNamePrefix("wallet-balance-projection-");
         executor.setCorePoolSize(corePoolSize);
         executor.setMaxPoolSize(maxPoolSize);
         executor.setQueueCapacity(queueCapacity);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }
 
-    @Bean("activityRecordExecutor")
+    @Bean("walletBalanceProjectionExecutor")
     @Profile("test")
-    Executor testActivityRecordExecutor() {
+    Executor testWalletBalanceProjectionExecutor() {
         return new SyncTaskExecutor();
     }
 }

@@ -1,0 +1,1610 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Backend Up",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"$backend_job\"}",
+          "legendFormat": "backend",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "description": "Prometheus scrape health for the backend actuator endpoint."
+    },
+    {
+      "id": 2,
+      "title": "HTTP 5xx / sec",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_request_total{job=\"$backend_job\",status_family=\"5xx\"}[$__rate_interval]))",
+          "legendFormat": "5xx/s",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "description": "Server errors during the selected k6 window."
+    },
+    {
+      "id": 3,
+      "title": "HTTP Duration by endpoint group (avg/max)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum by (endpoint_group) (rate(http_request_duration_seconds_sum{job=\"$backend_job\"}[$__rate_interval])) / clamp_min(sum by (endpoint_group) (rate(http_request_duration_seconds_count{job=\"$backend_job\"}[$__rate_interval])), 0.001)",
+          "legendFormat": "{{endpoint_group}} avg",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (endpoint_group) (http_request_duration_seconds_max{job=\"$backend_job\"})",
+          "legendFormat": "{{endpoint_group}} max",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Current Micrometer timers export count/sum/max, not histogram buckets. Use avg and max to locate slow API groups during k6. If percentile histograms are enabled later, add p95 here."
+    },
+    {
+      "id": 4,
+      "title": "Request Rate by endpoint group/status",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum by (endpoint_group, status_family) (rate(http_request_total{job=\"$backend_job\"}[$__rate_interval]))",
+          "legendFormat": "{{endpoint_group}} {{status_family}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Hikari Pool Saturation %",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "100 * max by (pool) (hikaricp_connections_active{job=\"$backend_job\"}) / max by (pool) (hikaricp_connections_max{job=\"$backend_job\"})",
+          "legendFormat": "{{pool}} active/max",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "If this stays near 100%, CP is exhausted."
+    },
+    {
+      "id": 6,
+      "title": "Hikari Connections",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "max by (pool) (hikaricp_connections_active{job=\"$backend_job\"})",
+          "legendFormat": "{{pool}} active",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (pool) (hikaricp_connections_idle{job=\"$backend_job\"})",
+          "legendFormat": "{{pool}} idle",
+          "refId": "B"
+        },
+        {
+          "expr": "max by (pool) (hikaricp_connections_pending{job=\"$backend_job\"})",
+          "legendFormat": "{{pool}} pending",
+          "refId": "C"
+        },
+        {
+          "expr": "max by (pool) (hikaricp_connections_max{job=\"$backend_job\"})",
+          "legendFormat": "{{pool}} max",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Active=borrowed connections, Pending=threads waiting for a connection."
+    },
+    {
+      "id": 7,
+      "title": "DB Connection Wait / Timeout",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 4,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum by (pool) (rate(hikaricp_connections_acquire_seconds_sum{job=\"$backend_job\"}[$__rate_interval])) / clamp_min(sum by (pool) (rate(hikaricp_connections_acquire_seconds_count{job=\"$backend_job\"}[$__rate_interval])), 0.001)",
+          "legendFormat": "{{pool}} acquire avg",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (pool) (hikaricp_connections_acquire_seconds_max{job=\"$backend_job\"})",
+          "legendFormat": "{{pool}} acquire max",
+          "refId": "B"
+        },
+        {
+          "expr": "max by (pool) (hikaricp_connections_usage_seconds_max{job=\"$backend_job\"})",
+          "legendFormat": "{{pool}} usage max",
+          "refId": "C"
+        },
+        {
+          "expr": "sum by (pool) (rate(hikaricp_connections_timeout_total{job=\"$backend_job\"}[$__rate_interval]))",
+          "legendFormat": "{{pool}} timeout/s",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Average/max acquire time shows DB connection wait. Usage max shows long-held borrowed connections. Timeout rate should remain zero."
+    },
+    {
+      "id": 8,
+      "title": "Executor Active / Pool Size",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "max by (name) (executor_active_threads{job=\"$backend_job\"})",
+          "legendFormat": "{{name}} active",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (name) (executor_pool_size_threads{job=\"$backend_job\"})",
+          "legendFormat": "{{name}} pool",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "threads"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Watch walletBalanceProjectionExecutor, activityRecordExecutor, sseDeliveryTaskExecutor, and application executors if instrumented."
+    },
+    {
+      "id": 9,
+      "title": "Executor Queue Depth",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 10,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "max by (name) (executor_queued_tasks{job=\"$backend_job\"})",
+          "legendFormat": "{{name}} queued",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (name) (executor_queue_remaining_tasks{job=\"$backend_job\"})",
+          "legendFormat": "{{name}} remaining",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Queue climbing while active threads are capped means async executor backlog. No-data means the executor bean is not currently exported by Micrometer."
+    },
+    {
+      "id": 10,
+      "title": "HTTP Active Requests",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 10,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(http_server_requests_active_seconds_count{job=\"$backend_job\"})",
+          "legendFormat": "active requests",
+          "refId": "A"
+        },
+        {
+          "expr": "max(http_server_requests_active_seconds_max{job=\"$backend_job\"})",
+          "legendFormat": "active request max duration",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Spring Boot active HTTP server requests. If this climbs while executor/Hikari is capped, requests are backing up inside the app."
+    },
+    {
+      "id": 11,
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "100 * process_cpu_usage{job=\"$backend_job\"}",
+          "legendFormat": "backend process",
+          "refId": "A"
+        },
+        {
+          "expr": "100 * system_cpu_usage{job=\"$backend_job\"}",
+          "legendFormat": "backend container/system",
+          "refId": "B"
+        },
+        {
+          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"$node_job\",mode=\"idle\"}[$__rate_interval])))",
+          "legendFormat": "host node",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "High CPU with low DB/thread wait suggests CPU-bound work, e.g. BCrypt or serialization."
+    },
+    {
+      "id": 12,
+      "title": "JVM Memory Used",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 16,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum by (area) (jvm_memory_used_bytes{job=\"$backend_job\"})",
+          "legendFormat": "{{area}} used",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (area) (jvm_memory_max_bytes{job=\"$backend_job\"})",
+          "legendFormat": "{{area}} max",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Heap/non-heap pressure during load."
+    },
+    {
+      "id": 13,
+      "title": "GC Pause",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 16,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(jvm_gc_pause_seconds_sum{job=\"$backend_job\"}[$__rate_interval]))",
+          "legendFormat": "pause seconds / sec",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(jvm_gc_pause_seconds_count{job=\"$backend_job\"}[$__rate_interval]))",
+          "legendFormat": "pause count / sec",
+          "refId": "B"
+        },
+        {
+          "expr": "max(jvm_gc_pause_seconds_max{job=\"$backend_job\"})",
+          "legendFormat": "pause max",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "GC spikes can explain latency spikes if CPU/memory jumps together."
+    },
+    {
+      "id": 14,
+      "title": "JVM Thread States",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum by (state) (jvm_threads_states_threads{job=\"$backend_job\"})",
+          "legendFormat": "{{state}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "threads"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "SSE Connections / Rejections",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 22,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum by (stream) (sse_connections_current{job=\"$backend_job\"})",
+          "legendFormat": "{{stream}} current",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (stream, reason) (rate(sse_connections_rejected_total{job=\"$backend_job\"}[$__rate_interval]))",
+          "legendFormat": "{{stream}} rejected {{reason}}",
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (stream) (rate(sse_executor_rejected_total{job=\"$backend_job\"}[$__rate_interval]))",
+          "legendFormat": "{{stream}} executor rejected",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Use with realtime/SSE load. Rejections distinguish stream limits/executor saturation."
+    },
+    {
+      "id": 16,
+      "title": "SSE Send Latency / Failures",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 22,
+        "w": 8,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum by (stream, result) (rate(sse_send_duration_seconds_sum{job=\"$backend_job\"}[$__rate_interval])) / clamp_min(sum by (stream, result) (rate(sse_send_duration_seconds_count{job=\"$backend_job\"}[$__rate_interval])), 0.001)",
+          "legendFormat": "{{stream}} {{result}} avg",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (stream, result) (sse_send_duration_seconds_max{job=\"$backend_job\"})",
+          "legendFormat": "{{stream}} {{result}} max",
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (stream, result) (rate(sse_send_total{job=\"$backend_job\"}[$__rate_interval]))",
+          "legendFormat": "{{stream}} {{result}} / sec",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "SSE send avg/max and success/failure rate. Current timers export count/sum/max; no histogram buckets by default."
+    },
+    {
+      "id": 17,
+      "title": "Load-test Relevant Backend Logs",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "{application=\"coin-zzickmock\", service=\"backend\"} |~ \"TaskRejectedException|HikariPool|Connection is not available|Deadlock|deadlock|OutOfMemoryError|GC overhead|event=http.request.slow|event=sse.connection.rejected|ERROR|WARN\"",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "description": "Correlate metrics with backend warnings/errors during the k6 time range."
+    },
+    {
+      "id": 18,
+      "title": "k6 client timing setup",
+      "type": "text",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 3
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### k6 client-side timings\nThese panels require k6 Prometheus remote-write output. Run k6 with `-o experimental-prometheus-rw` and set `K6_PROMETHEUS_RW_SERVER_URL=http://localhost:19090/api/v1/write`, `K6_PROMETHEUS_RW_TREND_STATS=p(95),max,avg`, and optionally `--tag testid=<run-id>`. Without remote-write data these panels are empty; backend/infra panels still work."
+      }
+    },
+    {
+      "id": 19,
+      "title": "k6 HTTP Client Timings p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "max(k6_http_req_duration_p95{testid=~\"$testid\"})",
+          "legendFormat": "duration p95",
+          "refId": "A"
+        },
+        {
+          "expr": "max(k6_http_req_waiting_p95{testid=~\"$testid\"})",
+          "legendFormat": "waiting/TTFB p95",
+          "refId": "B"
+        },
+        {
+          "expr": "max(k6_http_req_blocked_p95{testid=~\"$testid\"})",
+          "legendFormat": "blocked p95",
+          "refId": "C"
+        },
+        {
+          "expr": "max(k6_http_req_connecting_p95{testid=~\"$testid\"})",
+          "legendFormat": "connecting p95",
+          "refId": "D"
+        },
+        {
+          "expr": "max(k6_http_req_tls_handshaking_p95{testid=~\"$testid\"})",
+          "legendFormat": "tls p95",
+          "refId": "E"
+        },
+        {
+          "expr": "max(k6_http_req_sending_p95{testid=~\"$testid\"})",
+          "legendFormat": "sending p95",
+          "refId": "F"
+        },
+        {
+          "expr": "max(k6_http_req_receiving_p95{testid=~\"$testid\"})",
+          "legendFormat": "receiving p95",
+          "refId": "G"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "k6 client-side breakdown. waiting/TTFB is usually server processing + first-byte delay; blocked is k6-side connection-slot/client pressure."
+    },
+    {
+      "id": 20,
+      "title": "k6 HTTP Client Timings max",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "max(k6_http_req_duration_max{testid=~\"$testid\"})",
+          "legendFormat": "duration max",
+          "refId": "A"
+        },
+        {
+          "expr": "max(k6_http_req_waiting_max{testid=~\"$testid\"})",
+          "legendFormat": "waiting/TTFB max",
+          "refId": "B"
+        },
+        {
+          "expr": "max(k6_http_req_blocked_max{testid=~\"$testid\"})",
+          "legendFormat": "blocked max",
+          "refId": "C"
+        },
+        {
+          "expr": "max(k6_http_req_connecting_max{testid=~\"$testid\"})",
+          "legendFormat": "connecting max",
+          "refId": "D"
+        },
+        {
+          "expr": "max(k6_http_req_tls_handshaking_max{testid=~\"$testid\"})",
+          "legendFormat": "tls max",
+          "refId": "E"
+        },
+        {
+          "expr": "max(k6_http_req_sending_max{testid=~\"$testid\"})",
+          "legendFormat": "sending max",
+          "refId": "F"
+        },
+        {
+          "expr": "max(k6_http_req_receiving_max{testid=~\"$testid\"})",
+          "legendFormat": "receiving max",
+          "refId": "G"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "title": "k6 Request Rate / Failure / VUs",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(k6_http_reqs_total{testid=~\"$testid\"}[$__rate_interval]))",
+          "legendFormat": "http req/s",
+          "refId": "A"
+        },
+        {
+          "expr": "max(k6_http_req_failed_rate{testid=~\"$testid\"})",
+          "legendFormat": "failed rate",
+          "refId": "B"
+        },
+        {
+          "expr": "max(k6_vus{testid=~\"$testid\"})",
+          "legendFormat": "vus",
+          "refId": "C"
+        },
+        {
+          "expr": "max(k6_vus_max{testid=~\"$testid\"})",
+          "legendFormat": "vus max",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 22,
+      "title": "k6 Iteration Duration",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 45,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "max(k6_iteration_duration_p95{testid=~\"$testid\"})",
+          "legendFormat": "iteration p95",
+          "refId": "A"
+        },
+        {
+          "expr": "max(k6_iteration_duration_max{testid=~\"$testid\"})",
+          "legendFormat": "iteration max",
+          "refId": "B"
+        },
+        {
+          "expr": "max(k6_iteration_duration_avg{testid=~\"$testid\"})",
+          "legendFormat": "iteration avg",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [
+    "coin-zzickmock",
+    "k6",
+    "load-test",
+    "backend",
+    "diagnostics"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "coin-zzickmock-backend",
+          "value": "coin-zzickmock-backend"
+        },
+        "hide": 0,
+        "label": "Backend Prometheus job",
+        "name": "backend_job",
+        "query": "coin-zzickmock-backend",
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "coin-zzickmock-node",
+          "value": "coin-zzickmock-node"
+        },
+        "hide": 0,
+        "label": "Node exporter job",
+        "name": "node_job",
+        "query": "coin-zzickmock-node",
+        "type": "constant"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(k6_vus, testid)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "k6 testid",
+        "multi": true,
+        "name": "testid",
+        "options": [],
+        "query": {
+          "query": "label_values(k6_vus, testid)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "k6 Stress Diagnostics",
+  "uid": "k6-stress-diagnostics",
+  "version": 4,
+  "weekStart": ""
+}

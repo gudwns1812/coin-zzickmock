@@ -31,12 +31,26 @@ class RealtimeMarketPriceReaderTest {
     }
 
     @Test
-    void rejectsWhenTradeOrTickerIsStale() {
+    void usesFreshTickerLastPriceWhenTradeIsStale() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RealtimeMarketPriceReader reader = new RealtimeMarketPriceReader(store);
         Instant stale = Instant.now().minusSeconds(60);
         store.acceptTrade(trade(stale, "27010"));
         store.acceptTicker(ticker(Instant.now(), "27000", "27001"));
+
+        MarketSnapshot market = reader.requireFreshMarket("BTCUSDT");
+
+        assertThat(market.lastPrice()).isEqualTo(27000.0);
+        assertThat(market.markPrice()).isEqualTo(27001.0);
+    }
+
+    @Test
+    void rejectsWhenTickerIsStaleEvenIfTradeIsFresh() {
+        RealtimeMarketDataStore store = new RealtimeMarketDataStore();
+        RealtimeMarketPriceReader reader = new RealtimeMarketPriceReader(store);
+        Instant now = Instant.now();
+        store.acceptTrade(trade(now, "27010"));
+        store.acceptTicker(ticker(now.minusSeconds(60), "27000", "27001"));
 
         assertThat(reader.freshMarket("BTCUSDT")).isEmpty();
         assertThatThrownBy(() -> reader.requireFreshMarket("BTCUSDT"))
@@ -46,13 +60,17 @@ class RealtimeMarketPriceReaderTest {
     }
 
     @Test
-    void readMarkPriceCanUseFreshTickerWithoutTrade() {
+    void readMarketCanUseFreshTickerWithoutTrade() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
         RealtimeMarketPriceReader reader = new RealtimeMarketPriceReader(store);
         store.acceptTicker(ticker(Instant.now(), "27000", "27001"));
 
         assertThat(reader.freshMarkPrice("BTCUSDT")).contains(27001.0);
-        assertThat(reader.freshMarket("BTCUSDT")).isEmpty();
+        assertThat(reader.freshMarket("BTCUSDT"))
+                .hasValueSatisfying(market -> {
+                    assertThat(market.lastPrice()).isEqualTo(27000.0);
+                    assertThat(market.markPrice()).isEqualTo(27001.0);
+                });
     }
 
     private static RealtimeMarketTradeTick trade(Instant at, String price) {

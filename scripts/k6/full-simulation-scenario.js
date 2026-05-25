@@ -85,6 +85,26 @@ function shouldRun(rate) {
   return Math.random() < rate;
 }
 
+function logUnexpectedResponse(operation, response, expectedStatuses, context = {}) {
+  if (expectedStatuses.includes(response.status)) {
+    return true;
+  }
+
+  const rawBody = response.body === null || response.body === undefined ? "" : String(response.body);
+  const compactBody = rawBody.replace(/\s+/g, " ").slice(0, 500);
+  console.log(JSON.stringify({
+    event: "full_simulation.unexpected_response",
+    operation,
+    status: response.status,
+    expectedStatuses,
+    vu: __VU,
+    iter: __ITER,
+    context,
+    body: compactBody,
+  }));
+  return false;
+}
+
 export default function (data) {
   const sessionStart = Date.now();
   const headers = jsonHeaders();
@@ -163,6 +183,7 @@ export default function (data) {
   group("Phase 4: Trading Operations", function () {
     // 1. Check account balance
     const accRes = http.get(`${BASE_URL}/api/futures/account/me`, paramsWithHeaders(authHeaders));
+    logUnexpectedResponse("account_summary", accRes, [200]);
     let balance = 0;
     if (accRes.status === 200) {
       balance = accRes.json("data.available") || 0;
@@ -170,7 +191,8 @@ export default function (data) {
 
     // Refill if empty
     if (balance < 200) {
-      http.post(`${BASE_URL}/api/futures/account/me/refill`, null, businessParams(authHeaders));
+      const refillRes = http.post(`${BASE_URL}/api/futures/account/me/refill`, null, businessParams(authHeaders));
+      logUnexpectedResponse("account_refill", refillRes, [200, 400]);
       sleep(0.5);
     }
 
@@ -186,6 +208,7 @@ export default function (data) {
     // Obtain last market price to calculate margin accurately
     let marketPrice = 65000;
     const tickerRes = http.get(`${BASE_URL}/api/futures/markets/${tradeSymbol}`);
+    logUnexpectedResponse("trade_market_ticker", tickerRes, [200], { symbol: tradeSymbol });
     if (tickerRes.status === 200 && tickerRes.json("data.lastPrice")) {
       marketPrice = tickerRes.json("data.lastPrice");
     }
@@ -201,17 +224,22 @@ export default function (data) {
     };
 
     // Preview
-    http.post(`${BASE_URL}/api/futures/orders/preview`, JSON.stringify(orderPayload), businessParams(authHeaders));
+    const previewRes = http.post(`${BASE_URL}/api/futures/orders/preview`, JSON.stringify(orderPayload), businessParams(authHeaders));
+    logUnexpectedResponse("order_preview", previewRes, [200, 400], { symbol: tradeSymbol, side });
     sleep(0.5);
 
     // Place
     const orderRes = http.post(`${BASE_URL}/api/futures/orders`, JSON.stringify(orderPayload), businessParams(authHeaders));
-    check(orderRes, { "futures order submitted ok": (r) => r.status === 200 || r.status === 400 });
+    const orderOk = check(orderRes, { "futures order submitted ok": (r) => r.status === 200 || r.status === 400 });
+    if (!orderOk) {
+      logUnexpectedResponse("order_submit", orderRes, [200, 400], { symbol: tradeSymbol, side });
+    }
 
     sleep(1.0);
 
     // 3. Query Active Positions & Apply TP/SL
     const posRes = http.get(`${BASE_URL}/api/futures/positions/me`, paramsWithHeaders(authHeaders));
+    logUnexpectedResponse("positions_query", posRes, [200]);
     if (posRes.status === 200 && Array.isArray(posRes.json("data"))) {
       activePositions = posRes.json("data") || [];
     }
@@ -230,7 +258,14 @@ export default function (data) {
       };
       
       const tpslRes = http.patch(`${BASE_URL}/api/futures/positions/tpsl`, JSON.stringify(tpslPayload), businessParams(authHeaders));
-      check(tpslRes, { "tp/sl adjustment ok": (r) => r.status === 200 || r.status === 400 });
+      const tpslOk = check(tpslRes, { "tp/sl adjustment ok": (r) => r.status === 200 || r.status === 400 });
+      if (!tpslOk) {
+        logUnexpectedResponse("position_tpsl", tpslRes, [200, 400], {
+          symbol: pos.symbol,
+          side: pos.positionSide,
+          marginMode: pos.marginMode,
+        });
+      }
       
       sleep(1.0);
 
@@ -244,7 +279,14 @@ export default function (data) {
         limitPrice: null,
       };
       const closeRes = http.post(`${BASE_URL}/api/futures/positions/close`, JSON.stringify(closePayload), businessParams(authHeaders));
-      check(closeRes, { "futures position closed ok": (r) => r.status === 200 || r.status === 400 });
+      const closeOk = check(closeRes, { "futures position closed ok": (r) => r.status === 200 || r.status === 400 });
+      if (!closeOk) {
+        logUnexpectedResponse("position_close", closeRes, [200, 400], {
+          symbol: pos.symbol,
+          side: pos.positionSide,
+          marginMode: pos.marginMode,
+        });
+      }
     }
   });
 

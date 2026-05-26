@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.market.application.implement;
 
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeAcceptance;
 import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeHealth;
 import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceSnapshot;
 import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceType;
@@ -77,13 +77,13 @@ class RealtimeMarketDataStoreTest {
     void rejectsOlderTradeWithDifferentTradeIdAndReturnsAcceptedMovement() {
         RealtimeMarketDataStore store = new RealtimeMarketDataStore();
 
-        RealtimeMarketDataStore.AcceptedTradeUpdate first = store.acceptTradeUpdate(
+        RealtimeMarketTradeAcceptance first = store.acceptTradeUpdate(
                 trade("111", "27000", "2026-04-30T04:00:01Z")
         );
-        RealtimeMarketDataStore.AcceptedTradeUpdate older = store.acceptTradeUpdate(
+        RealtimeMarketTradeAcceptance older = store.acceptTradeUpdate(
                 trade("112", "26000", "2026-04-30T04:00:00Z")
         );
-        RealtimeMarketDataStore.AcceptedTradeUpdate next = store.acceptTradeUpdate(
+        RealtimeMarketTradeAcceptance next = store.acceptTradeUpdate(
                 trade("113", "26900", "2026-04-30T04:00:02Z")
         );
 

@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class RealtimeMarketCandleProjector {
     private final RealtimeMarketDataStore realtimeMarketDataStore;
 
-    public java.util.Optional<MarketCandleResult> latest(String symbol, MarketCandleInterval interval) {
+    public Optional<MarketCandleResult> latest(String symbol, MarketCandleInterval interval) {
         return switch (interval) {
             case ONE_MINUTE, ONE_HOUR -> realtimeMarketDataStore.latestCandle(symbol, interval)
                     .map(this::toResult);
@@ -26,7 +27,7 @@ public class RealtimeMarketCandleProjector {
         };
     }
 
-    private java.util.Optional<MarketCandleResult> latestMinuteRollup(
+    private Optional<MarketCandleResult> latestMinuteRollup(
             String symbol,
             MarketCandleInterval interval,
             int bucketMinutes
@@ -50,7 +51,7 @@ public class RealtimeMarketCandleProjector {
                 });
     }
 
-    private java.util.Optional<MarketCandleResult> latestHourlyRollup(String symbol, MarketCandleInterval interval) {
+    private Optional<MarketCandleResult> latestHourlyRollup(String symbol, MarketCandleInterval interval) {
         return realtimeMarketDataStore.latestCandle(symbol, MarketCandleInterval.ONE_HOUR)
                 .flatMap(latest -> {
                     Instant bucketStart = MarketTime.bucketStart(latest.openTime(), interval);
@@ -62,7 +63,8 @@ public class RealtimeMarketCandleProjector {
                     );
                     return candles.isEmpty()
                             ? java.util.Optional.empty()
-                            : java.util.Optional.of(rollup(bucketStart, MarketTime.bucketClose(bucketStart, interval), candles));
+                            : java.util.Optional.of(
+                                    rollup(bucketStart, MarketTime.bucketClose(bucketStart, interval), candles));
                 });
     }
 

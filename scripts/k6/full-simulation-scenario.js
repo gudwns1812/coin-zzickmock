@@ -17,26 +17,27 @@ export { handleSummary } from "./k6-report.mjs";
 // Dynamic custom performance indicators (KPIs)
 const fullSessionTrend = new Trend("session_total_duration_ms");
 
-const TARGET_VUS = positiveIntFromEnv("FULL_SIMULATION_TARGET_VUS", 250);
+const TARGET_VUS = positiveIntFromEnv("FULL_SIMULATION_TARGET_VUS", 500);
 const WARMUP_VUS = Math.max(1, Math.ceil(TARGET_VUS * 0.2));
 const RAMP_VUS = Math.max(WARMUP_VUS, Math.ceil(TARGET_VUS * 0.6));
-const TRADING_FLOW_RATE = probabilityFromEnv("FULL_SIMULATION_TRADING_RATE", 0.7);
-const SOCIAL_PEEK_RATE = probabilityFromEnv("FULL_SIMULATION_SOCIAL_PEEK_RATE", 0.35);
-const COMMUNITY_WRITE_RATE = probabilityFromEnv("FULL_SIMULATION_COMMUNITY_WRITE_RATE", 0.25);
+const TRADING_FLOW_RATE = probabilityFromEnv("FULL_SIMULATION_TRADING_RATE", 0.1);
+const SOCIAL_PEEK_RATE = probabilityFromEnv("FULL_SIMULATION_SOCIAL_PEEK_RATE", 0.1);
+const COMMUNITY_WRITE_RATE = probabilityFromEnv("FULL_SIMULATION_COMMUNITY_WRITE_RATE", 0.03);
 
-// k6 options: default 250 VUs with gradual ramping, sustained peak, and cooldown.
+// k6 options: default 500 VUs with gradual ramping, sustained peak, and cooldown.
 // The peak can still be overridden with FULL_SIMULATION_TARGET_VUS when needed.
 export const options = {
+  setupTimeout: "5m",
   stages: [
     { duration: "1m", target: WARMUP_VUS },  // Warm-up: initialize accounts, auth cookies, caches, and DB pools
     { duration: "2m", target: RAMP_VUS },    // Ramp: increase mixed read/write load without a sudden thundering herd
-    { duration: "3m", target: TARGET_VUS },  // Peak ramp: reach the full 250 VU target by default
+    { duration: "3m", target: TARGET_VUS },  // Peak ramp: reach the full 500 VU target by default
     { duration: "5m", target: TARGET_VUS },  // Sustained peak: keep enough time for scheduler/cache/DB symptoms to surface
     { duration: "2m", target: 0 },           // Cool-down: let in-flight position/community writes drain
   ],
   thresholds: {
     http_req_failed: ["rate<0.03"],                 // Full journey stress allows controlled business conflicts/fallbacks
-    http_req_duration: ["p(95)<1000"],              // Mixed endpoint p95 budget for 250 VU stress
+    http_req_duration: ["p(95)<1000"],              // Mixed endpoint p95 budget for 500 VU stress
     session_total_duration_ms: ["p(95)<25000"],     // Includes deliberate think time across the full product journey
   },
   noCookiesReset: true,
@@ -165,7 +166,7 @@ export default function (data) {
 
     sleep(0.5);
 
-    // 3. Spy on ranked trader if token exists. At 250 VUs, only a realistic slice performs paid/social writes.
+    // 3. Spy on ranked trader if token exists. At 500 VUs, only a realistic slice performs paid/social writes.
     if (targetToken && shouldRun(SOCIAL_PEEK_RATE)) {
       const peekPayload = {
         targetToken,

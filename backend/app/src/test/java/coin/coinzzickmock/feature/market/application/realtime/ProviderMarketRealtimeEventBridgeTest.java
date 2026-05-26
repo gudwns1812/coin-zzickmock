@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.application.realtime;
 import coin.coinzzickmock.feature.market.application.service.ProviderMarketRealtimeEventBridge;
 import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.application.service.RealtimeMarketCandleUpdateService;
+import coin.coinzzickmock.testsupport.TestTelemetryProvider;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
@@ -34,6 +35,8 @@ class ProviderMarketRealtimeEventBridgeTest {
                 event -> {
                     movements.add(event);
                     return true;
+                },
+                new TestTelemetryProvider() {
                 }
         );
         Instant sourceEventTime = Instant.parse("2026-04-30T05:30:00Z");

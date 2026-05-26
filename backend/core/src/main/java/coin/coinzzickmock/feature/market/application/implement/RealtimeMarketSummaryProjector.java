@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.application.implement;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerSnapshot;
 import coin.coinzzickmock.feature.market.domain.FundingSchedule;
 import java.time.Instant;
 import java.util.Optional;
@@ -20,7 +21,7 @@ public class RealtimeMarketSummaryProjector {
 
     private MarketSummaryResult toSummary(
             String symbol,
-            RealtimeMarketDataStore.RealtimeMarketTickerState ticker,
+            RealtimeMarketTickerSnapshot ticker,
             MarketSummaryResult previous
     ) {
         Instant serverTime = Instant.now();
@@ -51,7 +52,7 @@ public class RealtimeMarketSummaryProjector {
         return previous.displayName();
     }
 
-    private double fundingRate(RealtimeMarketDataStore.RealtimeMarketTickerState ticker, MarketSummaryResult previous) {
+    private double fundingRate(RealtimeMarketTickerSnapshot ticker, MarketSummaryResult previous) {
         if (ticker.fundingRate() != null) {
             return ticker.fundingRate().doubleValue();
         }
@@ -59,7 +60,7 @@ public class RealtimeMarketSummaryProjector {
     }
 
     private Instant nextFundingAt(
-            RealtimeMarketDataStore.RealtimeMarketTickerState ticker,
+            RealtimeMarketTickerSnapshot ticker,
             FundingSchedule fundingSchedule,
             Instant serverTime
     ) {

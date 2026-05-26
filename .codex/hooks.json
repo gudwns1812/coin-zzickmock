@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \".codex/hooks/require-project-docs.cjs\""
+            "command": "sh -lc 'repo=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec node \"$repo/.codex/hooks/require-project-docs.cjs\"'"
           }
         ]
       }

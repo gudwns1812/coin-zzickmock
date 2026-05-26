@@ -1,10 +1,11 @@
 package coin.coinzzickmock.feature.market.application.query;
 
-import coin.coinzzickmock.feature.market.application.implement.MarketRealtimeFreshnessPolicy;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceSnapshot;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerSnapshot;
+import coin.coinzzickmock.feature.market.application.implement.MarketRealtimeFreshnessPolicy;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import java.time.Duration;
 import java.time.Instant;
@@ -29,14 +30,10 @@ public class RealtimeMarketPriceReader {
     public Optional<MarketSnapshot> freshMarket(String symbol) {
         Instant now = Instant.now();
         MarketRealtimeFreshnessPolicy policy = new MarketRealtimeFreshnessPolicy(DEFAULT_FRESHNESS, false);
-        Optional<RealtimeMarketDataStore.RealtimeMarketTradeState> trade = realtimeMarketDataStore.latestTrade(symbol);
-        Optional<RealtimeMarketDataStore.RealtimeMarketTickerState> ticker = realtimeMarketDataStore.latestTicker(symbol);
-        Optional<RealtimeMarketDataStore.RealtimeMarketTickerState> freshTicker =
-                ticker.filter(state -> policy.accepts(state.source(), now));
-        Optional<RealtimeMarketDataStore.RealtimeMarketTradeState> freshTrade =
-                trade.filter(state -> policy.accepts(state.source(), now));
 
-        return freshTicker.map(tickerState -> toMarketSnapshot(symbol, freshTrade, tickerState));
+        return realtimeMarketDataStore.latestTicker(symbol)
+                .filter(state -> policy.accepts(state.source(), now))
+                .map(tickerState -> toMarketSnapshot(symbol, tickerState));
     }
 
     public Optional<Double> freshMarkPrice(String symbol) {
@@ -47,16 +44,11 @@ public class RealtimeMarketPriceReader {
                 .map(ticker -> ticker.markPrice().doubleValue());
     }
 
-    private MarketSnapshot toMarketSnapshot(
-            String symbol,
-            Optional<RealtimeMarketDataStore.RealtimeMarketTradeState> trade,
-            RealtimeMarketDataStore.RealtimeMarketTickerState ticker
-    ) {
+    private MarketSnapshot toMarketSnapshot(String symbol, RealtimeMarketTickerSnapshot ticker) {
         return new MarketSnapshot(
                 symbol,
                 symbol,
-                trade.map(state -> state.price().doubleValue())
-                        .orElseGet(() -> ticker.lastPrice().doubleValue()),
+                ticker.lastPrice().doubleValue(),
                 ticker.markPrice().doubleValue(),
                 ticker.indexPrice().doubleValue(),
                 ticker.fundingRate() == null ? 0.0 : ticker.fundingRate().doubleValue(),
@@ -68,47 +60,47 @@ public class RealtimeMarketPriceReader {
     private CoreException unavailableMarketException(String symbol) {
         Instant now = Instant.now();
         MarketRealtimeFreshnessPolicy policy = new MarketRealtimeFreshnessPolicy(DEFAULT_FRESHNESS, false);
-        Optional<RealtimeMarketDataStore.RealtimeMarketTradeState> trade = realtimeMarketDataStore.latestTrade(symbol);
-        Optional<RealtimeMarketDataStore.RealtimeMarketTickerState> ticker = realtimeMarketDataStore.latestTicker(symbol);
-        boolean hasFreshTrade = trade.map(state -> policy.accepts(state.source(), now)).orElse(false);
+        Optional<RealtimeMarketTickerSnapshot> ticker = realtimeMarketDataStore.latestTicker(symbol);
         boolean hasFreshTicker = ticker.map(state -> policy.accepts(state.source(), now)).orElse(false);
 
         log.warn(
-                "Fresh realtime market price is unavailable. symbol={} reason={} tradePresent={} tradeAgeMs={} tradeReceivedAt={} tradeSourceEventTime={} tickerPresent={} tickerAgeMs={} tickerReceivedAt={} tickerSourceEventTime={}",
+                "Fresh realtime market price is unavailable. symbol={} reason={} tickerPresent={} tickerAgeMs={} tickerReceivedAt={} tickerSourceEventTime={}",
                 symbol,
-                unavailableReason(trade.isPresent(), hasFreshTrade, ticker.isPresent(), hasFreshTicker),
-                trade.isPresent(),
-                trade.map(state -> ageMs(state.source(), now)).orElse(null),
-                trade.map(state -> state.source().receivedAt()).orElse(null),
-                trade.map(state -> state.source().sourceEventTime()).orElse(null),
+                unavailableReason(ticker, hasFreshTicker, now),
                 ticker.isPresent(),
                 ticker.map(state -> ageMs(state.source(), now)).orElse(null),
                 ticker.map(state -> state.source().receivedAt()).orElse(null),
                 ticker.map(state -> state.source().sourceEventTime()).orElse(null)
         );
-        return new CoreException(ErrorCode.MARKET_NOT_FOUND);
+        return new CoreException(unavailableErrorCode(ticker, hasFreshTicker));
+    }
+
+    private ErrorCode unavailableErrorCode(
+            Optional<RealtimeMarketTickerSnapshot> ticker,
+            boolean hasFreshTicker
+    ) {
+        if (ticker.isEmpty()) {
+            return ErrorCode.MARKET_NOT_FOUND;
+        }
+        if (!hasFreshTicker) {
+            return ErrorCode.MARKET_PRICE_STALE;
+        }
+        return ErrorCode.MARKET_NOT_FOUND;
     }
 
     private String unavailableReason(
-            boolean tradePresent,
-            boolean hasFreshTrade,
-            boolean tickerPresent,
-            boolean hasFreshTicker
+            Optional<RealtimeMarketTickerSnapshot> ticker,
+            boolean hasFreshTicker,
+            Instant now
     ) {
-        if (!tradePresent && !tickerPresent) {
-            return "trade_and_ticker_missing";
+        if (ticker.isEmpty()) {
+            return "ticker_missing";
         }
-        if (!tradePresent) {
-            return hasFreshTicker ? "trade_missing" : "trade_missing_ticker_stale";
+        if (hasFreshTicker) {
+            return "ticker_available";
         }
-        if (!tickerPresent) {
-            return hasFreshTrade ? "ticker_missing" : "ticker_missing_trade_stale";
-        }
-        if (!hasFreshTrade && !hasFreshTicker) {
-            return "trade_and_ticker_stale";
-        }
-        if (!hasFreshTrade) {
-            return "trade_stale";
+        if (ticker.filter(state -> state.source().isFresh(now, DEFAULT_FRESHNESS)).isPresent()) {
+            return "ticker_non_execution_source";
         }
         return "ticker_stale";
     }

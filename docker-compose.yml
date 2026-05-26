@@ -73,8 +73,8 @@ services:
       MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_DELAY_MS: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_DELAY_MS:-1000}
       DAU_SUMMARY_ENABLED: ${DAU_SUMMARY_ENABLED:-true}
       AWS_PROFILE: ${AWS_PROFILE:-default}
-      S3_BUCKET: ${S3_BUCKET:-coin-zzickmock-community-local-672420933257-ap-southeast-2-an}
-      S3_REGION: ${S3_REGION:-ap-southeast-2}
+      S3_BUCKET: ${S3_BUCKET:-coin-zzickmock-community-local-672420933257-ap-northeast-2-an}
+      S3_REGION: ${S3_REGION:-ap-northeast-2}
       S3_KEY_PREFIX: ${S3_KEY_PREFIX:-community}
       COMMUNITY_IMAGE_ALLOWED_MIME: ${COMMUNITY_IMAGE_ALLOWED_MIME:-image/png,image/jpeg,image/webp,image/gif}
       COMMUNITY_IMAGE_MAX_BYTES: ${COMMUNITY_IMAGE_MAX_BYTES:-5242880}

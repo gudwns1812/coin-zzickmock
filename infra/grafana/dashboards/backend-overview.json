@@ -323,6 +323,68 @@
     },
     {
       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(market_history_latest_window_hit_total[5m])) / (sum(rate(market_history_latest_window_hit_total[5m])) + sum(rate(market_history_latest_window_miss_total[5m])))",
+          "legendFormat": "hit %",
+          "refId": "A"
+        },
+        {
+          "expr": "100 * sum(rate(market_history_latest_window_miss_total[5m])) / (sum(rate(market_history_latest_window_hit_total[5m])) + sum(rate(market_history_latest_window_miss_total[5m])))",
+          "legendFormat": "miss %",
+          "refId": "B"
+        }
+      ],
+      "title": "Latest Candle Cache Hit/Miss Ratio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
         "type": "loki",
         "uid": "loki"
       },
@@ -330,7 +392,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 27
       },
       "id": 8,
       "options": {

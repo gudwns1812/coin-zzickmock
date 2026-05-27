@@ -535,27 +535,79 @@ jobs:
             env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f "${backend_compose_file}" "$@"
           }
 
+          compose_live_with_timeout() {
+            local seconds="$1"
+            shift
+            if command -v timeout >/dev/null 2>&1; then
+              env -u BACKEND_IMAGE timeout --foreground "${seconds}" "${compose[@]}" --env-file .env.prod -f "${backend_compose_file}" "$@"
+            else
+              echo "timeout command is not available; running compose command without a local timeout." >&2
+              compose_live "$@"
+            fi
+          }
+
+          dump_backend_diagnostics() {
+            local container
+            echo "::group::Backend compose status"
+            compose_live ps backend nginx promtail nginx-exporter node-exporter || true
+            echo "::endgroup::"
+
+            container="$(compose_live ps -q backend || true)"
+            if [[ -z "${container}" ]]; then
+              echo "Backend container is missing; no backend logs to dump." >&2
+              return
+            fi
+
+            echo "::group::Backend container state"
+            "${docker_cmd[@]}" inspect -f '{{json .State}}' "${container}" || true
+            echo "::endgroup::"
+
+            echo "::group::Backend actuator health from inside container"
+            "${docker_cmd[@]}" exec "${container}" sh -lc 'curl -sS --max-time 5 http://127.0.0.1:8080/actuator/health || true; echo' || true
+            echo "::endgroup::"
+
+            echo "::group::Backend recent logs"
+            "${docker_cmd[@]}" logs --tail=220 "${container}" || true
+            echo "::endgroup::"
+          }
+
+          run_compose_up() {
+            local service_label="$1"
+            shift
+            echo "Starting compose up for ${service_label}: $*"
+            if ! compose_live_with_timeout 240s up -d --no-deps "$@"; then
+              echo "Compose up failed or timed out for ${service_label}." >&2
+              dump_backend_diagnostics
+              exit 1
+            fi
+            echo "Compose up completed for ${service_label}."
+          }
+
           check_backend_health() {
             local container
             container="$(compose_live ps -q backend || true)"
             if [[ -z "${container}" ]]; then
               echo "Backend container is missing after recreate." >&2
+              dump_backend_diagnostics
               exit 1
             fi
-            for _ in $(seq 1 24); do
+            for attempt in $(seq 1 24); do
               local status
               status="$("${docker_cmd[@]}" inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${container}" 2>/dev/null || true)"
+              echo "Backend health attempt ${attempt}/24: ${status:-unknown}."
               if [[ "${status}" == "healthy" || "${status}" == "running" ]]; then
                 echo "Backend container health/status is ${status}."
                 return
               fi
               if [[ "${status}" == "unhealthy" || "${status}" == "exited" || "${status}" == "dead" ]]; then
                 echo "Backend container became ${status}. Automatic rollback is intentionally not performed." >&2
+                dump_backend_diagnostics
                 exit 1
               fi
               sleep 5
             done
             echo "Backend health did not become healthy in time." >&2
+            dump_backend_diagnostics
             exit 1
           }
 
@@ -590,25 +642,29 @@ jobs:
           echo "Applying backend-host service effects."
 
           if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
+            echo "Logging in to Docker Hub for backend image deploy."
             echo "${DOCKERHUB_TOKEN}" | "${docker_cmd[@]}" login -u "${DOCKERHUB_USERNAME}" --password-stdin
+            echo "Pulling backend image."
             compose_live pull backend
-            compose_live up -d --no-deps backend
+            run_compose_up "backend" backend
             check_backend_health
           elif [[ "${BACKEND_RUNTIME_EFFECT}" == "true" ]]; then
-            compose_live up -d --no-deps backend
+            run_compose_up "backend" backend
             check_backend_health
           fi
           echo "Backend app service effect completed."
 
           if [[ "${BACKEND_AGENT_RUNTIME_EFFECT}" == "true" ]]; then
+            echo "Pulling backend agent services: ${backend_agent_services[*]}."
             compose_live pull "${backend_agent_services[@]}"
-            compose_live up -d --no-deps "${backend_agent_services[@]}"
+            run_compose_up "backend agent services" "${backend_agent_services[@]}"
             echo "Backend agent services effect completed."
           fi
 
           if [[ "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]; then
+            echo "Pulling nginx image."
             compose_live pull nginx
-            compose_live up -d --no-deps nginx
+            run_compose_up "nginx" nginx
             compose_live exec -T nginx nginx -t
             echo "Nginx service definition effect completed."
           elif [[ "${NGINX_CONFIG_EFFECT}" == "true" ]]; then
@@ -616,7 +672,9 @@ jobs:
             echo "Nginx config reload effect completed."
           fi
 
+          echo "Pruning unused backend-host Docker images."
           "${docker_cmd[@]}" image prune -f
+          echo "Docker image prune completed."
           compose_live ps backend nginx promtail nginx-exporter node-exporter
           REMOTE_BACKEND_DEPLOY
 

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
@@ -310,7 +311,7 @@ class MarketHistoryRecorderTransactionTest {
         }
 
         @Override
-        public List<StartupBackfillCursor> findStartupBackfillCursors() {
+        public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
             return List.of();
         }
 

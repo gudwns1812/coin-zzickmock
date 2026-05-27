@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.application.history;
 
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.feature.market.application.implement.CompletedCalendarCandleBuilder;
@@ -17,7 +18,7 @@ class MarketCalendarCandleBackfillTest {
     @Test
     void catchUpSkipsSymbolsWithoutExistingCalendarSeed() {
         RecordingMarketHistoryRepository repository = new RecordingMarketHistoryRepository();
-        repository.cursors.add(new coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository.StartupBackfillCursor(
+        repository.cursors.add(new MarketHistoryStartupBackfillCursor(
                 1L,
                 "BTCUSDT",
                 Instant.parse("2026-04-18T00:00:00Z")
@@ -36,7 +37,7 @@ class MarketCalendarCandleBackfillTest {
     @Test
     void catchUpBuildsClosedCalendarCandlesAfterExistingSeed() {
         RecordingMarketHistoryRepository repository = new RecordingMarketHistoryRepository();
-        repository.cursors.add(new coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository.StartupBackfillCursor(
+        repository.cursors.add(new MarketHistoryStartupBackfillCursor(
                 1L,
                 "BTCUSDT",
                 Instant.parse("2026-04-19T00:00:00Z")
@@ -117,13 +118,13 @@ class MarketCalendarCandleBackfillTest {
     }
 
     private static class RecordingMarketHistoryRepository extends coin.coinzzickmock.testsupport.TestMarketHistoryRepository {
-        private final List<StartupBackfillCursor> cursors = new ArrayList<>();
+        private final List<MarketHistoryStartupBackfillCursor> cursors = new ArrayList<>();
         private final List<HourlyMarketCandle> completedHourlyCandles = new ArrayList<>();
         private final List<CompletedMarketCandle> completedCandles = new ArrayList<>();
         private final List<CompletedMarketCandle> savedCompletedCandles = new ArrayList<>();
 
         @Override
-        public List<StartupBackfillCursor> findStartupBackfillCursors() {
+        public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
             return List.copyOf(cursors);
         }
 

@@ -192,7 +192,7 @@
 - CD는 backend-host runtime 변경 때 `docker-compose.backend.prod.yml`, `infra/nginx/`, `infra/promtail/`만 backend host로 복사한다.
 - CD는 infra-host runtime 변경 때 `docker-compose.infra.prod.yml`, `infra/prometheus/`, `infra/grafana/`, `infra/loki/`, `infra/promtail/`만 infra host로 복사한다. Redis/Grafana/Prometheus/Loki 변경은 backend host를 건드리지 않는다.
 - `.env.prod`의 공개 가능한 예시는 `infra/prod.env.example`에서 관리한다.
-- CD의 EC2 SSH 사용자는 배포 경로 파일 반영을 위해 passwordless `sudo` 권한이 필요하며, Docker Compose는 `sudo` 없이 실행할 수 있어야 한다.
+- CD의 EC2 SSH 사용자는 배포 경로 파일 반영을 위해 passwordless `sudo` 권한이 필요하다. Docker Compose는 `sudo` 없이 실행 가능하거나 `sudo -n docker ...`/`sudo -n docker-compose ...`로 실행 가능해야 하며, workflow는 직접 Docker 접근 실패 시 passwordless sudo로 자동 fallback한다.
 - GitHub Actions secret `EC2_SSH_PRIVATE_KEY`는 backend/infra host에 공통으로 쓰는 passphrase 없는 SSH private key 원문 전체를 실제 줄바꿈과 함께 저장해야 한다. Backend SSH user/path는 `EC2_USER`/`EC2_DEPLOY_PATH`, infra SSH user/path는 `INFRA_EC2_USER`/`INFRA_DEPLOY_PATH`를 사용한다. `-----BEGIN ... PRIVATE KEY-----`/`-----END ... PRIVATE KEY-----` 경계를 포함하고, 터미널 프롬프트 문자나 zsh의 no-newline 표시인 `%` 같은 문자를 포함하지 않는다.
 - Redis는 infra host compose 내부 서비스로 실행하고 backend host에는 포함하지 않는다. Redis host port는 infra private interface로만 bind한다.
 - Backend host port 8080은 별도 infra host Prometheus scrape 전용 direct/private endpoint다. Public internet 전체에 열지 말고, Nginx를 경유하지 않는 `INFRA_EC2_HOST` source rule로만 제한한다.

@@ -13,7 +13,7 @@ services:
         exec redis-server --appendonly yes
     restart: unless-stopped
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD to the Redis password/ACL secret}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     ports:
       - "${INFRA_BIND_ADDRESS:?Set INFRA_BIND_ADDRESS to the infra private interface}:${REDIS_PORT:-6379}:6379"
     volumes:
@@ -21,7 +21,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - redis-cli -a "$$REDIS_PASSWORD" ping | grep -q PONG
+        - if [ -n "$${REDIS_PASSWORD:-}" ]; then redis-cli -a "$$REDIS_PASSWORD" ping; else redis-cli ping; fi | grep -q PONG
       interval: 10s
       timeout: 5s
       retries: 12
@@ -102,7 +102,7 @@ services:
     restart: unless-stopped
     environment:
       REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD to the Redis password/ACL secret}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     depends_on:
       redis:
         condition: service_healthy

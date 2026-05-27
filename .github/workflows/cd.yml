@@ -828,14 +828,81 @@ jobs:
           if [[ "${infra_bind_host}" == "0.0.0.0" ]]; then infra_bind_host="127.0.0.1"; fi
           prometheus_host="${infra_bind_host}"
           loki_host="${infra_bind_host}"
-          curl -fsS --connect-timeout 5 --max-time 10 "http://${prometheus_host}:${prometheus_port}/-/ready" >/dev/null
-          curl -fsS --connect-timeout 5 --max-time 10 "http://${loki_host}:${loki_port}/ready" >/dev/null
+
+          detect_compose() {
+            if docker version >/dev/null 2>&1; then
+              docker_cmd=(docker)
+            elif sudo -n docker version >/dev/null 2>&1; then
+              docker_cmd=(sudo -n docker)
+            else
+              echo "Docker is not available to the infra SSH user. Grant docker group access or passwordless sudo for docker." >&2
+              exit 1
+            fi
+
+            if "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
+              compose=("${docker_cmd[@]}" compose)
+            elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+              compose=(docker-compose)
+            elif command -v docker-compose >/dev/null 2>&1 && sudo -n docker-compose version >/dev/null 2>&1; then
+              compose=(sudo -n docker-compose)
+            else
+              echo "Docker Compose is not available on the infra host." >&2
+              exit 1
+            fi
+          }
+
+          compose_live() {
+            env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f docker-compose.infra.prod.yml "$@"
+          }
+
+          dump_infra_diagnostics() {
+            echo "::group::Infra compose status"
+            compose_live ps redis loki promtail redis-exporter node-exporter prometheus grafana || true
+            echo "::endgroup::"
+
+            echo "::group::Prometheus recent logs"
+            compose_live logs --tail=160 prometheus || true
+            echo "::endgroup::"
+
+            echo "::group::Loki recent logs"
+            compose_live logs --tail=160 loki || true
+            echo "::endgroup::"
+
+            echo "::group::Redis recent logs"
+            compose_live logs --tail=80 redis || true
+            echo "::endgroup::"
+          }
+
+          detect_compose
+          for attempt in $(seq 1 30); do
+            prometheus_ready=false
+            loki_ready=false
+
+            if curl -fsS --connect-timeout 5 --max-time 10 "http://${prometheus_host}:${prometheus_port}/-/ready" >/dev/null; then
+              prometheus_ready=true
+            fi
+            if curl -fsS --connect-timeout 5 --max-time 10 "http://${loki_host}:${loki_port}/ready" >/dev/null; then
+              loki_ready=true
+            fi
+
+            if [[ "${prometheus_ready}" == "true" && "${loki_ready}" == "true" ]]; then
+              echo "Infra readiness succeeded on attempt ${attempt}."
+              exit 0
+            fi
+
+            echo "Infra readiness pending on attempt ${attempt}/30: prometheus=${prometheus_ready}, loki=${loki_ready}."
+            sleep 5
+          done
+
+          echo "Infra readiness did not become ready in time." >&2
+          dump_infra_diagnostics
+          exit 1
           REMOTE_INFRA_VERIFY
           {
             echo "### Infra service readiness"
             echo ""
             echo "- Source host: \`INFRA_EC2_HOST\`"
-            echo "- Prometheus ready: checked on 127.0.0.1:9090"
-            echo "- Loki ready: checked on 127.0.0.1:3100"
+            echo "- Prometheus ready: checked on infra host \`INFRA_BIND_ADDRESS:PROMETHEUS_PORT\` with retry"
+            echo "- Loki ready: checked on infra host \`INFRA_BIND_ADDRESS:LOKI_PORT\` with retry"
             echo "- Backend host was not touched."
           } >> "$GITHUB_STEP_SUMMARY"

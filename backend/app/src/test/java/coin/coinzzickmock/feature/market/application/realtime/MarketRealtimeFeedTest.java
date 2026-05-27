@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.application.repair.MarketClosedMinuteCandlePersistence;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
@@ -512,9 +513,9 @@ class MarketRealtimeFeedTest {
         }
 
         @Override
-        public List<StartupBackfillCursor> findStartupBackfillCursors() {
+        public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
             return symbolIds.entrySet().stream()
-                    .map(entry -> new StartupBackfillCursor(
+                    .map(entry -> new MarketHistoryStartupBackfillCursor(
                             entry.getValue(),
                             entry.getKey(),
                             findLatestMinuteCandleOpenTime(entry.getValue()).orElse(null)

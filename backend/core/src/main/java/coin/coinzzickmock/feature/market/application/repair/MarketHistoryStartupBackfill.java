@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.application.repair;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
@@ -21,7 +22,7 @@ public class MarketHistoryStartupBackfill {
     private final MarketHistoryRecorder marketHistoryRecorder;
 
     public void backfillMissingMinuteHistory(Instant observedAt, MarketDataGateway marketDataGateway) {
-        List<MarketHistoryRepository.StartupBackfillCursor> backfillCursors = marketHistoryRepository.findStartupBackfillCursors();
+        List<MarketHistoryStartupBackfillCursor> backfillCursors = marketHistoryRepository.findStartupBackfillCursors();
         if (backfillCursors.isEmpty()) {
             return;
         }

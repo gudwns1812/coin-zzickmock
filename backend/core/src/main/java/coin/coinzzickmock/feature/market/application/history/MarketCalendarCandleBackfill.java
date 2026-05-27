@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.market.application.history;
 
 import coin.coinzzickmock.feature.market.application.implement.CompletedCalendarCandleBuilder;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
@@ -30,7 +31,7 @@ public class MarketCalendarCandleBackfill {
     @Transactional
     public int catchUpPersistedCalendarCandles() {
         int saved = 0;
-        for (MarketHistoryRepository.StartupBackfillCursor cursor : marketHistoryRepository.findStartupBackfillCursors()) {
+        for (MarketHistoryStartupBackfillCursor cursor : marketHistoryRepository.findStartupBackfillCursors()) {
             for (MarketCandleInterval interval : CALENDAR_INTERVALS) {
                 saved += catchUpSymbolInterval(cursor.symbolId(), interval);
             }

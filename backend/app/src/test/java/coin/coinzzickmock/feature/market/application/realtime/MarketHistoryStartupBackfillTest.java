@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoryRecorder;
 import coin.coinzzickmock.feature.market.application.implement.CompletedHourlyCandleBuilder;
 import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairRequestRecorder;
@@ -236,9 +237,9 @@ class MarketHistoryStartupBackfillTest {
         }
 
         @Override
-        public List<StartupBackfillCursor> findStartupBackfillCursors() {
+        public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
             return symbolIds.entrySet().stream()
-                    .map(entry -> new StartupBackfillCursor(
+                    .map(entry -> new MarketHistoryStartupBackfillCursor(
                             entry.getValue(),
                             entry.getKey(),
                             findLatestMinuteCandleOpenTime(entry.getValue()).orElse(null)

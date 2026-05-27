@@ -1,6 +1,7 @@
 package coin.coinzzickmock.testsupport;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
@@ -22,7 +23,7 @@ public abstract class TestMarketHistoryRepository implements MarketHistoryReposi
     }
 
     @Override
-    public List<StartupBackfillCursor> findStartupBackfillCursors() {
+    public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
         return List.of();
     }
 

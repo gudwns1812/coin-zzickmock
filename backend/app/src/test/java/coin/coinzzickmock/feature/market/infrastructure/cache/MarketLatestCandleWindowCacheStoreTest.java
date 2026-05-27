@@ -13,6 +13,7 @@ import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowKey;
 import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowPage;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.providers.infrastructure.config.CoinCacheProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;
@@ -31,7 +32,7 @@ class MarketLatestCandleWindowCacheStoreTest {
         MarketLatestCandleWindowCacheStore store = new MarketLatestCandleWindowCacheStore(
                 redisTemplate,
                 objectMapper,
-                "test::"
+                cacheProperties("test::")
         );
         MarketLatestCandleWindowKey key = key();
         MarketLatestCandleWindowPage page = page();
@@ -58,7 +59,7 @@ class MarketLatestCandleWindowCacheStoreTest {
         MarketLatestCandleWindowCacheStore store = new MarketLatestCandleWindowCacheStore(
                 redisTemplate,
                 objectMapper(),
-                "test::"
+                cacheProperties("test::")
         );
 
         var read = store.read(key());
@@ -77,7 +78,7 @@ class MarketLatestCandleWindowCacheStoreTest {
         MarketLatestCandleWindowCacheStore store = new MarketLatestCandleWindowCacheStore(
                 redisTemplate,
                 objectMapper(),
-                "test::"
+                cacheProperties("test::")
         );
 
         store.write(key(), page(), Duration.ofSeconds(30));
@@ -87,6 +88,12 @@ class MarketLatestCandleWindowCacheStoreTest {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         return objectMapper;
+    }
+
+    private static CoinCacheProperties cacheProperties(String keyPrefix) {
+        CoinCacheProperties properties = new CoinCacheProperties();
+        properties.getRedis().setKeyPrefix(keyPrefix);
+        return properties;
     }
 
     private static MarketLatestCandleWindowKey key() {

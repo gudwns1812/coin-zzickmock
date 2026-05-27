@@ -7,26 +7,22 @@ import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class RestVisibleCandleBoundaryResolver {
     private static final int DERIVED_BOUNDARY_SEARCH_BUCKETS = 2;
 
     private final MarketHistoryRepository marketHistoryRepository;
     private final MarketCandleRollupProjector rollupProjector;
-
-    public RestVisibleCandleBoundaryResolver(
-            MarketHistoryRepository marketHistoryRepository,
-            MarketCandleRollupProjector rollupProjector
-    ) {
-        this.marketHistoryRepository = marketHistoryRepository;
-        this.rollupProjector = rollupProjector;
-    }
 
     public Optional<RestVisibleCandleBoundary> resolve(long symbolId, MarketCandleInterval interval) {
         return switch (interval) {
@@ -51,19 +47,29 @@ public class RestVisibleCandleBoundaryResolver {
             MarketCandleInterval interval,
             int bucketMinutes
     ) {
-        Optional<Instant> latestMinuteOpenTime = marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId);
-        if (latestMinuteOpenTime.isEmpty()) {
-            return Optional.empty();
-        }
+        return marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId)
+                .flatMap(latestMinuteOpenTime -> latestMinuteRollupBoundary(
+                        symbolId,
+                        interval,
+                        bucketMinutes,
+                        latestMinuteOpenTime
+                ));
+    }
 
-        Instant candidateBucketStart = latestCompleteMinuteBucketStart(latestMinuteOpenTime.get(), bucketMinutes);
-        for (int attempt = 0; attempt < DERIVED_BOUNDARY_SEARCH_BUCKETS; attempt++) {
-            if (hasCompleteMinuteBucket(symbolId, candidateBucketStart, bucketMinutes)) {
-                return Optional.of(new RestVisibleCandleBoundary(symbolId, interval, candidateBucketStart));
-            }
-            candidateBucketStart = candidateBucketStart.minus(bucketMinutes, ChronoUnit.MINUTES);
-        }
-        return Optional.empty();
+    private Optional<RestVisibleCandleBoundary> latestMinuteRollupBoundary(
+            long symbolId,
+            MarketCandleInterval interval,
+            int bucketMinutes,
+            Instant latestMinuteOpenTime
+    ) {
+        Instant candidateBucketStart = latestCompleteMinuteBucketStart(latestMinuteOpenTime, bucketMinutes);
+        return searchCompleteBoundary(
+                candidateBucketStart,
+                bucketStart -> bucketStart.minus(bucketMinutes, ChronoUnit.MINUTES),
+                bucketStart -> hasCompleteMinuteBucket(symbolId, bucketStart, bucketMinutes)
+                        ? Optional.of(new RestVisibleCandleBoundary(symbolId, interval, bucketStart))
+                        : Optional.empty()
+        );
     }
 
     private Optional<RestVisibleCandleBoundary> latestCompletedHourlyBoundary(
@@ -78,19 +84,23 @@ public class RestVisibleCandleBoundaryResolver {
             long symbolId,
             MarketCandleInterval interval
     ) {
-        Optional<Instant> latestHourOpenTime = marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId);
-        if (latestHourOpenTime.isEmpty()) {
-            return Optional.empty();
-        }
+        return marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId)
+                .flatMap(latestHourOpenTime -> latestHourlyRollupBoundary(symbolId, interval, latestHourOpenTime));
+    }
 
-        Instant candidateBucketStart = latestCompleteHourlyBucketStart(latestHourOpenTime.get(), interval);
-        for (int attempt = 0; attempt < DERIVED_BOUNDARY_SEARCH_BUCKETS; attempt++) {
-            if (hasCompleteHourlyBucket(symbolId, candidateBucketStart, interval)) {
-                return Optional.of(new RestVisibleCandleBoundary(symbolId, interval, candidateBucketStart));
-            }
-            candidateBucketStart = previousHourlyBucketStart(candidateBucketStart, interval);
-        }
-        return Optional.empty();
+    private Optional<RestVisibleCandleBoundary> latestHourlyRollupBoundary(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant latestHourOpenTime
+    ) {
+        Instant candidateBucketStart = latestCompleteHourlyBucketStart(latestHourOpenTime, interval);
+        return searchCompleteBoundary(
+                candidateBucketStart,
+                bucketStart -> previousHourlyBucketStart(bucketStart, interval),
+                bucketStart -> hasCompleteHourlyBucket(symbolId, bucketStart, interval)
+                        ? Optional.of(new RestVisibleCandleBoundary(symbolId, interval, bucketStart))
+                        : Optional.empty()
+        );
     }
 
     private Optional<RestVisibleCandleBoundary> latestCompletedCalendarBoundary(
@@ -105,52 +115,89 @@ public class RestVisibleCandleBoundaryResolver {
             long symbolId,
             MarketCandleInterval interval
     ) {
-        Optional<Instant> latestDayOpenTime = marketHistoryRepository.findLatestCompletedCandleOpenTime(
-                symbolId,
-                MarketCandleInterval.ONE_DAY
-        );
-        if (latestDayOpenTime.isEmpty()) {
-            return Optional.empty();
-        }
+        return marketHistoryRepository.findLatestCompletedCandleOpenTime(symbolId, MarketCandleInterval.ONE_DAY)
+                .flatMap(latestDayOpenTime -> latestDailyRollupBoundary(symbolId, interval, latestDayOpenTime));
+    }
 
-        Instant candidateBucketStart = latestCompleteDailyBucketStart(latestDayOpenTime.get(), interval);
-        for (int attempt = 0; attempt < DERIVED_BOUNDARY_SEARCH_BUCKETS; attempt++) {
-            if (hasCompleteDailyBucket(symbolId, candidateBucketStart, interval)) {
-                return Optional.of(new RestVisibleCandleBoundary(symbolId, interval, candidateBucketStart));
-            }
-            candidateBucketStart = MarketTime.atStorageZone(candidateBucketStart).minusWeeks(1).toInstant();
-        }
-        return Optional.empty();
+    private Optional<RestVisibleCandleBoundary> latestDailyRollupBoundary(
+            long symbolId,
+            MarketCandleInterval interval,
+            Instant latestDayOpenTime
+    ) {
+        Instant candidateBucketStart = latestCompleteDailyBucketStart(latestDayOpenTime, interval);
+        return searchCompleteBoundary(
+                candidateBucketStart,
+                bucketStart -> MarketTime.atStorageZone(bucketStart).minusWeeks(1).toInstant(),
+                bucketStart -> hasCompleteDailyBucket(symbolId, bucketStart, interval)
+                        ? Optional.of(new RestVisibleCandleBoundary(symbolId, interval, bucketStart))
+                        : Optional.empty()
+        );
     }
 
     private Instant latestCompleteMinuteBucketStart(Instant latestMinuteOpenTime, int bucketMinutes) {
         Instant latestBucketStart = MarketTime.alignToMinuteBucket(latestMinuteOpenTime, bucketMinutes);
         Instant latestBucketClose = latestBucketStart.plus(bucketMinutes, ChronoUnit.MINUTES);
-        Instant latestKnownClose = latestMinuteOpenTime.plus(1, ChronoUnit.MINUTES);
-        if (!latestKnownClose.isBefore(latestBucketClose)) {
-            return latestBucketStart;
-        }
-        return latestBucketStart.minus(bucketMinutes, ChronoUnit.MINUTES);
+        return latestCompleteBucketStart(
+                latestMinuteOpenTime,
+                latestBucketStart,
+                latestBucketClose,
+                Duration.ofMinutes(1),
+                bucketStart -> bucketStart.minus(bucketMinutes, ChronoUnit.MINUTES)
+        );
     }
 
     private Instant latestCompleteHourlyBucketStart(Instant latestHourOpenTime, MarketCandleInterval interval) {
         Instant latestBucketStart = MarketTime.bucketStart(latestHourOpenTime, interval);
         Instant latestBucketClose = MarketTime.bucketClose(latestBucketStart, interval);
-        Instant latestKnownClose = latestHourOpenTime.plus(1, ChronoUnit.HOURS);
-        if (!latestKnownClose.isBefore(latestBucketClose)) {
-            return latestBucketStart;
-        }
-        return previousHourlyBucketStart(latestBucketStart, interval);
+        return latestCompleteBucketStart(
+                latestHourOpenTime,
+                latestBucketStart,
+                latestBucketClose,
+                Duration.ofHours(1),
+                bucketStart -> previousHourlyBucketStart(bucketStart, interval)
+        );
     }
 
     private Instant latestCompleteDailyBucketStart(Instant latestDayOpenTime, MarketCandleInterval interval) {
         Instant latestBucketStart = MarketTime.bucketStart(latestDayOpenTime, interval);
         Instant latestBucketClose = MarketTime.bucketClose(latestBucketStart, interval);
-        Instant latestKnownClose = latestDayOpenTime.plus(1, ChronoUnit.DAYS);
+        return latestCompleteBucketStart(
+                latestDayOpenTime,
+                latestBucketStart,
+                latestBucketClose,
+                Duration.ofDays(1),
+                bucketStart -> MarketTime.atStorageZone(bucketStart).minusWeeks(1).toInstant()
+        );
+    }
+
+    private Instant latestCompleteBucketStart(
+            Instant latestSourceOpenTime,
+            Instant latestBucketStart,
+            Instant latestBucketClose,
+            Duration sourceCandleDuration,
+            Function<Instant, Instant> previousBucketStart
+    ) {
+        Instant latestKnownClose = latestSourceOpenTime.plus(sourceCandleDuration);
         if (!latestKnownClose.isBefore(latestBucketClose)) {
             return latestBucketStart;
         }
-        return MarketTime.atStorageZone(latestBucketStart).minusWeeks(1).toInstant();
+        return previousBucketStart.apply(latestBucketStart);
+    }
+
+    private Optional<RestVisibleCandleBoundary> searchCompleteBoundary(
+            Instant firstCandidate,
+            Function<Instant, Instant> previousCandidate,
+            Function<Instant, Optional<RestVisibleCandleBoundary>> resolveCandidate
+    ) {
+        Instant candidateBucketStart = firstCandidate;
+        for (int attempt = 0; attempt < DERIVED_BOUNDARY_SEARCH_BUCKETS; attempt++) {
+            Optional<RestVisibleCandleBoundary> boundary = resolveCandidate.apply(candidateBucketStart);
+            if (boundary.isPresent()) {
+                return boundary;
+            }
+            candidateBucketStart = previousCandidate.apply(candidateBucketStart);
+        }
+        return Optional.empty();
     }
 
     private boolean hasCompleteMinuteBucket(long symbolId, Instant bucketStart, int bucketMinutes) {

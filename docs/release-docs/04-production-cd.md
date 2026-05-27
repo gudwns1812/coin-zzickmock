@@ -92,7 +92,7 @@ Backend host deploy secret:
 
 - `EC2_HOST`: backend host public SSH host 또는 접근 가능한 host
 - `EC2_SSH_PORT`: SSH port. 생략 시 workflow에서 `22`를 사용한다
-- `EC2_USER`: backend host SSH 사용자. 배포 경로 파일 반영을 위해 passwordless `sudo` 권한이 필요하며, Docker 명령은 `sudo` 없이 실행할 수 있어야 한다
+- `EC2_USER`: backend host SSH 사용자. 배포 경로 파일 반영을 위해 passwordless `sudo` 권한이 필요하다. Docker 명령은 `sudo` 없이 실행 가능하거나 `sudo -n docker ...`로 실행 가능해야 한다.
 - `EC2_SSH_PRIVATE_KEY`: backend host 접속용 private key. 실제 줄바꿈을 유지한 private key 원문 전체를 저장해야 한다
 - `EC2_DEPLOY_PATH`: backend host에서 `docker-compose.backend.prod.yml`, `.env.prod`, `infra/nginx/`, `infra/promtail/`을 둔 디렉터리
 
@@ -153,7 +153,7 @@ Infra host `.env.prod`에는 최소 아래 값이 필요하다.
 
 CD는 compose 실행 때 shell-level `BACKEND_IMAGE`를 넘기지 않는다. 모든 compose command는 `env -u BACKEND_IMAGE`와 `--env-file .env.prod` 또는 staged temp env를 사용한다.
 
-EC2에는 Docker Compose 실행기가 필요하다. CD는 `docker compose` v2 plugin을 먼저 사용하고, 없으면 legacy `docker-compose` binary를 사용한다. 둘 다 없으면 service operation 전에 중단한다.
+EC2에는 Docker Compose 실행기가 필요하다. CD는 먼저 SSH user의 직접 `docker` 접근을 시도하고, Docker socket 권한이 없으면 passwordless `sudo -n docker`로 fallback한다. Compose 실행기는 `docker compose` v2 plugin을 먼저 사용하고, 없으면 legacy `docker-compose` binary를 사용한다. 둘 다 없거나 Docker가 직접/`sudo -n` 어느 쪽으로도 실행되지 않으면 service operation 전에 중단한다.
 
 ## Infra Prometheus Scrape Contract
 

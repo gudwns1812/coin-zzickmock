@@ -81,6 +81,8 @@ GitHub Actions secrets for split CD:
 - `INFRA_EC2_HOST`, `INFRA_EC2_USER`, `INFRA_DEPLOY_PATH`: infra host address, infra SSH user, and infra deployment path.
 - `EC2_BACKEND_METRICS_HOST`: backend private DNS/IP used by infra host for `http://<host>:8080/actuator/prometheus`. Backend-host CD deploy requires this value; it must be a private backend value rather than the public Nginx host.
 
+Backend and infra SSH users must be able to run Docker either directly or through passwordless `sudo -n docker ...`. The workflow tries direct Docker access first, then falls back to passwordless sudo so an Ubuntu infra user that is not in the `docker` group can still deploy without an interactive password prompt.
+
 Prometheus must scrape backend application metrics from `http://<backend-private-host>:8080/actuator/prometheus`, not from `https://<public-domain>/actuator/prometheus` and not from Nginx.
 
 ## CD Scope Contract

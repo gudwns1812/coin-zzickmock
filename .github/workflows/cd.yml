@@ -360,11 +360,11 @@ jobs:
             echo "::error title=Missing EC2_USER::Set EC2_USER."
             exit 1
           fi
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
             "rm -rf '${REMOTE_STAGE_DIR}' && mkdir -p '${REMOTE_STAGE_DIR}/infra'"
-          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.backend.prod.yml \
+          scp -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.backend.prod.yml \
             "${EC2_USER}@${EC2_HOST}:${REMOTE_STAGE_DIR}/docker-compose.backend.prod.yml"
-          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
+          scp -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
             infra/nginx infra/promtail \
             "${EC2_USER}@${EC2_HOST}:${REMOTE_STAGE_DIR}/infra/"
 
@@ -409,7 +409,7 @@ jobs:
             remote_command+="${name}=$(printf '%q' "${value}") "
           done
 
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
             "${remote_command}bash -s" <<'REMOTE_BACKEND_DEPLOY'
           set -euo pipefail
 
@@ -507,9 +507,11 @@ jobs:
               echo "Preflighting live backend-host compose with candidate environment."
             fi
             env -u BACKEND_IMAGE "${compose[@]}" --env-file "${candidate_env}" -f "${compose_file}" config --quiet
+            echo "Backend-host compose preflight succeeded."
           }
 
           promote_candidate() {
+            echo "Promoting backend-host staged files."
             if should_promote_backend_compose; then
               sudo cp "${REMOTE_STAGE_DIR}/${backend_compose_file}" "${EC2_DEPLOY_PATH}/${backend_compose_file}"
             fi
@@ -526,6 +528,7 @@ jobs:
             if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
               install_candidate_env
             fi
+            echo "Backend-host staged files promoted."
           }
 
           compose_live() {
@@ -584,6 +587,7 @@ jobs:
           preflight_candidate
           promote_candidate
           cd "${EC2_DEPLOY_PATH}"
+          echo "Applying backend-host service effects."
 
           if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
             echo "${DOCKERHUB_TOKEN}" | "${docker_cmd[@]}" login -u "${DOCKERHUB_USERNAME}" --password-stdin
@@ -594,18 +598,22 @@ jobs:
             compose_live up -d --no-deps backend
             check_backend_health
           fi
+          echo "Backend app service effect completed."
 
           if [[ "${BACKEND_AGENT_RUNTIME_EFFECT}" == "true" ]]; then
             compose_live pull "${backend_agent_services[@]}"
             compose_live up -d --no-deps "${backend_agent_services[@]}"
+            echo "Backend agent services effect completed."
           fi
 
           if [[ "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]; then
             compose_live pull nginx
             compose_live up -d --no-deps nginx
             compose_live exec -T nginx nginx -t
+            echo "Nginx service definition effect completed."
           elif [[ "${NGINX_CONFIG_EFFECT}" == "true" ]]; then
             reload_nginx_config
+            echo "Nginx config reload effect completed."
           fi
 
           "${docker_cmd[@]}" image prune -f
@@ -634,7 +642,7 @@ jobs:
           ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$INFRA_EC2_HOST" >> ~/.ssh/known_hosts
           metrics_url="http://${EC2_BACKEND_METRICS_HOST}:8080/actuator/prometheus"
           quoted_metrics_url="$(printf '%q' "${metrics_url}")"
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
             "curl -fsS --connect-timeout 5 --max-time 10 ${quoted_metrics_url} >/dev/null"
           {
             echo "### Backend metrics scrape reachability"
@@ -699,11 +707,11 @@ jobs:
             echo "::error title=Missing INFRA_EC2_USER::Set INFRA_EC2_USER."
             exit 1
           fi
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
             "rm -rf '${REMOTE_STAGE_DIR}' && mkdir -p '${REMOTE_STAGE_DIR}/infra'"
-          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.infra.prod.yml \
+          scp -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.infra.prod.yml \
             "${INFRA_EC2_USER}@${INFRA_EC2_HOST}:${REMOTE_STAGE_DIR}/docker-compose.infra.prod.yml"
-          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
+          scp -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
             infra/prometheus infra/grafana infra/loki infra/promtail \
             "${INFRA_EC2_USER}@${INFRA_EC2_HOST}:${REMOTE_STAGE_DIR}/infra/"
 
@@ -731,7 +739,7 @@ jobs:
             value="${!name}"
             remote_command+="${name}=$(printf '%q' "${value}") "
           done
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
             "${remote_command}bash -s" <<'REMOTE_INFRA_DEPLOY'
           set -euo pipefail
 
@@ -809,7 +817,7 @@ jobs:
             exit 1
           fi
           remote_command="INFRA_DEPLOY_PATH=$(printf '%q' "${INFRA_DEPLOY_PATH}") "
-          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
             "${remote_command}bash -s" <<'REMOTE_INFRA_VERIFY'
           set -euo pipefail
           cd "${INFRA_DEPLOY_PATH}"
@@ -828,14 +836,81 @@ jobs:
           if [[ "${infra_bind_host}" == "0.0.0.0" ]]; then infra_bind_host="127.0.0.1"; fi
           prometheus_host="${infra_bind_host}"
           loki_host="${infra_bind_host}"
-          curl -fsS --connect-timeout 5 --max-time 10 "http://${prometheus_host}:${prometheus_port}/-/ready" >/dev/null
-          curl -fsS --connect-timeout 5 --max-time 10 "http://${loki_host}:${loki_port}/ready" >/dev/null
+
+          detect_compose() {
+            if docker version >/dev/null 2>&1; then
+              docker_cmd=(docker)
+            elif sudo -n docker version >/dev/null 2>&1; then
+              docker_cmd=(sudo -n docker)
+            else
+              echo "Docker is not available to the infra SSH user. Grant docker group access or passwordless sudo for docker." >&2
+              exit 1
+            fi
+
+            if "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
+              compose=("${docker_cmd[@]}" compose)
+            elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+              compose=(docker-compose)
+            elif command -v docker-compose >/dev/null 2>&1 && sudo -n docker-compose version >/dev/null 2>&1; then
+              compose=(sudo -n docker-compose)
+            else
+              echo "Docker Compose is not available on the infra host." >&2
+              exit 1
+            fi
+          }
+
+          compose_live() {
+            env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f docker-compose.infra.prod.yml "$@"
+          }
+
+          dump_infra_diagnostics() {
+            echo "::group::Infra compose status"
+            compose_live ps redis loki promtail redis-exporter node-exporter prometheus grafana || true
+            echo "::endgroup::"
+
+            echo "::group::Prometheus recent logs"
+            compose_live logs --tail=160 prometheus || true
+            echo "::endgroup::"
+
+            echo "::group::Loki recent logs"
+            compose_live logs --tail=160 loki || true
+            echo "::endgroup::"
+
+            echo "::group::Redis recent logs"
+            compose_live logs --tail=80 redis || true
+            echo "::endgroup::"
+          }
+
+          detect_compose
+          for attempt in $(seq 1 30); do
+            prometheus_ready=false
+            loki_ready=false
+
+            if curl -fsS --connect-timeout 5 --max-time 10 "http://${prometheus_host}:${prometheus_port}/-/ready" >/dev/null; then
+              prometheus_ready=true
+            fi
+            if curl -fsS --connect-timeout 5 --max-time 10 "http://${loki_host}:${loki_port}/ready" >/dev/null; then
+              loki_ready=true
+            fi
+
+            if [[ "${prometheus_ready}" == "true" && "${loki_ready}" == "true" ]]; then
+              echo "Infra readiness succeeded on attempt ${attempt}."
+              exit 0
+            fi
+
+            echo "Infra readiness pending on attempt ${attempt}/30: prometheus=${prometheus_ready}, loki=${loki_ready}."
+            sleep 5
+          done
+
+          echo "Infra readiness did not become ready in time." >&2
+          dump_infra_diagnostics
+          exit 1
           REMOTE_INFRA_VERIFY
           {
             echo "### Infra service readiness"
             echo ""
             echo "- Source host: \`INFRA_EC2_HOST\`"
-            echo "- Prometheus ready: checked on 127.0.0.1:9090"
-            echo "- Loki ready: checked on 127.0.0.1:3100"
+            echo "- Prometheus ready: checked on infra host \`INFRA_BIND_ADDRESS:PROMETHEUS_PORT\` with retry"
+            echo "- Loki ready: checked on infra host \`INFRA_BIND_ADDRESS:LOKI_PORT\` with retry"
             echo "- Backend host was not touched."
           } >> "$GITHUB_STEP_SUMMARY"

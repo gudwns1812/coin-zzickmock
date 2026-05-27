@@ -12,6 +12,13 @@ import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCan
 import coin.coinzzickmock.feature.market.application.history.MarketHistoricalCandleTelemetry;
 import coin.coinzzickmock.feature.market.application.history.MarketHistoryLookupTelemetry;
 import coin.coinzzickmock.feature.market.application.history.MarketPersistedCandleReader;
+import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowCache;
+import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowCacheRead;
+import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowKey;
+import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowPage;
+import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowPolicy;
+import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowSingleflight;
+import coin.coinzzickmock.feature.market.application.latestwindow.RestVisibleCandleBoundaryResolver;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
@@ -27,6 +34,7 @@ import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.common.cache.CoinCacheNames;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -403,6 +411,211 @@ class GetMarketCandlesServiceTest {
         assertEquals("partial", dbLookup.tags().get("result"));
     }
 
+
+    @Test
+    void cachesLatestWindowAndAvoidsSecondFullMinuteRead() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        Instant start = Instant.parse("2026-04-21T00:00:00Z");
+        for (int minute = 0; minute < 120; minute++) {
+            Instant openTime = start.plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        InMemoryLatestWindowCache latestWindowCache = new InMemoryLatestWindowCache();
+        GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
+                latestWindowCache);
+
+        List<MarketCandleResult> first = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+        List<MarketCandleResult> second = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+
+        assertEquals(first, second);
+        assertEquals(1, latestWindowCache.writeCount);
+        assertEquals(1, latestWindowCache.hitCount);
+        assertEquals(1, repository.minuteRangeReadCount);
+    }
+
+    @Test
+    void bypassesLatestWindowCacheForCursorRequest() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int minute = 0; minute < 130; minute++) {
+            Instant openTime = Instant.parse("2026-04-21T00:00:00Z").plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        InMemoryLatestWindowCache latestWindowCache = new InMemoryLatestWindowCache();
+        GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
+                latestWindowCache);
+
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, Instant.parse("2026-04-21T01:00:00Z")));
+
+        assertEquals(0, latestWindowCache.readCount);
+        assertEquals(0, latestWindowCache.writeCount);
+    }
+
+    @Test
+    void bypassesLatestWindowCacheForUnsupportedLimit() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int minute = 0; minute < 121; minute++) {
+            Instant openTime = Instant.parse("2026-04-21T00:00:00Z").plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        InMemoryLatestWindowCache latestWindowCache = new InMemoryLatestWindowCache();
+        GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
+                latestWindowCache);
+
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 121, null));
+
+        assertEquals(0, latestWindowCache.readCount);
+        assertEquals(0, latestWindowCache.writeCount);
+    }
+
+    @Test
+    void writesValidPartialLatestWindowWithoutSizeEqualsLimitRequirement() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int minute = 0; minute < 80; minute++) {
+            Instant openTime = Instant.parse("2026-04-21T00:00:00Z").plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        InMemoryLatestWindowCache latestWindowCache = new InMemoryLatestWindowCache();
+        GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
+                latestWindowCache);
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+
+        assertEquals(80, results.size());
+        assertEquals(1, latestWindowCache.writeCount);
+    }
+
+    @Test
+    void skipsLatestWindowWriteWhenReturnedLatestBoundaryDiffers() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int minute = 0; minute < 120; minute++) {
+            Instant openTime = Instant.parse("2026-04-21T00:00:00Z").plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        InMemoryLatestWindowCache latestWindowCache = new InMemoryLatestWindowCache();
+        RestVisibleCandleBoundaryResolver resolver = new RestVisibleCandleBoundaryResolver(repository, new MarketCandleRollupProjector()) {
+            @Override
+            public Optional<coin.coinzzickmock.feature.market.application.latestwindow.RestVisibleCandleBoundary> resolve(
+                    long symbolId,
+                    MarketCandleInterval interval
+            ) {
+                return Optional.of(new coin.coinzzickmock.feature.market.application.latestwindow.RestVisibleCandleBoundary(
+                        symbolId,
+                        interval,
+                        Instant.parse("2026-04-21T00:00:00Z")
+                ));
+            }
+        };
+        GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
+                latestWindowCache, resolver);
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+
+        assertEquals(120, results.size());
+        assertEquals(0, latestWindowCache.writeCount);
+    }
+
+    @Test
+    void skipsLatestWindowWriteWhenCandidateIsDefensivelyOversized() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int minute = 0; minute < 121; minute++) {
+            Instant openTime = Instant.parse("2026-04-21T00:00:00Z").plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        InMemoryLatestWindowCache latestWindowCache = new InMemoryLatestWindowCache();
+        MarketPersistedCandleReader oversizedReader = new MarketPersistedCandleReader(repository, new MarketCandleRollupProjector()) {
+            @Override
+            public List<MarketCandleResult> read(
+                    long symbolId,
+                    MarketCandleInterval interval,
+                    int limit,
+                    Instant beforeOpenTime
+            ) {
+                return repository.findMinuteCandles(
+                                symbolId,
+                                Instant.parse("2026-04-21T00:00:00Z"),
+                                Instant.parse("2026-04-21T02:01:00Z")
+                        )
+                        .stream()
+                        .map(candle -> new MarketCandleResult(
+                                candle.openTime(),
+                                candle.closeTime(),
+                                candle.openPrice(),
+                                candle.highPrice(),
+                                candle.lowPrice(),
+                                candle.closePrice(),
+                                candle.volume()
+                        ))
+                        .toList();
+            }
+        };
+        GetMarketCandlesService service = service(
+                repository,
+                FakeMarketDataGateway.empty(),
+                distributedCacheManager(),
+                latestWindowCache,
+                new RestVisibleCandleBoundaryResolver(repository, new MarketCandleRollupProjector()),
+                oversizedReader
+        );
+
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+
+        assertEquals(121, results.size());
+        assertEquals(0, latestWindowCache.writeCount);
+    }
+
+
+    @Test
+    void recordsLatestWindowUnavailableTelemetryWhenCacheReadFails() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int minute = 0; minute < 120; minute++) {
+            Instant openTime = Instant.parse("2026-04-21T00:00:00Z").plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        FakeProviders providers = new FakeProviders(FakeMarketDataGateway.empty());
+        GetMarketCandlesService service = service(
+                repository,
+                providers,
+                distributedCacheManager(),
+                new FailingLatestWindowCache(),
+                new RestVisibleCandleBoundaryResolver(repository, new MarketCandleRollupProjector())
+        );
+
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+
+        RecordedEvent unavailable = providers.telemetry().events.stream()
+                .filter(event -> "market.history.latest_window.unavailable".equals(event.eventName()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("redis", unavailable.tags().get("source"));
+        assertEquals("unavailable", unavailable.tags().get("result"));
+    }
+
+    @Test
+    void recordsLatestWindowWriteUnavailableTelemetryWhenCacheWriteFails() {
+        InMemoryMarketHistoryRepository repository = new InMemoryMarketHistoryRepository();
+        for (int minute = 0; minute < 120; minute++) {
+            Instant openTime = Instant.parse("2026-04-21T00:00:00Z").plusSeconds(minute * 60L);
+            repository.saveMinuteCandle(minute(1L, openTime.toString(), 100, 101, 99, 100.5, 10));
+        }
+        FakeProviders providers = new FakeProviders(FakeMarketDataGateway.empty());
+        GetMarketCandlesService service = service(
+                repository,
+                providers,
+                distributedCacheManager(),
+                new FailingLatestWindowCache(),
+                new RestVisibleCandleBoundaryResolver(repository, new MarketCandleRollupProjector())
+        );
+
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+
+        RecordedEvent unavailable = providers.telemetry().events.stream()
+                .filter(event -> "market.history.latest_window.write_unavailable".equals(event.eventName()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("redis", unavailable.tags().get("source"));
+        assertEquals("write_unavailable", unavailable.tags().get("result"));
+    }
+
     private static GetMarketCandlesService service(InMemoryMarketHistoryRepository repository) {
         return service(repository, FakeMarketDataGateway.empty(), distributedCacheManager());
     }
@@ -412,7 +625,45 @@ class GetMarketCandlesServiceTest {
             FakeMarketDataGateway gateway,
             CacheManager cacheManager
     ) {
-        return service(repository, new FakeProviders(gateway), cacheManager);
+        return service(repository, gateway, cacheManager, new InMemoryLatestWindowCache());
+    }
+
+    private static GetMarketCandlesService service(
+            InMemoryMarketHistoryRepository repository,
+            FakeMarketDataGateway gateway,
+            CacheManager cacheManager,
+            MarketLatestCandleWindowCache latestWindowCache
+    ) {
+        MarketCandleRollupProjector rollupProjector = new MarketCandleRollupProjector();
+        return service(
+                repository,
+                gateway,
+                cacheManager,
+                latestWindowCache,
+                new RestVisibleCandleBoundaryResolver(repository, rollupProjector)
+        );
+    }
+
+    private static GetMarketCandlesService service(
+            InMemoryMarketHistoryRepository repository,
+            FakeMarketDataGateway gateway,
+            CacheManager cacheManager,
+            MarketLatestCandleWindowCache latestWindowCache,
+            RestVisibleCandleBoundaryResolver latestWindowBoundaryResolver
+    ) {
+        return service(repository, new FakeProviders(gateway), cacheManager, latestWindowCache, latestWindowBoundaryResolver);
+    }
+
+    private static GetMarketCandlesService service(
+            InMemoryMarketHistoryRepository repository,
+            FakeMarketDataGateway gateway,
+            CacheManager cacheManager,
+            MarketLatestCandleWindowCache latestWindowCache,
+            RestVisibleCandleBoundaryResolver latestWindowBoundaryResolver,
+            MarketPersistedCandleReader persistedCandleReader
+    ) {
+        return service(repository, new FakeProviders(gateway), cacheManager, latestWindowCache,
+                latestWindowBoundaryResolver, persistedCandleReader);
     }
 
     private static GetMarketCandlesService service(
@@ -420,18 +671,44 @@ class GetMarketCandlesServiceTest {
             FakeProviders providers,
             CacheManager cacheManager
     ) {
+        return service(repository, providers, cacheManager, new InMemoryLatestWindowCache(),
+                new RestVisibleCandleBoundaryResolver(repository, new MarketCandleRollupProjector()));
+    }
+
+    private static GetMarketCandlesService service(
+            InMemoryMarketHistoryRepository repository,
+            FakeProviders providers,
+            CacheManager cacheManager,
+            MarketLatestCandleWindowCache latestWindowCache,
+            RestVisibleCandleBoundaryResolver latestWindowBoundaryResolver
+    ) {
+        return service(repository, providers, cacheManager, latestWindowCache, latestWindowBoundaryResolver,
+                new MarketPersistedCandleReader(repository, new MarketCandleRollupProjector()));
+    }
+
+    private static GetMarketCandlesService service(
+            InMemoryMarketHistoryRepository repository,
+            FakeProviders providers,
+            CacheManager cacheManager,
+            MarketLatestCandleWindowCache latestWindowCache,
+            RestVisibleCandleBoundaryResolver latestWindowBoundaryResolver,
+            MarketPersistedCandleReader persistedCandleReader
+    ) {
         MarketHistoricalCandleTelemetry telemetry = new MarketHistoricalCandleTelemetry(providers);
         MarketHistoricalCandleCache cache = new MarketHistoricalCandleCache(
                 new MarketHistoricalCandleSegmentPolicy(),
                 new MarketHistoricalCandleSegmentStore(telemetry, objectProvider(cacheManager)),
                 new MarketHistoricalCandleSegmentFetcher(providers.marketDataGateway, telemetry)
         );
-        MarketCandleRollupProjector rollupProjector = new MarketCandleRollupProjector();
         return new GetMarketCandlesService(
                 repository,
-                new MarketPersistedCandleReader(repository, rollupProjector),
+                persistedCandleReader,
                 new MarketHistoricalCandleAppender(cache),
-                new MarketHistoryLookupTelemetry(providers)
+                new MarketHistoryLookupTelemetry(providers),
+                latestWindowBoundaryResolver,
+                new MarketLatestCandleWindowPolicy(),
+                latestWindowCache,
+                new MarketLatestCandleWindowSingleflight()
         );
     }
 
@@ -591,6 +868,7 @@ class GetMarketCandlesServiceTest {
         private final Map<String, MarketHistoryCandle> minuteCandles = new LinkedHashMap<>();
         private final Map<String, HourlyMarketCandle> hourlyCandles = new LinkedHashMap<>();
         private final Map<String, CompletedMarketCandle> completedCandles = new LinkedHashMap<>();
+        private int minuteRangeReadCount;
 
         @Override
         public Map<String, Long> findSymbolIdsBySymbols(List<String> symbols) {
@@ -649,6 +927,7 @@ class GetMarketCandlesServiceTest {
 
         @Override
         public List<MarketHistoryCandle> findMinuteCandles(long symbolId, Instant fromInclusive, Instant toExclusive) {
+            minuteRangeReadCount++;
             return minuteCandles.values().stream()
                     .filter(candle -> candle.symbolId() == symbolId)
                     .filter(candle -> !candle.openTime().isBefore(fromInclusive))
@@ -840,6 +1119,45 @@ class GetMarketCandlesServiceTest {
                 cursor = cursor.plusSeconds(60);
             }
             return candles;
+        }
+    }
+
+    private static class InMemoryLatestWindowCache implements MarketLatestCandleWindowCache {
+        private final Map<String, MarketLatestCandleWindowPage> pages = new LinkedHashMap<>();
+        private int readCount;
+        private int hitCount;
+        private int writeCount;
+        private Duration lastTtl;
+
+        @Override
+        public MarketLatestCandleWindowCacheRead read(MarketLatestCandleWindowKey key) {
+            readCount++;
+            MarketLatestCandleWindowPage page = pages.get(key.cacheKey());
+            if (page != null) {
+                hitCount++;
+                return MarketLatestCandleWindowCacheRead.hit(page);
+            }
+            return MarketLatestCandleWindowCacheRead.miss();
+        }
+
+        @Override
+        public boolean write(MarketLatestCandleWindowKey key, MarketLatestCandleWindowPage page, Duration ttl) {
+            writeCount++;
+            lastTtl = ttl;
+            pages.put(key.cacheKey(), page);
+            return true;
+        }
+    }
+
+    private static class FailingLatestWindowCache implements MarketLatestCandleWindowCache {
+        @Override
+        public MarketLatestCandleWindowCacheRead read(MarketLatestCandleWindowKey key) {
+            return MarketLatestCandleWindowCacheRead.unavailable();
+        }
+
+        @Override
+        public boolean write(MarketLatestCandleWindowKey key, MarketLatestCandleWindowPage page, Duration ttl) {
+            return false;
         }
     }
 

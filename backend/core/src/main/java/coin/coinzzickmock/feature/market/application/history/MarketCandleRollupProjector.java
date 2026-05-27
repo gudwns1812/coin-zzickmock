@@ -123,7 +123,7 @@ public class MarketCandleRollupProjector {
                 .toList();
     }
 
-    private boolean isCompleteMinuteBucket(
+    public boolean isCompleteMinuteBucket(
             Instant bucketStart,
             int bucketMinutes,
             List<MarketHistoryCandle> candles
@@ -137,7 +137,7 @@ public class MarketCandleRollupProjector {
                         .anyMatch(candle -> expectedOpenTime.equals(candle.openTime())));
     }
 
-    private boolean isCompleteHourlyBucket(
+    public boolean isCompleteHourlyBucket(
             Instant bucketStart,
             MarketCandleInterval interval,
             List<HourlyMarketCandle> candles
@@ -152,7 +152,7 @@ public class MarketCandleRollupProjector {
                         .anyMatch(candle -> expectedOpenTime.equals(candle.openTime())));
     }
 
-    private boolean isCompleteDailyBucket(
+    public boolean isCompleteDailyBucket(
             Instant bucketStart,
             MarketCandleInterval interval,
             List<CompletedMarketCandle> candles
@@ -277,7 +277,7 @@ public class MarketCandleRollupProjector {
         );
     }
 
-    private int expectedHourlyBucketSize(Instant bucketStart, MarketCandleInterval interval) {
+    public int expectedHourlyBucketSize(Instant bucketStart, MarketCandleInterval interval) {
         return switch (interval) {
             case FOUR_HOURS -> 4;
             case TWELVE_HOURS -> 12;
@@ -290,7 +290,7 @@ public class MarketCandleRollupProjector {
         };
     }
 
-    private int expectedDailyBucketSize(Instant bucketStart, MarketCandleInterval interval) {
+    public int expectedDailyBucketSize(Instant bucketStart, MarketCandleInterval interval) {
         return switch (interval) {
             case ONE_WEEK -> 7;
             default -> throw new CoreException(ErrorCode.INVALID_REQUEST);

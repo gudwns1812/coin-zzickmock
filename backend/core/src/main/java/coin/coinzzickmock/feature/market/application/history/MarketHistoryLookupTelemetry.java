@@ -47,6 +47,22 @@ public class MarketHistoryLookupTelemetry {
         ));
     }
 
+    public void recordLatestWindowCache(
+            String symbol,
+            MarketCandleInterval interval,
+            int limit,
+            Instant boundaryOpenTime,
+            String result
+    ) {
+        providers.telemetry().recordEvent("market.history.latest_window." + result, Map.of(
+                "symbol", symbol,
+                "interval", interval.value(),
+                "range_bucket", rangeBucket(interval, boundaryOpenTime),
+                "source", "redis",
+                "result", result
+        ));
+    }
+
     private String dbLookupResult(List<MarketCandleResult> persistedCandles, int limit) {
         if (persistedCandles.isEmpty()) {
             return "miss";

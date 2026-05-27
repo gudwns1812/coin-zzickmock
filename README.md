@@ -40,8 +40,10 @@ coin-zzickmock/
 │   ├── release-docs/          # 릴리즈, 롤아웃, 롤백, 관측성 운영 문서
 │   └── generated/             # 현재 DB schema 같은 생성 산출물
 ├── infra/                     # Nginx, Prometheus, Grafana, Loki, Promtail 설정
-├── docker-compose.yml         # 로컬 backend + DB/cache + 관측성 스택
-├── docker-compose.prod.yml    # 운영 backend compose 계약
+├── docker-compose.yml              # 로컬 backend + DB/cache + 관측성 스택
+├── docker-compose.backend.prod.yml # 운영 backend host compose 계약
+├── docker-compose.infra.prod.yml   # 운영 infra/cache/observability host compose 계약
+├── docker-compose.prod.yml         # 기존 colocated 운영 rollback anchor
 ├── FRONTEND.md                # 프론트 작업 기준 문서
 ├── BACKEND.md                 # 백엔드 작업 기준 문서
 ├── RELEASE.md                 # 배포/릴리즈 기준 문서
@@ -172,13 +174,14 @@ CI는 브랜치명 정책, 프론트 typecheck/build, 백엔드 `./gradlew check
 - Frontend Vercel
   운영: [docs/release-docs/05-frontend-vercel-operations.md](docs/release-docs/05-frontend-vercel-operations.md)
 - Backend CD: [.github/workflows/cd.yml](.github/workflows/cd.yml)
-- 운영 compose 계약: [docker-compose.prod.yml](docker-compose.prod.yml)
+- 운영 compose 계약: [docker-compose.backend.prod.yml](docker-compose.backend.prod.yml), [docker-compose.infra.prod.yml](docker-compose.infra.prod.yml)
+- 기존 colocated rollback anchor: [docker-compose.prod.yml](docker-compose.prod.yml)
 - 운영 환경/산출물 기준: [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
 - Backend production CD 기준: [docs/release-docs/04-production-cd.md](docs/release-docs/04-production-cd.md)
 
-현재 CD는 `main`/`master`의 backend, production compose, infra 변경 또는 수동 실행을 배포 효과로 분류합니다. Backend 코드 변경은 backend 릴리즈 후보를
-검증하고 Docker Hub에 ARM64 backend 이미지를 발행한 뒤 EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 바꿔 backend를 pull/restart합니다.
-Infra/compose 변경은 backend image를 새로 만들지 않고, 분류된 runtime 범위에 따라 backend 또는 non-backend 서비스를 재시작하거나 Nginx 설정만 reload합니다.
+현재 CD는 `main`/`master`의 backend, split production compose, infra 변경 또는 수동 실행을 배포 효과로 분류합니다. Backend 코드 변경은 backend 릴리즈 후보를
+검증하고 Docker Hub에 ARM64 backend 이미지를 발행한 뒤 backend host의 EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 바꿔 backend를 pull/restart합니다.
+Redis/Grafana/Prometheus/Loki 변경은 infra host scope로만 반영하며 backend image를 새로 만들거나 backend app을 재시작하지 않습니다.
 
 ## 작업 기준 문서
 

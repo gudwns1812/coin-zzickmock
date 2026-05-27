@@ -46,7 +46,8 @@ docker compose down -v
 
 ## Local URLs
 
-- Backend health via Nginx: `http://localhost/actuator/health`
+- Backend health via Nginx public-route smoke: `http://localhost/actuator/health`
+- Backend metrics direct scrape path inside Compose: `backend:8080/actuator/prometheus` from Prometheus, not `/actuator/prometheus` through Nginx
 - Prometheus: `http://localhost:9090`
 - Grafana via Nginx: `http://localhost/grafana/`
 - Grafana direct local port: `http://localhost:3001/grafana/`
@@ -64,7 +65,7 @@ Grafana local default account:
 
 Nginx는 `/api/futures/**`와 `/actuator/health`를 backend로 보내고, `/grafana/`를 Grafana로 보낸다.
 프론트엔드 운영 배포는 Vercel이 담당하므로 이 Compose 스택에서 `/`는 제공하지 않는다.
-`/actuator/prometheus`는 외부 Nginx 경로로 노출하지 않고 Prometheus가 Compose 내부 네트워크에서 직접 scrape한다.
+`/actuator/prometheus`는 외부 Nginx 경로로 노출하지 않고 Prometheus가 Compose 내부 네트워크에서 `backend:8080`으로 직접 scrape한다. 운영 split topology에서도 같은 원칙으로 infra Prometheus가 backend private endpoint를 직접 scrape한다.
 로컬 compose는 인증서가 필요한 운영 Nginx 설정 대신 `infra/nginx/nginx.local.conf`의 HTTP-only 설정을 사용한다.
 
 SSE가 끊기지 않도록 backend API proxy는 buffering을 끄고 긴 read timeout을 사용한다.
@@ -106,6 +107,7 @@ Grafana의 backend 로그 패널은 Loki/Grafana/Promtail 자체 로그가 query
 ```bash
 docker compose ps
 curl -fsS http://localhost/actuator/health
+# /actuator/prometheus is intentionally not exposed through Nginx; verify it from Prometheus/container network when needed.
 curl -fsS http://localhost:9090/-/ready
 curl -fsS http://localhost:3100/ready
 ```

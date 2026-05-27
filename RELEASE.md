@@ -40,9 +40,10 @@
 현재 저장소의 배포/릴리즈 현실은 아래와 같다.
 
 - `.github/workflows/ci.yml`는 프론트엔드 빌드와 백엔드 `check`를 검증한다.
-- `.github/workflows/cd.yml`는 `main`/`master`의 `backend/**`, `docker-compose.prod.yml`, `infra/**` 변경 또는 수동 실행 기준으로 `backend_image`, `backend_runtime`, `infra_runtime`, `nginx_config` 배포 효과를 분류한다.
+- `.github/workflows/cd.yml`는 `main`/`master`의 `backend/**`, `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/**` 변경 또는 수동 실행 기준으로 `backend_image`, `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포 효과를 분류한다.
 - `backend_image` 배포는 backend 릴리즈 후보를 다시 검증하고 backend Docker 이미지를 Docker Hub에 발행한 뒤, EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 바꾸고 backend를 pull/restart한다.
-- `backend_runtime`과 `infra_runtime` 배포는 backend 이미지를 새로 만들지 않으며, staged compose/env preflight 후 필요한 runtime 파일과 서비스만 반영한다.
+- `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포는 backend 이미지를 새로 만들지 않으며, staged compose/env preflight 후 필요한 host의 runtime 파일과 서비스만 반영한다.
+- Redis/Grafana/Prometheus/Loki 변경은 `docker-compose.infra.prod.yml` 또는 `infra/{prometheus,grafana,loki}/**` scope로 분류되어 infra host만 배포하고 backend host app/Nginx를 건드리지 않는다.
 - 현재 기본 원칙은 "CI/CD 검증을 통과한 backend 고정 이미지 태그를 기준으로 하는 EC2 Docker Compose 릴리즈"다.
 
 ## Open Release TODOs
@@ -58,7 +59,7 @@
 - 프론트 변경이 있으면 `npm run build`를 기준 검증으로 삼는다.
 - 백엔드 변경이 있으면 `./gradlew check`를 기준 검증으로 삼고, 구조 변경이 있으면 `./gradlew architectureLint`도 확인한다.
 - 백엔드 4-module 구조 변경은 `app`만 executable이고 `stream`/`storage`/`external` leaf library가 서로 source/project dependency를 갖지 않는지 확인한다.
-- 운영 배포는 `application-prod.yml`, repo의 `docker-compose.prod.yml`/`infra/`, 서버의 `.env.prod` 계약이 서로 맞는지 확인한 뒤 실행한다.
+- 운영 배포는 `application-prod.yml`, repo의 `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/`, 각 서버의 `.env.prod` 계약이 서로 맞는지 확인한 뒤 실행한다. `docker-compose.prod.yml`은 colocated rollback anchor로만 취급한다.
 - 각 릴리즈는 하나의 고정된 commit SHA를 기준으로 식별한다.
 - 릴리즈마다 변경 범위, 실행자, 대상 환경, 스모크 테스트 결과, 롤백 기준점을 기록한다.
 - 환경 변수나 비밀값 계약이 바뀌면 [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)도 함께 갱신한다.
@@ -82,6 +83,7 @@
 - 환경과 산출물: [01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
 - 실행 체크리스트: [02-release-checklist.md](docs/release-docs/02-release-checklist.md)
 - 롤아웃/롤백: [03-rollout-and-rollback.md](docs/release-docs/03-rollout-and-rollback.md)
+- Backend/infra split topology: [backend-infra-split-topology.md](docs/release-docs/backend-infra-split-topology.md)
 - 프론트 Vercel 운영: [05-frontend-vercel-operations.md](docs/release-docs/05-frontend-vercel-operations.md)
 - 기록 템플릿: [release-note-template.md](docs/release-docs/release-note-template.md)
 

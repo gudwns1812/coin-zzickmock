@@ -20,6 +20,8 @@
 
 - [04-production-cd.md](04-production-cd.md)
   Docker Hub backend 이미지 발행, EC2 SSH 배포, 서버 환경 변수 계약.
+- [backend-infra-split-topology.md](backend-infra-split-topology.md)
+  Backend host와 infra/cache/observability host를 분리할 때의 private traffic, CD scope, migration/rollback 기준.
 
 ### Frontend Vercel Operations
 

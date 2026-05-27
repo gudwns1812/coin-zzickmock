@@ -6,7 +6,7 @@ positions:
   filename: /tmp/positions.yml
 
 clients:
-  - url: http://loki:3100/loki/api/v1/push
+  - url: ${LOKI_PUSH_URL}
 
 scrape_configs:
   - job_name: docker
@@ -16,11 +16,9 @@ scrape_configs:
         filters:
           - name: status
             values: ["running"]
-          - name: label
-            values: ["com.docker.compose.project=coin-zzickmock"]
     relabel_configs:
       - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
-        regex: "coin-zzickmock"
+        regex: "coin-zzickmock(-backend|-infra)?"
         action: keep
       - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
         target_label: compose_project

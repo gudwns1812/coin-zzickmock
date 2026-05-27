@@ -76,6 +76,27 @@ DB 변경은 아래 원칙을 따른다.
 5. 조치 이후 스모크 테스트를 다시 수행한다.
 6. 운영 기록에 원인 가설과 다음 액션을 남긴다.
 
+## Backend/Infra Split Rollout And Rollback
+
+Backend/infra split rollout is governed by [backend-infra-split-topology.md](backend-infra-split-topology.md). The short rule here is that backend runtime safety comes before observability completeness, and Redis divergence must be handled conservatively.
+
+Minimum rollout order:
+
+1. Snapshot current commit SHA, backend image tag, live backend/infra compose files, each host `.env.prod`, infra config, `docker compose ps` on both hosts, and Redis persistence state.
+2. Prepare private network rules before service cutover: public 80/443 only on backend Nginx; backend 8080/9100/9113 only from infra host; infra Redis/Loki/Grafana/exporters private only.
+3. Inventory Redis keys as durable-ish queue/state, reconstructable cache, or disposable transient data. Stop or write-pause backend during Redis copy unless the inventory proves no divergence risk.
+4. Validate private connectivity before switching traffic: backend-to-infra Redis, infra-to-backend direct `:8080/actuator/prometheus`, backend promtail-to-infra Loki, and Prometheus target reachability.
+5. Switch backend runtime targets, then central observability scrape/push targets, then run public API/health smoke and Redis-backed smoke.
+6. Disable old colocated infra only after the validation window, and keep old volumes/config snapshots until rollback retention expires.
+
+Rollback rules:
+
+- If Redis/backend health fails, restore backend `.env.prod`, compose, Redis target, and preserved colocated Redis first. Observability rollback is secondary.
+- If only Prometheus scrape or Loki push fails, roll back observability target/config only when backend app and Redis-backed flows are healthy.
+- If only Redis/Grafana/Prometheus/Loki infra runtime deploy fails before backend cutover, roll back infra host files/services only; do not rebuild or recreate backend.
+- If only Grafana public route fails, roll back Nginx/Grafana proxy config first; do not move Redis back automatically.
+- Rollback is not complete until backend health, public API smoke, and at least one Redis-backed smoke flow pass.
+
 ## Ownership
 
 - 릴리즈 실행자는 배포 성공만이 아니라 사후 확인까지 책임진다.

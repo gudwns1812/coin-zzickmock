@@ -33,12 +33,13 @@
 - 목적: 고정된 릴리즈 후보를 운영 이미지와 운영 Compose 스택으로 승격
 - 현재 구현: `.github/workflows/cd.yml`
 - 기본 동작:
-  - `main`/`master`의 `backend/**`, `docker-compose.prod.yml`, `infra/**` 변경 또는 수동 실행으로 시작한다
-  - 변경 범위를 `backend_image`, `backend_runtime`, `infra_runtime`, `nginx_config` 배포 효과로 분류한다
+  - `main`/`master`의 `backend/**`, `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/**` 변경 또는 수동 실행으로 시작한다
+  - 변경 범위를 `backend_image`, `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포 효과로 분류한다
   - `backend_image`일 때만 백엔드 `./gradlew check :app:bootJar`와 backend Docker image push를 수행한다
-  - SSH로 EC2에 접속해 staged compose/env preflight를 먼저 수행한다
-  - `backend_image`는 EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 교체한 뒤 backend를 pull/restart한다
-  - `backend_runtime`, `infra_runtime`, `nginx_config`는 backend image를 새로 만들지 않고 필요한 runtime 파일과 서비스만 반영한다
+  - backend host와 infra host에 각각 SSH 접속하며, 각 host에서 staged compose/env preflight를 먼저 수행한다
+  - `backend_image`는 backend host `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 교체한 뒤 backend를 pull/restart한다
+  - `infra/prometheus/**`, `infra/grafana/**`, `infra/loki/**`, `docker-compose.infra.prod.yml` 변경은 infra host만 반영하고 backend host를 건드리지 않는다
+  - `docker-compose.prod.yml`은 rollback anchor이며 정상 CD 범위에 포함하지 않는다
 - 상세 기준: [04-production-cd.md](04-production-cd.md)
 
 ### Preview
@@ -105,10 +106,13 @@
   - `dockerhub-user/coin-zzickmock-backend:<tag>`
 - 기준 플랫폼: `linux/arm64` Amazon Linux `aarch64`
 - 운영 compose 기준:
-  - `docker-compose.prod.yml`
+  - `docker-compose.backend.prod.yml`
+  - `docker-compose.infra.prod.yml`
   - `backend/app/src/main/resources/application-prod.yml`
   - `infra/prod.env.example`
-- 의미: 운영 프로필과 Docker Compose로 backend, Redis, Nginx, Prometheus, Grafana, Loki, Promtail, Redis/Nginx/Node exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다.
+- rollback anchor:
+  - `docker-compose.prod.yml`
+- 의미: 운영 프로필과 host별 Docker Compose로 backend host의 backend/Nginx/telemetry agents와 infra host의 Redis/Prometheus/Grafana/Loki/exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다. Host별 책임과 private port 계약은 [backend-infra-split-topology.md](backend-infra-split-topology.md)를 따른다.
 
 ### Documentation And Config Artifact
 
@@ -155,22 +159,25 @@
 - 백엔드 비밀값은 서버 전용 환경에만 둔다.
 - 운영 자격증명은 코드, 샘플 파일, 문서 예시에 넣지 않는다.
 - 설정값이 바뀌면 적용 대상 환경과 주입 위치를 릴리즈 기록에 남긴다.
-- 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다.
-- Backend container resource 기본값은 Compose에서 `BACKEND_CPUS=2.0`, `BACKEND_MEMORY_LIMIT=1g`로 고정한다.
-  운영 `t4g.small`의 2 vCPU 형태를 따르되, Redis, Nginx, 관측성 컨테이너가 쓸 host memory를 남기기 위해 backend memory는 1GB로 제한한다.
+- 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다. Split topology에서는 `REDIS_HOST`가 infra Redis private DNS/IP를 가리키고 `REDIS_PASSWORD`는 서버 소유 secret으로 주입한다.
+- Backend container resource 기본값은 Compose에서 `BACKEND_CPUS=2.0`, `BACKEND_MEMORY_LIMIT=1g`로 둔다.
+  Infra/cache/observability container가 별도 host로 분리되므로 backend split compose에는 Redis/Prometheus/Grafana/Loki를 포함하지 않는다.
 - `BACKEND_JAVA_TOOL_OPTIONS` 기본값은 `-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError`다.
   JVM heap은 1GB container limit 기준으로 잡고 native memory 여유를 남긴다.
+- 운영 backend는 별도 infra host의 Prometheus scrape를 위해 container `8080`을 host `${BACKEND_BIND_ADDRESS:-0.0.0.0}:${BACKEND_PORT:-8080}`로 publish한다.
+  split topology에서는 scrape endpoint가 Nginx public route가 아니라 `http://<BACKEND_PRIVATE_HOST>:8080/actuator/prometheus`다.
+  cloud security group에서는 TCP 8080 inbound를 `INFRA_EC2_HOST`에서 오는 트래픽으로 제한한다.
 - Backend-owned auth cookie는 runtime 환경별로 `APP_AUTH_COOKIE_SECURE`, `APP_AUTH_COOKIE_SAME_SITE`를 명시한다.
   로컬 Compose 기본값은 HTTP 개발을 위해 `false`/`Lax`이고, 운영 Compose 기본값은 Vercel frontend에서 backend origin API 인증에 사용할 수 있도록 `true`/`None`이다.
 - 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며
-  `application-prod.yml`, `docker-compose.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.
+  `application-prod.yml`, `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.
 - 커뮤니티 이미지 업로드는 backend-only S3 presign 설정으로 관리한다. Compose runtime에서는 `S3_BUCKET`, `S3_REGION`,
   `S3_KEY_PREFIX`, `COMMUNITY_IMAGE_ALLOWED_MIME`, `COMMUNITY_IMAGE_MAX_BYTES`, `COMMUNITY_IMAGE_PRESIGN_TTL`을 서버 환경에 주입하고,
   AWS 접근 권한은 인스턴스 역할이나 AWS SDK credential provider chain으로 공급한다. AWS access key/secret, presigned URL,
   업로드 credential 원문은 예시 파일·로그·릴리즈 기록에 남기지 않는다.
 - 로컬 `docker-compose.yml`은 `.env`의 optional `AWS_PROFILE`을 backend 컨테이너에 전달하고, host `${HOME}/.aws`를
   `/home/app/.aws`로 read-only mount한다. 로컬에서 `aws configure` profile을 쓰면 `AWS_PROFILE`을 해당 profile 이름으로 맞춘다.
-- 운영 `docker-compose.prod.yml`에는 local AWS profile/access key 전달을 추가하지 않는다. 운영 S3 접근은 EC2 instance role
+- 운영 compose에는 local AWS profile/access key 전달을 추가하지 않는다. 운영 S3 접근은 EC2 instance role
   또는 서버 전용 credential provider chain으로 공급하고, 운영 credential 원문은 `.env.prod` 예시나 릴리즈 문서에 기록하지 않는다.
 - Backend는 `S3_BUCKET`과 `S3_REGION`으로 `https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com` public URL prefix를 계산한다.
   compose runtime에는 위 S3 관련 환경 변수를 backend 컨테이너 환경으로 전달해야 한다.
@@ -179,16 +186,18 @@
 
 ### Production Docker Host
 
-- 서버에는 비밀값을 담은 `.env.prod`가 있어야 한다.
-- `.env.prod`에는 현재 운영 backend image를 가리키는 `BACKEND_IMAGE`가 있어야 한다.
-- CD는 backend image 배포 때 `.env.prod`의 `BACKEND_IMAGE` 한 줄만 새 Docker Hub 태그로 교체한다.
-- CD는 backend/infra runtime 설정 변경 때 staged compose/env preflight가 통과한 뒤 repo의 `docker-compose.prod.yml`과 `infra/` 운영 설정을 서버로 복사한다.
+- Backend host와 infra host에는 각각 비밀값을 담은 `.env.prod`가 있어야 한다.
+- Backend host `.env.prod`에는 현재 운영 backend image를 가리키는 `BACKEND_IMAGE`가 있어야 한다.
+- CD는 backend image 배포 때 backend host `.env.prod`의 `BACKEND_IMAGE` 한 줄만 새 Docker Hub 태그로 교체한다.
+- CD는 backend-host runtime 변경 때 `docker-compose.backend.prod.yml`, `infra/nginx/`, `infra/promtail/`만 backend host로 복사한다.
+- CD는 infra-host runtime 변경 때 `docker-compose.infra.prod.yml`, `infra/prometheus/`, `infra/grafana/`, `infra/loki/`, `infra/promtail/`만 infra host로 복사한다. Redis/Grafana/Prometheus/Loki 변경은 backend host를 건드리지 않는다.
 - `.env.prod`의 공개 가능한 예시는 `infra/prod.env.example`에서 관리한다.
 - CD의 EC2 SSH 사용자는 배포 경로 파일 반영을 위해 passwordless `sudo` 권한이 필요하며, Docker Compose는 `sudo` 없이 실행할 수 있어야 한다.
-- GitHub Actions secret `EC2_SSH_PRIVATE_KEY`는 passphrase 없는 SSH private key 원문 전체를 실제 줄바꿈과 함께 저장해야 한다. `-----BEGIN ... PRIVATE KEY-----`/`-----END ... PRIVATE KEY-----` 경계를 포함하고, 터미널 프롬프트 문자나 zsh의 no-newline 표시인 `%` 같은 문자를 포함하지 않는다.
-- Redis는 운영 compose 내부 서비스로 실행하고 host port를 공개하지 않는다.
+- GitHub Actions secret `EC2_SSH_PRIVATE_KEY`는 backend/infra host에 공통으로 쓰는 passphrase 없는 SSH private key 원문 전체를 실제 줄바꿈과 함께 저장해야 한다. Backend SSH user/path는 `EC2_USER`/`EC2_DEPLOY_PATH`, infra SSH user/path는 `INFRA_EC2_USER`/`INFRA_DEPLOY_PATH`를 사용한다. `-----BEGIN ... PRIVATE KEY-----`/`-----END ... PRIVATE KEY-----` 경계를 포함하고, 터미널 프롬프트 문자나 zsh의 no-newline 표시인 `%` 같은 문자를 포함하지 않는다.
+- Redis는 infra host compose 내부 서비스로 실행하고 backend host에는 포함하지 않는다. Redis host port는 infra private interface로만 bind한다.
+- Backend host port 8080은 별도 infra host Prometheus scrape 전용 direct/private endpoint다. Public internet 전체에 열지 말고, Nginx를 경유하지 않는 `INFRA_EC2_HOST` source rule로만 제한한다.
 - 운영 MySQL은 compose 내부에 포함하지 않고 `MYSQL_HOST` 또는 동등한 네트워크 경로로 연결한다.
-- Grafana는 운영 Nginx의 `/grafana/` 경로 뒤에서 제공하며, `GRAFANA_ROOT_URL`은 사용자가 접속하는 public URL과 같은 `/grafana/` suffix를 가져야 한다.
+- Split infra Grafana는 backend Nginx `/grafana/` 경로 뒤에 두지 않고 `http://<INFRA_BIND_ADDRESS>:<GRAFANA_PORT>/`로 직접 접속한다. `GRAFANA_ROOT_URL`/subpath 설정은 split infra compose에서 쓰지 않는다.
 - 프론트엔드 이미지, Vercel 변수, `NEXT_PUBLIC_*` 값은 EC2 Docker host 계약에 넣지 않는다.
 
 ### Shared Rule

@@ -159,7 +159,7 @@
 - 백엔드 비밀값은 서버 전용 환경에만 둔다.
 - 운영 자격증명은 코드, 샘플 파일, 문서 예시에 넣지 않는다.
 - 설정값이 바뀌면 적용 대상 환경과 주입 위치를 릴리즈 기록에 남긴다.
-- 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다. Split topology에서는 `REDIS_HOST`가 infra Redis private DNS/IP를 가리키고 `REDIS_PASSWORD`는 서버 소유 secret으로 주입한다.
+- 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다. Split topology에서는 `REDIS_HOST`가 infra Redis private DNS/IP를 가리키고, `REDIS_PASSWORD`는 Redis auth/ACL을 켠 경우에만 서버 소유 secret으로 주입한다.
 - Backend container resource 기본값은 Compose에서 `BACKEND_CPUS=2.0`, `BACKEND_MEMORY_LIMIT=1g`로 둔다.
   Infra/cache/observability container가 별도 host로 분리되므로 backend split compose에는 Redis/Prometheus/Grafana/Loki를 포함하지 않는다.
 - `BACKEND_JAVA_TOOL_OPTIONS` 기본값은 `-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError`다.

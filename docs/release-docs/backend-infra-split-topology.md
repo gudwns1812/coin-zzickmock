@@ -62,7 +62,7 @@ Backend host `.env.prod`:
 
 - `REDIS_HOST`: infra Redis private DNS/IP.
 - `REDIS_PORT`: `6379` unless the infra Redis endpoint differs.
-- `REDIS_PASSWORD`: server-owned Redis password or ACL secret when Redis leaves compose-internal networking.
+- `REDIS_PASSWORD`: optional server-owned Redis password or ACL secret. Set it only when Redis auth/ACL is enabled.
 - `BACKEND_PORT`: host port for direct/private backend scrape, default `8080`.
 - `BACKEND_BIND_ADDRESS`: optional host bind address for backend `8080`, default `0.0.0.0`; restrict public exposure with the cloud security group.
 - `GRAFANA_PRIVATE_HOST`: optional infra Grafana private DNS/IP; default is `REDIS_HOST`.
@@ -72,6 +72,7 @@ Infra host `.env.prod`:
 
 - `INFRA_BIND_ADDRESS`: infra private interface used by Redis, Prometheus, Grafana, and Loki. Restrict inbound rules by source.
 - `BACKEND_PRIVATE_HOST`: backend private DNS/IP used by infra Prometheus `backend-private` extra host.
+- `REDIS_PASSWORD`: optional. If omitted, infra Redis starts without `requirepass` and dependent clients/exporters connect without a password.
 
 GitHub Actions secrets for split CD:
 
@@ -109,7 +110,7 @@ Every two-host CD run must report which host(s) were touched and which host(s) w
 3. Provision infra host services: Redis, Prometheus, Grafana, Loki, Redis exporter, infra node exporter, and optional infra promtail.
 4. Inventory Redis keys as durable-ish queue/state, reconstructable cache, or disposable transient data. Default to no-dual-writes cutover with backend stopped or write-paused during Redis snapshot/copy. Keep old Redis data through validation.
 5. Validate private connectivity before switching backend: backend host to infra Redis, infra host to backend `:8080/actuator/prometheus`, infra Prometheus to backend node/nginx exporters, backend promtail to infra Loki, and backend Nginx to private Grafana if the public Grafana subpath is retained.
-6. Switch backend host runtime targets: `REDIS_HOST`, `REDIS_PASSWORD`, `BACKEND_PORT`/optional bind override, Redis target, and optional Grafana/Loki overrides if defaults do not match. Recreate or reload only affected backend-host services.
+6. Switch backend host runtime targets: `REDIS_HOST`, optional `REDIS_PASSWORD`, `BACKEND_PORT`/optional bind override, Redis target, and optional Grafana/Loki overrides if defaults do not match. Recreate or reload only affected backend-host services.
 7. Switch Prometheus scrape targets to backend private host/exporters and infra-local services.
 8. Run the validation window: public API/health smoke, Redis-backed smoke, direct metrics scrape, Prometheus target states, Loki backend logs, Grafana dashboards, 5xx, p95/p99, Redis errors, host CPU/memory.
 9. Disable old colocated infra services only after validation. Keep old volumes/config snapshots until rollback retention expires.

@@ -134,7 +134,8 @@ Backend host `.env.prod`에는 최소 아래 값이 필요하다.
 - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, `MYSQL_PASSWORD`
 - `JWT_SECRET`
 - `REDIS_HOST`: infra Redis private DNS/IP
-- `REDIS_PORT`, `REDIS_DATABASE`, `REDIS_PASSWORD`
+- `REDIS_PORT`, `REDIS_DATABASE`
+- `REDIS_PASSWORD`: 선택값. Redis auth/ACL을 켠 경우에만 설정한다
 - `BACKEND_PORT`: direct/private backend scrape port, 기본 `8080`
 - `BACKEND_BIND_ADDRESS`: 선택값. backend host에서 8080을 bind할 주소이며 기본은 `0.0.0.0`이다. public 노출은 security group으로 막는다
 - `GRAFANA_PRIVATE_HOST`: 선택값. 지정하지 않으면 `REDIS_HOST`를 infra Grafana host로 쓴다
@@ -142,13 +143,13 @@ Backend host `.env.prod`에는 최소 아래 값이 필요하다.
 
 Infra host `.env.prod`에는 최소 아래 값이 필요하다.
 
-- `REDIS_PASSWORD`
 - `INFRA_BIND_ADDRESS`: Redis, Prometheus, Grafana, Loki를 bind할 infra private interface
 - `BACKEND_PRIVATE_HOST`: infra Prometheus가 scrape할 backend private DNS/IP
 - `PROMETHEUS_PORT`
 - `GRAFANA_PORT`, `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`
 - Grafana UI는 backend Nginx subpath가 아니라 `http://<INFRA_BIND_ADDRESS>:<GRAFANA_PORT>/`로 직접 접속한다.
 - `LOKI_PORT`
+- `REDIS_PASSWORD`: 선택값. Redis auth/ACL을 켠 경우에만 설정한다
 
 CD는 compose 실행 때 shell-level `BACKEND_IMAGE`를 넘기지 않는다. 모든 compose command는 `env -u BACKEND_IMAGE`와 `--env-file .env.prod` 또는 staged temp env를 사용한다.
 

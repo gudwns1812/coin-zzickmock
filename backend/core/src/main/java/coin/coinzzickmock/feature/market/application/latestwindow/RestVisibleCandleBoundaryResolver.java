@@ -13,6 +13,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -48,28 +49,13 @@ public class RestVisibleCandleBoundaryResolver {
             int bucketMinutes
     ) {
         return marketHistoryRepository.findLatestMinuteCandleOpenTime(symbolId)
-                .flatMap(latestMinuteOpenTime -> latestMinuteRollupBoundary(
+                .flatMap(latestMinuteOpenTime -> latestRollupBoundary(
                         symbolId,
                         interval,
-                        bucketMinutes,
-                        latestMinuteOpenTime
+                        latestMinuteOpenTime,
+                        minuteBucketCursor(bucketMinutes),
+                        bucketStart -> hasCompleteMinuteBucket(symbolId, bucketStart, bucketMinutes)
                 ));
-    }
-
-    private Optional<RestVisibleCandleBoundary> latestMinuteRollupBoundary(
-            long symbolId,
-            MarketCandleInterval interval,
-            int bucketMinutes,
-            Instant latestMinuteOpenTime
-    ) {
-        Instant candidateBucketStart = latestCompleteMinuteBucketStart(latestMinuteOpenTime, bucketMinutes);
-        return searchCompleteBoundary(
-                candidateBucketStart,
-                bucketStart -> bucketStart.minus(bucketMinutes, ChronoUnit.MINUTES),
-                bucketStart -> hasCompleteMinuteBucket(symbolId, bucketStart, bucketMinutes)
-                        ? Optional.of(new RestVisibleCandleBoundary(symbolId, interval, bucketStart))
-                        : Optional.empty()
-        );
     }
 
     private Optional<RestVisibleCandleBoundary> latestCompletedHourlyBoundary(
@@ -85,22 +71,17 @@ public class RestVisibleCandleBoundaryResolver {
             MarketCandleInterval interval
     ) {
         return marketHistoryRepository.findLatestCompletedHourlyCandleOpenTime(symbolId)
-                .flatMap(latestHourOpenTime -> latestHourlyRollupBoundary(symbolId, interval, latestHourOpenTime));
-    }
-
-    private Optional<RestVisibleCandleBoundary> latestHourlyRollupBoundary(
-            long symbolId,
-            MarketCandleInterval interval,
-            Instant latestHourOpenTime
-    ) {
-        Instant candidateBucketStart = latestCompleteHourlyBucketStart(latestHourOpenTime, interval);
-        return searchCompleteBoundary(
-                candidateBucketStart,
-                bucketStart -> previousHourlyBucketStart(bucketStart, interval),
-                bucketStart -> hasCompleteHourlyBucket(symbolId, bucketStart, interval)
-                        ? Optional.of(new RestVisibleCandleBoundary(symbolId, interval, bucketStart))
-                        : Optional.empty()
-        );
+                .flatMap(latestHourOpenTime -> latestRollupBoundary(
+                        symbolId,
+                        interval,
+                        latestHourOpenTime,
+                        intervalBucketCursor(
+                                Duration.ofHours(1),
+                                interval,
+                                bucketStart -> previousHourlyBucketStart(bucketStart, interval)
+                        ),
+                        bucketStart -> hasCompleteHourlyBucket(symbolId, bucketStart, interval)
+                ));
     }
 
     private Optional<RestVisibleCandleBoundary> latestCompletedCalendarBoundary(
@@ -116,72 +97,65 @@ public class RestVisibleCandleBoundaryResolver {
             MarketCandleInterval interval
     ) {
         return marketHistoryRepository.findLatestCompletedCandleOpenTime(symbolId, MarketCandleInterval.ONE_DAY)
-                .flatMap(latestDayOpenTime -> latestDailyRollupBoundary(symbolId, interval, latestDayOpenTime));
+                .flatMap(latestDayOpenTime -> latestRollupBoundary(
+                        symbolId,
+                        interval,
+                        latestDayOpenTime,
+                        intervalBucketCursor(
+                                Duration.ofDays(1),
+                                interval,
+                                bucketStart -> MarketTime.atStorageZone(bucketStart).minusWeeks(1).toInstant()
+                        ),
+                        bucketStart -> hasCompleteDailyBucket(symbolId, bucketStart, interval)
+                ));
     }
 
-    private Optional<RestVisibleCandleBoundary> latestDailyRollupBoundary(
+    private Optional<RestVisibleCandleBoundary> latestRollupBoundary(
             long symbolId,
             MarketCandleInterval interval,
-            Instant latestDayOpenTime
+            Instant latestSourceOpenTime,
+            BucketCursor cursor,
+            Predicate<Instant> isCompleteBucket
     ) {
-        Instant candidateBucketStart = latestCompleteDailyBucketStart(latestDayOpenTime, interval);
         return searchCompleteBoundary(
-                candidateBucketStart,
-                bucketStart -> MarketTime.atStorageZone(bucketStart).minusWeeks(1).toInstant(),
-                bucketStart -> hasCompleteDailyBucket(symbolId, bucketStart, interval)
+                latestCompleteBucketStart(latestSourceOpenTime, cursor),
+                cursor.previousBucketStart(),
+                bucketStart -> isCompleteBucket.test(bucketStart)
                         ? Optional.of(new RestVisibleCandleBoundary(symbolId, interval, bucketStart))
                         : Optional.empty()
         );
     }
 
-    private Instant latestCompleteMinuteBucketStart(Instant latestMinuteOpenTime, int bucketMinutes) {
-        Instant latestBucketStart = MarketTime.alignToMinuteBucket(latestMinuteOpenTime, bucketMinutes);
-        Instant latestBucketClose = latestBucketStart.plus(bucketMinutes, ChronoUnit.MINUTES);
-        return latestCompleteBucketStart(
-                latestMinuteOpenTime,
-                latestBucketStart,
-                latestBucketClose,
+    private BucketCursor minuteBucketCursor(int bucketMinutes) {
+        return new BucketCursor(
                 Duration.ofMinutes(1),
+                sourceOpenTime -> MarketTime.alignToMinuteBucket(sourceOpenTime, bucketMinutes),
+                bucketStart -> bucketStart.plus(bucketMinutes, ChronoUnit.MINUTES),
                 bucketStart -> bucketStart.minus(bucketMinutes, ChronoUnit.MINUTES)
         );
     }
 
-    private Instant latestCompleteHourlyBucketStart(Instant latestHourOpenTime, MarketCandleInterval interval) {
-        Instant latestBucketStart = MarketTime.bucketStart(latestHourOpenTime, interval);
-        Instant latestBucketClose = MarketTime.bucketClose(latestBucketStart, interval);
-        return latestCompleteBucketStart(
-                latestHourOpenTime,
-                latestBucketStart,
-                latestBucketClose,
-                Duration.ofHours(1),
-                bucketStart -> previousHourlyBucketStart(bucketStart, interval)
-        );
-    }
-
-    private Instant latestCompleteDailyBucketStart(Instant latestDayOpenTime, MarketCandleInterval interval) {
-        Instant latestBucketStart = MarketTime.bucketStart(latestDayOpenTime, interval);
-        Instant latestBucketClose = MarketTime.bucketClose(latestBucketStart, interval);
-        return latestCompleteBucketStart(
-                latestDayOpenTime,
-                latestBucketStart,
-                latestBucketClose,
-                Duration.ofDays(1),
-                bucketStart -> MarketTime.atStorageZone(bucketStart).minusWeeks(1).toInstant()
-        );
-    }
-
-    private Instant latestCompleteBucketStart(
-            Instant latestSourceOpenTime,
-            Instant latestBucketStart,
-            Instant latestBucketClose,
+    private BucketCursor intervalBucketCursor(
             Duration sourceCandleDuration,
+            MarketCandleInterval interval,
             Function<Instant, Instant> previousBucketStart
     ) {
-        Instant latestKnownClose = latestSourceOpenTime.plus(sourceCandleDuration);
+        return new BucketCursor(
+                sourceCandleDuration,
+                sourceOpenTime -> MarketTime.bucketStart(sourceOpenTime, interval),
+                bucketStart -> MarketTime.bucketClose(bucketStart, interval),
+                previousBucketStart
+        );
+    }
+
+    private Instant latestCompleteBucketStart(Instant latestSourceOpenTime, BucketCursor cursor) {
+        Instant latestBucketStart = cursor.bucketStart().apply(latestSourceOpenTime);
+        Instant latestBucketClose = cursor.bucketClose().apply(latestBucketStart);
+        Instant latestKnownClose = latestSourceOpenTime.plus(cursor.sourceCandleDuration());
         if (!latestKnownClose.isBefore(latestBucketClose)) {
             return latestBucketStart;
         }
-        return previousBucketStart.apply(latestBucketStart);
+        return cursor.previousBucketStart().apply(latestBucketStart);
     }
 
     private Optional<RestVisibleCandleBoundary> searchCompleteBoundary(
@@ -234,5 +208,13 @@ public class RestVisibleCandleBoundaryResolver {
             case TWELVE_HOURS -> bucketStart.minus(12, ChronoUnit.HOURS);
             default -> throw new IllegalArgumentException("Unsupported hourly rollup interval: " + interval);
         };
+    }
+
+    private record BucketCursor(
+            Duration sourceCandleDuration,
+            Function<Instant, Instant> bucketStart,
+            Function<Instant, Instant> bucketClose,
+            Function<Instant, Instant> previousBucketStart
+    ) {
     }
 }

@@ -10,18 +10,11 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface MarketHistoryRepository {
-    record StartupBackfillCursor(
-            long symbolId,
-            String symbol,
-            Instant latestPersistedMinuteOpenTime
-    ) {
-    }
-
     Map<String, Long> findSymbolIdsBySymbols(List<String> symbols);
 
     Optional<String> findSymbolById(long symbolId);
 
-    List<StartupBackfillCursor> findStartupBackfillCursors();
+    List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors();
 
     Optional<Instant> findLatestMinuteCandleOpenTime(long symbolId);
 

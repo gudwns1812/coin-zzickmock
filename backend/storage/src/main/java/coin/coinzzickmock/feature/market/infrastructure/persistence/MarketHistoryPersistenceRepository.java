@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
@@ -44,9 +45,9 @@ public class MarketHistoryPersistenceRepository implements MarketHistoryReposito
 
     @Override
     @Transactional(readOnly = true)
-    public List<StartupBackfillCursor> findStartupBackfillCursors() {
+    public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
         return marketSymbolEntityRepository.findAllByOrderByIdAsc().stream()
-                .map(entity -> new StartupBackfillCursor(
+                .map(entity -> new MarketHistoryStartupBackfillCursor(
                         entity.id(),
                         entity.symbol(),
                         findLatestMinuteCandleOpenTime(entity.id()).orElse(null)

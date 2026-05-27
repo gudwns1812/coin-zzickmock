@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.market.application.history;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
@@ -251,7 +252,7 @@ class MarketPersistedCandleReaderTest {
         }
 
         @Override
-        public List<StartupBackfillCursor> findStartupBackfillCursors() {
+        public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
             return List.of();
         }
 

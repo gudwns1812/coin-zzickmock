@@ -21,6 +21,7 @@ import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCa
 import coin.coinzzickmock.feature.market.application.latestwindow.RestVisibleCandleBoundaryResolver;
 import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
 import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
@@ -882,7 +883,7 @@ class GetMarketCandlesServiceTest {
         }
 
         @Override
-        public List<StartupBackfillCursor> findStartupBackfillCursors() {
+        public List<MarketHistoryStartupBackfillCursor> findStartupBackfillCursors() {
             return List.of();
         }
 

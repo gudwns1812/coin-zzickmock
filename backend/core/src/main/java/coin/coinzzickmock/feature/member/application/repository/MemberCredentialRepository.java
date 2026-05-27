@@ -13,5 +13,7 @@ public interface MemberCredentialRepository {
 
     boolean existsByAccount(String account);
 
+    MemberCredential create(MemberCredential memberCredential);
+
     MemberCredential save(MemberCredential memberCredential);
 }

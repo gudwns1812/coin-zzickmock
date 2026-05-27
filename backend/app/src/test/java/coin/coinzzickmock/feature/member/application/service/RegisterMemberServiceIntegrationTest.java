@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.event.TradingAccountOpenedEvent;
 import coin.coinzzickmock.feature.account.application.service.AccountRefillDatePolicy;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
@@ -72,7 +73,8 @@ class RegisterMemberServiceIntegrationTest {
                 .get()
                 .extracting(state -> state.remainingCount())
                 .isEqualTo(1);
-        assertThat(capturedWalletEvents.memberIds()).contains(result.memberId());
+        assertThat(capturedWalletEvents.openedMemberIds()).contains(result.memberId());
+        assertThat(capturedWalletEvents.balanceChangedMemberIds()).doesNotContain(result.memberId());
     }
 
     @TestConfiguration
@@ -84,19 +86,30 @@ class RegisterMemberServiceIntegrationTest {
     }
 
     static class CapturedWalletEvents {
-        private final List<Long> memberIds = new ArrayList<>();
+        private final List<Long> openedMemberIds = new ArrayList<>();
+        private final List<Long> balanceChangedMemberIds = new ArrayList<>();
+
+        @EventListener
+        void on(TradingAccountOpenedEvent event) {
+            openedMemberIds.add(event.memberId());
+        }
 
         @EventListener
         void on(WalletBalanceChangedEvent event) {
-            memberIds.add(event.memberId());
+            balanceChangedMemberIds.add(event.memberId());
         }
 
         void clear() {
-            memberIds.clear();
+            openedMemberIds.clear();
+            balanceChangedMemberIds.clear();
         }
 
-        List<Long> memberIds() {
-            return memberIds;
+        List<Long> openedMemberIds() {
+            return openedMemberIds;
+        }
+
+        List<Long> balanceChangedMemberIds() {
+            return balanceChangedMemberIds;
         }
     }
 }

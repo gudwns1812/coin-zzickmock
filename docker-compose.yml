@@ -49,6 +49,7 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError}
       APP_ENV: ${APP_ENV:-local}
+      MYSQL_POOL_MAX_SIZE: 50
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_DATABASE: ${MYSQL_DATABASE:-coin_zzickmock}
@@ -70,11 +71,10 @@ services:
       MARKET_HISTORY_REPAIR_PERSISTENCE_RETRY_DELAY_MS: ${MARKET_HISTORY_REPAIR_PERSISTENCE_RETRY_DELAY_MS:-1000}
       MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_MAX_ATTEMPTS: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_MAX_ATTEMPTS:-5}
       MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_DELAY_MS: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_DELAY_MS:-1000}
-      LEADERBOARD_REFRESH_ENABLED: ${LEADERBOARD_REFRESH_ENABLED:-false}
       DAU_SUMMARY_ENABLED: ${DAU_SUMMARY_ENABLED:-true}
       AWS_PROFILE: ${AWS_PROFILE:-default}
-      S3_BUCKET: ${S3_BUCKET:-coin-zzickmock-community-local-672420933257-ap-southeast-2-an}
-      S3_REGION: ${S3_REGION:-ap-southeast-2}
+      S3_BUCKET: ${S3_BUCKET:-coin-zzickmock-community-local-672420933257-ap-northeast-2-an}
+      S3_REGION: ${S3_REGION:-ap-northeast-2}
       S3_KEY_PREFIX: ${S3_KEY_PREFIX:-community}
       COMMUNITY_IMAGE_ALLOWED_MIME: ${COMMUNITY_IMAGE_ALLOWED_MIME:-image/png,image/jpeg,image/webp,image/gif}
       COMMUNITY_IMAGE_MAX_BYTES: ${COMMUNITY_IMAGE_MAX_BYTES:-5242880}
@@ -120,6 +120,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-remote-write-receiver
     depends_on:
       - backend
       - nginx-exporter

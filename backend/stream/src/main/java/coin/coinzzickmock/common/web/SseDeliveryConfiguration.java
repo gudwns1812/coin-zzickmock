@@ -5,6 +5,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -13,12 +14,16 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 public class SseDeliveryConfiguration {
     @Bean("sseDeliveryTaskExecutor")
-    Executor sseDeliveryTaskExecutor() {
+    Executor sseDeliveryTaskExecutor(
+            @Value("${coin.sse.delivery.executor.core-pool-size:4}") int corePoolSize,
+            @Value("${coin.sse.delivery.executor.max-pool-size:16}") int maxPoolSize,
+            @Value("${coin.sse.delivery.executor.queue-capacity:1000}") int queueCapacity
+    ) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setThreadNamePrefix("market-sse-");
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(8);
-        executor.setQueueCapacity(200);
+        executor.setCorePoolSize(corePoolSize);
+        executor.setMaxPoolSize(maxPoolSize);
+        executor.setQueueCapacity(queueCapacity);
         executor.setRejectedExecutionHandler(new LoggingAbortPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);

@@ -10,14 +10,16 @@ class SseDeliveryConfigurationTest {
     @Test
     void configuresSseEventExecutorForBoundedAsyncFanout() {
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) new SseDeliveryConfiguration()
-                .sseDeliveryTaskExecutor();
+                .sseDeliveryTaskExecutor(4, 16, 1000);
         executor.initialize();
 
-        assertEquals(2, executor.getCorePoolSize());
-        assertEquals(8, executor.getMaxPoolSize());
-        assertEquals(200, executor.getQueueCapacity());
+        assertEquals(4, executor.getCorePoolSize());
+        assertEquals(16, executor.getMaxPoolSize());
+        assertEquals(1000, executor.getQueueCapacity());
         assertEquals("market-sse-", executor.getThreadNamePrefix());
         assertThat(executor.getThreadPoolExecutor().getRejectedExecutionHandler())
                 .isInstanceOf(SseDeliveryConfiguration.LoggingAbortPolicy.class);
+
+        executor.shutdown();
     }
 }

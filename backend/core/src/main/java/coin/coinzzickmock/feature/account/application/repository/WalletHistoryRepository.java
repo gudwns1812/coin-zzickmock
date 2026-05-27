@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface WalletHistoryRepository {
+    void createOpenedAccountBaseline(TradingAccount account, LocalDate snapshotDate);
+
     void createBaselineIfAbsent(TradingAccount account, LocalDate snapshotDate);
 
     void updateCurrentDay(TradingAccount account, LocalDate snapshotDate);

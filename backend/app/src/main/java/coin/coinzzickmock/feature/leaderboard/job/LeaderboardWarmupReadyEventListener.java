@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnExpression("'${coin.leaderboard.redis.enabled:false}' == 'true' && '${coin.leaderboard.refresh.enabled:false}' == 'true'")
+@ConditionalOnExpression("'${coin.leaderboard.warmup.enabled:true}' == 'true'")
 public class LeaderboardWarmupReadyEventListener {
     private final RefreshLeaderboardService refreshLeaderboardService;
 

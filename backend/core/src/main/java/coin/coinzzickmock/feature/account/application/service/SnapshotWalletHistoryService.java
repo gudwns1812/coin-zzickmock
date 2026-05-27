@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.account.application.service;
 
+import coin.coinzzickmock.feature.account.application.event.TradingAccountOpenedEvent;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
@@ -19,6 +20,18 @@ public class SnapshotWalletHistoryService {
     private final AccountRepository accountRepository;
     private final WalletHistoryRepository walletHistoryRepository;
     private final Clock clock;
+
+    public void recordOpenedAccount(TradingAccountOpenedEvent event) {
+        TradingAccount account = new TradingAccount(
+                event.memberId(),
+                event.memberEmail(),
+                event.memberName(),
+                event.walletBalance(),
+                event.availableMargin(),
+                event.accountVersion()
+        );
+        walletHistoryRepository.createOpenedAccountBaseline(account, WalletHistoryDate.from(event.openedAt()));
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordChangedBalance(WalletBalanceChangedEvent event) {

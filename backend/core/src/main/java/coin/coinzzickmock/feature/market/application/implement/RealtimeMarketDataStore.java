@@ -6,11 +6,15 @@ import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceSna
 import coin.coinzzickmock.feature.market.application.dto.MarketRealtimeSourceType;
 import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
 import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerSnapshot;
 import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeAcceptance;
+import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeSnapshot;
 import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
@@ -49,7 +53,7 @@ public class RealtimeMarketDataStore {
         return acceptTradeUpdate(tick).accepted();
     }
 
-    public AcceptedTradeUpdate acceptTradeUpdate(RealtimeMarketTradeTick tick) {
+    public RealtimeMarketTradeAcceptance acceptTradeUpdate(RealtimeMarketTradeTick tick) {
         long sequence = receiveSequence.incrementAndGet();
         BoundedTradeIdSet tradeIds = null;
         boolean reservedTradeId = false;
@@ -57,7 +61,7 @@ public class RealtimeMarketDataStore {
             tradeIds = tradeIds(tick.symbol());
             reservedTradeId = tradeIds.reserve(tick.tradeId());
             if (!reservedTradeId) {
-                return AcceptedTradeUpdate.rejected();
+                return RealtimeMarketTradeAcceptance.rejected();
             }
         }
 
@@ -109,7 +113,7 @@ public class RealtimeMarketDataStore {
                 tradeIds.remove(tick.tradeId());
             }
         }
-        return new AcceptedTradeUpdate(accepted.get(), Optional.ofNullable(movement.get()));
+        return new RealtimeMarketTradeAcceptance(accepted.get(), Optional.ofNullable(movement.get()));
     }
 
     public boolean acceptTicker(RealtimeMarketTickerUpdate update) {
@@ -222,12 +226,14 @@ public class RealtimeMarketDataStore {
                 sourceEventTime, receivedAt, fallbackReason);
     }
 
-    public Optional<RealtimeMarketTradeState> latestTrade(String symbol) {
-        return Optional.ofNullable(trades.get(symbol));
+    public Optional<RealtimeMarketTradeSnapshot> latestTrade(String symbol) {
+        return Optional.ofNullable(trades.get(symbol))
+                .map(RealtimeMarketTradeState::snapshot);
     }
 
-    public Optional<RealtimeMarketTickerState> latestTicker(String symbol) {
-        return Optional.ofNullable(tickers.get(symbol));
+    public Optional<RealtimeMarketTickerSnapshot> latestTicker(String symbol) {
+        return Optional.ofNullable(tickers.get(symbol))
+                .map(RealtimeMarketTickerState::snapshot);
     }
 
     public Optional<RealtimeMarketCandleState> candle(String symbol, MarketCandleInterval interval, Instant openTime) {
@@ -242,7 +248,7 @@ public class RealtimeMarketDataStore {
                 .max((first, second) -> first.openTime().compareTo(second.openTime()));
     }
 
-    public java.util.List<RealtimeMarketCandleState> candles(
+    public List<RealtimeMarketCandleState> candles(
             String symbol,
             MarketCandleInterval interval,
             Instant fromInclusive,
@@ -342,7 +348,7 @@ public class RealtimeMarketDataStore {
         MarketRealtimeSourceSnapshot source();
     }
 
-    public record RealtimeMarketTradeState(
+    private record RealtimeMarketTradeState(
             String symbol,
             String tradeId,
             BigDecimal price,
@@ -351,15 +357,12 @@ public class RealtimeMarketDataStore {
             long receiveSequence,
             MarketRealtimeSourceSnapshot source
     ) implements TimestampedRealtimeState {
-    }
-
-    public record AcceptedTradeUpdate(boolean accepted, Optional<MarketTradePriceMovedEvent> movement) {
-        private static AcceptedTradeUpdate rejected() {
-            return new AcceptedTradeUpdate(false, Optional.empty());
+        private RealtimeMarketTradeSnapshot snapshot() {
+            return new RealtimeMarketTradeSnapshot(symbol, tradeId, price, size, side, source);
         }
     }
 
-    public record RealtimeMarketTickerState(
+    private record RealtimeMarketTickerState(
             String symbol,
             BigDecimal lastPrice,
             BigDecimal markPrice,
@@ -369,5 +372,16 @@ public class RealtimeMarketDataStore {
             long receiveSequence,
             MarketRealtimeSourceSnapshot source
     ) implements TimestampedRealtimeState {
+        private RealtimeMarketTickerSnapshot snapshot() {
+            return new RealtimeMarketTickerSnapshot(
+                    symbol,
+                    lastPrice,
+                    markPrice,
+                    indexPrice,
+                    fundingRate,
+                    nextFundingTime,
+                    source
+            );
+        }
     }
 }

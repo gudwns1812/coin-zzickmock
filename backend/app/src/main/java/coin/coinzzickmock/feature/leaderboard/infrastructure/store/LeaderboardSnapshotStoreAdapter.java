@@ -18,7 +18,6 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -28,7 +27,6 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "coin.leaderboard.redis", name = "enabled", havingValue = "true")
 public class LeaderboardSnapshotStoreAdapter implements LeaderboardSnapshotStore {
     private static final String ACTIVE_KEY_SUFFIX = "active:v3";
     private static final String PROFIT_RATE_ZSET = "realized-profit-rate:zset";

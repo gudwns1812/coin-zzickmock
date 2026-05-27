@@ -22,8 +22,10 @@ USE CODEX NATIVE SUBAGENTS FOR INDEPENDENT PARALLEL SUBTASKS WHEN THAT IMPROVES 
 
 ## 먼저 읽을 문서
 
-계획이나 수정을 시작하기 전에 작업 영역을 정하고, 아래에서 가장 작은 관련 묶음만 읽는다.
+계획이나 수정을 시작하기 전에 작업 영역을 정하고, 아래 문서들을 순서대로 확인한다. **특히 루트의 규칙과 선례 문서는 모든 에이전트 작업에 강제 적용된다.**
 
+- **최우선 준수 규칙**: [RULES.md](file:///Users/hj.park/projects/coin-zzickmock/RULES.md) (표준 강제 규칙)
+- **최신 우수 선례**: [Precedent.md](file:///Users/hj.park/projects/coin-zzickmock/Precedent.md) (선례 및 승격 관리 문서)
 - 저장소 전체 파악: `README.md` -> `ARCHITECTURE.md`
 - 백엔드 작업: `BACKEND.md` -> `backend/AGENTS.md` -> `backend/docs/README.md` 또는 변경 module의 `AGENTS.md`
 - 프론트 작업: `FRONTEND.md` -> `frontend/README.md` -> `docs/design-docs/ui-design/`의 관련 문서
@@ -177,6 +179,7 @@ backend/
 
 ## 구현 규칙
 
+- **최우선 순위**: 루트에 지정된 [RULES.md](file:///Users/hj.park/projects/coin-zzickmock/RULES.md)의 모든 아키텍처 및 구현 표준(트랜잭션 지연, Next-Key Lock 방지 등)을 절대적으로 준수한다.
 - 요청이 명확하고 되돌릴 수 있으면 직접 작업한다.
 - diff는 작고 요청 범위에 맞게 유지한다.
 - 사용자가 명시적으로 요청하지 않는 한 새 dependency를 추가하지 않는다. 기존 스택으로 해결하기 어려운 경우에만 이유를 설명하고 추가한다.

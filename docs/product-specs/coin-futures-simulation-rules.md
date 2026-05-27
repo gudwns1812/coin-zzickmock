@@ -53,6 +53,10 @@
 ### 현재가 `lastPrice`
 
 거래소의 최신 체결가다.
+주문 preview/즉시 체결/저장 직후 재체결 판단에 쓰는 최신 체결가는 실시간 ticker snapshot의
+`lastPrice`만 사용한다. 이 snapshot의 `receivedAt`이 10초를 초과하면 stale price로 보고
+REST 복구나 과거 이벤트 가격으로 대체하지 않으며, 사용자 요청 체결 경로는 `MARKET_PRICE_STALE`
+오류로 중단한다.
 
 ### Mark Price
 

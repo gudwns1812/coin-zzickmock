@@ -32,8 +32,7 @@ function firstText(...values) {
 }
 
 function repoRoot(payload) {
-  const cwd = firstText(payload.cwd, process.cwd());
-  return path.resolve(cwd);
+  return path.resolve(__dirname, "..", "..");
 }
 
 function hasAny(text, patterns) {

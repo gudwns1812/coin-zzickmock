@@ -8,6 +8,9 @@
     "start": "npm run start --workspace frontend",
     "lint": "npm run lint --workspace frontend",
     "check:branch": "node .github/branch-policy/validate-branch-name.cjs",
-    "k6:candle:html": "node scripts/run-k6-candle-latency-html.mjs"
+    "k6:candle:html": "node scripts/k6/run-k6-candle-latency-html.mjs",
+    "k6:report": "node scripts/k6/generate-k6-report.mjs",
+    "k6:clean": "node scripts/truncate_test_data.js",
+    "db:clean-test": "node scripts/truncate_test_data.js"
   }
 }

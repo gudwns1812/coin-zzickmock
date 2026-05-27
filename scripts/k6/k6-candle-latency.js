@@ -1,9 +1,10 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 import { Counter, Trend } from "k6/metrics";
+import { supportedSymbolsFromEnv } from "./api-contract.js";
 
 const BASE_URL = (__ENV.BASE_URL || "http://host.docker.internal:18080").replace(/\/$/, "");
-const SYMBOLS = csvEnv("SYMBOLS", "BTCUSDT,ETHUSDT");
+const SYMBOLS = supportedSymbolsFromEnv();
 const RUNS = positiveIntEnv("RUNS", 5);
 const THINK_TIME_MS = nonNegativeIntEnv("THINK_TIME_MS", 250);
 const REPORT_HTML = __ENV.REPORT_HTML || "/scripts/k6-candle-latency-report.html";
@@ -388,13 +389,6 @@ function renderRow(row) {
 
 function intervalConfig(value) {
   return INTERVALS.find((interval) => interval.value === value);
-}
-
-function csvEnv(name, fallback) {
-  return (__ENV[name] || fallback)
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
 }
 
 function positiveIntEnv(name, fallback) {

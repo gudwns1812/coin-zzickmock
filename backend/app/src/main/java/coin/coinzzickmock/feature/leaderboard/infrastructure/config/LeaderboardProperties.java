@@ -11,16 +11,7 @@ public class LeaderboardProperties {
     }
 
     public static class Redis {
-        private boolean enabled = false;
         private String keyPrefix = "coin:leaderboard:";
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
 
         public String getKeyPrefix() {
             return keyPrefix;

@@ -9,6 +9,7 @@ public enum ErrorCode {
     POSITION_NOT_FOUND(404, "포지션을 찾을 수 없습니다.", Level.INFO),
     POSITION_CHANGED(409, "포지션이 변경되었습니다. 다시 조회 후 시도해주세요.", Level.INFO),
     MARKET_NOT_FOUND(404, "마켓 정보를 찾을 수 없습니다.", Level.INFO),
+    MARKET_PRICE_STALE(409, "실시간 시세가 최신 상태가 아닙니다. 잠시 후 다시 시도해주세요.", Level.INFO),
     REWARD_REDEMPTION_NOT_FOUND(404, "교환권 요청을 찾을 수 없습니다.", Level.INFO),
     REWARD_REDEMPTION_CONFLICT(409, "교환권 요청 상태가 변경되었습니다. 다시 조회 후 시도해주세요.", Level.INFO),
     INSUFFICIENT_AVAILABLE_MARGIN(400, "사용 가능 증거금이 부족합니다.", Level.DEBUG),

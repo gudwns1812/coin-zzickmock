@@ -109,6 +109,17 @@ test("community detail enables mutations without raw HTML rendering", () => {
   assert.doesNotMatch(renderer, /dangerouslySetInnerHTML/);
 });
 
+test("community comments keep message text stronger than author metadata", () => {
+  const interactions = source(
+    "components/router/(main)/community/CommunityDetailInteractions.tsx"
+  );
+
+  assert.doesNotMatch(interactions, /comment\.authorNickname\.slice/);
+  assert.doesNotMatch(interactions, /border-t border-main-light-gray/);
+  assert.match(interactions, /text-xs-custom font-semibold text-main-blue\/80[\s\S]*?comment\.authorNickname/);
+  assert.match(interactions, /text-base-custom leading-7 text-main-dark-gray[\s\S]*?comment\.content/);
+});
+
 test("community like mutation sends the intended next liked state", () => {
   const interactions = source(
     "components/router/(main)/community/CommunityDetailInteractions.tsx"

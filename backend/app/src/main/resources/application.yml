@@ -4,6 +4,8 @@ spring:
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:test1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${MYSQL_POOL_MAX_SIZE:50}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -46,6 +48,12 @@ app:
     jwt-secret: ${JWT_SECRET:dGhlLXF1aWNrLWJyb3duLWZveC1qdW1wcy1vdmVyLXRoZS1sYXp5LWRvZy1hbmQtc29tZS1vdGhlci1zZWNyZXQtc3R1ZmY=}
 
 coin:
+  sse:
+    delivery:
+      executor:
+        core-pool-size: 4
+        max-pool-size: 16
+        queue-capacity: 1000
   bitget:
     websocket:
       enabled: ${BITGET_WEBSOCKET_ENABLED:true}
@@ -68,19 +76,24 @@ coin:
       enqueue-retry:
         max-attempts: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_MAX_ATTEMPTS:5}
         delay-ms: ${MARKET_HISTORY_REPAIR_ENQUEUE_RETRY_DELAY_MS:1000}
+  account:
+    wallet-balance-projection:
+      executor:
+        core-pool-size: 2
+        max-pool-size: 8
+        queue-capacity: 1000
   cache:
     redis:
       enabled: true
   leaderboard:
     redis:
-      enabled: ${LEADERBOARD_REDIS_ENABLED:true}
-      key-prefix: ${LEADERBOARD_REDIS_KEY_PREFIX:coin:leaderboard:}
+      key-prefix: "coin:leaderboard:"
     refresh:
-      enabled: ${LEADERBOARD_REFRESH_ENABLED:false}
-      delay-ms: ${LEADERBOARD_REFRESH_DELAY_MS:3600000}
-      initial-delay-ms: ${LEADERBOARD_REFRESH_INITIAL_DELAY_MS:0}
+      enabled: false
+      delay-ms: 3600000
+      initial-delay-ms: 0
     warmup:
-      enabled: ${LEADERBOARD_WARMUP_ENABLED:true}
+      enabled: false
   community:
     images:
       allowed-mime: ${COMMUNITY_IMAGE_ALLOWED_MIME:image/png,image/jpeg,image/webp,image/gif}
@@ -93,6 +106,11 @@ coin:
       region: ${S3_REGION:ap-southeast-2}
       public-base-url: ${PUBLIC_CDN_BASE_URL:${CDN_BASE_URL:}}
   activity:
+    record:
+      executor:
+        core-pool-size: 2
+        max-pool-size: 8
+        queue-capacity: 1000
     summary:
       enabled: ${DAU_SUMMARY_ENABLED:true}
       cron: ${DAU_SUMMARY_CRON:0 5 0 * * *}

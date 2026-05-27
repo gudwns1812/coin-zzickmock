@@ -22,7 +22,7 @@ class LeaderboardWalletBalanceChangedListenerTest {
         private final List<Long> memberIds = new ArrayList<>();
 
         private RecordingRefreshLeaderboardService() {
-            super(null, List.of());
+            super(null, new coin.coinzzickmock.testsupport.TestLeaderboardSnapshotStore() { });
         }
 
         @Override

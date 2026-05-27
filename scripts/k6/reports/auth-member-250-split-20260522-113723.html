@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auth Member Split 250 VU</title>
+  <style>
+    :root { color-scheme: light; --bg: #f7f8fa; --panel: #fff; --text: #17202a; --muted: #6b7280; --line: #d9dee7; --good: #0f8a4b; --bad: #c0392b; --warn: #a16207; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+    h1 { margin: 0 0 18px; font-size: 28px; letter-spacing: 0; }
+    h2 { margin: 28px 0 12px; font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+    .label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .value { margin-top: 6px; font-size: 22px; font-weight: 700; }
+    .pass { color: var(--good); }
+    .fail { color: var(--bad); }
+    table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+    th:first-child, td:first-child { text-align: left; }
+    tr:last-child td { border-bottom: 0; }
+    th { background: #eef1f6; color: #374151; font-size: 12px; }
+    code { background: #eef1f6; border-radius: 4px; padding: 1px 4px; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Auth Member Split 250 VU</h1>
+  <section class="grid">
+    <div class="card"><div class="label">Result</div><div class="value fail">FAIL</div></div>
+    <div class="card"><div class="label">Checks</div><div class="value ">99.14% (31406/31677)</div></div>
+    <div class="card"><div class="label">HTTP Failures</div><div class="value pass">-</div></div>
+    <div class="card"><div class="label">HTTP p95</div><div class="value ">8.59s</div></div>
+    <div class="card"><div class="label">Requests</div><div class="value ">14,605</div></div>
+    <div class="card"><div class="label">Iterations</div><div class="value ">12,571</div></div>
+  </section>
+
+  <h2>Key Metrics</h2>
+  <table><thead><tr><th>Metric</th><th>Count/Rate</th><th>Avg</th><th>P90</th><th>P95</th><th>P99</th><th>Max</th><th>Threshold</th></tr></thead><tbody><tr><td><code>http_req_duration</code></td><td>14,605</td><td>1.76s</td><td>4.60s</td><td>8.59s</td><td>30.11s</td><td>60.00s</td><td>FAIL p(95)&lt;300</td></tr><tr><td><code>http_req_failed</code></td><td>0.01/s</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>PASS rate&lt;0.01</td></tr><tr><td><code>http_reqs</code></td><td>14,605</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr><tr><td><code>checks</code></td><td>0.99/s</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr><tr><td><code>iterations</code></td><td>12,571</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr><tr><td><code>auth_comm_failures</code></td><td>120</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>FAIL count&lt;1</td></tr><tr><td><code>auth_duplicate_duration_ms</code></td><td>10,625</td><td>262.4ms</td><td>6.38ms</td><td>105.3ms</td><td>4.80s</td><td>30.11s</td><td>PASS p(95)&lt;150</td></tr><tr><td><code>auth_duration_ms</code></td><td>656</td><td>8.78s</td><td>15.29s</td><td>32.34s</td><td>39.86s</td><td>45.20s</td><td>-</td></tr><tr><td><code>auth_login_duration_ms</code></td><td>2,140</td><td>5.31s</td><td>10.61s</td><td>14.59s</td><td>22.51s</td><td>30.01s</td><td>FAIL p(95)&lt;300</td></tr><tr><td><code>auth_onboarding_http_duration_ms</code></td><td>656</td><td>8.78s</td><td>15.29s</td><td>32.34s</td><td>39.86s</td><td>45.20s</td><td>FAIL p(95)&lt;700</td></tr><tr><td><code>auth_register_duration_ms</code></td><td>1,340</td><td>8.55s</td><td>30.19s</td><td>32.02s</td><td>59.98s</td><td>60.00s</td><td>FAIL p(95)&lt;400</td></tr><tr><td><code>group_duration</code></td><td>12,600</td><td>1.82s</td><td>5.70s</td><td>9.81s</td><td>31.60s</td><td>60.01s</td><td>-</td></tr><tr><td><code>http_req_duration{expected_response:true}</code></td><td>14,472</td><td>1.46s</td><td>4.20s</td><td>7.71s</td><td>23.01s</td><td>59.98s</td><td>-</td></tr><tr><td><code>iteration_duration</code></td><td>12,571</td><td>2.76s</td><td>6.50s</td><td>10.47s</td><td>32.29s</td><td>60.99s</td><td>-</td></tr></tbody></table>
+
+  <h2>Failed Thresholds</h2><table><thead><tr><th>Metric</th><th>Thresholds</th></tr></thead><tbody><tr><td><code>auth_comm_failures</code></td><td>count&lt;1</td></tr><tr><td><code>auth_login_duration_ms</code></td><td>p(95)&lt;300</td></tr><tr><td><code>auth_onboarding_http_duration_ms</code></td><td>p(95)&lt;700</td></tr><tr><td><code>auth_register_duration_ms</code></td><td>p(95)&lt;400</td></tr><tr><td><code>http_req_duration</code></td><td>p(95)&lt;300</td></tr></tbody></table>
+
+  <h2>Checks</h2><table><thead><tr><th>Check</th><th>Pass</th><th>Fail</th><th>Success</th></tr></thead><tbody><tr><td><code>::auth duplicate availability probe::duplicate probe status 200</code></td><td>9816</td><td class="pass">0</td><td>100.00%</td></tr><tr><td><code>::auth duplicate availability probe::duplicate probe account available</code></td><td>9816</td><td class="pass">0</td><td>100.00%</td></tr><tr><td><code>::auth register only probe::register probe status 200</code></td><td>516</td><td class="fail">105</td><td>83.09%</td></tr><tr><td><code>::auth register only probe::register probe success true</code></td><td>516</td><td class="fail">105</td><td>83.09%</td></tr><tr><td><code>::auth register only probe::register probe has member id</code></td><td>608</td><td class="pass">0</td><td>100.00%</td></tr><tr><td><code>::auth login only probe::login probe status 200</code></td><td>1484</td><td class="pass">0</td><td>100.00%</td></tr><tr><td><code>::auth login only probe::login probe success true</code></td><td>1484</td><td class="pass">0</td><td>100.00%</td></tr><tr><td><code>::auth login only probe::login probe has access token</code></td><td>1484</td><td class="pass">0</td><td>100.00%</td></tr><tr><td><code>::auth onboarding probe::onboarding duplicate status 200</code></td><td>799</td><td class="fail">10</td><td>98.76%</td></tr><tr><td><code>::auth onboarding probe::onboarding duplicate available</code></td><td>799</td><td class="fail">10</td><td>98.76%</td></tr><tr><td><code>::auth onboarding probe::onboarding register status 200</code></td><td>706</td><td class="fail">13</td><td>98.19%</td></tr><tr><td><code>::auth onboarding probe::onboarding register success true</code></td><td>706</td><td class="fail">13</td><td>98.19%</td></tr><tr><td><code>::auth onboarding probe::onboarding register has member id</code></td><td>719</td><td class="pass">0</td><td>100.00%</td></tr><tr><td><code>::auth onboarding probe::onboarding login status 200</code></td><td>651</td><td class="fail">5</td><td>99.24%</td></tr><tr><td><code>::auth onboarding probe::onboarding login success true</code></td><td>651</td><td class="fail">5</td><td>99.24%</td></tr><tr><td><code>::auth onboarding probe::onboarding login has access token</code></td><td>651</td><td class="fail">5</td><td>99.24%</td></tr></tbody></table>
+</main>
+</body>
+</html>

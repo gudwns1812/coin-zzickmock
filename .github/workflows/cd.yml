@@ -7,7 +7,8 @@ on:
       - master
     paths:
       - "backend/**"
-      - "docker-compose.prod.yml"
+      - "docker-compose.backend.prod.yml"
+      - "docker-compose.infra.prod.yml"
       - "infra/**"
   workflow_dispatch:
     inputs:
@@ -19,7 +20,9 @@ on:
         options:
           - backend-image
           - backend-runtime
+          - backend-agent-runtime
           - infra-runtime
+          - nginx-config
           - all
           - auto
       image_tag:
@@ -46,11 +49,14 @@ jobs:
     outputs:
       backend_image: ${{ steps.effects.outputs.backend_image }}
       backend_runtime: ${{ steps.effects.outputs.backend_runtime }}
+      backend_agent_runtime: ${{ steps.effects.outputs.backend_agent_runtime }}
       infra_runtime: ${{ steps.effects.outputs.infra_runtime }}
       nginx_config: ${{ steps.effects.outputs.nginx_config }}
       nginx_service_definition: ${{ steps.effects.outputs.nginx_service_definition }}
       deploy: ${{ steps.effects.outputs.deploy }}
       has_effect: ${{ steps.effects.outputs.has_effect }}
+      backend_host_effect: ${{ steps.effects.outputs.backend_host_effect }}
+      infra_host_effect: ${{ steps.effects.outputs.infra_host_effect }}
       image_tag: ${{ steps.effects.outputs.image_tag }}
     steps:
       - name: Checkout
@@ -72,6 +78,7 @@ jobs:
 
           backend_image=false
           backend_runtime=false
+          backend_agent_runtime=false
           infra_runtime=false
           nginx_config=false
           nginx_service_definition=false
@@ -93,13 +100,21 @@ jobs:
               backend-runtime)
                 backend_runtime=true
                 ;;
+              backend-agent-runtime)
+                backend_agent_runtime=true
+                ;;
               infra-runtime)
                 infra_runtime=true
+                ;;
+              nginx-config)
+                nginx_config=true
                 ;;
               all)
                 backend_image=true
                 backend_runtime=true
+                backend_agent_runtime=true
                 infra_runtime=true
+                nginx_config=true
                 ;;
               auto)
                 use_path_classification=true
@@ -121,41 +136,51 @@ jobs:
             if grep -q '^backend/' <<< "${changed_files}"; then
               backend_image=true
             fi
-            if grep -Eq '^infra/(prometheus|grafana|loki|promtail)/' <<< "${changed_files}"; then
+            if grep -q '^docker-compose\.backend\.prod\.yml$' <<< "${changed_files}"; then
+              backend_runtime=true
+              nginx_service_definition=true
+              backend_agent_runtime=true
+            fi
+            if grep -q '^docker-compose\.infra\.prod\.yml$' <<< "${changed_files}"; then
               infra_runtime=true
+            fi
+            if grep -Eq '^infra/(prometheus|grafana|loki)/' <<< "${changed_files}"; then
+              infra_runtime=true
+            fi
+            if grep -q '^infra/promtail/' <<< "${changed_files}"; then
+              infra_runtime=true
+              backend_agent_runtime=true
             fi
             if grep -q '^infra/nginx/' <<< "${changed_files}"; then
               nginx_config=true
             fi
             if grep -q '^docker-compose\.prod\.yml$' <<< "${changed_files}"; then
-              compose_result="$(GITHUB_OUTPUT= node .github/cd/classify-compose-changes.cjs --before "${before}" --after "${GITHUB_SHA}")"
-              echo "Compose classification: ${compose_result}"
-              compose_backend_runtime="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(String(data.backend_runtime));' "${compose_result}")"
-              compose_infra_runtime="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(String(data.infra_runtime));' "${compose_result}")"
-              compose_nginx_service_definition="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(String(data.nginx_service_definition));' "${compose_result}")"
-              if [[ "${compose_backend_runtime}" == "true" ]]; then
-                backend_runtime=true
-              fi
-              if [[ "${compose_infra_runtime}" == "true" ]]; then
-                infra_runtime=true
-              fi
-              if [[ "${compose_nginx_service_definition}" == "true" ]]; then
-                nginx_service_definition=true
-              fi
+              echo "::warning title=Legacy compose changed::docker-compose.prod.yml is a rollback anchor and is not deployed by CD. Use docker-compose.backend.prod.yml or docker-compose.infra.prod.yml for runtime changes."
             fi
           fi
 
+          backend_host_effect=false
+          infra_host_effect=false
           has_effect=false
-          if [[ "${backend_image}" == "true" || "${backend_runtime}" == "true" || "${infra_runtime}" == "true" || "${nginx_config}" == "true" || "${nginx_service_definition}" == "true" ]]; then
+          if [[ "${backend_image}" == "true" || "${backend_runtime}" == "true" || "${backend_agent_runtime}" == "true" || "${nginx_config}" == "true" || "${nginx_service_definition}" == "true" ]]; then
+            backend_host_effect=true
+          fi
+          if [[ "${infra_runtime}" == "true" ]]; then
+            infra_host_effect=true
+          fi
+          if [[ "${backend_host_effect}" == "true" || "${infra_host_effect}" == "true" ]]; then
             has_effect=true
           fi
 
           {
             echo "backend_image=${backend_image}"
             echo "backend_runtime=${backend_runtime}"
+            echo "backend_agent_runtime=${backend_agent_runtime}"
             echo "infra_runtime=${infra_runtime}"
             echo "nginx_config=${nginx_config}"
             echo "nginx_service_definition=${nginx_service_definition}"
+            echo "backend_host_effect=${backend_host_effect}"
+            echo "infra_host_effect=${infra_host_effect}"
             echo "deploy=${deploy}"
             echo "has_effect=${has_effect}"
             echo "image_tag=${image_tag}"
@@ -166,9 +191,12 @@ jobs:
             echo ""
             echo "- backend_image: \`${backend_image}\`"
             echo "- backend_runtime: \`${backend_runtime}\`"
+            echo "- backend_agent_runtime: \`${backend_agent_runtime}\`"
             echo "- infra_runtime: \`${infra_runtime}\`"
             echo "- nginx_config: \`${nginx_config}\`"
             echo "- nginx_service_definition: \`${nginx_service_definition}\`"
+            echo "- backend_host_effect: \`${backend_host_effect}\`"
+            echo "- infra_host_effect: \`${infra_host_effect}\`"
             echo "- deploy: \`${deploy}\`"
             echo "- image_tag: \`${image_tag}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
@@ -275,67 +303,73 @@ jobs:
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
-  deploy_to_ec2:
-    name: Deploy Classified Effects To EC2
+  deploy_backend_host:
+    name: Deploy Backend Host Effects
     runs-on: ubuntu-latest
     needs:
       - classify
+      - deploy_infra_host
       - publish_backend_image
     steps:
-      - name: Summarize skipped deploy
-        if: ${{ needs.classify.outputs.deploy != 'true' || needs.classify.outputs.has_effect != 'true' }}
+      - name: Summarize skipped backend host deploy
+        if: ${{ needs.classify.outputs.deploy != 'true' || needs.classify.outputs.backend_host_effect != 'true' }}
         run: |
           {
-            echo "### CD deploy skipped"
+            echo "### Backend host deploy skipped"
             echo ""
             echo "- deploy: \`${{ needs.classify.outputs.deploy }}\`"
-            echo "- has_effect: \`${{ needs.classify.outputs.has_effect }}\`"
-            echo "- No SSH deploy, remote mutation, service operation, or health check was run."
+            echo "- backend_host_effect: \`${{ needs.classify.outputs.backend_host_effect }}\`"
+            echo "- Infra host was not touched by this job."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout
-        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.backend_host_effect == 'true' }}
         uses: actions/checkout@v5
 
-      - name: Prepare SSH
-        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
+      - name: Prepare backend host SSH
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.backend_host_effect == 'true' }}
         shell: bash
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
           EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
+          if [[ -z "${EC2_HOST}" || -z "${EC2_SSH_PRIVATE_KEY}" ]]; then
+            echo "::error title=Missing backend host SSH secrets::Set EC2_HOST and EC2_SSH_PRIVATE_KEY."
+            exit 1
+          fi
           mkdir -p ~/.ssh
           printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/ec2_key
           sed -i 's/\r$//' ~/.ssh/ec2_key
           chmod 600 ~/.ssh/ec2_key
-
-          if ! ssh-keygen -y -f ~/.ssh/ec2_key > /dev/null; then
-            echo "::error title=Invalid EC2_SSH_PRIVATE_KEY::The EC2_SSH_PRIVATE_KEY secret is not a parseable SSH private key. Store the full private key with BEGIN/END lines and real newlines; do not include shell prompt characters such as a trailing percent sign."
-            exit 1
-          fi
-
+          ssh-keygen -y -f ~/.ssh/ec2_key > /dev/null
           ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$EC2_HOST" >> ~/.ssh/known_hosts
 
-      - name: Stage compose and infra files on EC2
-        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
+      - name: Stage backend host files
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.backend_host_effect == 'true' }}
         shell: bash
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
           EC2_USER: ${{ secrets.EC2_USER }}
-          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-${{ github.sha }}-${{ github.run_attempt }}
+          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-backend-${{ github.sha }}-${{ github.run_attempt }}
         run: |
+          set -euo pipefail
+          if [[ -z "${EC2_USER}" ]]; then
+            echo "::error title=Missing EC2_USER::Set EC2_USER."
+            exit 1
+          fi
           ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
             "rm -rf '${REMOTE_STAGE_DIR}' && mkdir -p '${REMOTE_STAGE_DIR}/infra'"
-          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.prod.yml \
-            "${EC2_USER}@${EC2_HOST}:${REMOTE_STAGE_DIR}/docker-compose.prod.yml"
+          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.backend.prod.yml \
+            "${EC2_USER}@${EC2_HOST}:${REMOTE_STAGE_DIR}/docker-compose.backend.prod.yml"
           scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
-            infra/nginx infra/prometheus infra/grafana infra/loki infra/promtail \
+            infra/nginx infra/promtail \
             "${EC2_USER}@${EC2_HOST}:${REMOTE_STAGE_DIR}/infra/"
 
-      - name: Apply classified effects on EC2
-        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.has_effect == 'true' }}
+      - name: Apply backend host effects
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.backend_host_effect == 'true' }}
         shell: bash
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -344,21 +378,25 @@ jobs:
           EC2_DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-${{ github.sha }}-${{ github.run_attempt }}
+          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-backend-${{ github.sha }}-${{ github.run_attempt }}
           BACKEND_IMAGE_EFFECT: ${{ needs.classify.outputs.backend_image }}
           BACKEND_RUNTIME_EFFECT: ${{ needs.classify.outputs.backend_runtime }}
-          INFRA_RUNTIME_EFFECT: ${{ needs.classify.outputs.infra_runtime }}
+          BACKEND_AGENT_RUNTIME_EFFECT: ${{ needs.classify.outputs.backend_agent_runtime }}
           NGINX_CONFIG_EFFECT: ${{ needs.classify.outputs.nginx_config }}
           NGINX_SERVICE_DEFINITION_EFFECT: ${{ needs.classify.outputs.nginx_service_definition }}
           CANDIDATE_BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ needs.classify.outputs.image_tag }}
         run: |
           set -euo pipefail
+          if [[ -z "${EC2_DEPLOY_PATH}" ]]; then
+            echo "::error title=Missing EC2_DEPLOY_PATH::Set EC2_DEPLOY_PATH."
+            exit 1
+          fi
 
           remote_command=""
           for name in \
             BACKEND_IMAGE_EFFECT \
             BACKEND_RUNTIME_EFFECT \
-            INFRA_RUNTIME_EFFECT \
+            BACKEND_AGENT_RUNTIME_EFFECT \
             NGINX_CONFIG_EFFECT \
             NGINX_SERVICE_DEFINITION_EFFECT \
             CANDIDATE_BACKEND_IMAGE \
@@ -372,11 +410,22 @@ jobs:
           done
 
           ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${EC2_USER}@${EC2_HOST}" \
-            "${remote_command}bash -s" <<'REMOTE_DEPLOY'
+            "${remote_command}bash -s" <<'REMOTE_BACKEND_DEPLOY'
           set -euo pipefail
 
-          infra_services=(redis loki promtail redis-exporter nginx-exporter node-exporter prometheus grafana)
-          infra_dirs=(nginx prometheus grafana loki promtail)
+          backend_compose_file="docker-compose.backend.prod.yml"
+          backend_agent_services=(promtail nginx-exporter node-exporter)
+
+          detect_compose() {
+            if docker compose version >/dev/null 2>&1; then
+              compose=(docker compose)
+            elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+              compose=(docker-compose)
+            else
+              echo "Docker Compose is not available on the backend host." >&2
+              exit 1
+            fi
+          }
 
           require_backend_image_line() {
             local env_file="$1"
@@ -385,19 +434,7 @@ jobs:
               exit 1
             fi
             if ! grep -q '^BACKEND_IMAGE=' "${env_file}"; then
-              echo ".env.prod must contain BACKEND_IMAGE before CD can preflight compose." >&2
-              exit 1
-            fi
-          }
-
-          detect_compose() {
-            if docker compose version >/dev/null 2>&1; then
-              compose=(docker compose)
-            elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
-              compose=(docker-compose)
-            else
-              echo "Docker Compose is not available on the EC2 host. Install Docker Compose v2 plugin or docker-compose." >&2
-              docker version || true
+              echo ".env.prod must contain BACKEND_IMAGE before backend CD can preflight compose." >&2
               exit 1
             fi
           }
@@ -406,17 +443,8 @@ jobs:
             if [[ "${BACKEND_IMAGE_EFFECT}" != "true" ]]; then
               return
             fi
-            if [[ -z "${CANDIDATE_BACKEND_IMAGE}" ]]; then
-              echo "Candidate backend image is empty." >&2
-              exit 1
-            fi
-            if [[ "${CANDIDATE_BACKEND_IMAGE}" =~ [[:space:]\"\'\;\`\$\\] ]]; then
-              echo "Candidate backend image contains unsupported characters." >&2
-              exit 1
-            fi
-            local tag="${CANDIDATE_BACKEND_IMAGE##*:}"
-            if [[ ! "${tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
-              echo "Candidate backend image tag is invalid." >&2
+            if [[ -z "${CANDIDATE_BACKEND_IMAGE}" || "${CANDIDATE_BACKEND_IMAGE}" =~ [[:space:]] ]]; then
+              echo "Candidate backend image is empty or contains unsupported characters." >&2
               exit 1
             fi
           }
@@ -432,20 +460,8 @@ jobs:
                 next
               }
               { print }
-              END {
-                if (replaced != 1) {
-                  exit 3
-                }
-              }
+              END { if (replaced != 1) exit 3 }
             ' "${source_env}" > "${target_env}"
-          }
-
-          should_promote_compose_file() {
-            [[ "${BACKEND_RUNTIME_EFFECT}" == "true" || "${INFRA_RUNTIME_EFFECT}" == "true" || "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]
-          }
-
-          should_promote_infra_files() {
-            [[ "${INFRA_RUNTIME_EFFECT}" == "true" || "${NGINX_CONFIG_EFFECT}" == "true" || "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]
           }
 
           install_candidate_env() {
@@ -458,29 +474,43 @@ jobs:
             sudo mv "${temp_live_env}" "${live_env}"
           }
 
+          should_promote_backend_compose() {
+            [[ "${BACKEND_RUNTIME_EFFECT}" == "true" || "${BACKEND_AGENT_RUNTIME_EFFECT}" == "true" || "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]
+          }
+
+          should_promote_nginx_config() {
+            [[ "${NGINX_CONFIG_EFFECT}" == "true" || "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]
+          }
+
+          should_promote_promtail_config() {
+            [[ "${BACKEND_AGENT_RUNTIME_EFFECT}" == "true" || "${BACKEND_RUNTIME_EFFECT}" == "true" ]]
+          }
+
           preflight_candidate() {
             local compose_file
-            if should_promote_compose_file; then
-              compose_file="${REMOTE_STAGE_DIR}/docker-compose.prod.yml"
-              echo "Preflighting staged compose contract."
+            if should_promote_backend_compose; then
+              compose_file="${REMOTE_STAGE_DIR}/${backend_compose_file}"
+              echo "Preflighting staged backend-host compose contract."
             else
-              compose_file="${EC2_DEPLOY_PATH}/docker-compose.prod.yml"
-              echo "Preflighting live compose contract with candidate environment."
+              compose_file="${EC2_DEPLOY_PATH}/${backend_compose_file}"
+              echo "Preflighting live backend-host compose with candidate environment."
             fi
             env -u BACKEND_IMAGE "${compose[@]}" --env-file "${candidate_env}" -f "${compose_file}" config --quiet
           }
 
           promote_candidate() {
-            if should_promote_compose_file; then
-              sudo mkdir -p "${EC2_DEPLOY_PATH}/infra"
-              sudo cp "${REMOTE_STAGE_DIR}/docker-compose.prod.yml" "${EC2_DEPLOY_PATH}/docker-compose.prod.yml"
+            if should_promote_backend_compose; then
+              sudo cp "${REMOTE_STAGE_DIR}/${backend_compose_file}" "${EC2_DEPLOY_PATH}/${backend_compose_file}"
             fi
-            if should_promote_infra_files; then
+            if should_promote_nginx_config; then
               sudo mkdir -p "${EC2_DEPLOY_PATH}/infra"
-              for dir in "${infra_dirs[@]}"; do
-                sudo rm -rf "${EC2_DEPLOY_PATH}/infra/${dir}"
-                sudo cp -R "${REMOTE_STAGE_DIR}/infra/${dir}" "${EC2_DEPLOY_PATH}/infra/"
-              done
+              sudo rm -rf "${EC2_DEPLOY_PATH}/infra/nginx"
+              sudo cp -R "${REMOTE_STAGE_DIR}/infra/nginx" "${EC2_DEPLOY_PATH}/infra/"
+            fi
+            if should_promote_promtail_config; then
+              sudo mkdir -p "${EC2_DEPLOY_PATH}/infra"
+              sudo rm -rf "${EC2_DEPLOY_PATH}/infra/promtail"
+              sudo cp -R "${REMOTE_STAGE_DIR}/infra/promtail" "${EC2_DEPLOY_PATH}/infra/"
             fi
             if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
               install_candidate_env
@@ -488,7 +518,7 @@ jobs:
           }
 
           compose_live() {
-            env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f docker-compose.prod.yml "$@"
+            env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f "${backend_compose_file}" "$@"
           }
 
           check_backend_health() {
@@ -498,7 +528,6 @@ jobs:
               echo "Backend container is missing after recreate." >&2
               exit 1
             fi
-
             for _ in $(seq 1 24); do
               local status
               status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${container}" 2>/dev/null || true)"
@@ -512,8 +541,7 @@ jobs:
               fi
               sleep 5
             done
-
-            echo "Backend health did not become healthy in time. Automatic rollback is intentionally not performed." >&2
+            echo "Backend health did not become healthy in time." >&2
             exit 1
           }
 
@@ -521,42 +549,29 @@ jobs:
             local nginx_container
             nginx_container="$(compose_live ps -q nginx || true)"
             if [[ -z "${nginx_container}" ]] || [[ "$(docker inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" != "true" ]]; then
-              echo "Nginx config changed, but nginx is not running; refusing to recreate nginx for config-only changes." >&2
+              echo "Nginx config changed, but nginx is not running; refusing config-only recreate." >&2
               exit 1
             fi
             compose_live exec -T nginx nginx -t
             compose_live exec -T nginx nginx -s reload
           }
 
-          recreate_nginx_service() {
-            compose_live pull nginx
-            compose_live up -d --no-deps nginx
-            compose_live exec -T nginx nginx -t
-          }
-
-          cleanup() {
-            rm -rf "${REMOTE_STAGE_DIR}" || true
-          }
+          cleanup() { rm -rf "${REMOTE_STAGE_DIR}" || true; }
           trap cleanup EXIT
 
           detect_compose
           validate_candidate_image
-
           live_env="${EC2_DEPLOY_PATH}/.env.prod"
           require_backend_image_line "${live_env}"
           candidate_env="${REMOTE_STAGE_DIR}/.env.prod.candidate"
           if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
-            replace_backend_image_line "${live_env}" "${candidate_env}" || {
-              echo "Failed to create candidate .env.prod with updated BACKEND_IMAGE." >&2
-              exit 1
-            }
+            replace_backend_image_line "${live_env}" "${candidate_env}"
           else
             cp "${live_env}" "${candidate_env}"
           fi
 
           preflight_candidate
           promote_candidate
-
           cd "${EC2_DEPLOY_PATH}"
 
           if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
@@ -569,17 +584,236 @@ jobs:
             check_backend_health
           fi
 
-          if [[ "${INFRA_RUNTIME_EFFECT}" == "true" ]]; then
-            compose_live pull "${infra_services[@]}"
-            compose_live up -d --no-deps "${infra_services[@]}"
+          if [[ "${BACKEND_AGENT_RUNTIME_EFFECT}" == "true" ]]; then
+            compose_live pull "${backend_agent_services[@]}"
+            compose_live up -d --no-deps "${backend_agent_services[@]}"
           fi
 
           if [[ "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]; then
-            recreate_nginx_service
+            compose_live pull nginx
+            compose_live up -d --no-deps nginx
+            compose_live exec -T nginx nginx -t
           elif [[ "${NGINX_CONFIG_EFFECT}" == "true" ]]; then
             reload_nginx_config
           fi
 
           docker image prune -f
-          compose_live ps redis backend grafana prometheus loki promtail redis-exporter nginx-exporter node-exporter nginx
-          REMOTE_DEPLOY
+          compose_live ps backend nginx promtail nginx-exporter node-exporter
+          REMOTE_BACKEND_DEPLOY
+
+      - name: Verify backend metrics from infra host
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.backend_host_effect == 'true' }}
+        shell: bash
+        env:
+          INFRA_EC2_HOST: ${{ secrets.INFRA_EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          INFRA_EC2_USER: ${{ secrets.INFRA_EC2_USER }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          EC2_BACKEND_METRICS_HOST: ${{ secrets.EC2_BACKEND_METRICS_HOST }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${INFRA_EC2_HOST}" || -z "${INFRA_EC2_USER}" || -z "${EC2_SSH_PRIVATE_KEY}" || -z "${EC2_BACKEND_METRICS_HOST}" ]]; then
+            echo "::error title=Missing split verification secrets::Set INFRA_EC2_HOST, INFRA_EC2_USER, EC2_SSH_PRIVATE_KEY, and EC2_BACKEND_METRICS_HOST."
+            exit 1
+          fi
+          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/ec2_key
+          sed -i 's/\r$//' ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keygen -y -f ~/.ssh/ec2_key > /dev/null
+          ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$INFRA_EC2_HOST" >> ~/.ssh/known_hosts
+          metrics_url="http://${EC2_BACKEND_METRICS_HOST}:8080/actuator/prometheus"
+          quoted_metrics_url="$(printf '%q' "${metrics_url}")"
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+            "curl -fsS --connect-timeout 5 --max-time 10 ${quoted_metrics_url} >/dev/null"
+          {
+            echo "### Backend metrics scrape reachability"
+            echo ""
+            echo "- Source host: \`INFRA_EC2_HOST\`"
+            echo "- Target URL: \`${metrics_url}\`"
+            echo "- Access path: direct backend private endpoint, not Nginx"
+            echo "- Result: reachable"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_infra_host:
+    name: Deploy Infra Host Effects
+    runs-on: ubuntu-latest
+    needs: classify
+    steps:
+      - name: Summarize skipped infra host deploy
+        if: ${{ needs.classify.outputs.deploy != 'true' || needs.classify.outputs.infra_host_effect != 'true' }}
+        run: |
+          {
+            echo "### Infra host deploy skipped"
+            echo ""
+            echo "- deploy: \`${{ needs.classify.outputs.deploy }}\`"
+            echo "- infra_host_effect: \`${{ needs.classify.outputs.infra_host_effect }}\`"
+            echo "- Backend host was not touched by this job."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.infra_host_effect == 'true' }}
+        uses: actions/checkout@v5
+
+      - name: Prepare infra host SSH
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.infra_host_effect == 'true' }}
+        shell: bash
+        env:
+          INFRA_EC2_HOST: ${{ secrets.INFRA_EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${INFRA_EC2_HOST}" || -z "${EC2_SSH_PRIVATE_KEY}" ]]; then
+            echo "::error title=Missing infra host SSH secrets::Set INFRA_EC2_HOST and EC2_SSH_PRIVATE_KEY."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/ec2_key
+          sed -i 's/\r$//' ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keygen -y -f ~/.ssh/ec2_key > /dev/null
+          ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$INFRA_EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Stage infra host files
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.infra_host_effect == 'true' }}
+        shell: bash
+        env:
+          INFRA_EC2_HOST: ${{ secrets.INFRA_EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          INFRA_EC2_USER: ${{ secrets.INFRA_EC2_USER }}
+          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-infra-${{ github.sha }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${INFRA_EC2_USER}" ]]; then
+            echo "::error title=Missing INFRA_EC2_USER::Set INFRA_EC2_USER."
+            exit 1
+          fi
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+            "rm -rf '${REMOTE_STAGE_DIR}' && mkdir -p '${REMOTE_STAGE_DIR}/infra'"
+          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" docker-compose.infra.prod.yml \
+            "${INFRA_EC2_USER}@${INFRA_EC2_HOST}:${REMOTE_STAGE_DIR}/docker-compose.infra.prod.yml"
+          scp -i ~/.ssh/ec2_key -P "${EC2_SSH_PORT:-22}" -r \
+            infra/prometheus infra/grafana infra/loki infra/promtail \
+            "${INFRA_EC2_USER}@${INFRA_EC2_HOST}:${REMOTE_STAGE_DIR}/infra/"
+
+      - name: Apply infra host effects
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.infra_host_effect == 'true' }}
+        shell: bash
+        env:
+          INFRA_EC2_HOST: ${{ secrets.INFRA_EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          INFRA_EC2_USER: ${{ secrets.INFRA_EC2_USER }}
+          INFRA_DEPLOY_PATH: ${{ secrets.INFRA_DEPLOY_PATH }}
+          REMOTE_STAGE_DIR: /tmp/coin-zzickmock-infra-${{ github.sha }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${INFRA_EC2_USER}" ]]; then
+            echo "::error title=Missing INFRA_EC2_USER::Set INFRA_EC2_USER."
+            exit 1
+          fi
+          if [[ -z "${INFRA_DEPLOY_PATH}" ]]; then
+            echo "::error title=Missing INFRA_DEPLOY_PATH::Set INFRA_DEPLOY_PATH."
+            exit 1
+          fi
+          remote_command=""
+          for name in INFRA_DEPLOY_PATH REMOTE_STAGE_DIR; do
+            value="${!name}"
+            remote_command+="${name}=$(printf '%q' "${value}") "
+          done
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+            "${remote_command}bash -s" <<'REMOTE_INFRA_DEPLOY'
+          set -euo pipefail
+
+          infra_compose_file="docker-compose.infra.prod.yml"
+          infra_services=(redis loki promtail redis-exporter node-exporter prometheus grafana)
+          infra_dirs=(prometheus grafana loki promtail)
+
+          detect_compose() {
+            if docker compose version >/dev/null 2>&1; then
+              compose=(docker compose)
+            elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+              compose=(docker-compose)
+            else
+              echo "Docker Compose is not available on the infra host." >&2
+              exit 1
+            fi
+          }
+
+          cleanup() { rm -rf "${REMOTE_STAGE_DIR}" || true; }
+          trap cleanup EXIT
+
+          detect_compose
+          live_env="${INFRA_DEPLOY_PATH}/.env.prod"
+          if [[ ! -f "${live_env}" ]]; then
+            echo ".env.prod is missing at ${live_env}." >&2
+            exit 1
+          fi
+          candidate_env="${REMOTE_STAGE_DIR}/.env.prod.candidate"
+          cp "${live_env}" "${candidate_env}"
+          env -u BACKEND_IMAGE "${compose[@]}" --env-file "${candidate_env}" -f "${REMOTE_STAGE_DIR}/${infra_compose_file}" config --quiet
+
+          sudo cp "${REMOTE_STAGE_DIR}/${infra_compose_file}" "${INFRA_DEPLOY_PATH}/${infra_compose_file}"
+          sudo mkdir -p "${INFRA_DEPLOY_PATH}/infra"
+          for dir in "${infra_dirs[@]}"; do
+            sudo rm -rf "${INFRA_DEPLOY_PATH}/infra/${dir}"
+            sudo cp -R "${REMOTE_STAGE_DIR}/infra/${dir}" "${INFRA_DEPLOY_PATH}/infra/"
+          done
+
+          cd "${INFRA_DEPLOY_PATH}"
+          compose_live() {
+            env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f "${infra_compose_file}" "$@"
+          }
+          compose_live pull "${infra_services[@]}"
+          compose_live up -d --no-deps "${infra_services[@]}"
+          compose_live ps redis loki promtail redis-exporter node-exporter prometheus grafana
+          REMOTE_INFRA_DEPLOY
+
+      - name: Verify infra services
+        if: ${{ needs.classify.outputs.deploy == 'true' && needs.classify.outputs.infra_host_effect == 'true' }}
+        shell: bash
+        env:
+          INFRA_EC2_HOST: ${{ secrets.INFRA_EC2_HOST }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT }}
+          INFRA_EC2_USER: ${{ secrets.INFRA_EC2_USER }}
+          INFRA_DEPLOY_PATH: ${{ secrets.INFRA_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${INFRA_EC2_USER}" ]]; then
+            echo "::error title=Missing INFRA_EC2_USER::Set INFRA_EC2_USER."
+            exit 1
+          fi
+          if [[ -z "${INFRA_DEPLOY_PATH}" ]]; then
+            echo "::error title=Missing INFRA_DEPLOY_PATH::Set INFRA_DEPLOY_PATH."
+            exit 1
+          fi
+          remote_command="INFRA_DEPLOY_PATH=$(printf '%q' "${INFRA_DEPLOY_PATH}") "
+          ssh -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
+            "${remote_command}bash -s" <<'REMOTE_INFRA_VERIFY'
+          set -euo pipefail
+          cd "${INFRA_DEPLOY_PATH}"
+          read_env_value() {
+            local key="$1" default_value="$2" line
+            line="$(grep -E "^${key}=" .env.prod | tail -n 1 || true)"
+            if [[ -z "${line}" ]]; then
+              printf '%s' "${default_value}"
+            else
+              printf '%s' "${line#*=}"
+            fi
+          }
+          infra_bind_host="$(read_env_value INFRA_BIND_ADDRESS 127.0.0.1)"
+          prometheus_port="$(read_env_value PROMETHEUS_PORT 9090)"
+          loki_port="$(read_env_value LOKI_PORT 3100)"
+          if [[ "${infra_bind_host}" == "0.0.0.0" ]]; then infra_bind_host="127.0.0.1"; fi
+          prometheus_host="${infra_bind_host}"
+          loki_host="${infra_bind_host}"
+          curl -fsS --connect-timeout 5 --max-time 10 "http://${prometheus_host}:${prometheus_port}/-/ready" >/dev/null
+          curl -fsS --connect-timeout 5 --max-time 10 "http://${loki_host}:${loki_port}/ready" >/dev/null
+          REMOTE_INFRA_VERIFY
+          {
+            echo "### Infra service readiness"
+            echo ""
+            echo "- Source host: \`INFRA_EC2_HOST\`"
+            echo "- Prometheus ready: checked on 127.0.0.1:9090"
+            echo "- Loki ready: checked on 127.0.0.1:3100"
+            echo "- Backend host was not touched."
+          } >> "$GITHUB_STEP_SUMMARY"

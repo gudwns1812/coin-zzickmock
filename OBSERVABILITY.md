@@ -22,6 +22,8 @@
 ## 기준 스택
 
 - 메트릭: Spring Boot + Micrometer로 애플리케이션 meter를 수집하고 Prometheus가 scrape한다.
+  운영에서 별도 infra host의 Prometheus가 backend를 scrape할 때는 Nginx를 거치지 않고 backend host의 private endpoint `http://<BACKEND_PRIVATE_HOST>:8080/actuator/prometheus`로 직접 접근한다.
+  이 8080 접근은 cloud security group에서 infra host source로만 제한하고 public internet 전체에 노출하지 않는다.
 - 로그: 애플리케이션은 구조화 로그를 남기고 Loki가 수집한다.
 - 대시보드와 알림: Grafana가 Prometheus 메트릭과 Loki 로그를 함께 보여 준다.
 - 관리자 모니터링: 관리자 페이지는 운영 인프라 지표가 아니라 서비스 운영자가 조치할 수 있는 도메인 상태를 보여 준다.

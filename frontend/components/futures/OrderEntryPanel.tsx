@@ -38,6 +38,7 @@ type Props = {
   symbol: MarketSymbol;
   currentPrice: number;
   isAuthenticated: boolean;
+  isAuthStateResolved?: boolean;
   isMarketDataDegraded?: boolean;
   accountSummary: FuturesAccountSummary | null;
   positions?: FuturesPosition[];
@@ -92,6 +93,7 @@ export default function OrderEntryPanel({
   symbol,
   currentPrice,
   isAuthenticated,
+  isAuthStateResolved = true,
   isMarketDataDegraded = false,
   accountSummary,
   positions = [],
@@ -684,7 +686,9 @@ export default function OrderEntryPanel({
       ) : null}
 
       <div className="grid grid-cols-2 gap-2">
-        {isAuthenticated ? (
+        {!isAuthStateResolved ? (
+          <AuthPendingActionButtons />
+        ) : isAuthenticated ? (
           isCloseMode ? (
             <>
               <button
@@ -1292,6 +1296,35 @@ function formatLiquidationPrice(
     return "-";
   }
   return type === "ESTIMATED" ? `${formatUsd(price)} (Est.)` : formatUsd(price);
+}
+
+function AuthPendingActionButtons() {
+  return (
+    <>
+      <button
+        aria-label="Order action pending"
+        className={[
+          "rounded-main bg-main-light-gray/70 px-3 py-3 text-sm-custom font-bold",
+          "text-transparent disabled:cursor-not-allowed",
+        ].join(" ")}
+        disabled
+        type="button"
+      >
+        {"\u00A0"}
+      </button>
+      <button
+        aria-label="Order action pending"
+        className={[
+          "rounded-main bg-main-light-gray/70 px-3 py-3 text-sm-custom font-bold",
+          "text-transparent disabled:cursor-not-allowed",
+        ].join(" ")}
+        disabled
+        type="button"
+      >
+        {"\u00A0"}
+      </button>
+    </>
+  );
 }
 
 function SegmentedControl({

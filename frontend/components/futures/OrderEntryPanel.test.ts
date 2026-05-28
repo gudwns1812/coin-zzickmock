@@ -178,6 +178,15 @@ test("order ticket disables fallback market prices before live data recovers", (
   assert.equal(source.includes("실시간 시세가 복구된 뒤 주문을 다시 시도해주세요."), false);
 });
 
+test("order ticket keeps auth-dependent actions inert until auth hydration resolves", () => {
+  assert.equal(source.includes("isAuthStateResolved?: boolean"), true);
+  assert.equal(source.includes("isAuthStateResolved = true"), true);
+  assert.equal(source.includes("!isAuthStateResolved ?"), true);
+  assert.equal(source.includes("<AuthPendingActionButtons />"), true);
+  assert.equal(source.includes("function AuthPendingActionButtons"), true);
+  assert.equal(source.includes('aria-label="Order action pending"'), true);
+});
+
 test("order account summary uses displayed positions for live mark-to-market values", () => {
   assert.equal(source.includes("deriveLiveAccountSummaryDisplay"), true);
   assert.equal(source.includes("liveAccountSummary"), true);

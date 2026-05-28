@@ -66,6 +66,13 @@ test("authenticated screens share the react-query auth cache", () => {
   assert.match(marketsLandingSource, /isAuthenticated=\{effectiveIsAuthenticated\}/);
   assert.match(marketsLandingSource, /enabled: Boolean\(authUser\)/);
   assert.doesNotMatch(marketsLandingSource, /isAuthenticated=\{_isAuthenticated\}/);
+  assert.match(marketDetailSource, /hasHydratedAuthState/);
+  assert.match(marketDetailSource, /isAuthStateResolved/);
+  assert.match(marketDetailSource, /isAuthStateResolved=\{isAuthStateResolved\}/);
+  assert.match(
+    marketDetailSource,
+    /const authUser = isAuthStateResolved \? authQuery\.data \?\? null : null/
+  );
 });
 
 test("auth events encode explicit cache-policy actions", () => {

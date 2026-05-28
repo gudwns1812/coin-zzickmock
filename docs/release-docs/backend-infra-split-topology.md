@@ -48,13 +48,13 @@ The backend host remains the only public application ingress for ports 80/443. O
 | Public API and health | Internet | Backend-host Nginx | 80/443, `/api/futures/**`, `/actuator/health` | Public only on backend host | Public health/API smoke |
 | Backend Redis client | Backend host/container | Infra-host Redis | tcp 6379 | Infra private interface/security group only | Redis ping and backend Redis health |
 | Backend metrics scrape | Infra-host Prometheus | Backend private endpoint | tcp 8080, `/actuator/prometheus` | Backend private interface/security group only; not Nginx | `curl -fsS http://<backend-private-host>:8080/actuator/prometheus` from infra host |
-| Backend host metrics scrape | Infra-host Prometheus | Backend-host node exporter | tcp 9100 | Backend private interface/security group only | Prometheus target up |
-| Nginx metrics scrape | Infra-host Prometheus | Backend-host nginx exporter | tcp 9113 | Backend private interface/security group only | Prometheus target up |
+| Backend host metrics scrape | Infra-host Prometheus | Backend-host Nginx private relay to node exporter | tcp 80, `/internal/metrics/node` | Private CIDR only at Nginx location; target label remains `backend-private:9100` | Prometheus target up |
+| Nginx metrics scrape | Infra-host Prometheus | Backend-host Nginx private relay to nginx exporter | tcp 80, `/internal/metrics/nginx` | Private CIDR only at Nginx location; target label remains `backend-private:9113` | Prometheus target up |
 | Backend logs push | Backend-host promtail | Infra-host Loki | tcp 3100, `/loki/api/v1/push` | Infra private interface/security group only | Loki receives backend-host log stream |
 | Redis metrics scrape | Infra-host Prometheus | Infra-host redis exporter | tcp 9121 | Infra-local or infra private only | Prometheus target up |
 | Grafana operator UI | Operator via current public route or private operator path | Grafana | `/grafana/` through backend Nginx if retained, or direct private operator access in a later change | Public UI path is an operator surface only; it is not a backend metrics scrape path | Grafana subpath/private UI check |
 
-Direct/private means reachable from the infra host or approved operator network, not open to the public internet. Security groups must restrict backend tcp 8080, 9100, and 9113 to the infra host. Nginx must continue to keep non-health `/actuator/**` requests out of the public route set.
+Direct/private means reachable from the infra host or approved operator network, not open to the public internet. Security groups must restrict backend tcp 8080 to the infra host. Backend-host exporter containers still publish `9100` and `9113` for local host access, but infra Prometheus uses private Nginx relay paths on tcp 80 so clouds that do not open high exporter ports still produce backend host metrics. Nginx must continue to keep non-health `/actuator/**` requests out of the public route set.
 
 ## Runtime Configuration Contract
 
@@ -88,7 +88,7 @@ GitHub Actions secrets for split CD:
 Backend and infra SSH users must be able to run Docker either directly or through passwordless `sudo -n docker ...`. The workflow tries direct Docker access first, then falls back to passwordless sudo so an Ubuntu infra user that is not in the `docker` group can still deploy without an interactive password prompt.
 
 Prometheus must scrape backend application metrics from `http://<backend-private-host>:8080/actuator/prometheus`, not from `https://<public-domain>/actuator/prometheus` and not from Nginx.
-Prometheus also scrapes backend-host node-exporter and Nginx exporter from the infra host at `http://<backend-private-host>:9100/metrics` and `http://<backend-private-host>:9113/metrics`; binding these exporters to backend-host loopback only will make Grafana show `backend-private:9100` as a selectable target with no node metrics behind it.
+Prometheus scrapes backend-host node-exporter and Nginx exporter through backend-host Nginx private relay paths: `http://<backend-private-host>:80/internal/metrics/node` and `http://<backend-private-host>:80/internal/metrics/nginx`. These locations allow RFC1918 private sources and deny public sources. Prometheus relabels the exported targets as `backend-private:9100` and `backend-private:9113`, so Grafana host filters still display exporter-style instances while the network path uses the already-reachable backend private Nginx listener.
 
 Grafana system dashboards must not assume the local colocated node-exporter job name. In split production, host metrics are scraped as `coin-zzickmock-backend-node` and `coin-zzickmock-infra-node`; local development still uses `coin-zzickmock-node`. System Overview host panels should match the full node-exporter job set so the infra-host dashboard does not render empty after the topology split. They should also expose host-selection variables so operators can view backend host and infra host separately when the combined view is noisy.
 

@@ -23,16 +23,24 @@ scrape_configs:
           service: backend
 
   - job_name: coin-zzickmock-nginx
+    metrics_path: /internal/metrics/nginx
     static_configs:
-      - targets: ["backend-private:9113"]
+      - targets: ["backend-private:80"]
         labels:
           service: nginx
+    relabel_configs:
+      - target_label: instance
+        replacement: backend-private:9113
 
   - job_name: coin-zzickmock-backend-node
+    metrics_path: /internal/metrics/node
     static_configs:
-      - targets: ["backend-private:9100"]
+      - targets: ["backend-private:80"]
         labels:
           service: backend-node
+    relabel_configs:
+      - target_label: instance
+        replacement: backend-private:9100
 
   - job_name: coin-zzickmock-redis
     static_configs:

@@ -98,7 +98,6 @@ type Props = {
   onSelectedIntervalChange: (interval: FuturesCandleInterval) => void;
   marketStreamCandle: (MarketStreamCandle & { interval: FuturesCandleInterval; serverTime: string }) | null;
   marketStreamHistoryFinalized: (MarketStreamHistoryFinalized & { interval: FuturesCandleInterval; serverTime: string }) | null;
-  onLatestCandleClosePriceChange?: (closePrice: number, receivedAt: number) => void;
 };
 
 type CandleResponse = {
@@ -178,7 +177,6 @@ export default function FuturesPriceChart({
   onSelectedIntervalChange,
   marketStreamCandle,
   marketStreamHistoryFinalized,
-  onLatestCandleClosePriceChange,
 }: Props) {
   const queryClient = useQueryClient();
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
@@ -630,14 +628,12 @@ export default function FuturesPriceChart({
     const previousOpenTime = realtimeCandleOpenTimeRef.current;
     realtimeCandleOpenTimeRef.current = marketStreamCandle.openTime;
     setRealtimeCandle(marketStreamCandle);
-    onLatestCandleClosePriceChange?.(marketStreamCandle.closePrice, Date.now());
 
     if (!previousOpenTime || previousOpenTime !== marketStreamCandle.openTime) {
       scheduleClosedCandleFinalizationRefetch();
     }
   }, [
     marketStreamCandle,
-    onLatestCandleClosePriceChange,
     scheduleClosedCandleFinalizationRefetch,
     selectedInterval,
   ]);

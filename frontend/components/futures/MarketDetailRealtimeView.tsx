@@ -126,9 +126,6 @@ export default function MarketDetailRealtimeView({
     isInitialMarketDataDegraded
   );
   const [marketUpdatedAt, setMarketUpdatedAt] = useState(() => Date.now());
-  const [latestCandleClosePrice, setLatestCandleClosePrice] = useState<
-    number | null
-  >(null);
   const [fundingCountdownNow, setFundingCountdownNow] = useState(() =>
     Date.now()
   );
@@ -307,7 +304,6 @@ export default function MarketDetailRealtimeView({
 
   useEffect(() => {
     setIsMarketDataDegraded(isInitialMarketDataDegraded);
-    setLatestCandleClosePrice(null);
     setMarketStreamCandle(null);
     setMarketStreamHistoryFinalized(null);
     setMarketSnapshotsBySymbol(
@@ -318,13 +314,6 @@ export default function MarketDetailRealtimeView({
       )
     );
   }, [initialMarket, isInitialMarketDataDegraded]);
-
-  const handleLatestCandleClosePriceChange = useCallback(
-    (closePrice: number) => {
-      setLatestCandleClosePrice(closePrice);
-    },
-    []
-  );
 
   const handleQuickLimitPriceSelect = useCallback((price: number) => {
     setQuickLimitPriceSelection({
@@ -458,9 +447,7 @@ export default function MarketDetailRealtimeView({
       ),
     [fundingCountdownNow, market.nextFundingAt, market.serverTime, marketUpdatedAt]
   );
-  const displayedLatestPrice = isMarketDataDegraded
-    ? null
-    : latestCandleClosePrice ?? market.lastPrice;
+  const displayedLatestPrice = isMarketDataDegraded ? null : market.lastPrice;
   const liveMarketPrice = displayedLatestPrice ?? 0;
 
   return (
@@ -582,7 +569,6 @@ export default function MarketDetailRealtimeView({
               currentPriceUpdatedAt={marketUpdatedAt}
               marketStreamCandle={marketStreamCandle}
               marketStreamHistoryFinalized={marketStreamHistoryFinalized}
-              onLatestCandleClosePriceChange={handleLatestCandleClosePriceChange}
               onSelectedIntervalChange={setSelectedInterval}
               openOrders={effectiveChartOpenOrders}
               positions={displayedChartPositions}

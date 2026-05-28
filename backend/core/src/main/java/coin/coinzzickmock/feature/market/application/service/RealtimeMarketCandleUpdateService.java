@@ -16,7 +16,7 @@ public class RealtimeMarketCandleUpdateService {
     public boolean accept(RealtimeMarketCandleUpdate update) {
         boolean accepted = realtimeMarketDataStore.acceptCandle(update);
         if (accepted) {
-            applicationEventPublisher.publishEvent(new MarketCandleUpdatedEvent(update.symbol()));
+            applicationEventPublisher.publishEvent(MarketCandleUpdatedEvent.from(update));
         }
         return accepted;
     }

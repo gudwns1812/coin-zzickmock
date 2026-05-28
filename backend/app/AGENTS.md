@@ -5,8 +5,9 @@
 
 ## Scope
 
-`app`은 유일한 executable Spring Boot module이다.
-Boot runtime, component scan, profile configuration, web/job adapters, and leaf adapter assembly를 소유한다.
+`app`은 primary executable Spring Boot module이다.
+Boot runtime, component scan, profile configuration, user-facing web/job adapters, and leaf adapter assembly를 소유한다.
+Redis Stream-backed SSE relay executable은 `../push-app`이 소유한다.
 
 ## Required Reads
 
@@ -17,7 +18,7 @@ Boot runtime, component scan, profile configuration, web/job adapters, and leaf 
 
 ## Rules
 
-- Only `app` applies the Spring Boot executable plugin.
+- `app` and `push-app` are the only Spring Boot executable modules; `app` remains the primary API/write runtime.
 - `app` may depend on `core`, `stream`, `storage`, and `external`.
 - Leaf adapter concrete imports are allowed only in configuration/assembly/config package boundaries.
 - `web` and `job` adapters call core use cases and application DTO/query/result contracts; they do not directly depend on storage/external/stream concrete implementation.

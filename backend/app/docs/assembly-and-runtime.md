@@ -3,7 +3,7 @@
 ## Purpose
 
 This document defines `backend/app` ownership.
-It is the canonical module document for executable runtime assembly.
+It is the canonical module document for the primary executable runtime assembly.
 
 ## Ownership
 
@@ -16,9 +16,11 @@ It is the canonical module document for executable runtime assembly.
 - Leaf adapter wiring across `core`, `stream`, `storage`, and `external`.
 - Runtime verification that storage Flyway migrations are packaged in the executable app artifact.
 
+`app` does not own the Redis Stream-backed push server relay. That runtime is isolated in `backend/push-app` and consumes only push event envelopes published by `app`.
+
 ## Wiring Rule
 
-`app` is the only module that may compose leaf adapters together.
+`app` is the only primary API runtime module that may compose leaf adapters together.
 Concrete leaf adapter imports are limited to `configuration`, `assembly`, or `config` package boundaries.
 This applies even when two modules intentionally share the same Java package name; same-package simple-name references to leaf adapter classes are still treated as leaf concrete dependencies.
 
@@ -30,6 +32,7 @@ If an inbound adapter needs stream delivery, `web` should depend on an app-owned
 
 The executable artifact is `backend/app/build/libs/app-*.jar`.
 When storage migrations move or packaging changes, verify that the `app` boot jar carries Flyway migration resources from `storage`.
+Push server packaging is verified separately with `backend/push-app/build/libs/push-app.jar`.
 
 ## Related Documents
 

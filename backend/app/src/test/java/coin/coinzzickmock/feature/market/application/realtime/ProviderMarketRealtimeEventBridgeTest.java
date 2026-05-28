@@ -94,7 +94,13 @@ class ProviderMarketRealtimeEventBridgeTest {
         assertThat(store.latestCandle("BTCUSDT", MarketCandleInterval.ONE_MINUTE)).hasValueSatisfying(candle ->
                 assertThat(candle.closePrice()).isEqualByComparingTo("75305")
         );
-        assertThat(publishedEvents).containsExactly(new MarketCandleUpdatedEvent("BTCUSDT"));
+        assertThat(publishedEvents).hasOnlyOneElementSatisfying(event -> {
+            assertThat(event).isInstanceOf(MarketCandleUpdatedEvent.class);
+            MarketCandleUpdatedEvent candleEvent = (MarketCandleUpdatedEvent) event;
+            assertThat(candleEvent.symbol()).isEqualTo("BTCUSDT");
+            assertThat(candleEvent.interval()).isEqualTo("1m");
+            assertThat(candleEvent.hasPayload()).isTrue();
+        });
         assertThat(movements).containsExactly(new MarketTradePriceMovedEvent(
                 "BTCUSDT",
                 75300.1,

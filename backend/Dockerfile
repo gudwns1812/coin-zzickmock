@@ -29,9 +29,52 @@ COPY app ./app
 COPY stream ./stream
 COPY storage ./storage
 COPY external ./external
+COPY push-app ./push-app
 
 RUN chmod +x ./gradlew && ./gradlew :app:bootJar --no-daemon
 
 FROM runtime-base AS source-runtime
 
 COPY --from=source-build /workspace/app/build/libs/app.jar /app/app.jar
+
+FROM eclipse-temurin:21-jre AS push-runtime-base
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app \
+    && useradd --system --gid app app
+
+USER app
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-jar", "/app/push-app.jar"]
+
+FROM push-runtime-base AS push-jar-runtime
+
+COPY push-app/build/libs/push-app.jar /app/push-app.jar
+
+FROM eclipse-temurin:17-jdk AS java17-toolchain
+
+FROM eclipse-temurin:21-jdk AS push-source-build
+
+WORKDIR /workspace
+
+COPY --from=java17-toolchain /opt/java/openjdk /opt/java/openjdk-17
+
+COPY gradlew settings.gradle build.gradle ./
+COPY gradle ./gradle
+COPY core ./core
+COPY stream ./stream
+COPY push-app ./push-app
+
+RUN chmod +x ./gradlew \
+    && ./gradlew :push-app:bootJar --no-daemon \
+        -Dorg.gradle.java.installations.paths=/opt/java/openjdk,/opt/java/openjdk-17
+
+FROM push-runtime-base AS push-source-runtime
+
+COPY --from=push-source-build /workspace/push-app/build/libs/push-app.jar /app/push-app.jar

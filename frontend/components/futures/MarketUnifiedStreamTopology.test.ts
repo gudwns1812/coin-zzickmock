@@ -101,8 +101,8 @@ test("unified market stream URL helper can bypass Vercel route handlers for publ
   assert.equal(source.includes("symbol"), true);
   assert.equal(source.includes("interval"), true);
   assert.equal(source.includes("NEXT_PUBLIC_FUTURES_API_BASE_URL"), true);
-  assert.equal(source.includes("/markets/stream"), true);
-  assert.equal(source.includes("/orders/stream"), true);
+  assert.equal(source.includes("/stream/markets"), true);
+  assert.equal(source.includes("/stream/orders"), true);
   assert.equal(source.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
 });
 
@@ -112,7 +112,7 @@ test("market landing summary stream uses direct-capable URL helper without inter
 
   assert.equal(source.includes("symbols"), true);
   assert.equal(source.includes("createMarketSummarySseUrl"), true);
-  assert.equal(source.includes("/markets/summary/stream"), true);
+  assert.equal(source.includes("/stream/markets/summary"), true);
   assert.equal(landingSource.includes("createMarketSummarySseUrl"), true);
   assert.equal(landingSource.includes("initialMarkets.map((market) => ("), false);
 });

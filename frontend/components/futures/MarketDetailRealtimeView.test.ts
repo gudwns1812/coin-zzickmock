@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(path.join(__dirname, "MarketDetailRealtimeView.tsx"), "utf8");
-const detailPageSource = readFileSync(
-  path.join(__dirname, "../../app/(main)/markets/[symbol]/page.tsx"),
+const routeShellSource = readFileSync(
+  path.join(__dirname, "MarketDetailRouteShell.tsx"),
   "utf8"
 );
 const globalsSource = readFileSync(
@@ -22,7 +22,7 @@ test("symbol selector renders supported BTCUSDT and ETHUSDT markets", () => {
 
 test("market detail remounts when the route symbol changes", () => {
   assert.equal(source.includes("prevSymbol"), false);
-  assert.equal(detailPageSource.includes("key={market.symbol}"), true);
+  assert.equal(routeShellSource.includes("key={market.symbol}"), true);
 });
 
 test("trading title renders logo, asset, and perpetual on one row", () => {

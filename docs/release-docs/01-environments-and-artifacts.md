@@ -24,8 +24,8 @@
 - 현재 구현: `.github/workflows/ci.yml`
 - 기본 검증:
   - 프론트엔드 `npm run lint`, `npm run build`
-  - 백엔드 `./gradlew check :app:bootJar`
-  - 백엔드 Docker image 포장 smoke build
+  - 백엔드 `./gradlew check :app:bootJar :push-app:bootJar`
+  - backend/push-app Docker image 포장 smoke build
 - 비고: 현재는 배포를 수행하지 않는다
 
 ### CD
@@ -35,9 +35,9 @@
 - 기본 동작:
   - `main`/`master`의 `backend/**`, `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/**` 변경 또는 수동 실행으로 시작한다
   - 변경 범위를 `backend_image`, `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포 효과로 분류한다
-  - `backend_image`일 때만 백엔드 `./gradlew check :app:bootJar`와 backend Docker image push를 수행한다
+  - `backend_image`일 때만 백엔드 `./gradlew check :app:bootJar :push-app:bootJar`와 backend/push-app Docker image push를 수행한다
   - backend host와 infra host에 각각 SSH 접속하며, 각 host에서 staged compose/env preflight를 먼저 수행한다
-  - `backend_image`는 backend host `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 교체한 뒤 backend를 pull/restart한다
+  - `backend_image`는 backend host `.env.prod`의 `BACKEND_IMAGE`와 `PUSH_IMAGE`를 새 태그로 교체한 뒤 backend와 push-app을 pull/restart한다
   - `infra/prometheus/**`, `infra/grafana/**`, `infra/loki/**`, `docker-compose.infra.prod.yml` 변경은 infra host만 반영하고 backend host를 건드리지 않는다
   - `docker-compose.prod.yml`은 rollback anchor이며 정상 CD 범위에 포함하지 않는다
 - 상세 기준: [04-production-cd.md](04-production-cd.md)
@@ -92,18 +92,20 @@
 ### Backend Artifact
 
 - 기준 명령: `cd backend && ./gradlew check`
-- 패키징 기준 명령: `cd backend && ./gradlew :app:bootJar`
+- 패키징 기준 명령: `cd backend && ./gradlew :app:bootJar :push-app:bootJar`
 - 의미: 백엔드 검증과 실행 가능한 jar 산출 가능 상태
 - 기록 항목:
   - 대상 commit SHA
   - 검증 결과
   - `backend/app/build/libs/app.jar` 생성 여부
+  - `backend/push-app/build/libs/push-app.jar` 생성 여부
 
 ### Production Docker Artifact
 
 - 기준 워크플로: `.github/workflows/cd.yml`
 - 기준 이미지:
   - `dockerhub-user/coin-zzickmock-backend:<tag>`
+  - `dockerhub-user/coin-zzickmock-push-app:<tag>`
 - 기준 플랫폼: `linux/arm64` Amazon Linux `aarch64`
 - 운영 compose 기준:
   - `docker-compose.backend.prod.yml`
@@ -112,7 +114,7 @@
   - `infra/prod.env.example`
 - rollback anchor:
   - `docker-compose.prod.yml`
-- 의미: 운영 프로필과 host별 Docker Compose로 backend host의 backend/Nginx/telemetry agents와 infra host의 Redis/Prometheus/Grafana/Loki/exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다. Host별 책임과 private port 계약은 [backend-infra-split-topology.md](backend-infra-split-topology.md)를 따른다.
+- 의미: 운영 프로필과 host별 Docker Compose로 backend host의 backend/push-app/Nginx/telemetry agents와 infra host의 Redis/Prometheus/Grafana/Loki/exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다. Host별 책임과 private port 계약은 [backend-infra-split-topology.md](backend-infra-split-topology.md)를 따른다.
 
 ### Documentation And Config Artifact
 
@@ -162,6 +164,7 @@
 - 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다. Split topology에서는 `REDIS_HOST`가 infra Redis private DNS/IP를 가리키고, `REDIS_PASSWORD`는 Redis auth/ACL을 켠 경우에만 서버 소유 secret으로 주입한다.
 - Backend container resource 기본값은 Compose에서 `BACKEND_CPUS=2.0`, `BACKEND_MEMORY_LIMIT=1g`로 둔다.
   Infra/cache/observability container가 별도 host로 분리되므로 backend split compose에는 Redis/Prometheus/Grafana/Loki를 포함하지 않는다.
+- Push server container resource 기본값은 Compose에서 `PUSH_CPUS=1.0`, `PUSH_MEMORY_LIMIT=512m`, host port `${PUSH_PORT:-8081}` private bind로 둔다. `PUSH_IMAGE`, `PUSH_MARKET_STREAM_KEY`, `PUSH_TRADING_STREAM_KEY`는 backend host `.env.prod`가 소유한다.
 - `BACKEND_JAVA_TOOL_OPTIONS` 기본값은 `-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError`다.
   JVM heap은 1GB container limit 기준으로 잡고 native memory 여유를 남긴다.
 - 운영 backend는 별도 infra host의 Prometheus scrape를 위해 container `8080`을 host `${BACKEND_BIND_ADDRESS:-0.0.0.0}:${BACKEND_PORT:-8080}`로 publish한다.
@@ -187,8 +190,8 @@
 ### Production Docker Host
 
 - Backend host와 infra host에는 각각 비밀값을 담은 `.env.prod`가 있어야 한다.
-- Backend host `.env.prod`에는 현재 운영 backend image를 가리키는 `BACKEND_IMAGE`가 있어야 한다.
-- CD는 backend image 배포 때 backend host `.env.prod`의 `BACKEND_IMAGE` 한 줄만 새 Docker Hub 태그로 교체한다.
+- Backend host `.env.prod`에는 현재 운영 backend image를 가리키는 `BACKEND_IMAGE`와 현재 운영 push server image를 가리키는 `PUSH_IMAGE`가 있어야 한다.
+- CD는 backend image 배포 때 backend host `.env.prod`의 `BACKEND_IMAGE`와 `PUSH_IMAGE`를 새 Docker Hub 태그로 교체한다.
 - CD는 backend-host runtime 변경 때 `docker-compose.backend.prod.yml`, `infra/nginx/`, `infra/promtail/`만 backend host로 복사한다.
 - CD는 infra-host runtime 변경 때 `docker-compose.infra.prod.yml`, `infra/prometheus/`, `infra/grafana/`, `infra/loki/`, `infra/promtail/`만 infra host로 복사한다. Redis/Grafana/Prometheus/Loki 변경은 backend host를 건드리지 않는다.
 - `.env.prod`의 공개 가능한 예시는 `infra/prod.env.example`에서 관리한다.

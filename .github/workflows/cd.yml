@@ -729,7 +729,18 @@ jobs:
             local name="$1"
             local url="$2"
             local pattern="$3"
-            curl -fsS --connect-timeout 5 --max-time 10 "${url}" | grep -Eq "${pattern}"
+            local body_file
+            body_file="$(mktemp)"
+            if ! curl -fsS --connect-timeout 5 --max-time 10 --output "${body_file}" "${url}"; then
+              rm -f "${body_file}"
+              return 1
+            fi
+            if ! grep -Eq "${pattern}" "${body_file}"; then
+              echo "${name} at ${url} did not include expected metric pattern: ${pattern}" >&2
+              rm -f "${body_file}"
+              return 1
+            fi
+            rm -f "${body_file}"
             echo "${name} reachable at ${url}"
           }
 

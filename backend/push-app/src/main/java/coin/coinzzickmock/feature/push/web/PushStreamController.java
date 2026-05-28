@@ -8,11 +8,13 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
@@ -80,7 +82,7 @@ public class PushStreamController {
             }
         }
         if (parsed.isEmpty()) {
-            throw new IllegalArgumentException("symbols must not be empty");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "symbols must not be empty");
         }
         return parsed;
     }

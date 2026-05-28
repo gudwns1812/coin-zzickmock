@@ -8,7 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Component
@@ -24,14 +26,14 @@ public class PushSseConnectionRegistry {
 
     public SseEmitter register(Set<String> keys, String clientKey, long timeoutMs) {
         if (keys == null || keys.isEmpty()) {
-            throw new IllegalArgumentException("at least one key is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "at least one key is required");
         }
         if (total.get() + keys.size() > properties.maxTotalSubscribers()) {
-            throw new IllegalStateException("push_sse_total_limit");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "push_sse_total_limit");
         }
         for (String key : keys) {
             if (byKey.getOrDefault(key, new CopyOnWriteArrayList<>()).size() >= properties.maxSubscribersPerKey()) {
-                throw new IllegalStateException("push_sse_key_limit");
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "push_sse_key_limit");
             }
         }
         SseEmitter emitter = new SseEmitter(timeoutMs);

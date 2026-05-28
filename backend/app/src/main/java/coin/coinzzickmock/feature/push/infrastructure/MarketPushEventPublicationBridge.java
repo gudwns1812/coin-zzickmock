@@ -3,9 +3,12 @@ package coin.coinzzickmock.feature.push.infrastructure;
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleUpdatedEvent;
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketCandleProjector;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.web.MarketFinalizedCandleIntervalsReader;
 import coin.coinzzickmock.feature.market.web.MarketSummaryResponse;
 import coin.coinzzickmock.feature.push.application.publisher.PushEventPublisher;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -15,7 +18,23 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 class MarketPushEventPublicationBridge {
+    private static final List<MarketCandleInterval> MINUTE_DERIVED_INTERVALS = List.of(
+            MarketCandleInterval.ONE_MINUTE,
+            MarketCandleInterval.THREE_MINUTES,
+            MarketCandleInterval.FIVE_MINUTES,
+            MarketCandleInterval.FIFTEEN_MINUTES
+    );
+    private static final List<MarketCandleInterval> HOURLY_DERIVED_INTERVALS = List.of(
+            MarketCandleInterval.ONE_HOUR,
+            MarketCandleInterval.FOUR_HOURS,
+            MarketCandleInterval.TWELVE_HOURS,
+            MarketCandleInterval.ONE_DAY,
+            MarketCandleInterval.ONE_WEEK,
+            MarketCandleInterval.ONE_MONTH
+    );
+
     private final MarketFinalizedCandleIntervalsReader finalizedCandleIntervalsReader;
+    private final RealtimeMarketCandleProjector realtimeMarketCandleProjector;
     private final PushEventPublisher pushEventPublisher;
     private final PushEventEnvelopeFactory pushEventEnvelopeFactory;
 
@@ -54,8 +73,21 @@ class MarketPushEventPublicationBridge {
             return;
         }
         try {
-            pushEventPublisher.publish(pushEventEnvelopeFactory.marketCandle(event));
-            pushEventPublisher.publish(pushEventEnvelopeFactory.unifiedMarketCandle(event));
+            for (MarketCandleInterval interval : pushedIntervals(event.interval())) {
+                realtimeMarketCandleProjector.latest(event.symbol(), interval)
+                        .ifPresent(result -> {
+                            pushEventPublisher.publish(pushEventEnvelopeFactory.marketCandle(
+                                    event.symbol(),
+                                    interval.value(),
+                                    result
+                            ));
+                            pushEventPublisher.publish(pushEventEnvelopeFactory.unifiedMarketCandle(
+                                    event.symbol(),
+                                    interval.value(),
+                                    result
+                            ));
+                        });
+            }
         } catch (RuntimeException exception) {
             log.warn("Failed to publish market candle push event. symbol={} interval={}", event.symbol(), event.interval(), exception);
         }
@@ -72,5 +104,14 @@ class MarketPushEventPublicationBridge {
             log.warn("Failed to publish market history push event. symbol={} openTime={} closeTime={}",
                     event.symbol(), event.openTime(), event.closeTime(), exception);
         }
+    }
+
+    private List<MarketCandleInterval> pushedIntervals(String sourceInterval) {
+        MarketCandleInterval interval = MarketCandleInterval.from(sourceInterval);
+        return switch (interval) {
+            case ONE_MINUTE -> MINUTE_DERIVED_INTERVALS;
+            case ONE_HOUR -> HOURLY_DERIVED_INTERVALS;
+            default -> List.of(interval);
+        };
     }
 }

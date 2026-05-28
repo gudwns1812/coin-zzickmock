@@ -142,7 +142,6 @@ Backend host `.env.prod`에는 최소 아래 값이 필요하다.
 - `BACKEND_BIND_ADDRESS`: 선택값. backend host에서 8080을 bind할 주소이며 기본은 `0.0.0.0`이다. public 노출은 security group으로 막는다
 - `PUSH_PORT`: direct/private push-app metrics port, 기본 `8081`
 - `PUSH_BIND_ADDRESS`: 선택값. push-app host port bind 주소이며 기본은 `127.0.0.1`이다. Nginx container는 Docker network `push-app:8081`로 접근한다
-- `PUSH_PUBLISHER_MODE`: backend publisher rollout mode. 기본은 `shadow`; `disabled`로 두면 Redis Stream 발행을 중지한다
 - `GRAFANA_PRIVATE_HOST`: 선택값. 지정하지 않으면 `REDIS_HOST`를 infra Grafana host로 쓴다
 - `LOKI_PUSH_URL`: 선택값. 지정하지 않으면 `http://<REDIS_HOST>:3100/loki/api/v1/push`를 쓴다
 

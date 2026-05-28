@@ -71,7 +71,6 @@ Backend host `.env.prod`:
 - `PUSH_IMAGE`: current push-app Docker image tag.
 - `PUSH_PORT`: host port for direct/private push-app scrape, default `8081`.
 - `PUSH_BIND_ADDRESS`: optional host bind address for push-app `8081`, default `127.0.0.1`.
-- `PUSH_PUBLISHER_MODE`: backend publisher mode for Redis Stream fan-out, default `shadow` during rollout.
 - `GRAFANA_PRIVATE_HOST`: optional infra Grafana private DNS/IP; default is `REDIS_HOST`.
 - `LOKI_PUSH_URL`: optional infra Loki push URL for backend-host promtail; default is `http://<REDIS_HOST>:3100/loki/api/v1/push`.
 

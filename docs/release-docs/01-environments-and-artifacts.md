@@ -164,7 +164,7 @@
 - 운영 프로필은 `backend/app/src/main/resources/application-prod.yml`을 기준으로 하며, `MYSQL_*`, `REDIS_*`, `JWT_SECRET`을 서버 환경에서 주입한다. Split topology에서는 `REDIS_HOST`가 infra Redis private DNS/IP를 가리키고, `REDIS_PASSWORD`는 Redis auth/ACL을 켠 경우에만 서버 소유 secret으로 주입한다.
 - Backend container resource 기본값은 Compose에서 `BACKEND_CPUS=2.0`, `BACKEND_MEMORY_LIMIT=1g`로 둔다.
   Infra/cache/observability container가 별도 host로 분리되므로 backend split compose에는 Redis/Prometheus/Grafana/Loki를 포함하지 않는다.
-- Push server container resource 기본값은 Compose에서 `PUSH_CPUS=1.0`, `PUSH_MEMORY_LIMIT=512m`, host port `${PUSH_PORT:-8081}` private bind로 둔다. `PUSH_IMAGE`, `PUSH_PUBLISHER_MODE`, `PUSH_MARKET_STREAM_KEY`, `PUSH_TRADING_STREAM_KEY`는 backend host `.env.prod`가 소유한다.
+- Push server container resource 기본값은 Compose에서 `PUSH_CPUS=1.0`, `PUSH_MEMORY_LIMIT=512m`, host port `${PUSH_PORT:-8081}` private bind로 둔다. `PUSH_IMAGE`, `PUSH_MARKET_STREAM_KEY`, `PUSH_TRADING_STREAM_KEY`는 backend host `.env.prod`가 소유한다.
 - `BACKEND_JAVA_TOOL_OPTIONS` 기본값은 `-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError`다.
   JVM heap은 1GB container limit 기준으로 잡고 native memory 여유를 남긴다.
 - 운영 backend는 별도 infra host의 Prometheus scrape를 위해 container `8080`을 host `${BACKEND_BIND_ADDRESS:-0.0.0.0}:${BACKEND_PORT:-8080}`로 publish한다.

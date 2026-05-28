@@ -85,7 +85,7 @@ Backend and infra SSH users must be able to run Docker either directly or throug
 
 Prometheus must scrape backend application metrics from `http://<backend-private-host>:8080/actuator/prometheus`, not from `https://<public-domain>/actuator/prometheus` and not from Nginx.
 
-Grafana system dashboards must not assume the local colocated node-exporter job name. In split production, host metrics are scraped as `coin-zzickmock-backend-node` and `coin-zzickmock-infra-node`; local development still uses `coin-zzickmock-node`. System Overview host panels should match the full node-exporter job set so the infra-host dashboard does not render empty after the topology split.
+Grafana system dashboards must not assume the local colocated node-exporter job name. In split production, host metrics are scraped as `coin-zzickmock-backend-node` and `coin-zzickmock-infra-node`; local development still uses `coin-zzickmock-node`. System Overview host panels should match the full node-exporter job set so the infra-host dashboard does not render empty after the topology split. They should also expose host-selection variables so operators can view backend host and infra host separately when the combined view is noisy.
 
 ## CD Scope Contract
 

@@ -93,6 +93,7 @@ Host CPU and memory:
   - local colocated stack: `coin-zzickmock-node`
   - split production stack: `coin-zzickmock-backend-node` and `coin-zzickmock-infra-node`
   Dashboard PromQL for host panels should therefore match all three node-exporter jobs instead of assuming the local-only job name.
+- The dashboard should expose host-selection variables (`Host role`, `Host instance`) so operators can isolate backend host, infra host, or a single node instead of reading every host series in one combined view.
 
 Loki/Promtail 설정:
 

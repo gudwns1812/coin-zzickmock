@@ -129,14 +129,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "up{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "expr": "up{job=~\"$host_job\", instance=~\"$host_instance\"}",
           "refId": "A",
           "legendFormat": "{{service}} {{job}} {{instance}}"
         }
       ],
       "title": "Node Exporter Targets Up",
       "type": "stat",
-      "description": "Matches local coin-zzickmock-node and split production coin-zzickmock-backend-node / coin-zzickmock-infra-node jobs."
+      "description": "Use the Host role and Host instance variables to isolate local, backend-host, or infra-host node exporter targets."
     },
     {
       "datasource": {
@@ -198,14 +198,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * (1 - avg by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", mode=\"idle\"}[$__rate_interval])))",
+          "expr": "100 * (1 - avg by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"$host_job\", instance=~\"$host_instance\", mode=\"idle\"}[$__rate_interval])))",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}}"
         }
       ],
-      "title": "Host CPU Usage",
+      "title": "Selected Host CPU Usage",
       "type": "stat",
-      "description": "Per-host CPU usage from node exporter."
+      "description": "Per-host CPU usage from node exporter. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -267,14 +267,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"} / node_memory_MemTotal_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}))",
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=~\"$host_job\", instance=~\"$host_instance\"} / node_memory_MemTotal_bytes{job=~\"$host_job\", instance=~\"$host_instance\"}))",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}}"
         }
       ],
-      "title": "Host Memory Usage",
+      "title": "Selected Host Memory Usage",
       "type": "stat",
-      "description": "Per-host memory usage from node exporter."
+      "description": "Per-host memory usage from node exporter. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -336,14 +336,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * max by (job, service, instance, mountpoint) ((node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"} - node_filesystem_avail_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"}) / node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"})",
+          "expr": "100 * max by (job, service, instance, mountpoint) ((node_filesystem_size_bytes{job=~\"$host_job\", instance=~\"$host_instance\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"} - node_filesystem_avail_bytes{job=~\"$host_job\", instance=~\"$host_instance\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"}) / node_filesystem_size_bytes{job=~\"$host_job\", instance=~\"$host_instance\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"})",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}} {{mountpoint}}"
         }
       ],
-      "title": "Filesystem Usage",
+      "title": "Selected Filesystem Usage",
       "type": "stat",
-      "description": "Non-tmpfs/non-overlay filesystem usage. Docker internals are excluded."
+      "description": "Non-tmpfs/non-overlay filesystem usage. Docker internals are excluded. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -417,7 +417,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * (1 - avg by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", mode=\"idle\"}[$__rate_interval])))",
+          "expr": "100 * (1 - avg by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"$host_job\", instance=~\"$host_instance\", mode=\"idle\"}[$__rate_interval])))",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}} total"
         },
@@ -427,14 +427,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * sum by (job, service, instance, mode) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", mode!=\"idle\"}[$__rate_interval])) / ignoring(mode) group_left sum by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}[$__rate_interval]))",
+          "expr": "100 * sum by (job, service, instance, mode) (rate(node_cpu_seconds_total{job=~\"$host_job\", instance=~\"$host_instance\", mode!=\"idle\"}[$__rate_interval])) / ignoring(mode) group_left sum by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"$host_job\", instance=~\"$host_instance\"}[$__rate_interval]))",
           "refId": "B",
           "legendFormat": "{{service}} {{instance}} {{mode}}"
         }
       ],
-      "title": "CPU Usage Over Time",
+      "title": "Selected CPU Usage Over Time",
       "type": "timeseries",
-      "description": "Per-host total CPU and non-idle mode breakdown."
+      "description": "Per-host total CPU and non-idle mode breakdown. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -508,7 +508,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "node_memory_MemTotal_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "expr": "node_memory_MemTotal_bytes{job=~\"$host_job\", instance=~\"$host_instance\"}",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}} total"
         },
@@ -518,7 +518,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "node_memory_MemAvailable_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "expr": "node_memory_MemAvailable_bytes{job=~\"$host_job\", instance=~\"$host_instance\"}",
           "refId": "B",
           "legendFormat": "{{service}} {{instance}} available"
         },
@@ -528,14 +528,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "node_memory_MemTotal_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"} - node_memory_MemAvailable_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "expr": "node_memory_MemTotal_bytes{job=~\"$host_job\", instance=~\"$host_instance\"} - node_memory_MemAvailable_bytes{job=~\"$host_job\", instance=~\"$host_instance\"}",
           "refId": "C",
           "legendFormat": "{{service}} {{instance}} used"
         }
       ],
-      "title": "Memory Over Time",
+      "title": "Selected Memory Over Time",
       "type": "timeseries",
-      "description": "Per-host memory capacity, available memory, and used memory."
+      "description": "Per-host memory capacity, available memory, and used memory. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -609,14 +609,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * max by (job, service, instance, mountpoint) ((node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"} - node_filesystem_avail_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"}) / node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"})",
+          "expr": "100 * max by (job, service, instance, mountpoint) ((node_filesystem_size_bytes{job=~\"$host_job\", instance=~\"$host_instance\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"} - node_filesystem_avail_bytes{job=~\"$host_job\", instance=~\"$host_instance\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"}) / node_filesystem_size_bytes{job=~\"$host_job\", instance=~\"$host_instance\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"})",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}} {{mountpoint}}"
         }
       ],
-      "title": "Filesystem Usage Over Time",
+      "title": "Selected Filesystem Usage Over Time",
       "type": "timeseries",
-      "description": "Per-host filesystem usage excluding tmpfs, overlay, squashfs, /run, and Docker internals."
+      "description": "Per-host filesystem usage excluding tmpfs, overlay, squashfs, /run, and Docker internals. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -690,7 +690,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (job, service, instance) (rate(node_network_receive_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"lo|docker.*|br-.*|veth.*\"}[$__rate_interval]))",
+          "expr": "sum by (job, service, instance) (rate(node_network_receive_bytes_total{job=~\"$host_job\", instance=~\"$host_instance\", device!~\"lo|docker.*|br-.*|veth.*\"}[$__rate_interval]))",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}} rx"
         },
@@ -700,14 +700,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (job, service, instance) (rate(node_network_transmit_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"lo|docker.*|br-.*|veth.*\"}[$__rate_interval]))",
+          "expr": "sum by (job, service, instance) (rate(node_network_transmit_bytes_total{job=~\"$host_job\", instance=~\"$host_instance\", device!~\"lo|docker.*|br-.*|veth.*\"}[$__rate_interval]))",
           "refId": "B",
           "legendFormat": "{{service}} {{instance}} tx"
         }
       ],
-      "title": "Network Throughput",
+      "title": "Selected Network Throughput",
       "type": "timeseries",
-      "description": "Per-host receive/transmit throughput; loopback and docker bridge/veth devices are excluded."
+      "description": "Per-host receive/transmit throughput; loopback and docker bridge/veth devices are excluded. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -781,7 +781,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (job, service, instance) (rate(node_disk_read_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"loop.*|ram.*|fd.*\"}[$__rate_interval]))",
+          "expr": "sum by (job, service, instance) (rate(node_disk_read_bytes_total{job=~\"$host_job\", instance=~\"$host_instance\", device!~\"loop.*|ram.*|fd.*\"}[$__rate_interval]))",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}} read"
         },
@@ -791,14 +791,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (job, service, instance) (rate(node_disk_written_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"loop.*|ram.*|fd.*\"}[$__rate_interval]))",
+          "expr": "sum by (job, service, instance) (rate(node_disk_written_bytes_total{job=~\"$host_job\", instance=~\"$host_instance\", device!~\"loop.*|ram.*|fd.*\"}[$__rate_interval]))",
           "refId": "B",
           "legendFormat": "{{service}} {{instance}} write"
         }
       ],
-      "title": "Disk I/O Throughput",
+      "title": "Selected Disk I/O Throughput",
       "type": "timeseries",
-      "description": "Per-host disk read/write throughput excluding loop, ram, and floppy devices."
+      "description": "Per-host disk read/write throughput excluding loop, ram, and floppy devices. Filtered by the Host role and Host instance dashboard variables."
     },
     {
       "datasource": {
@@ -872,7 +872,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "node_load1{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "expr": "node_load1{job=~\"$host_job\", instance=~\"$host_instance\"}",
           "refId": "A",
           "legendFormat": "{{service}} {{instance}} load1"
         },
@@ -882,7 +882,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "node_load5{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "expr": "node_load5{job=~\"$host_job\", instance=~\"$host_instance\"}",
           "refId": "B",
           "legendFormat": "{{service}} {{instance}} load5"
         },
@@ -892,14 +892,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "node_load15{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "expr": "node_load15{job=~\"$host_job\", instance=~\"$host_instance\"}",
           "refId": "C",
           "legendFormat": "{{service}} {{instance}} load15"
         }
       ],
-      "title": "Load Average",
+      "title": "Selected Load Average",
       "type": "timeseries",
-      "description": "Per-host Linux load averages."
+      "description": "Per-host Linux load averages. Filtered by the Host role and Host instance dashboard variables."
     }
   ],
   "refresh": "10s",
@@ -910,7 +910,64 @@
     "observability"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(up{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}, job)",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "coin-zzickmock-(node|backend-node|infra-node)",
+        "label": "Host role",
+        "multi": true,
+        "name": "host_job",
+        "options": [],
+        "query": {
+          "query": "label_values(up{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}, job)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(up{job=~\"$host_job\"}, instance)",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "label": "Host instance",
+        "multi": true,
+        "name": "host_instance",
+        "options": [],
+        "query": {
+          "query": "label_values(up{job=~\"$host_job\"}, instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-30m",
@@ -920,6 +977,6 @@
   "timezone": "browser",
   "title": "Coin Zzickmock System Overview",
   "uid": "coin-system-overview",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }

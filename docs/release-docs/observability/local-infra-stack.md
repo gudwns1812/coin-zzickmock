@@ -89,6 +89,10 @@ Host CPU and memory:
 - `node-exporter` exposes host-level CPU, memory, filesystem, and network metrics to Prometheus.
 - On Linux production hosts this represents the EC2/host machine. On Docker Desktop local environments this can represent the Docker VM rather than the physical laptop.
 - Container-by-container CPU or memory breakdown is a separate signal and needs cAdvisor or Docker engine metrics; the default dashboard here tracks host saturation only.
+- `Coin Zzickmock System Overview` must work in both topologies:
+  - local colocated stack: `coin-zzickmock-node`
+  - split production stack: `coin-zzickmock-backend-node` and `coin-zzickmock-infra-node`
+  Dashboard PromQL for host panels should therefore match all three node-exporter jobs instead of assuming the local-only job name.
 
 Loki/Promtail 설정:
 

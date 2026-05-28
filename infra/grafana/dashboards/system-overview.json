@@ -16,38 +16,35 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
+          "unit": "none",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
-                "color": "orange",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 85
+                "color": "green",
+                "value": 1
               }
             ]
           },
-          "unit": "percent"
+          "decimals": 0
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 6,
+        "h": 4,
+        "w": 12,
         "x": 0,
         "y": 0
       },
       "id": 1,
       "options": {
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "center",
+        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -62,13 +59,19 @@
       "pluginVersion": "11.5.2",
       "targets": [
         {
-          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\", mode=\"idle\"}[5m])))",
-          "legendFormat": "cpu",
-          "refId": "A"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=~\"prometheus|coin-zzickmock-(backend|nginx|redis|loki|grafana|node|backend-node|infra-node)\"}",
+          "refId": "A",
+          "legendFormat": "{{service}} {{job}} {{instance}}"
         }
       ],
-      "title": "Host CPU Usage",
-      "type": "stat"
+      "title": "Scrape Targets Up",
+      "type": "stat",
+      "description": "Prometheus target health across local and split production jobs. 1 means the target is currently scrapeable."
     },
     {
       "datasource": {
@@ -78,6 +81,72 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "refId": "A",
+          "legendFormat": "{{service}} {{job}} {{instance}}"
+        }
+      ],
+      "title": "Node Exporter Targets Up",
+      "type": "stat",
+      "description": "Matches local coin-zzickmock-node and split production coin-zzickmock-backend-node / coin-zzickmock-infra-node jobs."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "percent",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -95,66 +164,21 @@
               }
             ]
           },
-          "unit": "percent"
+          "decimals": 1
         },
         "overrides": []
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 6,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.5.2",
-      "targets": [
-        {
-          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"} / node_memory_MemTotal_bytes{job=\"coin-zzickmock-node\"}))",
-          "legendFormat": "memory",
-          "refId": "A"
-        }
-      ],
-      "title": "Host Memory Usage",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 6,
-        "x": 12,
-        "y": 0
+        "w": 8,
+        "x": 0,
+        "y": 4
       },
       "id": 3,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "center",
+        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -169,13 +193,19 @@
       "pluginVersion": "11.5.2",
       "targets": [
         {
-          "expr": "node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"}",
-          "legendFormat": "available",
-          "refId": "A"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * (1 - avg by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", mode=\"idle\"}[$__rate_interval])))",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}}"
         }
       ],
-      "title": "Host Memory Available",
-      "type": "stat"
+      "title": "Host CPU Usage",
+      "type": "stat",
+      "description": "Per-host CPU usage from node exporter."
     },
     {
       "datasource": {
@@ -185,21 +215,39 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [],
-          "unit": "percent"
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "decimals": 1
         },
         "overrides": []
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 18,
-        "y": 0
+        "w": 8,
+        "x": 8,
+        "y": 4
       },
       "id": 4,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "center",
+        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -214,13 +262,19 @@
       "pluginVersion": "11.5.2",
       "targets": [
         {
-          "expr": "100 * max by (mountpoint) ((node_filesystem_size_bytes{job=\"coin-zzickmock-node\", fstype!~\"tmpfs|overlay\"} - node_filesystem_avail_bytes{job=\"coin-zzickmock-node\", fstype!~\"tmpfs|overlay\"}) / node_filesystem_size_bytes{job=\"coin-zzickmock-node\", fstype!~\"tmpfs|overlay\"})",
-          "legendFormat": "{{mountpoint}}",
-          "refId": "A"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"} / node_memory_MemTotal_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}))",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}}"
         }
       ],
-      "title": "Filesystem Usage",
-      "type": "stat"
+      "title": "Host Memory Usage",
+      "type": "stat",
+      "description": "Per-host memory usage from node exporter."
     },
     {
       "datasource": {
@@ -229,6 +283,107 @@
       },
       "fieldConfig": {
         "defaults": {
+          "mappings": [],
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 4
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * max by (job, service, instance, mountpoint) ((node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"} - node_filesystem_avail_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"}) / node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"})",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}} {{mountpoint}}"
+        }
+      ],
+      "title": "Filesystem Usage",
+      "type": "stat",
+      "description": "Non-tmpfs/non-overlay filesystem usage. Docker internals are excluded."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
           "mappings": [],
           "unit": "percent"
         },
@@ -238,34 +393,48 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 10
       },
-      "id": 5,
+      "id": 6,
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "targets": [
         {
-          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\", mode=\"idle\"}[5m])))",
-          "legendFormat": "total",
-          "refId": "A"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * (1 - avg by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", mode=\"idle\"}[$__rate_interval])))",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}} total"
         },
         {
-          "expr": "100 * sum by (mode) (rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\", mode!=\"idle\"}[5m])) / ignoring(mode) group_left sum(rate(node_cpu_seconds_total{job=\"coin-zzickmock-node\"}[5m]))",
-          "legendFormat": "{{mode}}",
-          "refId": "B"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * sum by (job, service, instance, mode) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", mode!=\"idle\"}[$__rate_interval])) / ignoring(mode) group_left sum by (job, service, instance) (rate(node_cpu_seconds_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}[$__rate_interval]))",
+          "refId": "B",
+          "legendFormat": "{{service}} {{instance}} {{mode}}"
         }
       ],
       "title": "CPU Usage Over Time",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Per-host total CPU and non-idle mode breakdown."
     },
     {
       "datasource": {
@@ -274,6 +443,38 @@
       },
       "fieldConfig": {
         "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
           "mappings": [],
           "unit": "bytes"
         },
@@ -283,39 +484,422 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 6
+        "y": 10
       },
-      "id": 6,
+      "id": 7,
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "targets": [
         {
-          "expr": "node_memory_MemTotal_bytes{job=\"coin-zzickmock-node\"}",
-          "legendFormat": "total",
-          "refId": "A"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_memory_MemTotal_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}} total"
         },
         {
-          "expr": "node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"}",
-          "legendFormat": "available",
-          "refId": "B"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_memory_MemAvailable_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "refId": "B",
+          "legendFormat": "{{service}} {{instance}} available"
         },
         {
-          "expr": "node_memory_MemTotal_bytes{job=\"coin-zzickmock-node\"} - node_memory_MemAvailable_bytes{job=\"coin-zzickmock-node\"}",
-          "legendFormat": "used",
-          "refId": "C"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_memory_MemTotal_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"} - node_memory_MemAvailable_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "refId": "C",
+          "legendFormat": "{{service}} {{instance}} used"
         }
       ],
       "title": "Memory Over Time",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Per-host memory capacity, available memory, and used memory."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * max by (job, service, instance, mountpoint) ((node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"} - node_filesystem_avail_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"}) / node_filesystem_size_bytes{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", fstype!~\"tmpfs|overlay|squashfs\", mountpoint!~\"/run($|/).*|/var/lib/docker($|/).*\"})",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}} {{mountpoint}}"
+        }
+      ],
+      "title": "Filesystem Usage Over Time",
+      "type": "timeseries",
+      "description": "Per-host filesystem usage excluding tmpfs, overlay, squashfs, /run, and Docker internals."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job, service, instance) (rate(node_network_receive_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"lo|docker.*|br-.*|veth.*\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}} rx"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job, service, instance) (rate(node_network_transmit_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"lo|docker.*|br-.*|veth.*\"}[$__rate_interval]))",
+          "refId": "B",
+          "legendFormat": "{{service}} {{instance}} tx"
+        }
+      ],
+      "title": "Network Throughput",
+      "type": "timeseries",
+      "description": "Per-host receive/transmit throughput; loopback and docker bridge/veth devices are excluded."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job, service, instance) (rate(node_disk_read_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"loop.*|ram.*|fd.*\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}} read"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (job, service, instance) (rate(node_disk_written_bytes_total{job=~\"coin-zzickmock-(node|backend-node|infra-node)\", device!~\"loop.*|ram.*|fd.*\"}[$__rate_interval]))",
+          "refId": "B",
+          "legendFormat": "{{service}} {{instance}} write"
+        }
+      ],
+      "title": "Disk I/O Throughput",
+      "type": "timeseries",
+      "description": "Per-host disk read/write throughput excluding loop, ram, and floppy devices."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_load1{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "refId": "A",
+          "legendFormat": "{{service}} {{instance}} load1"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_load5{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "refId": "B",
+          "legendFormat": "{{service}} {{instance}} load5"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "node_load15{job=~\"coin-zzickmock-(node|backend-node|infra-node)\"}",
+          "refId": "C",
+          "legendFormat": "{{service}} {{instance}} load15"
+        }
+      ],
+      "title": "Load Average",
+      "type": "timeseries",
+      "description": "Per-host Linux load averages."
     }
   ],
   "refresh": "10s",
@@ -336,6 +920,6 @@
   "timezone": "browser",
   "title": "Coin Zzickmock System Overview",
   "uid": "coin-system-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

@@ -71,14 +71,14 @@ test("chart consumes parent unified candle events instead of opening its own bac
   assert.equal(source.includes("getLiveCandleBucket"), false);
 });
 
-test("chart reports realtime candle close price to the trading header", () => {
+test("chart keeps realtime candle close separate from the trading latest price", () => {
   assert.equal(
     source.includes("onLatestCandleClosePriceChange?: (closePrice: number, receivedAt: number) => void"),
-    true
+    false
   );
   assert.equal(
     source.includes("onLatestCandleClosePriceChange?.(marketStreamCandle.closePrice, Date.now())"),
-    true
+    false
   );
 });
 
@@ -104,7 +104,7 @@ test("chart does not immediately invalidate REST history on realtime bucket chan
   );
   assert.equal(
     source.includes("onLatestCandleClosePriceChange?.(marketStreamCandle.closePrice, Date.now())"),
-    true
+    false
   );
 });
 

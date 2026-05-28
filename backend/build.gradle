@@ -78,9 +78,11 @@ def architectureAllowedTopLevel = ['common', 'providers', 'feature'] as Set
 def architectureForbiddenTopLevel = ['bootstrap', 'support', 'core', 'extern', 'storage'] as Set
 def architectureLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
 def architectureTargetLayers = ['web', 'job', 'application', 'domain', 'infrastructure'] as Set
-def architectureBackendModules = ['app', 'core', 'stream', 'storage', 'external'] as Set
+def architectureBackendModules = ['app', 'push-app', 'core', 'stream', 'storage', 'external'] as Set
 def architectureBusinessCoreModules = ['core'] as Set
 def architectureLeafAdapterModules = ['stream', 'storage', 'external'] as Set
+def architectureExecutableModules = ['app', 'push-app'] as Set
+def architecturePushAppAllowedDependencies = ['core', 'stream'] as Set
 def architectureLibraryModules = ['core', 'stream', 'storage', 'external'] as Set
 def architectureReport = layout.buildDirectory.file('reports/architecture-lint/violations.jsonl')
 def architectureAllowlistFile = file('architecture-lint-allowlist.json')
@@ -182,6 +184,7 @@ tasks.register('architectureLint') {
                             'EXTERNAL_ADAPTER_MODULE_BOUNDARY',
                             'MODULE_CORE_NO_PROJECT_DEPENDENCY',
                             'MODULE_LEAF_DEPENDS_ONLY_ON_CORE',
+                            'MODULE_PUSH_APP_DEPENDENCY_BOUNDARY',
                             'APP_LEAF_IMPORTS_CONFIGURATION_ONLY',
                             'APP_WEB_JOB_CORE_ONLY',
                             'APP_FEATURE_APPLICATION_DOMAIN_RESIDUE_ALLOWLIST',
@@ -299,14 +302,14 @@ tasks.register('architectureLint') {
                     return
                 }
 
-                if (moduleName == 'app') {
+                if (architectureExecutableModules.contains(moduleName)) {
                     if (!moduleProject.plugins.hasPlugin('org.springframework.boot')) {
                         logViolation(
                                 moduleProject.buildFile,
                                 moduleBuildLine(moduleProject, "org.springframework.boot"),
-                                'MODULE_EXECUTABLE_APP_ONLY',
-                                'app module만 Spring Boot executable 진입점이어야 하며 app에는 Spring Boot plugin이 필요합니다.',
-                                "backend/app/build.gradle에 org.springframework.boot plugin을 유지하세요.",
+                                'MODULE_EXECUTABLE_RUNTIME_ALLOWED_SET',
+                                'app와 push-app만 Spring Boot executable 진입점이며 둘 다 Spring Boot plugin이 필요합니다.',
+                                "backend/${moduleName}/build.gradle에 org.springframework.boot plugin을 유지하세요.",
                                 [moduleName: moduleName]
                         )
                     }
@@ -316,7 +319,7 @@ tasks.register('architectureLint') {
                         logViolation(
                                 moduleProject.buildFile,
                                 1,
-                                'MODULE_EXECUTABLE_APP_ONLY',
+                                'MODULE_EXECUTABLE_RUNTIME_ALLOWED_SET',
                                 "${moduleName} module은 executable Spring Boot app이 아니라 library module이어야 합니다.",
                                 'core/stream/storage/external에는 org.springframework.boot plugin 또는 enabled bootJar task를 두지 마세요.',
                                 [moduleName: moduleName]
@@ -328,7 +331,7 @@ tasks.register('architectureLint') {
                         logViolation(
                                 moduleProject.buildFile,
                                 1,
-                                'MODULE_EXECUTABLE_APP_ONLY',
+                                'MODULE_EXECUTABLE_RUNTIME_ALLOWED_SET',
                                 "${moduleName} library module의 plain jar task가 비활성화되어 있습니다.",
                                 'library module은 app bootJar에 포함될 수 있도록 jar task를 활성화하세요.',
                                 [moduleName: moduleName]
@@ -354,6 +357,15 @@ tasks.register('architectureLint') {
                                         'MODULE_LEAF_DEPENDS_ONLY_ON_CORE',
                                         "${moduleName} leaf adapter module은 backend project module 중 core에만 의존할 수 있습니다.",
                                         'stream/storage/external은 서로와 app에 project dependency를 두지 말고 필요한 계약은 core로 이동하세요.',
+                                        [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
+                                )
+                            } else if (architectureBackendModules.contains(dependencyModuleName) && dependencyModuleName != moduleName && moduleName == 'push-app' && !architecturePushAppAllowedDependencies.contains(dependencyModuleName)) {
+                                logViolation(
+                                        moduleProject.buildFile,
+                                        moduleBuildLine(moduleProject, "project(':${dependencyModuleName}')"),
+                                        'MODULE_PUSH_APP_DEPENDENCY_BOUNDARY',
+                                        'push-app은 browser push delivery executable이므로 backend project module 중 core와 stream에만 의존할 수 있습니다.',
+                                        'push-app에서 storage/external/app 의존을 제거하고 필요한 값/계약은 core 또는 stream transport contract로 이동하세요.',
                                         [moduleName: moduleName, dependencyModuleName: dependencyModuleName, configurationName: configuration.name]
                                 )
                             }
@@ -929,9 +941,9 @@ tasks.register('architectureLint') {
     }
 }
 
-tasks.register('verifySingleAppRuntime') {
+tasks.register('verifyExecutableRuntimes') {
     group = 'verification'
-    description = 'Verifies only the app module owns the executable Spring Boot runtime.'
+    description = 'Verifies app and push-app are the only executable Spring Boot runtimes.'
 
     def runtimeSourceFiles = provider {
         subprojects.collectMany { subproject ->
@@ -945,13 +957,13 @@ tasks.register('verifySingleAppRuntime') {
     inputs.files(provider { runtimeSourceFiles.get() })
 
     doLast {
-        def expectedRuntimeProject = ':app'
+        def expectedRuntimeProjects = [':app', ':push-app']
         def bootProjects = subprojects
                 .findAll { subproject -> subproject.plugins.hasPlugin('org.springframework.boot') }
                 .collect { it.path }
                 .sort()
-        if (bootProjects != [expectedRuntimeProject]) {
-            throw new GradleException("Exactly one Spring Boot runtime module is allowed: ${expectedRuntimeProject}. Found: ${bootProjects}")
+        if (bootProjects != expectedRuntimeProjects) {
+            throw new GradleException("Only executable Spring Boot runtime modules are allowed: ${expectedRuntimeProjects}. Found: ${bootProjects}")
         }
 
         def executableJarProjects = subprojects
@@ -961,36 +973,37 @@ tasks.register('verifySingleAppRuntime') {
                 }
                 .collect { it.path }
                 .sort()
-        if (executableJarProjects != [expectedRuntimeProject]) {
-            throw new GradleException("Only ${expectedRuntimeProject} may produce an executable bootJar. Found enabled bootJar tasks: ${executableJarProjects}")
+        if (executableJarProjects != expectedRuntimeProjects) {
+            throw new GradleException("Only ${expectedRuntimeProjects} may produce executable bootJars. Found enabled bootJar tasks: ${executableJarProjects}")
         }
 
         def runtimeMarkers = runtimeSourceFiles.get().collect { sourceFile ->
             def text = sourceFile.getText('UTF-8')
             [
-                    file                 : sourceFile,
-                    path                 : rootProject.relativePath(sourceFile).replace('\\', '/'),
-                    springBootApplication: text.contains('@SpringBootApplication'),
-                    springApplicationRun : text.contains('SpringApplication.run('),
+                    file                : sourceFile,
+                    path                : rootProject.relativePath(sourceFile).replace('\\', '/'),
+                    applicationMarker   : text.contains('@SpringBootApplication') || text.contains('@SpringBootConfiguration'),
+                    springApplicationRun: text.contains('SpringApplication.run('),
             ]
         }
 
-        def springBootApplications = runtimeMarkers.findAll { it.springBootApplication }
+        def applicationMarkers = runtimeMarkers.findAll { it.applicationMarker }
         def springApplicationRuns = runtimeMarkers.findAll { it.springApplicationRun }
+        def allowedPrefixes = ['app/src/main/java/', 'push-app/src/main/java/']
 
-        if (springBootApplications.size() != 1) {
-            throw new GradleException("Exactly one @SpringBootApplication entrypoint is allowed. Found: ${springBootApplications.collect { it.path }}")
+        if (applicationMarkers.size() != 2) {
+            throw new GradleException("Exactly two Spring Boot runtime entrypoints are allowed. Found: ${applicationMarkers.collect { it.path }}")
         }
-        if (springApplicationRuns.size() != 1) {
-            throw new GradleException("Exactly one SpringApplication.run entrypoint is allowed. Found: ${springApplicationRuns.collect { it.path }}")
+        if (springApplicationRuns.size() != 2) {
+            throw new GradleException("Exactly two SpringApplication.run entrypoints are allowed. Found: ${springApplicationRuns.collect { it.path }}")
         }
 
-        def runtimeEntrypoints = (springBootApplications + springApplicationRuns)
+        def runtimeEntrypoints = (applicationMarkers + springApplicationRuns)
                 .collect { it.path }
                 .unique()
-        def nonAppEntrypoints = runtimeEntrypoints.findAll { !it.startsWith('app/src/main/java/') }
-        if (!nonAppEntrypoints.isEmpty()) {
-            throw new GradleException("Runtime entrypoints must stay in ${expectedRuntimeProject}. Invalid files: ${nonAppEntrypoints}")
+        def invalidEntrypoints = runtimeEntrypoints.findAll { path -> !allowedPrefixes.any { path.startsWith(it) } }
+        if (!invalidEntrypoints.isEmpty()) {
+            throw new GradleException("Runtime entrypoints must stay in :app or :push-app. Invalid files: ${invalidEntrypoints}")
         }
     }
 }
@@ -998,8 +1011,9 @@ tasks.register('verifySingleAppRuntime') {
 tasks.register('check') {
     group = 'verification'
     description = 'Runs backend subproject checks and project architecture/runtime lint.'
-    dependsOn tasks.named('verifySingleAppRuntime')
+    dependsOn tasks.named('verifyExecutableRuntimes')
     dependsOn tasks.named('architectureLint')
     dependsOn project(':app').tasks.named('verifyBootJarStorageMigrations')
+    dependsOn project(':push-app').tasks.named('bootJar')
     dependsOn subprojects.collect { it.tasks.named('check') }
 }

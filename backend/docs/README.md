@@ -39,6 +39,8 @@ Module-specific rules는 각 module의 `docs/` 아래에 둔다.
   Business core, domain modeling, application/provider contracts.
 - [../app/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/README.md)
   Executable app, boot/config/assembly, web/job adapters, runtime artifact verification.
+- [../push-app/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/push-app/docs/README.md)
+  Executable push server, Redis Stream consumer group, SSE fan-out, and relay telemetry.
 - [../storage/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/docs/README.md)
   Persistence boundary, JPA/QueryDSL/Flyway, schema/migration workflow.
 - [../stream/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/stream/docs/README.md)

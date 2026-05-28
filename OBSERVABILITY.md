@@ -24,6 +24,7 @@
 - 메트릭: Spring Boot + Micrometer로 애플리케이션 meter를 수집하고 Prometheus가 scrape한다.
   운영에서 별도 infra host의 Prometheus가 backend를 scrape할 때는 Nginx를 거치지 않고 backend host의 private endpoint `http://<BACKEND_PRIVATE_HOST>:8080/actuator/prometheus`로 직접 접근한다.
   이 8080 접근은 cloud security group에서 infra host source로만 제한하고 public internet 전체에 노출하지 않는다.
+  Redis Stream-backed push server는 별도 `push-app` process로 `http://<BACKEND_PRIVATE_HOST>:8081/actuator/prometheus`를 제공한다. 이 8081 경로도 Nginx public route가 아니며 private scrape source로 제한한다.
 - 로그: 애플리케이션은 구조화 로그를 남기고 Loki가 수집한다.
 - 대시보드와 알림: Grafana가 Prometheus 메트릭과 Loki 로그를 함께 보여 준다.
 - 관리자 모니터링: 관리자 페이지는 운영 인프라 지표가 아니라 서비스 운영자가 조치할 수 있는 도메인 상태를 보여 준다.
@@ -379,13 +380,20 @@ Grafana에 추가할 지표:
 - `sse.send.total` with `stream`, `result`
 - `sse.send.duration` with `stream`, `result`
 - `sse.executor.rejected.total` with `stream`
+- `push.event.publish.total` with `stream`, `result`
+- `push.event.ack.total` with `stream`, `result`
+- `push.event.drop.total` with `stream`, `reason`
+- `push.delivery.send.total` with `stream`, `result`
+- `push.event.age.seconds` with `stream`, `result`
 
 현재 구현은 executor rejection을 counter로 기록한다. executor queue depth는 queue 구현이 노출될 때 별도 gauge 이름을 정해 추가한다.
+Push server 지표는 Redis Stream publish/ack/relay 결과만 낮은 카디널리티 label로 기록하고 `memberId`, `symbol`, `clientKey`를 label로 넣지 않는다.
 
 구현 경계:
 
 - 제한이 있는 market/trading SSE subscriber lifecycle은 `common/web/SseSubscriptionRegistry`가 담당한다.
 - feature SSE broker는 `stream` 이름, 거절 사유 매핑, executor rejection, send duration, payload 변환만 stream별로 소유한다.
+- split push server에서는 canonical `/api/futures/stream/**` SSE lifecycle이 `push-app`에 있으며, backend `app`은 Redis Stream publish 결과만 계측한다.
 - registry key가 symbol이나 member id일 수 있어도 Prometheus label에는 key 원문을 넣지 않는다. stream과 bounded reason만 label로 사용한다.
 
 중요 로그:

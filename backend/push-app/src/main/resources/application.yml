@@ -1,0 +1,47 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
+
+server:
+  port: ${PUSH_SERVER_PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: coin-zzickmock
+      service: push-app
+      environment: ${APP_ENV:local}
+
+app:
+  auth:
+    jwt-secret: ${JWT_SECRET:dGhlLXF1aWNrLWJyb3duLWZveC1qdW1wcy1vdmVyLXRoZS1sYXp5LWRvZy1hbmQtc29tZS1vdGhlci1zZWNyZXQtc3R1ZmY=}
+
+coin:
+  push:
+    server:
+      enabled: ${PUSH_SERVER_ENABLED:true}
+      consumer-name: ${PUSH_SERVER_CONSUMER_NAME:${HOSTNAME:local-push-app}}
+      market-stream-key: ${PUSH_MARKET_STREAM_KEY:coin:push:market:v1}
+      trading-stream-key: ${PUSH_TRADING_STREAM_KEY:coin:push:trading:v1}
+      market-group: ${PUSH_MARKET_CONSUMER_GROUP:push-server-market-v1}
+      trading-group: ${PUSH_TRADING_CONSUMER_GROUP:push-server-trading-v1}
+      poll-fixed-delay-ms: ${PUSH_STREAM_POLL_FIXED_DELAY_MS:100}
+      batch-size: ${PUSH_STREAM_BATCH_SIZE:50}
+      default-market-max-age: ${PUSH_MARKET_MAX_AGE:PT15S}
+      default-trading-max-age: ${PUSH_TRADING_MAX_AGE:PT5S}
+      sse-timeout-ms: ${PUSH_SSE_TIMEOUT_MS:300000}
+      max-subscribers-per-key: ${PUSH_MAX_SUBSCRIBERS_PER_KEY:100}
+      max-total-subscribers: ${PUSH_MAX_TOTAL_SUBSCRIBERS:1000}

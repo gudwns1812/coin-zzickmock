@@ -18,6 +18,7 @@ This document owns `stream` module rules for realtime and SSE delivery.
 - Bitget raw WebSocket DTOs or external connector runtime.
 - JPA entities, QueryDSL, Flyway, persistence adapters.
 - Product/domain source-of-truth rules.
+- Redis Stream consumer group ownership for the split push server.
 
 ## Subscriber Lifecycle Rule
 
@@ -35,9 +36,9 @@ Feature brokers should focus on:
 
 `stream` must not import `storage` or `external` concrete types.
 `app` is the composition boundary that translates external provider updates or storage reads into stream-facing events.
+`push-app` may reuse stream response DTOs for wire compatibility, but it must receive data through `core` push event envelopes and Redis Streams rather than direct provider, storage, or app-module references.
 
 ## Related Documents
 
 - [../../docs/architecture/package-and-wiring.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/package-and-wiring.md)
 - [../../app/docs/assembly-and-runtime.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/assembly-and-runtime.md)
-

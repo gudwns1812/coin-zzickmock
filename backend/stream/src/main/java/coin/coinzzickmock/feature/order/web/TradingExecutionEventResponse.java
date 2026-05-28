@@ -14,7 +14,7 @@ public record TradingExecutionEventResponse(
         BigDecimal realizedPnl,
         String message
 ) {
-    static TradingExecutionEventResponse from(TradingExecutionEvent event) {
+    public static TradingExecutionEventResponse from(TradingExecutionEvent event) {
         return new TradingExecutionEventResponse(
                 event.type(),
                 event.orderId(),

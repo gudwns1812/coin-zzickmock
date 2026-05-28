@@ -54,6 +54,14 @@ coin:
         core-pool-size: 4
         max-pool-size: 16
         queue-capacity: 1000
+  push:
+    publisher:
+      mode: ${PUSH_PUBLISHER_MODE:disabled}
+      market-stream-key: ${PUSH_MARKET_STREAM_KEY:coin:push:market:v1}
+      trading-stream-key: ${PUSH_TRADING_STREAM_KEY:coin:push:trading:v1}
+      max-len: ${PUSH_STREAM_MAX_LEN:10000}
+      market-max-age: ${PUSH_MARKET_MAX_AGE:PT15S}
+      trading-max-age: ${PUSH_TRADING_MAX_AGE:PT5S}
   bitget:
     websocket:
       enabled: ${BITGET_WEBSOCKET_ENABLED:true}

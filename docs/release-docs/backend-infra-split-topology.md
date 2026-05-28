@@ -16,7 +16,7 @@ This runbook fixes the first production topology split between the backend runti
 
 Use a two-host topology for the first split:
 
-- Backend host: backend application container, Nginx public edge, and backend-host-local telemetry agents/exporters.
+- Backend host: backend application container, push-app SSE relay container, Nginx public edge, and backend-host-local telemetry agents/exporters.
 - Infra host: Redis plus central Prometheus, Grafana, Loki, Redis exporter, infra node exporter, and optional infra-host promtail.
 
 The backend host remains the only public application ingress for ports 80/443. Observability tools that access backend internals must use direct private backend endpoints and must not scrape backend metrics through Nginx.
@@ -26,6 +26,7 @@ The backend host remains the only public application ingress for ports 80/443. O
 ### Backend host
 
 - `backend`: Spring Boot application runtime.
+- `push-app`: Spring Boot push server runtime. It consumes Redis Stream push events and owns long-lived SSE fan-out.
 - `nginx`: public HTTPS edge for API, `/actuator/health`, and the operator Grafana subpath proxy if the existing public Grafana route is retained.
 - `backend-promtail`: backend-host-local Docker log collector that pushes to infra Loki.
 - `backend-node-exporter`: backend host metrics, scraped by infra Prometheus over private networking.
@@ -46,8 +47,10 @@ The backend host remains the only public application ingress for ports 80/443. O
 | Flow | Source | Destination | Port/path | Exposure rule | Validation |
 | --- | --- | --- | --- | --- | --- |
 | Public API and health | Internet | Backend-host Nginx | 80/443, `/api/futures/**`, `/actuator/health` | Public only on backend host | Public health/API smoke |
+| Public SSE stream edge | Internet | Backend-host Nginx -> push-app | 80/443, `/api/futures/stream/**` | Public only through backend-host Nginx; push-app port is private/container-local | SSE open smoke |
 | Backend Redis client | Backend host/container | Infra-host Redis | tcp 6379 | Infra private interface/security group only | Redis ping and backend Redis health |
 | Backend metrics scrape | Infra-host Prometheus | Backend private endpoint | tcp 8080, `/actuator/prometheus` | Backend private interface/security group only; not Nginx | `curl -fsS http://<backend-private-host>:8080/actuator/prometheus` from infra host |
+| Push-app metrics scrape | Infra-host Prometheus or backend-host Prometheus in local topology | Push-app private endpoint | tcp 8081, `/actuator/prometheus` | Private only; not public Nginx actuator | `curl -fsS http://<backend-private-host>:8081/actuator/prometheus` if host bind allows infra access |
 | Backend host metrics scrape | Infra-host Prometheus | Backend-host node exporter | tcp 9100 | Backend private interface/security group only | Prometheus target up |
 | Nginx metrics scrape | Infra-host Prometheus | Backend-host nginx exporter | tcp 9113 | Backend private interface/security group only | Prometheus target up |
 | Backend logs push | Backend-host promtail | Infra-host Loki | tcp 3100, `/loki/api/v1/push` | Infra private interface/security group only | Loki receives backend-host log stream |
@@ -65,6 +68,10 @@ Backend host `.env.prod`:
 - `REDIS_PASSWORD`: optional server-owned Redis password or ACL secret. Set it only when Redis auth/ACL is enabled.
 - `BACKEND_PORT`: host port for direct/private backend scrape, default `8080`.
 - `BACKEND_BIND_ADDRESS`: optional host bind address for backend `8080`, default `0.0.0.0`; restrict public exposure with the cloud security group.
+- `PUSH_IMAGE`: current push-app Docker image tag.
+- `PUSH_PORT`: host port for direct/private push-app scrape, default `8081`.
+- `PUSH_BIND_ADDRESS`: optional host bind address for push-app `8081`, default `127.0.0.1`.
+- `PUSH_PUBLISHER_MODE`: backend publisher mode for Redis Stream fan-out, default `shadow` during rollout.
 - `GRAFANA_PRIVATE_HOST`: optional infra Grafana private DNS/IP; default is `REDIS_HOST`.
 - `LOKI_PUSH_URL`: optional infra Loki push URL for backend-host promtail; default is `http://<REDIS_HOST>:3100/loki/api/v1/push`.
 
@@ -91,14 +98,14 @@ Grafana system dashboards must not assume the local colocated node-exporter job 
 
 The CD workflow deploys split host scopes through separate compose files and separate host jobs:
 
-- `docker-compose.backend.prod.yml` is the backend host contract. It contains backend, Nginx, backend-host promtail, nginx exporter, and backend node exporter. It does not contain Redis, Prometheus, Grafana, or Loki.
+- `docker-compose.backend.prod.yml` is the backend host contract. It contains backend, push-app, Nginx, backend-host promtail, nginx exporter, and backend node exporter. It does not contain Redis, Prometheus, Grafana, or Loki.
 - `docker-compose.infra.prod.yml` is the infra host contract. It contains Redis, Prometheus, Grafana, Loki, infra-host promtail, Redis exporter, and infra node exporter. It does not contain backend or Nginx.
 - `docker-compose.prod.yml` is a colocated rollback anchor and is not deployed by normal CD.
 
 Deployment effects:
 
-- `backend_image`: build/publish backend image, mutate backend host `.env.prod` `BACKEND_IMAGE`, recreate backend only, verify backend health and direct metrics reachability. It must not restart central infra services.
-- `backend_runtime`: apply backend host compose/env/runtime changes and recreate backend only. It must not publish an image or restart infra services.
+- `backend_image`: build/publish backend and push-app images, mutate backend host `.env.prod` `BACKEND_IMAGE`/`PUSH_IMAGE`, recreate backend and push-app only, verify backend health and direct metrics reachability. It must not restart central infra services.
+- `backend_runtime`: apply backend host compose/env/runtime changes and recreate backend/push-app runtime only. It must not publish an image or restart infra services.
 - `backend_agent_runtime`: apply backend-host-local promtail/exporter runtime only. It must not recreate the backend application.
 - `nginx_config`: apply backend host Nginx config, run `nginx -t`, reload/recreate Nginx according to config vs service-definition scope. It must not restart backend unless paired with a backend effect.
 - `infra_runtime`: apply infra host Redis/Prometheus/Grafana/Loki/exporter/storage changes and verify Redis, Prometheus, Grafana, and Loki. It must not build/publish/recreate backend.

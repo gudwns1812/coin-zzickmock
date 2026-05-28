@@ -219,7 +219,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
           cache: gradle
 
       - name: Ensure Gradle wrapper is executable
@@ -230,7 +230,7 @@ jobs:
       - name: Run backend check and package jar
         if: ${{ needs.classify.outputs.backend_image == 'true' }}
         working-directory: backend
-        run: ./gradlew check :app:bootJar --console=plain
+        run: ./gradlew check :app:bootJar :push-app:bootJar --console=plain
 
       - name: Prepare backend jar artifact
         if: ${{ needs.classify.outputs.backend_image == 'true' }}
@@ -249,6 +249,15 @@ jobs:
         with:
           name: backend-boot-jar
           path: backend/app/build/libs/app.jar
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload push-app jar artifact
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: push-app-boot-jar
+          path: backend/push-app/build/libs/push-app.jar
           if-no-files-found: error
           retention-days: 1
 
@@ -273,6 +282,13 @@ jobs:
         with:
           name: backend-boot-jar
           path: backend/app/build/libs
+
+      - name: Download push-app jar artifact
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: push-app-boot-jar
+          path: backend/push-app/build/libs
 
       - name: Setup QEMU for ARM64 build
         if: ${{ needs.classify.outputs.backend_image == 'true' }}
@@ -302,6 +318,18 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ needs.classify.outputs.image_tag }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and push push-app image
+        if: ${{ needs.classify.outputs.backend_image == 'true' }}
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          target: push-jar-runtime
+          platforms: linux/arm64
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-push-app:${{ needs.classify.outputs.image_tag }}
+          cache-from: type=gha,scope=push-app
+          cache-to: type=gha,mode=max,scope=push-app
 
   deploy_backend_host:
     name: Deploy Backend Host Effects
@@ -385,6 +413,7 @@ jobs:
           NGINX_CONFIG_EFFECT: ${{ needs.classify.outputs.nginx_config }}
           NGINX_SERVICE_DEFINITION_EFFECT: ${{ needs.classify.outputs.nginx_service_definition }}
           CANDIDATE_BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-backend:${{ needs.classify.outputs.image_tag }}
+          CANDIDATE_PUSH_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/coin-zzickmock-push-app:${{ needs.classify.outputs.image_tag }}
         run: |
           set -euo pipefail
           if [[ -z "${EC2_DEPLOY_PATH}" ]]; then
@@ -400,6 +429,7 @@ jobs:
             NGINX_CONFIG_EFFECT \
             NGINX_SERVICE_DEFINITION_EFFECT \
             CANDIDATE_BACKEND_IMAGE \
+            CANDIDATE_PUSH_IMAGE \
             DOCKERHUB_USERNAME \
             DOCKERHUB_TOKEN \
             EC2_DEPLOY_PATH \
@@ -448,6 +478,13 @@ jobs:
               echo ".env.prod must contain BACKEND_IMAGE before backend CD can preflight compose." >&2
               exit 1
             fi
+            if ! grep -q '^PUSH_IMAGE=' "${env_file}"; then
+              if [[ "${BACKEND_IMAGE_EFFECT}" != "true" ]]; then
+                echo ".env.prod must contain PUSH_IMAGE before backend runtime-only CD can preflight compose." >&2
+                exit 1
+              fi
+              printf '%s\n' "PUSH_IMAGE=${CANDIDATE_PUSH_IMAGE}" | sudo tee -a "${env_file}" >/dev/null
+            fi
           }
 
           validate_candidate_image() {
@@ -458,20 +495,32 @@ jobs:
               echo "Candidate backend image is empty or contains unsupported characters." >&2
               exit 1
             fi
+            if [[ -z "${CANDIDATE_PUSH_IMAGE}" || "${CANDIDATE_PUSH_IMAGE}" =~ [[:space:]] ]]; then
+              echo "Candidate push image is empty or contains unsupported characters." >&2
+              exit 1
+            fi
           }
 
           replace_backend_image_line() {
             local source_env="$1"
             local target_env="$2"
-            awk -v image="${CANDIDATE_BACKEND_IMAGE}" '
-              BEGIN { replaced = 0 }
+            awk -v backend_image="${CANDIDATE_BACKEND_IMAGE}" -v push_image="${CANDIDATE_PUSH_IMAGE}" '
+              BEGIN { backend_replaced = 0; push_replaced = 0 }
               /^BACKEND_IMAGE=/ {
-                print "BACKEND_IMAGE=" image
-                replaced = 1
+                print "BACKEND_IMAGE=" backend_image
+                backend_replaced = 1
+                next
+              }
+              /^PUSH_IMAGE=/ {
+                print "PUSH_IMAGE=" push_image
+                push_replaced = 1
                 next
               }
               { print }
-              END { if (replaced != 1) exit 3 }
+              END {
+                if (backend_replaced != 1) exit 3
+                if (push_replaced != 1) print "PUSH_IMAGE=" push_image
+              }
             ' "${source_env}" > "${target_env}"
           }
 
@@ -549,7 +598,7 @@ jobs:
           dump_backend_diagnostics() {
             local container
             echo "::group::Backend compose status"
-            compose_live ps backend nginx promtail nginx-exporter node-exporter || true
+            compose_live ps backend push-app nginx promtail nginx-exporter node-exporter || true
             echo "::endgroup::"
 
             container="$(compose_live ps -q backend || true)"
@@ -611,6 +660,34 @@ jobs:
             exit 1
           }
 
+          check_push_health() {
+            local container
+            container="$(compose_live ps -q push-app || true)"
+            if [[ -z "${container}" ]]; then
+              echo "Push-app container is missing after recreate." >&2
+              dump_backend_diagnostics
+              exit 1
+            fi
+            for attempt in $(seq 1 24); do
+              local status
+              status="$("${docker_cmd[@]}" inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${container}" 2>/dev/null || true)"
+              echo "Push-app health attempt ${attempt}/24: ${status:-unknown}."
+              if [[ "${status}" == "healthy" || "${status}" == "running" ]]; then
+                echo "Push-app container health/status is ${status}."
+                return
+              fi
+              if [[ "${status}" == "unhealthy" || "${status}" == "exited" || "${status}" == "dead" ]]; then
+                echo "Push-app container became ${status}. Automatic rollback is intentionally not performed." >&2
+                dump_backend_diagnostics
+                exit 1
+              fi
+              sleep 5
+            done
+            echo "Push-app health did not become healthy in time." >&2
+            dump_backend_diagnostics
+            exit 1
+          }
+
           reload_nginx_config() {
             local nginx_container
             nginx_container="$(compose_live ps -q nginx || true)"
@@ -644,13 +721,15 @@ jobs:
           if [[ "${BACKEND_IMAGE_EFFECT}" == "true" ]]; then
             echo "Logging in to Docker Hub for backend image deploy."
             echo "${DOCKERHUB_TOKEN}" | "${docker_cmd[@]}" login -u "${DOCKERHUB_USERNAME}" --password-stdin
-            echo "Pulling backend image."
-            compose_live pull backend
-            run_compose_up "backend" backend
+            echo "Pulling backend and push-app images."
+            compose_live pull backend push-app
+            run_compose_up "backend and push-app" backend push-app
             check_backend_health
+            check_push_health
           elif [[ "${BACKEND_RUNTIME_EFFECT}" == "true" ]]; then
-            run_compose_up "backend" backend
+            run_compose_up "backend and push-app runtime" backend push-app
             check_backend_health
+            check_push_health
           fi
           echo "Backend app service effect completed."
 
@@ -675,7 +754,7 @@ jobs:
           echo "Pruning unused backend-host Docker images."
           "${docker_cmd[@]}" image prune -f
           echo "Docker image prune completed."
-          compose_live ps backend nginx promtail nginx-exporter node-exporter
+          compose_live ps backend push-app nginx promtail nginx-exporter node-exporter
           REMOTE_BACKEND_DEPLOY
 
       - name: Verify backend metrics from infra host
@@ -699,14 +778,17 @@ jobs:
           ssh-keygen -y -f ~/.ssh/ec2_key > /dev/null
           ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$INFRA_EC2_HOST" >> ~/.ssh/known_hosts
           metrics_url="http://${EC2_BACKEND_METRICS_HOST}:8080/actuator/prometheus"
+          push_metrics_url="http://${EC2_BACKEND_METRICS_HOST}:8081/actuator/prometheus"
           quoted_metrics_url="$(printf '%q' "${metrics_url}")"
+          quoted_push_metrics_url="$(printf '%q' "${push_metrics_url}")"
           ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
-            "curl -fsS --connect-timeout 5 --max-time 10 ${quoted_metrics_url} >/dev/null"
+            "curl -fsS --connect-timeout 5 --max-time 10 ${quoted_metrics_url} >/dev/null && curl -fsS --connect-timeout 5 --max-time 10 ${quoted_push_metrics_url} >/dev/null"
           {
             echo "### Backend metrics scrape reachability"
             echo ""
             echo "- Source host: \`INFRA_EC2_HOST\`"
             echo "- Target URL: \`${metrics_url}\`"
+            echo "- Push target URL: \`${push_metrics_url}\`"
             echo "- Access path: direct backend private endpoint, not Nginx"
             echo "- Result: reachable"
           } >> "$GITHUB_STEP_SUMMARY"

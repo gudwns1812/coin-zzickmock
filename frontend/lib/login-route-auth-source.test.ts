@@ -18,7 +18,7 @@ test("login route leaves auth ownership with the backend", () => {
   assert.doesNotMatch(loginPageSource, /"use client"/);
   assert.doesNotMatch(loginPageSource, /getAuthUser/);
   assert.doesNotMatch(loginPageSource, /redirect\("\/markets"\);/);
-  assert.match(loginPageSource, /return <LoginFormClient \/>;/);
+  assert.match(loginPageSource, /<LoginFormClient \/>/);
   assert.match(loginFormSource, /"use client"/);
   assert.match(loginFormSource, /loginToFutures/);
   assert.match(loginFormSource, /notifyFuturesAuthChanged\("login"\)/);

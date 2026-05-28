@@ -21,12 +21,13 @@ Scoped `AGENTS.md`는 상위 규칙을 override하지 않는다.
 backend/
   core/       business core: common contracts, provider contracts, feature domain/application
   app/        executable Spring Boot app: boot, web/job adapters, assembly and configuration
+  push-app/   executable Spring Boot push server: Redis Stream consumer and SSE fan-out only
   storage/    persistence leaf adapter: JPA, QueryDSL, Flyway, DB resources
   stream/     realtime leaf adapter: SSE delivery and stream runtime
   external/   external leaf adapter: Bitget and provider connector implementations
 ```
 
-`core`, `app`, `storage`, `stream`, `external`은 Gradle module 이름이다.
+`core`, `app`, `push-app`, `storage`, `stream`, `external`은 Gradle module 이름이다.
 `coin.coinzzickmock.core`, `coin.coinzzickmock.storage` 같은 Java top-level package를 만들지 않는다.
 
 ## Required Reads
@@ -53,6 +54,7 @@ backend/
 
 - `core/`: [core/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/core/AGENTS.md)
 - `app/`: [app/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/app/AGENTS.md)
+- `push-app/`: [push-app/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/push-app/AGENTS.md)
 - `storage/`: [storage/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/storage/AGENTS.md)
 - `stream/`: [stream/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/stream/AGENTS.md)
 - `external/`: [external/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/external/AGENTS.md)
@@ -71,5 +73,5 @@ backend source, Gradle, lint 규칙, runtime wiring을 바꾼 경우:
 cd backend
 ./gradlew architectureLint --console=plain
 ./gradlew check --console=plain
+./gradlew :app:bootJar :push-app:bootJar --console=plain
 ```
-

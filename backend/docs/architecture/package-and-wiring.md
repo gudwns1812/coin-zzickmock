@@ -48,6 +48,13 @@ backend/app/src/main/java/coin/coinzzickmock/
   feature/<feature>/web/
   feature/<feature>/job/
   feature/<feature>/infrastructure/config/  # executable wiring/assembly during migration
+
+backend/push-app/src/main/java/coin/coinzzickmock/
+  PushServerApplication.java
+  feature/push/web/
+  feature/push/job/
+  feature/push/application/
+  feature/push/infrastructure/
 ```
 
 강한 규칙:
@@ -108,10 +115,14 @@ backend/app/src/main/java/coin/coinzzickmock/
 
 ## Bean Wiring Boundary
 
-`app`은 executable assembly root다. leaf adapter concrete type(`stream`, `storage`, `external`) import는 `app`의 configuration/assembly/config package에서만 허용된다.
+`app`은 primary executable assembly root다. leaf adapter concrete type(`stream`, `storage`, `external`) import는 `app`의 configuration/assembly/config package에서만 허용된다.
 `app`의 `web`/`job`은 core use case와 application DTO/query/result contract만 호출하고, leaf adapter concrete type이나 persistence/provider infrastructure type을 직접 import하지 않는다.
 두 module이 같은 Java package를 공유해 import 없이 simple name으로 leaf adapter class를 참조하는 경우도 같은 위반으로 본다.
 SSE delivery가 필요하면 `app`의 `web`은 app-owned gateway contract에 의존하고, `configuration`/`assembly`/`config` 경계에서 stream module concrete type으로 연결한다.
+
+`push-app`은 두 번째 executable이지만 assembly 권한은 Redis Stream-backed SSE relay로 제한된다.
+`push-app`은 `core`의 push event contract와 `stream`의 response DTO를 읽을 수 있고, `storage`, `external`, Flyway, datasource, JPA, provider connector runtime을 의존하지 않는다.
+`push-app`의 canonical route는 `/api/futures/stream/**`이며 기존 `/api/futures/**/stream` aliases는 호환 경로로만 유지한다.
 
 이 저장소에서 "기본값은 concrete class"는 "아무 데서나 직접 생성해도 된다"는 뜻이 아니다.
 인터페이스를 줄이는 것과 조립 책임을 클래스 내부에 숨기는 것은 다르다.

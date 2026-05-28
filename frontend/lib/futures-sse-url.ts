@@ -60,7 +60,7 @@ export function createUnifiedMarketSseUrl(
   interval: string
 ) {
   return buildFuturesSseUrl(
-    "/markets/stream",
+    "/stream/markets",
     new URLSearchParams({
       symbol,
       interval,
@@ -69,12 +69,12 @@ export function createUnifiedMarketSseUrl(
 }
 
 export function createOrderExecutionSseUrl() {
-  return buildFuturesSseUrl("/orders/stream", new URLSearchParams());
+  return buildFuturesSseUrl("/stream/orders", new URLSearchParams());
 }
 
 export function createMarketSummarySseUrl(symbols: string[]) {
   return buildFuturesSseUrl(
-    "/markets/summary/stream",
+    "/stream/markets/summary",
     new URLSearchParams({
       symbols: symbols.join(","),
     })

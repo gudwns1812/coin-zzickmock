@@ -37,6 +37,6 @@ export async function GET(request: Request, context: RouteContext) {
     failureMessage: "Failed to open futures market stream",
     request,
     upstreamHeaders: createSseUpstreamHeaders(request),
-    upstreamUrl: `${FUTURES_API_BASE_URL}/api/futures/markets/${encodeURIComponent(symbol)}/stream?${upstreamParams.toString()}`,
+    upstreamUrl: `${FUTURES_API_BASE_URL}/api/futures/stream/markets/${encodeURIComponent(symbol)}?${upstreamParams.toString()}`,
   });
 }

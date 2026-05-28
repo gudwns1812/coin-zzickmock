@@ -81,8 +81,8 @@ test("public market SSE consumers can bypass Vercel route handlers", () => {
   );
 
   assert.equal(urlSource.includes("NEXT_PUBLIC_FUTURES_API_BASE_URL"), true);
-  assert.equal(urlSource.includes("/markets/stream"), true);
-  assert.equal(urlSource.includes("/markets/summary/stream"), true);
+  assert.equal(urlSource.includes("/stream/markets"), true);
+  assert.equal(urlSource.includes("/stream/markets/summary"), true);
   assert.equal(detailSource.includes("createUnifiedMarketSseUrl"), true);
   assert.equal(detailSource.includes("createOrderExecutionSseUrl"), true);
   assert.equal(landingSource.includes("createMarketSummarySseUrl"), true);
@@ -121,7 +121,7 @@ test("client auth requests target the backend origin for backend-owned cookies",
 test("authenticated order SSE targets backend origin for backend-owned cookies", () => {
   const urlSource = readFrontendSource("lib/futures-sse-url.ts");
 
-  assert.equal(urlSource.includes('buildFuturesSseUrl("/orders/stream"'), true);
+  assert.equal(urlSource.includes('buildFuturesSseUrl("/stream/orders"'), true);
   assert.equal(urlSource.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
 });
 

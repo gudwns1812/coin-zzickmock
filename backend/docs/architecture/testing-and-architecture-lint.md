@@ -37,7 +37,7 @@
 - 통합 검증: `./gradlew check`
 - 리포트 경로: `backend/build/reports/architecture-lint/violations.jsonl`
 - 스캔 범위: 모든 backend subproject의 `src/main/java`
-- backend module set: `app`, `core`, `stream`, `storage`, `external`
+- backend module set: `app`, `push-app`, `core`, `stream`, `storage`, `external`
 - business core module set: `core`
 - leaf adapter module set: `stream`, `storage`, `external`
 
@@ -61,6 +61,7 @@
 - `application/service`가 다른 `application/service`를 직접 참조하는 구조 금지
 - `core`의 backend project dependency 금지(`MODULE_CORE_NO_PROJECT_DEPENDENCY`)
 - leaf adapter modules의 backend project dependency는 `core`만 허용(`MODULE_LEAF_DEPENDS_ONLY_ON_CORE`)
+- executable module은 `app`과 `push-app`만 허용하고, `push-app` project dependency는 `core`와 `stream`만 허용(`MODULE_EXECUTABLE_RUNTIME_BOUNDARY`, `MODULE_PUSH_APP_DEPENDENCY_BOUNDARY`)
 - `app`의 leaf adapter concrete import는 configuration/assembly/config package에서만 허용(`APP_LEAF_IMPORTS_CONFIGURATION_ONLY`)
 - `app` `web`/`job`은 core use case와 application DTO/query/result contract만 직접 호출(`APP_WEB_JOB_CORE_ONLY`)
 - `app` application/domain residue는 `filePath`, `reason`, `ownerPhase`, `targetRemovalPhase`가 있는 allowlist로 추적(`APP_FEATURE_APPLICATION_DOMAIN_RESIDUE_ALLOWLIST`)

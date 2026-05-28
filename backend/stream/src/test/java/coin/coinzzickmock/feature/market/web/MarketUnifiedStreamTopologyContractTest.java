@@ -16,6 +16,8 @@ class MarketUnifiedStreamTopologyContractTest {
     private static final Path CORE_MAIN = Path.of("../core/src/main/java");
     private static final Path MARKET_WEB = MAIN.resolve("coin/coinzzickmock/feature/market/web");
     private static final Path APP_MARKET_WEB = APP_MAIN.resolve("coin/coinzzickmock/feature/market/web");
+    private static final Path PUSH_APP_MAIN = Path.of("../push-app/src/main/java");
+    private static final Path PUSH_APP_WEB = PUSH_APP_MAIN.resolve("coin/coinzzickmock/feature/push/web");
 
     @Test
     void unifiedRegistryOwnsSessionSourceAndDerivedIndexesOnlyThroughApi() throws IOException {
@@ -78,42 +80,29 @@ class MarketUnifiedStreamTopologyContractTest {
     }
 
     @Test
-    void controllerAddsAuthenticatedUnifiedEndpointWithoutCouplingToPositionInternals() throws IOException {
+    void appControllerNoLongerOwnsMarketSseAndPushAppOwnsCanonicalEndpoints() throws IOException {
         String controller = readRequired(APP_MARKET_WEB.resolve("MarketController.java"));
-        String gateway = readRequired(APP_MARKET_WEB.resolve("MarketStreamGateway.java"));
-        String gatewayAdapter = readRequired(APP_MARKET_WEB.resolve("config/StreamMarketGatewayAdapter.java"));
+        String pushController = readRequired(PUSH_APP_WEB.resolve("PushStreamController.java"));
         String router = readRequired(MARKET_WEB.resolve("MarketSseStreamRouter.java"));
         String strategyContract = readRequired(MARKET_WEB.resolve("MarketSseStreamStrategy.java"));
         String strategy = readRequired(MARKET_WEB.resolve("UnifiedMarketStreamStrategy.java"));
 
-        assertTrue(controller.contains("/stream"), "controller must expose unified /api/futures/markets/stream");
-        assertTrue(controller.contains("MarketStreamGateway"),
-                "controller must delegate SSE route selection to the app-owned stream gateway");
-        assertFalse(controller.contains("MarketSseStreamRequest"),
-                "controller must not import stream-module request details directly");
-        assertFalse(controller.contains("MarketSseStreamRouter"),
-                "controller must not import stream-module router details directly");
-        assertTrue(gateway.contains("openUnified"), "gateway must expose unified stream opening");
-        assertTrue(gateway.contains("openSummary"), "gateway must expose raw summary stream opening");
-        assertTrue(gateway.contains("openCandle"), "gateway must expose raw candle stream opening");
-        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.summary"),
-                "gateway adapter must build typed raw summary stream requests");
-        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.candle"),
-                "gateway adapter must build typed raw candle stream requests");
-        assertTrue(gatewayAdapter.contains("MarketSseStreamRequest.unified"),
-                "gateway adapter must build typed unified stream requests");
-        assertTrue(gatewayAdapter.contains("MarketSseStreamRouter"),
-                "gateway adapter must delegate SSE route selection to the market stream router");
-        assertFalse(controller.contains("UnifiedMarketStreamOpener"),
-                "controller must not depend on the removed unified stream opener");
-        assertFalse(Files.exists(MARKET_WEB.resolve("UnifiedMarketStreamOpener.java")),
-                "old unified stream opener source file must be removed");
-        assertFalse(controller.contains("private final MarketRealtimeSseBroker marketRealtimeSseBroker"),
-                "controller must not directly own the raw summary broker field");
-        assertFalse(controller.contains("private final MarketCandleRealtimeSseBroker marketCandleRealtimeSseBroker"),
-                "controller must not directly own the raw candle broker field");
-        assertFalse(controller.contains("MarketStreamBroker marketStreamBroker"),
-                "controller must not directly own the unified market stream broker field");
+        assertFalse(controller.contains("SseEmitter"),
+                "primary app market controller must not own direct SSE fan-out");
+        assertFalse(controller.contains("MarketStreamGateway"),
+                "primary app must not retain the old app-owned stream gateway");
+        assertFalse(controller.contains("/stream"),
+                "primary app market routes must stay REST-only after push-app split");
+        assertTrue(pushController.contains("/stream/markets"),
+                "push-app must expose the canonical market stream route");
+        assertTrue(pushController.contains("/stream/markets/summary"),
+                "push-app must expose the canonical market summary stream route");
+        assertTrue(pushController.contains("/stream/markets/{symbol}"),
+                "push-app must expose the canonical symbol summary stream route");
+        assertTrue(pushController.contains("/stream/markets/{symbol}/candles"),
+                "push-app must expose the canonical candle stream route");
+        assertTrue(pushController.contains("/stream/orders"),
+                "push-app must expose the canonical trading execution stream route");
         assertTrue(router.contains("EnumMap"), "router must use explicit enum-key strategy wiring");
         assertTrue(router.contains("EnumSet.allOf"),
                 "router must fail fast when any market SSE strategy kind is missing");
@@ -134,9 +123,6 @@ class MarketUnifiedStreamTopologyContractTest {
                 "unified endpoint must not require authentication for public market/candle data");
         assertTrue(strategy.contains("Set.of()"),
                 "anonymous unified sessions must omit only open-position summary symbols");
-        assertTrue(controller.contains("clientKey"), "unified endpoint must be scoped by clientKey");
-        assertTrue(controller.contains("MarketCandleInterval.from(interval)") || controller.contains("MarketSseStreamRequest.unified"),
-                "unified endpoint must register active candle interval");
     }
 
     @Test
@@ -194,11 +180,12 @@ class MarketUnifiedStreamTopologyContractTest {
     }
 
     @Test
-    void sseEmitterRemainsAtWebBoundaryAndRawMarketEndpointsStayPresent() throws IOException {
+    void sseEmitterRemainsAtWebBoundaryAndPrimaryAppMarketEndpointsStayRestOnly() throws IOException {
         String controller = readRequired(APP_MARKET_WEB.resolve("MarketController.java"));
 
-        assertTrue(controller.contains("/{symbol}/stream"), "raw market summary SSE endpoint must remain present");
-        assertTrue(controller.contains("/{symbol}/candles/stream"), "raw candle SSE endpoint must remain present");
+        assertFalse(controller.contains("/{symbol}/stream"), "primary app must not expose raw market summary SSE");
+        assertFalse(controller.contains("/{symbol}/candles/stream"), "primary app must not expose raw candle SSE");
+        assertFalse(controller.contains("SseEmitter"), "primary app market controller must be REST-only");
 
         try (Stream<Path> files = Stream.of(MAIN, APP_MAIN, CORE_MAIN).flatMap(root -> {
                 try {

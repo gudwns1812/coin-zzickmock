@@ -6,11 +6,11 @@ import coin.coinzzickmock.feature.market.web.MarketCandleResponse;
 import coin.coinzzickmock.feature.market.web.MarketSummaryResponse;
 import java.util.Objects;
 
-final class MarketStreamPayloadMapper {
+public final class MarketStreamPayloadMapper {
     private MarketStreamPayloadMapper() {
     }
 
-    static MarketSummaryResponse toResponse(MarketSummaryResult result) {
+    public static MarketSummaryResponse toResponse(MarketSummaryResult result) {
         Objects.requireNonNull(result, "result must not be null");
         return MarketSummaryResponse.of(
                 result.symbol(),
@@ -28,7 +28,7 @@ final class MarketStreamPayloadMapper {
         );
     }
 
-    static MarketCandleResponse toResponse(MarketCandleResult result) {
+    public static MarketCandleResponse toResponse(MarketCandleResult result) {
         Objects.requireNonNull(result, "result must not be null");
         return new MarketCandleResponse(
                 result.openTime(),

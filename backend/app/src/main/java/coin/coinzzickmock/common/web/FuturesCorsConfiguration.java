@@ -11,8 +11,7 @@ public class FuturesCorsConfiguration implements WebMvcConfigurer {
     private final String[] allowedOriginPatterns;
 
     public FuturesCorsConfiguration(
-            @Value("${coin.web.cors.allowed-origin-patterns:http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,https://coin-zzickmock-frontend*.vercel.app}")
-            String allowedOriginPatterns
+            @Value("${coin.web.cors.allowed-origin-patterns}") String allowedOriginPatterns
     ) {
         this.allowedOriginPatterns = Arrays.stream(allowedOriginPatterns.split(","))
                 .map(String::trim)

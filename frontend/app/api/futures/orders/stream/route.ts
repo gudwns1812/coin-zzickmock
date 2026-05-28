@@ -22,6 +22,6 @@ export async function GET(request: Request) {
     failureMessage: "Failed to open futures order stream",
     request,
     upstreamHeaders: createSseUpstreamHeaders(request),
-    upstreamUrl: `${FUTURES_API_BASE_URL}/api/futures/orders/stream?${upstreamParams.toString()}`,
+    upstreamUrl: `${FUTURES_API_BASE_URL}/api/futures/stream/orders?${upstreamParams.toString()}`,
   });
 }

@@ -717,6 +717,36 @@ jobs:
             done <<< "${lines}"
           }
 
+          backend_host_port() {
+            local port
+            port="$(awk -F= '/^BACKEND_PORT=/ { value = $2 } END { print value }' .env.prod 2>/dev/null || true)"
+            echo "${port:-8080}"
+          }
+
+          remove_safe_backend_port_conflicts() {
+            local port="$1"
+            local current_backend lines
+            current_backend="$(compose_live ps -q backend || true)"
+            lines="$("${docker_cmd[@]}" ps --format '{{.ID}}|{{.Image}}|{{.Names}}|{{.Ports}}' | grep -E "([0-9.]+|\\[::\\]):${port}->" || true)"
+            if [[ -z "${lines}" ]]; then
+              return
+            fi
+
+            while IFS='|' read -r container_id image name ports; do
+              [[ -z "${container_id}" ]] && continue
+              if [[ -n "${current_backend}" && "${current_backend}" == "${container_id}"* ]]; then
+                continue
+              fi
+              if [[ "${image}" == *"coin-zzickmock-backend"* || ( "${name}" == *"coin-zzickmock"* && "${name}" == *"backend"* ) ]]; then
+                echo "Removing stale coin-zzickmock backend container ${name} (${container_id}) that holds host port ${port}: ${ports}"
+                "${docker_cmd[@]}" rm -f "${container_id}"
+              else
+                echo "Host port ${port} is held by non-coin-zzickmock backend container ${name} (${image}): ${ports}" >&2
+                exit 1
+              fi
+            done <<< "${lines}"
+          }
+
           check_backend_health() {
             local container
             container="$(compose_live ps -q backend || true)"
@@ -811,10 +841,12 @@ jobs:
             echo "${DOCKERHUB_TOKEN}" | "${docker_cmd[@]}" login -u "${DOCKERHUB_USERNAME}" --password-stdin
             echo "Pulling backend and push-app images."
             compose_live pull backend push-app
+            remove_safe_backend_port_conflicts "$(backend_host_port)"
             run_compose_up "backend and push-app" backend push-app
             check_backend_health
             check_push_health
           elif [[ "${BACKEND_RUNTIME_EFFECT}" == "true" ]]; then
+            remove_safe_backend_port_conflicts "$(backend_host_port)"
             run_compose_up "backend and push-app runtime" backend push-app
             check_backend_health
             check_push_health

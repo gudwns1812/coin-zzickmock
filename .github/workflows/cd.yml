@@ -570,6 +570,27 @@ jobs:
             echo "::endgroup::"
           }
 
+          dump_nginx_diagnostics() {
+            local container
+            echo "::group::Nginx compose status"
+            compose_live ps nginx || true
+            echo "::endgroup::"
+
+            container="$(compose_live ps -q nginx || true)"
+            if [[ -z "${container}" ]]; then
+              echo "Nginx container is missing; no nginx logs to dump." >&2
+              return
+            fi
+
+            echo "::group::Nginx container state"
+            "${docker_cmd[@]}" inspect -f '{{json .State}}' "${container}" || true
+            echo "::endgroup::"
+
+            echo "::group::Nginx recent logs"
+            "${docker_cmd[@]}" logs --tail=120 "${container}" || true
+            echo "::endgroup::"
+          }
+
           run_compose_up() {
             local service_label="$1"
             shift
@@ -580,6 +601,29 @@ jobs:
               exit 1
             fi
             echo "Compose up completed for ${service_label}."
+          }
+
+          wait_nginx_running() {
+            local container status
+            container="$(compose_live ps -q nginx || true)"
+            if [[ -z "${container}" ]]; then
+              echo "Nginx container is missing after compose up." >&2
+              dump_nginx_diagnostics
+              exit 1
+            fi
+
+            for attempt in $(seq 1 12); do
+              status="$("${docker_cmd[@]}" inspect -f '{{.State.Status}}' "${container}" 2>/dev/null || true)"
+              echo "Nginx status attempt ${attempt}/12: ${status:-unknown}."
+              if [[ "${status}" == "running" ]]; then
+                return
+              fi
+              sleep 2
+            done
+
+            echo "Nginx did not stay running in time." >&2
+            dump_nginx_diagnostics
+            exit 1
           }
 
           remove_safe_port_conflicts() {
@@ -660,11 +704,7 @@ jobs:
               remove_safe_nginx_port_conflicts 80
               remove_safe_nginx_port_conflicts 443
               run_compose_up "nginx" nginx
-              nginx_container="$(compose_live ps -q nginx || true)"
-              if [[ -z "${nginx_container}" ]] || [[ "$("${docker_cmd[@]}" inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" != "true" ]]; then
-                echo "Nginx did not start for config verification." >&2
-                exit 1
-              fi
+              wait_nginx_running
             fi
             compose_live exec -T nginx nginx -t
             compose_live exec -T nginx nginx -s reload
@@ -717,6 +757,7 @@ jobs:
             remove_safe_nginx_port_conflicts 80
             remove_safe_nginx_port_conflicts 443
             run_compose_up "nginx" nginx
+            wait_nginx_running
             compose_live exec -T nginx nginx -t
             echo "Nginx service definition effect completed."
           elif [[ "${NGINX_CONFIG_EFFECT}" == "true" ]]; then

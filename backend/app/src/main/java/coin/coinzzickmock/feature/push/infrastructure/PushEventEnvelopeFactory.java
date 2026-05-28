@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.push.infrastructure;
 
 import coin.coinzzickmock.feature.market.application.dto.MarketCandleUpdatedEvent;
+import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
 import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
 import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
 import coin.coinzzickmock.feature.market.web.CandleSubscription;
@@ -50,34 +51,50 @@ public class PushEventEnvelopeFactory {
     }
 
     public PushEventEnvelope marketCandle(MarketCandleUpdatedEvent event) {
+        return marketCandle(event.symbol(), event.interval(), toCandleResponse(event));
+    }
+
+    public PushEventEnvelope marketCandle(String symbol, String interval, MarketCandleResponse response) {
         Instant now = Instant.now();
         return PushEventEnvelope.marketCandle(
-                event.symbol(),
-                event.interval(),
-                "market-candle:" + event.symbol() + ":" + event.interval() + ":" + event.candle().openTime(),
-                event.candle().closeTime() == null ? now : event.candle().closeTime(),
+                symbol,
+                interval,
+                candleDedupeKey("market-candle", symbol, interval, response),
+                response.closeTime() == null ? now : response.closeTime(),
                 now,
                 properties.marketMaxAge(),
-                json(toCandleResponse(event))
+                json(response)
         );
     }
 
+    public PushEventEnvelope marketCandle(String symbol, String interval, MarketCandleResult result) {
+        return marketCandle(symbol, interval, toCandleResponse(result));
+    }
+
     public PushEventEnvelope unifiedMarketCandle(MarketCandleUpdatedEvent event) {
+        return unifiedMarketCandle(event.symbol(), event.interval(), toCandleResponse(event));
+    }
+
+    public PushEventEnvelope unifiedMarketCandle(String symbol, String interval, MarketCandleResponse response) {
         Instant now = Instant.now();
         return PushEventEnvelope.marketUnifiedCandle(
-                event.symbol(),
-                event.interval(),
-                "unified-candle:" + event.symbol() + ":" + event.interval() + ":" + event.candle().openTime(),
-                event.candle().closeTime() == null ? now : event.candle().closeTime(),
+                symbol,
+                interval,
+                candleDedupeKey("unified-candle", symbol, interval, response),
+                response.closeTime() == null ? now : response.closeTime(),
                 now,
                 properties.marketMaxAge(),
                 json(MarketStreamEventResponse.candle(
-                        new CandleSubscription(event.symbol(), event.interval()),
-                        toCandleResponse(event),
+                        new CandleSubscription(symbol, interval),
+                        response,
                         MarketStreamEventSource.LIVE,
                         now
                 ))
         );
+    }
+
+    public PushEventEnvelope unifiedMarketCandle(String symbol, String interval, MarketCandleResult result) {
+        return unifiedMarketCandle(symbol, interval, toCandleResponse(result));
     }
 
     public PushEventEnvelope marketHistoryFinalized(MarketHistoryFinalizedEvent event, String interval) {
@@ -124,20 +141,38 @@ public class PushEventEnvelopeFactory {
     }
 
     private MarketCandleResponse toCandleResponse(MarketCandleUpdatedEvent event) {
+        return toCandleResponse(event.candle());
+    }
+
+    private MarketCandleResponse toCandleResponse(MarketCandleResult result) {
         return new MarketCandleResponse(
-                event.candle().openTime(),
-                event.candle().closeTime(),
-                event.candle().openPrice(),
-                event.candle().highPrice(),
-                event.candle().lowPrice(),
-                event.candle().closePrice(),
-                event.candle().volume()
+                result.openTime(),
+                result.closeTime(),
+                result.openPrice(),
+                result.highPrice(),
+                result.lowPrice(),
+                result.closePrice(),
+                result.volume()
         );
     }
 
     private String tradingDedupeKey(TradingExecutionEvent event) {
         String orderPart = event.orderId() == null ? "position" : event.orderId();
         return "trading:" + event.memberId() + ":" + event.type() + ":" + event.symbol() + ":" + orderPart + ":" + event.executionPrice();
+    }
+
+    private String candleDedupeKey(
+            String prefix,
+            String symbol,
+            String interval,
+            MarketCandleResponse response
+    ) {
+        return prefix + ":" + symbol + ":" + interval + ":" + response.openTime()
+                + ":" + response.openPrice()
+                + ":" + response.highPrice()
+                + ":" + response.lowPrice()
+                + ":" + response.closePrice()
+                + ":" + response.volume();
     }
 
     private String json(Object payload) {

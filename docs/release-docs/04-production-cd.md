@@ -139,6 +139,10 @@ Backend host `.env.prod`에는 최소 아래 값이 필요하다.
 - `REDIS_PASSWORD`: 선택값. Redis auth/ACL을 켠 경우에만 설정한다
 - `BACKEND_PORT`: direct/private backend scrape port, 기본 `8080`
 - `BACKEND_BIND_ADDRESS`: 선택값. backend host에서 8080을 bind할 주소이며 기본은 `0.0.0.0`이다. public 노출은 security group으로 막는다
+- `NODE_EXPORTER_PORT`: backend host node-exporter scrape port, 기본 `9100`
+- `NODE_EXPORTER_BIND_ADDRESS`: 선택값. backend host에서 9100을 bind할 주소이며 기본은 `0.0.0.0`이다. public 노출은 security group으로 막고 infra host source만 허용한다
+- `NGINX_EXPORTER_PORT`: backend host Nginx exporter scrape port, 기본 `9113`
+- `NGINX_EXPORTER_BIND_ADDRESS`: 선택값. backend host에서 9113을 bind할 주소이며 기본은 `0.0.0.0`이다. public 노출은 security group으로 막고 infra host source만 허용한다
 - `GRAFANA_PRIVATE_HOST`: 선택값. 지정하지 않으면 `REDIS_HOST`를 infra Grafana host로 쓴다
 - `LOKI_PUSH_URL`: 선택값. 지정하지 않으면 `http://<REDIS_HOST>:3100/loki/api/v1/push`를 쓴다
 
@@ -158,12 +162,14 @@ EC2에는 Docker Compose 실행기가 필요하다. CD는 먼저 SSH user의 직
 
 ## Infra Prometheus Scrape Contract
 
-운영 backend compose는 Spring Boot actuator metrics를 별도 infra host Prometheus가 가져갈 수 있도록 backend container `8080`을 host `${BACKEND_BIND_ADDRESS:-0.0.0.0}:${BACKEND_PORT:-8080}`로 publish한다. 이 경로는 관측 도구 전용 direct/private access이며 Nginx를 경유하지 않는다.
+운영 backend compose는 Spring Boot actuator metrics와 backend-host exporter metrics를 별도 infra host Prometheus가 가져갈 수 있도록 backend host에 publish한다. 이 경로는 관측 도구 전용 direct/private access이며 Nginx를 경유하지 않는다.
 
-- Scrape URL: `http://<EC2_BACKEND_METRICS_HOST>:8080/actuator/prometheus`
+- Backend application scrape URL: `http://<EC2_BACKEND_METRICS_HOST>:8080/actuator/prometheus`
+- Backend node-exporter scrape URL: `http://<EC2_BACKEND_METRICS_HOST>:9100/metrics`
+- Backend Nginx exporter scrape URL: `http://<EC2_BACKEND_METRICS_HOST>:9113/metrics`
 - GitHub secret: `EC2_BACKEND_METRICS_HOST`에는 infra host에서 접근 가능한 backend private DNS/IP를 둔다. Public Nginx host 대신 private host 값을 명시한다.
 - Prometheus config: `infra/prometheus/prometheus.prod.yml`은 `backend-private:8080`, `backend-private:9100`, `backend-private:9113`을 scrape하며, infra compose의 `extra_hosts`가 `backend-private`을 `BACKEND_PRIVATE_HOST`로 해석한다.
-- CD 검증: backend-host deploy 후 GitHub Actions가 `INFRA_EC2_HOST`에 SSH로 접속해 위 scrape URL을 `curl -fsS`로 확인한다. 검증은 `https://.../actuator/*` 또는 Nginx public domain을 사용하지 않는다.
+- CD 검증: backend-host deploy 후 GitHub Actions가 `INFRA_EC2_HOST`에 SSH로 접속해 위 세 scrape URL을 `curl -fsS`로 확인한다. 검증은 `https://.../actuator/*` 또는 Nginx public domain을 사용하지 않는다.
 - Network rule: backend host security group은 TCP 8080, 9100, 9113 inbound를 infra host source로 제한해야 한다. 이 repository는 security group을 직접 변경하지 않는다.
 
 ## Deploy Scope

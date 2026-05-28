@@ -99,7 +99,7 @@ services:
     depends_on:
       - nginx
     ports:
-      - "${NGINX_EXPORTER_BIND_ADDRESS:-127.0.0.1}:${NGINX_EXPORTER_PORT:-9113}:9113"
+      - "${NGINX_EXPORTER_BIND_ADDRESS:-0.0.0.0}:${NGINX_EXPORTER_PORT:-9113}:9113"
     networks:
       - backend
 
@@ -111,7 +111,7 @@ services:
       - --path.rootfs=/host
       - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($$|/)
     ports:
-      - "${NODE_EXPORTER_BIND_ADDRESS:-127.0.0.1}:${NODE_EXPORTER_PORT:-9100}:9100"
+      - "${NODE_EXPORTER_BIND_ADDRESS:-0.0.0.0}:${NODE_EXPORTER_PORT:-9100}:9100"
     volumes:
       - /:/host:ro
     networks:

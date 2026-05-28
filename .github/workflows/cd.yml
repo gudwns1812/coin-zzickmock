@@ -698,15 +698,37 @@ jobs:
           chmod 600 ~/.ssh/ec2_key
           ssh-keygen -y -f ~/.ssh/ec2_key > /dev/null
           ssh-keyscan -p "${EC2_SSH_PORT:-22}" "$INFRA_EC2_HOST" >> ~/.ssh/known_hosts
-          metrics_url="http://${EC2_BACKEND_METRICS_HOST}:8080/actuator/prometheus"
-          quoted_metrics_url="$(printf '%q' "${metrics_url}")"
           ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -i ~/.ssh/ec2_key -p "${EC2_SSH_PORT:-22}" "${INFRA_EC2_USER}@${INFRA_EC2_HOST}" \
-            "curl -fsS --connect-timeout 5 --max-time 10 ${quoted_metrics_url} >/dev/null"
+            "BACKEND_METRICS_HOST=$(printf '%q' "${EC2_BACKEND_METRICS_HOST}") bash -s" <<'REMOTE_BACKEND_METRICS_VERIFY'
+          set -euo pipefail
+          check_metrics_endpoint() {
+            local name="$1"
+            local url="$2"
+            local pattern="$3"
+            curl -fsS --connect-timeout 5 --max-time 10 "${url}" | grep -Eq "${pattern}"
+            echo "${name} reachable at ${url}"
+          }
+
+          check_metrics_endpoint \
+            "backend-actuator" \
+            "http://${BACKEND_METRICS_HOST}:8080/actuator/prometheus" \
+            '^(# HELP|jvm_|process_|http_)'
+          check_metrics_endpoint \
+            "backend-node-exporter" \
+            "http://${BACKEND_METRICS_HOST}:9100/metrics" \
+            '^(# HELP node_|node_exporter_build_info|node_cpu_seconds_total)'
+          check_metrics_endpoint \
+            "backend-nginx-exporter" \
+            "http://${BACKEND_METRICS_HOST}:9113/metrics" \
+            '^(# HELP nginx_|nginx_up|nginx_connections_active)'
+          REMOTE_BACKEND_METRICS_VERIFY
           {
             echo "### Backend metrics scrape reachability"
             echo ""
             echo "- Source host: \`INFRA_EC2_HOST\`"
-            echo "- Target URL: \`${metrics_url}\`"
+            echo "- Backend application target: \`http://${EC2_BACKEND_METRICS_HOST}:8080/actuator/prometheus\`"
+            echo "- Backend node-exporter target: \`http://${EC2_BACKEND_METRICS_HOST}:9100/metrics\`"
+            echo "- Backend Nginx exporter target: \`http://${EC2_BACKEND_METRICS_HOST}:9113/metrics\`"
             echo "- Access path: direct backend private endpoint, not Nginx"
             echo "- Result: reachable"
           } >> "$GITHUB_STEP_SUMMARY"

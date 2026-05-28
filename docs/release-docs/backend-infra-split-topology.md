@@ -65,6 +65,10 @@ Backend host `.env.prod`:
 - `REDIS_PASSWORD`: optional server-owned Redis password or ACL secret. Set it only when Redis auth/ACL is enabled.
 - `BACKEND_PORT`: host port for direct/private backend scrape, default `8080`.
 - `BACKEND_BIND_ADDRESS`: optional host bind address for backend `8080`, default `0.0.0.0`; restrict public exposure with the cloud security group.
+- `NODE_EXPORTER_PORT`: backend host node-exporter scrape port, default `9100`.
+- `NODE_EXPORTER_BIND_ADDRESS`: optional host bind address for node-exporter `9100`, default `0.0.0.0`; restrict inbound to the infra host with the cloud security group.
+- `NGINX_EXPORTER_PORT`: backend host Nginx exporter scrape port, default `9113`.
+- `NGINX_EXPORTER_BIND_ADDRESS`: optional host bind address for Nginx exporter `9113`, default `0.0.0.0`; restrict inbound to the infra host with the cloud security group.
 - `GRAFANA_PRIVATE_HOST`: optional infra Grafana private DNS/IP; default is `REDIS_HOST`.
 - `LOKI_PUSH_URL`: optional infra Loki push URL for backend-host promtail; default is `http://<REDIS_HOST>:3100/loki/api/v1/push`.
 
@@ -84,6 +88,7 @@ GitHub Actions secrets for split CD:
 Backend and infra SSH users must be able to run Docker either directly or through passwordless `sudo -n docker ...`. The workflow tries direct Docker access first, then falls back to passwordless sudo so an Ubuntu infra user that is not in the `docker` group can still deploy without an interactive password prompt.
 
 Prometheus must scrape backend application metrics from `http://<backend-private-host>:8080/actuator/prometheus`, not from `https://<public-domain>/actuator/prometheus` and not from Nginx.
+Prometheus also scrapes backend-host node-exporter and Nginx exporter from the infra host at `http://<backend-private-host>:9100/metrics` and `http://<backend-private-host>:9113/metrics`; binding these exporters to backend-host loopback only will make Grafana show `backend-private:9100` as a selectable target with no node metrics behind it.
 
 Grafana system dashboards must not assume the local colocated node-exporter job name. In split production, host metrics are scraped as `coin-zzickmock-backend-node` and `coin-zzickmock-infra-node`; local development still uses `coin-zzickmock-node`. System Overview host panels should match the full node-exporter job set so the infra-host dashboard does not render empty after the topology split. They should also expose host-selection variables so operators can view backend host and infra host separately when the combined view is noisy.
 

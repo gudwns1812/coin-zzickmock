@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 class PushEventEnvelopeFactoryTest {
     private final PushEventEnvelopeFactory factory = new PushEventEnvelopeFactory(
             new ObjectMapper(),
-            new PushPublicationProperties("shadow", "coin:push:market:v1", "coin:push:trading:v1", 10_000, Duration.ofSeconds(15), Duration.ofSeconds(5))
+            new PushPublicationProperties("coin:push:market:v1", "coin:push:trading:v1", 10_000, Duration.ofSeconds(15), Duration.ofSeconds(5))
     );
 
     @Test

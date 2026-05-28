@@ -1,6 +1,5 @@
 package coin.coinzzickmock.feature.market.web;
 
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.mock;
@@ -12,69 +11,9 @@ import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesSer
 import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 class MarketControllerTest {
-    private static final long SSE_TIMEOUT_MS = 30_000L;
-
-    @Test
-    void summaryEndpointRoutesThroughMarketStreamGateway() {
-        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
-        MarketController controller = controller(gateway);
-
-        SseEmitter emitter = controller.summaryStream("BTCUSDT, ETHUSDT", " tab-1 ");
-
-        verify(gateway).openSummary(
-                argThat(symbols -> symbols.containsAll(List.of("BTCUSDT", "ETHUSDT"))),
-                org.mockito.Mockito.eq(" tab-1 "),
-                org.mockito.Mockito.same(emitter)
-        );
-    }
-
-    @Test
-    void symbolSummaryEndpointRoutesThroughMarketStreamGateway() {
-        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
-        MarketController controller = controller(gateway);
-
-        SseEmitter emitter = controller.stream("BTCUSDT", "tab-1");
-
-        verify(gateway).openSummary(Set.of("BTCUSDT"), "tab-1", emitter);
-    }
-
-    @Test
-    void candleEndpointRoutesThroughMarketStreamGateway() {
-        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
-        MarketController controller = controller(gateway);
-
-        SseEmitter emitter = controller.candleStream("BTCUSDT", "1m", "tab-1");
-
-        verify(gateway).openCandle("BTCUSDT", "1m", "tab-1", emitter);
-    }
-
-    @Test
-    void unifiedEndpointRoutesThroughMarketStreamGateway() {
-        MarketStreamGateway gateway = mock(MarketStreamGateway.class);
-        MarketController controller = controller(gateway);
-
-        SseEmitter emitter = controller.unifiedStream("BTCUSDT", "1m", "tab-1");
-
-        verify(gateway).openUnified("BTCUSDT", "1m", "tab-1", emitter);
-    }
-
-    @Test
-    void createsEmitterWithFiniteTimeout() {
-        MarketController controller = controller(mock(MarketStreamGateway.class));
-
-        SseEmitter emitter = controller.createEmitter();
-
-        assertInstanceOf(SseEmitter.class, emitter);
-        assertTrue(emitter.getTimeout() != null);
-        assertTrue(emitter.getTimeout() > 0L);
-        assertTrue(emitter.getTimeout().equals(SSE_TIMEOUT_MS));
-    }
-
     @Test
     void mapsFundingScheduleFieldsToMarketSummaryResponse() {
         Instant serverTime = Instant.parse("2026-04-26T23:59:30Z");
@@ -106,12 +45,7 @@ class MarketControllerTest {
     void passesBeforeCursorToCandleQuery() {
         GetMarketSummaryService summaryService = mock(GetMarketSummaryService.class);
         GetMarketCandlesService candleService = mock(GetMarketCandlesService.class);
-        MarketController controller = new MarketController(
-                summaryService,
-                candleService,
-                mock(MarketStreamGateway.class),
-                SSE_TIMEOUT_MS
-        );
+        MarketController controller = new MarketController(summaryService, candleService);
         Instant before = Instant.parse("2026-04-21T00:05:00Z");
 
         when(candleService.getCandles(org.mockito.Mockito.any())).thenReturn(List.of());
@@ -124,14 +58,5 @@ class MarketControllerTest {
                         && query.limit().equals(120)
                         && before.equals(query.beforeOpenTime())
         ));
-    }
-
-    private static MarketController controller(MarketStreamGateway gateway) {
-        return new MarketController(
-                mock(GetMarketSummaryService.class),
-                mock(GetMarketCandlesService.class),
-                gateway,
-                SSE_TIMEOUT_MS
-        );
     }
 }

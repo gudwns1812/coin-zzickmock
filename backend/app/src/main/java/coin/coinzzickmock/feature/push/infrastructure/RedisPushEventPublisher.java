@@ -22,10 +22,6 @@ public class RedisPushEventPublisher implements PushEventPublisher {
 
     @Override
     public void publish(PushEventEnvelope event) {
-        if (!properties.deliveryMode().publishesToRedis()) {
-            return;
-        }
-
         String streamKey = properties.streamKey(event.stream());
         Timer.Sample sample = Timer.start(meterRegistry);
         String result = "success";

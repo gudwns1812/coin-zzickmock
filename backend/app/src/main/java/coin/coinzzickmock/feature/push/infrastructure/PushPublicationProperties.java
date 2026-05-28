@@ -5,7 +5,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "coin.push.publisher")
 public record PushPublicationProperties(
-        String mode,
         String marketStreamKey,
         String tradingStreamKey,
         long maxLen,
@@ -13,9 +12,6 @@ public record PushPublicationProperties(
         Duration tradingMaxAge
 ) {
     public PushPublicationProperties {
-        if (mode == null || mode.isBlank()) {
-            mode = "disabled";
-        }
         if (marketStreamKey == null || marketStreamKey.isBlank()) {
             marketStreamKey = "coin:push:market:v1";
         }
@@ -31,10 +27,6 @@ public record PushPublicationProperties(
         if (tradingMaxAge == null || tradingMaxAge.isNegative() || tradingMaxAge.isZero()) {
             tradingMaxAge = Duration.ofSeconds(5);
         }
-    }
-
-    public PushDeliveryMode deliveryMode() {
-        return PushDeliveryMode.from(mode);
     }
 
     public String streamKey(coin.coinzzickmock.feature.push.application.dto.PushStream stream) {

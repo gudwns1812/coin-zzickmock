@@ -56,10 +56,22 @@ public class RedisPushStreamReader {
             redisTemplate.opsForStream().add(key, Map.of("eventType", "__INIT__", "publishedAt", Instant.now().toString()));
             redisTemplate.opsForStream().createGroup(key, ReadOffset.latest(), group);
         } catch (RedisSystemException exception) {
-            if (!String.valueOf(exception.getMessage()).contains("BUSYGROUP")) {
+            if (!isConsumerGroupAlreadyInitialized(exception)) {
                 throw exception;
             }
         }
+    }
+
+    private boolean isConsumerGroupAlreadyInitialized(RuntimeException exception) {
+        Throwable current = exception;
+        while (current != null) {
+            if (String.valueOf(current.getMessage()).contains("BUSYGROUP")
+                    || current.getClass().getSimpleName().contains("RedisBusy")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private void read(String key, String group, PushStream expectedStream) {

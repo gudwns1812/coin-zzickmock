@@ -18,13 +18,9 @@ class MarketPushEventPublicationBridge {
     private final MarketFinalizedCandleIntervalsReader finalizedCandleIntervalsReader;
     private final PushEventPublisher pushEventPublisher;
     private final PushEventEnvelopeFactory pushEventEnvelopeFactory;
-    private final PushPublicationProperties pushPublicationProperties;
 
     @EventListener
     void onMarketSummaryUpdated(MarketSummaryUpdatedEvent event) {
-        if (!pushPublicationProperties.deliveryMode().publishesToRedis()) {
-            return;
-        }
         MarketSummaryResponse response = toResponse(event);
         try {
             pushEventPublisher.publish(pushEventEnvelopeFactory.marketSummary(event, response));
@@ -54,7 +50,7 @@ class MarketPushEventPublicationBridge {
 
     @EventListener
     void onCandleUpdated(MarketCandleUpdatedEvent event) {
-        if (!pushPublicationProperties.deliveryMode().publishesToRedis() || !event.hasPayload()) {
+        if (!event.hasPayload()) {
             return;
         }
         try {
@@ -67,9 +63,6 @@ class MarketPushEventPublicationBridge {
 
     @EventListener
     void onHistoryFinalized(MarketHistoryFinalizedEvent event) {
-        if (!pushPublicationProperties.deliveryMode().publishesToRedis()) {
-            return;
-        }
         try {
             for (String interval : finalizedCandleIntervalsReader.readAffectedIntervals(event.symbol(), event.openTime(), event.closeTime())) {
                 pushEventPublisher.publish(pushEventEnvelopeFactory.marketHistoryFinalized(event, interval));

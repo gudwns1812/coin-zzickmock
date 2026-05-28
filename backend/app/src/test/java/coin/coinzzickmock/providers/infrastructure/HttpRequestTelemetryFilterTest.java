@@ -19,7 +19,6 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,14 +61,6 @@ class HttpRequestTelemetryFilterTest {
                 .flatMap(meter -> meter.getId().getTags().stream())
                 .map(tag -> tag.getValue()))
                 .doesNotContain("/api/futures/test/123", "/api/futures/test/123?memberId=456");
-    }
-
-    @Test
-    void skipsSseStreamRoutes() throws Exception {
-        mockMvc.perform(get("/api/futures/test/123/stream"))
-                .andExpect(status().isOk());
-
-        assertThat(meterRegistry.find("http.request.total").meters()).isEmpty();
     }
 
     @Test
@@ -142,11 +133,6 @@ class HttpRequestTelemetryFilterTest {
         @GetMapping("/api/futures/test/{id}")
         String read(@PathVariable String id) {
             return "ok";
-        }
-
-        @GetMapping(value = "/api/futures/test/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-        String stream(@PathVariable String id) {
-            return "event: ok\n\n";
         }
     }
 }

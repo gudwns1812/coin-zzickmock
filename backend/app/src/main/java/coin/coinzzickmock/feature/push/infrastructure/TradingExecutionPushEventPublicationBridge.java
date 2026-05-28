@@ -13,13 +13,9 @@ import org.springframework.stereotype.Component;
 class TradingExecutionPushEventPublicationBridge {
     private final PushEventPublisher pushEventPublisher;
     private final PushEventEnvelopeFactory pushEventEnvelopeFactory;
-    private final PushPublicationProperties pushPublicationProperties;
 
     @EventListener
     void onTradingExecution(TradingExecutionEvent event) {
-        if (!pushPublicationProperties.deliveryMode().publishesToRedis()) {
-            return;
-        }
         try {
             pushEventPublisher.publish(pushEventEnvelopeFactory.tradingExecution(event));
         } catch (RuntimeException exception) {

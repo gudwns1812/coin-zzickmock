@@ -16,8 +16,6 @@ import coin.coinzzickmock.feature.order.application.service.GetOrderHistoryServi
 import coin.coinzzickmock.feature.order.domain.OrderPreview;
 import coin.coinzzickmock.providers.Providers;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/futures/orders")
@@ -35,9 +32,7 @@ public class OrderController {
     private final GetOrderHistoryService getOrderHistoryService;
     private final CancelOrderService cancelOrderService;
     private final ModifyOrderService modifyOrderService;
-    private final TradingExecutionStreamGateway tradingExecutionStreamGateway;
     private final Providers providers;
-    private final long streamTimeoutMs;
 
     public OrderController(
             CreateOrderService createOrderService,
@@ -45,18 +40,14 @@ public class OrderController {
             GetOrderHistoryService getOrderHistoryService,
             CancelOrderService cancelOrderService,
             ModifyOrderService modifyOrderService,
-            TradingExecutionStreamGateway tradingExecutionStreamGateway,
-            Providers providers,
-            @Value("${coin.trading.sse.timeout-ms:300000}") long streamTimeoutMs
+            Providers providers
     ) {
         this.createOrderService = createOrderService;
         this.getOpenOrdersService = getOpenOrdersService;
         this.getOrderHistoryService = getOrderHistoryService;
         this.cancelOrderService = cancelOrderService;
         this.modifyOrderService = modifyOrderService;
-        this.tradingExecutionStreamGateway = tradingExecutionStreamGateway;
         this.providers = providers;
-        this.streamTimeoutMs = streamTimeoutMs;
     }
 
     @GetMapping("/open")
@@ -75,24 +66,6 @@ public class OrderController {
                 symbol
         );
         return ApiResponse.success(orders.stream().map(OrderHistoryResponse::from).toList());
-    }
-
-    public SseEmitter stream() {
-        return stream(null);
-    }
-
-    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@RequestParam(required = false) String clientKey) {
-        Long memberId = providers.auth().currentActor().memberId();
-        TradingExecutionStreamGateway.SubscriptionPermit permit = tradingExecutionStreamGateway.reserve(memberId, clientKey);
-        SseEmitter emitter = createEmitter();
-        try {
-            tradingExecutionStreamGateway.register(permit, emitter);
-            return emitter;
-        } catch (RuntimeException exception) {
-            tradingExecutionStreamGateway.release(permit);
-            throw exception;
-        }
     }
 
     @PostMapping("/preview")
@@ -160,7 +133,4 @@ public class OrderController {
         );
     }
 
-    SseEmitter createEmitter() {
-        return new SseEmitter(streamTimeoutMs);
-    }
 }

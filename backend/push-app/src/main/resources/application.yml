@@ -30,6 +30,12 @@ app:
     jwt-secret: ${JWT_SECRET:dGhlLXF1aWNrLWJyb3duLWZveC1qdW1wcy1vdmVyLXRoZS1sYXp5LWRvZy1hbmQtc29tZS1vdGhlci1zZWNyZXQtc3R1ZmY=}
 
 coin:
+  web:
+    cors:
+      allowed-origin-patterns: >-
+        ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:3001,
+        http://127.0.0.1:3000,http://127.0.0.1:3001,
+        https://coin-zzickmock-frontend*.vercel.app}
   push:
     server:
       enabled: ${PUSH_SERVER_ENABLED:true}

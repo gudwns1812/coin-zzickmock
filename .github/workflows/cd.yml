@@ -604,6 +604,26 @@ jobs:
             done <<< "${lines}"
           }
 
+          remove_safe_nginx_port_conflicts() {
+            local port="$1"
+            local lines
+            lines="$("${docker_cmd[@]}" ps --format '{{.ID}}|{{.Image}}|{{.Names}}|{{.Ports}}' | grep -E "([0-9.]+|\\[::\\]):${port}->" || true)"
+            if [[ -z "${lines}" ]]; then
+              return
+            fi
+
+            while IFS='|' read -r container_id image name ports; do
+              [[ -z "${container_id}" ]] && continue
+              if [[ "${image}" =~ (^|/)nginx: && "${name}" == *"coin-zzickmock"* && "${name}" == *"nginx"* ]]; then
+                echo "Removing stale coin-zzickmock nginx container ${name} (${container_id}) that holds host port ${port}: ${ports}"
+                "${docker_cmd[@]}" rm -f "${container_id}"
+              else
+                echo "Host port ${port} is held by non-coin-zzickmock nginx container ${name} (${image}): ${ports}" >&2
+                exit 1
+              fi
+            done <<< "${lines}"
+          }
+
           check_backend_health() {
             local container
             container="$(compose_live ps -q backend || true)"
@@ -637,6 +657,8 @@ jobs:
             nginx_container="$(compose_live ps -q nginx || true)"
             if [[ -z "${nginx_container}" ]] || [[ "$("${docker_cmd[@]}" inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" != "true" ]]; then
               echo "Nginx config changed and nginx is not running; starting nginx before config verification."
+              remove_safe_nginx_port_conflicts 80
+              remove_safe_nginx_port_conflicts 443
               run_compose_up "nginx" nginx
               nginx_container="$(compose_live ps -q nginx || true)"
               if [[ -z "${nginx_container}" ]] || [[ "$("${docker_cmd[@]}" inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" != "true" ]]; then
@@ -692,6 +714,8 @@ jobs:
           if [[ "${NGINX_SERVICE_DEFINITION_EFFECT}" == "true" ]]; then
             echo "Pulling nginx image."
             compose_live pull nginx
+            remove_safe_nginx_port_conflicts 80
+            remove_safe_nginx_port_conflicts 443
             run_compose_up "nginx" nginx
             compose_live exec -T nginx nginx -t
             echo "Nginx service definition effect completed."

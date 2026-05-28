@@ -636,8 +636,13 @@ jobs:
             local nginx_container
             nginx_container="$(compose_live ps -q nginx || true)"
             if [[ -z "${nginx_container}" ]] || [[ "$("${docker_cmd[@]}" inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" != "true" ]]; then
-              echo "Nginx config changed, but nginx is not running; refusing config-only recreate." >&2
-              exit 1
+              echo "Nginx config changed and nginx is not running; starting nginx before config verification."
+              run_compose_up "nginx" nginx
+              nginx_container="$(compose_live ps -q nginx || true)"
+              if [[ -z "${nginx_container}" ]] || [[ "$("${docker_cmd[@]}" inspect -f '{{.State.Running}}' "${nginx_container}" 2>/dev/null || true)" != "true" ]]; then
+                echo "Nginx did not start for config verification." >&2
+                exit 1
+              fi
             fi
             compose_live exec -T nginx nginx -t
             compose_live exec -T nginx nginx -s reload

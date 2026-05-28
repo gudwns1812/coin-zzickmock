@@ -803,6 +803,7 @@ jobs:
 
           infra_compose_file="docker-compose.infra.prod.yml"
           infra_services=(redis loki promtail redis-exporter node-exporter prometheus grafana)
+          file_mounted_infra_services=(loki promtail prometheus grafana)
           infra_dirs=(prometheus grafana loki promtail)
 
           detect_compose() {
@@ -843,8 +844,9 @@ jobs:
           sudo cp "${REMOTE_STAGE_DIR}/${infra_compose_file}" "${INFRA_DEPLOY_PATH}/${infra_compose_file}"
           sudo mkdir -p "${INFRA_DEPLOY_PATH}/infra"
           for dir in "${infra_dirs[@]}"; do
-            sudo rm -rf "${INFRA_DEPLOY_PATH}/infra/${dir}"
-            sudo cp -R "${REMOTE_STAGE_DIR}/infra/${dir}" "${INFRA_DEPLOY_PATH}/infra/"
+            sudo mkdir -p "${INFRA_DEPLOY_PATH}/infra/${dir}"
+            sudo find "${INFRA_DEPLOY_PATH}/infra/${dir}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+            sudo cp -R "${REMOTE_STAGE_DIR}/infra/${dir}/." "${INFRA_DEPLOY_PATH}/infra/${dir}/"
           done
 
           cd "${INFRA_DEPLOY_PATH}"
@@ -853,6 +855,7 @@ jobs:
           }
           compose_live pull "${infra_services[@]}"
           compose_live up -d --no-deps "${infra_services[@]}"
+          compose_live up -d --no-deps --force-recreate "${file_mounted_infra_services[@]}"
           compose_live ps redis loki promtail redis-exporter node-exporter prometheus grafana
           REMOTE_INFRA_DEPLOY
 
@@ -952,6 +955,8 @@ jobs:
             fi
 
             if [[ "${prometheus_ready}" == "true" && "${loki_ready}" == "true" ]]; then
+              compose_live exec -T grafana sh -c 'grep -q "Node Exporter Targets Up" /var/lib/grafana/dashboards/system-overview.json'
+              echo "Grafana dashboard bind mount sees the updated System Overview JSON."
               echo "Infra readiness succeeded on attempt ${attempt}."
               exit 0
             fi

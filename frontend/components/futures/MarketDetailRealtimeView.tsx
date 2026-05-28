@@ -157,6 +157,7 @@ export default function MarketDetailRealtimeView({
   const lastOrderStreamRefreshAtRef = useRef(0);
   const executionEventSequenceRef = useRef(0);
   const executionEventDismissTimersRef = useRef(new Map<string, number>());
+  const [hasHydratedAuthState, setHasHydratedAuthState] = useState(false);
 
   const marketStreamUrl = useMemo(() => {
     // clientKey is appended by useResilientEventSource at the shared hook boundary.
@@ -164,7 +165,8 @@ export default function MarketDetailRealtimeView({
   }, [initialMarket.symbol, selectedInterval]);
   const orderStreamUrl = useMemo(() => createOrderExecutionSseUrl(), []);
   const authQuery = useFuturesAuthUser();
-  const authUser = authQuery.data ?? null;
+  const isAuthStateResolved = hasHydratedAuthState && !authQuery.isLoading;
+  const authUser = isAuthStateResolved ? authQuery.data ?? null : null;
   const effectiveIsAuthenticated = Boolean(authUser);
   const accountQuery = useQuery({
     queryKey: futuresQueryKeys.account,
@@ -214,6 +216,10 @@ export default function MarketDetailRealtimeView({
         (position) => position.symbol === initialMarket.symbol
       )
     : [];
+
+  useEffect(() => {
+    setHasHydratedAuthState(true);
+  }, []);
 
   const applyMarketSummary = useCallback(
     (symbol: string, data: MarketApiResponse, receivedAt: number) => {
@@ -641,6 +647,7 @@ export default function MarketDetailRealtimeView({
             accountSummary={effectiveAccountSummary}
             currentPrice={liveMarketPrice}
             isAuthenticated={effectiveIsAuthenticated}
+            isAuthStateResolved={isAuthStateResolved}
             isMarketDataDegraded={isMarketDataDegraded}
             positions={displayedPositions}
             quickLimitPriceSelection={quickLimitPriceSelection}

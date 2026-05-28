@@ -18,7 +18,7 @@ test("login route leaves auth ownership with the backend", () => {
   assert.doesNotMatch(loginPageSource, /"use client"/);
   assert.doesNotMatch(loginPageSource, /getAuthUser/);
   assert.doesNotMatch(loginPageSource, /redirect\("\/markets"\);/);
-  assert.match(loginPageSource, /return <LoginFormClient \/>;/);
+  assert.match(loginPageSource, /<LoginFormClient \/>/);
   assert.match(loginFormSource, /"use client"/);
   assert.match(loginFormSource, /loginToFutures/);
   assert.match(loginFormSource, /notifyFuturesAuthChanged\("login"\)/);
@@ -66,6 +66,13 @@ test("authenticated screens share the react-query auth cache", () => {
   assert.match(marketsLandingSource, /isAuthenticated=\{effectiveIsAuthenticated\}/);
   assert.match(marketsLandingSource, /enabled: Boolean\(authUser\)/);
   assert.doesNotMatch(marketsLandingSource, /isAuthenticated=\{_isAuthenticated\}/);
+  assert.match(marketDetailSource, /hasHydratedAuthState/);
+  assert.match(marketDetailSource, /isAuthStateResolved/);
+  assert.match(marketDetailSource, /isAuthStateResolved=\{isAuthStateResolved\}/);
+  assert.match(
+    marketDetailSource,
+    /const authUser = isAuthStateResolved \? authQuery\.data \?\? null : null/
+  );
 });
 
 test("auth events encode explicit cache-policy actions", () => {

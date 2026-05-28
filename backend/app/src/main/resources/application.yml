@@ -48,12 +48,25 @@ app:
     jwt-secret: ${JWT_SECRET:dGhlLXF1aWNrLWJyb3duLWZveC1qdW1wcy1vdmVyLXRoZS1sYXp5LWRvZy1hbmQtc29tZS1vdGhlci1zZWNyZXQtc3R1ZmY=}
 
 coin:
+  web:
+    cors:
+      allowed-origin-patterns: >-
+        ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:3001,
+        http://127.0.0.1:3000,http://127.0.0.1:3001,
+        https://coin-zzickmock-frontend*.vercel.app}
   sse:
     delivery:
       executor:
         core-pool-size: 4
         max-pool-size: 16
         queue-capacity: 1000
+  push:
+    publisher:
+      market-stream-key: ${PUSH_MARKET_STREAM_KEY:coin:push:market:v1}
+      trading-stream-key: ${PUSH_TRADING_STREAM_KEY:coin:push:trading:v1}
+      max-len: ${PUSH_STREAM_MAX_LEN:10000}
+      market-max-age: ${PUSH_MARKET_MAX_AGE:PT15S}
+      trading-max-age: ${PUSH_TRADING_MAX_AGE:PT5S}
   bitget:
     websocket:
       enabled: ${BITGET_WEBSOCKET_ENABLED:true}

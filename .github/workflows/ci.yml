@@ -74,17 +74,19 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
           cache: gradle
 
       - name: Ensure Gradle wrapper is executable
         run: chmod +x gradlew
 
       - name: Run backend check and package jar
-        run: ./gradlew check :app:bootJar --console=plain
+        run: ./gradlew check :app:bootJar :push-app:bootJar --console=plain
 
-      - name: Build backend Docker image
-        run: docker build --target jar-runtime -t coin-zzickmock-backend:ci .
+      - name: Build backend Docker images
+        run: |
+          docker build --target jar-runtime -t coin-zzickmock-backend:ci .
+          docker build --target push-jar-runtime -t coin-zzickmock-push-app:ci .
 
       - name: Upload backend architecture lint report
         if: always()

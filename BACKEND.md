@@ -24,12 +24,13 @@ Backend 작업의 문서 권위 순서는 아래와 같다.
 backend/
   core/       business core: common contracts, provider contracts, feature domain/application
   app/        executable Spring Boot app: boot, web/job adapters, assembly and configuration
+  push-app/   executable Spring Boot push server: Redis Stream consumer and SSE fan-out only
   storage/    persistence leaf adapter: JPA, QueryDSL, Flyway, DB resources
   stream/     realtime leaf adapter: SSE delivery and stream runtime
   external/   external leaf adapter: Bitget and provider connector implementations
 ```
 
-`core`, `app`, `storage`, `stream`, `external`은 Gradle module 이름이다.
+`core`, `app`, `push-app`, `storage`, `stream`, `external`은 Gradle module 이름이다.
 Java top-level package 이름으로 쓰지 않는다.
 
 ## Read Order
@@ -58,6 +59,12 @@ Java top-level package 이름으로 쓰지 않는다.
 2. [backend/app/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/README.md)
 3. [backend/app/docs/assembly-and-runtime.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/assembly-and-runtime.md)
 4. [backend/app/docs/web-and-job-adapters.md](/Users/hj.park/projects/coin-zzickmock/backend/app/docs/web-and-job-adapters.md)
+
+### `push-app`: executable push server, Redis Stream relay
+
+1. [backend/push-app/AGENTS.md](/Users/hj.park/projects/coin-zzickmock/backend/push-app/AGENTS.md)
+2. [backend/push-app/docs/README.md](/Users/hj.park/projects/coin-zzickmock/backend/push-app/docs/README.md)
+3. [backend/push-app/docs/push-server-runtime.md](/Users/hj.park/projects/coin-zzickmock/backend/push-app/docs/push-server-runtime.md)
 
 ### `storage`: DB, persistence, schema
 
@@ -93,10 +100,11 @@ Java top-level package 이름으로 쓰지 않는다.
 - Scoped `AGENTS.md`는 상위 규칙을 override하지 않는다.
 - 기능은 `feature/<feature-name>` 아래에서 수직으로 자른다.
 - 레이어는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정한다.
-- `app`만 executable Spring Boot module이다.
+- executable Spring Boot module은 사용자 요청/API/DB 쓰기를 소유하는 `app`과 Redis Stream-backed SSE relay만 소유하는 `push-app`으로 제한한다.
 - `core`는 business core이고 backend project dependency를 갖지 않는다.
 - `stream`, `storage`, `external`은 leaf adapter이며 backend project module 중 `core`에만 의존한다.
 - `app`의 leaf adapter concrete import는 configuration/assembly/config 경계에만 둔다.
+- `push-app`은 `core`와 `stream`만 의존하고 DB/JPA/Flyway/external provider module을 의존하지 않는다.
 - DB 변경은 `backend/storage/src/main/resources/db/migration` 아래 새 Flyway migration과 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md) 갱신을 함께 수행한다.
 - 비즈니스/도메인 실패는 `CoreException`과 구조화된 error type으로 표현한다.
 
@@ -114,6 +122,7 @@ Backend source, Gradle, lint, runtime wiring을 바꾼 경우:
 cd backend
 ./gradlew architectureLint --console=plain
 ./gradlew check --console=plain
+./gradlew :app:bootJar :push-app:bootJar --console=plain
 ```
 
 Module-specific targeted tests are listed in each module `AGENTS.md`.

@@ -583,6 +583,28 @@ jobs:
             echo "Compose up completed for ${service_label}."
           }
 
+          remove_safe_port_conflicts() {
+            local port="$1"
+            local service_label="$2"
+            local allowed_image_pattern="$3"
+            local lines
+            lines="$("${docker_cmd[@]}" ps --format '{{.ID}}|{{.Image}}|{{.Names}}|{{.Ports}}' | grep -E "([0-9.]+|\\[::\\]):${port}->" || true)"
+            if [[ -z "${lines}" ]]; then
+              return
+            fi
+
+            while IFS='|' read -r container_id image name ports; do
+              [[ -z "${container_id}" ]] && continue
+              if [[ "${image}" =~ ${allowed_image_pattern} || "${name}" == *"${service_label}"* ]]; then
+                echo "Removing stale ${service_label} container ${name} (${container_id}) that holds host port ${port}: ${ports}"
+                "${docker_cmd[@]}" rm -f "${container_id}"
+              else
+                echo "Host port ${port} is held by non-${service_label} container ${name} (${image}): ${ports}" >&2
+                exit 1
+              fi
+            done <<< "${lines}"
+          }
+
           check_backend_health() {
             local container
             container="$(compose_live ps -q backend || true)"
@@ -657,6 +679,8 @@ jobs:
           if [[ "${BACKEND_AGENT_RUNTIME_EFFECT}" == "true" ]]; then
             echo "Pulling backend agent services: ${backend_agent_services[*]}."
             compose_live pull "${backend_agent_services[@]}"
+            remove_safe_port_conflicts 9100 "node-exporter" '(^|/)node-exporter:|quay.io/prometheus/node-exporter'
+            remove_safe_port_conflicts 9113 "nginx-exporter" 'nginx/nginx-prometheus-exporter'
             run_compose_up "backend agent services" "${backend_agent_services[@]}"
             echo "Backend agent services effect completed."
           fi

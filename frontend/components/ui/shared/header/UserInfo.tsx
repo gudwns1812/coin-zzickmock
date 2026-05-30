@@ -10,7 +10,7 @@ import { usePathname } from "next/navigation";
 
 export type HeaderUser = {
   memberId: number;
-  account: string;
+  account: string | null;
   nickname: string;
   memberName?: string;
   email?: string;

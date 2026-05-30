@@ -28,13 +28,16 @@ Job classes wake core application use cases; they do not implement transaction o
 `backend/app` owns the Spring Security servlet/resource-server boundary for `/api/futures/**`.
 Spring Security types stay in app runtime/config/provider implementation code and must not leak into `core`, `storage`, `stream`, or `external`.
 
-The auth migration uses three ordered chains:
+The auth migration uses ordered chains:
 
 1. `OPTIONS /api/futures/**` preflight is stateless and `permitAll`.
-2. Auth recovery endpoints (`POST /api/futures/auth/register`, `/duplicate`, `/login`, `/logout`) are stateless, keep the unsafe-method Origin guard, but do not resolve the `accessToken` cookie. This preserves recovery from malformed, expired, or stale cookies.
-3. The remaining `/api/futures/**` API chain resolves the existing `accessToken` cookie as the resource-server bearer token. Public reads permit anonymous requests when the cookie is absent, authenticate to a DB-backed `Actor` when the cookie is valid, and return the standard `UNAUTHORIZED` JSON when the cookie is malformed, expired, non-ACCESS, or points to an inactive member.
+2. OAuth login endpoints (`/oauth2/authorization/google`, `/login/oauth2/code/google`) use Spring OAuth2 Login with a short-lived HttpOnly authorization-request cookie for OAuth state. The authorization-request cookie stores only the required OAuth request fields as JSON and is HMAC-signed before the browser sees it; callback removal records the consumed OAuth state in a bounded TTL server-side replay guard. On callback, linked Google identities receive the existing backend `accessToken` cookie and unlinked identities receive only a short-lived HttpOnly pending onboarding cookie before redirecting to the frontend onboarding route.
+3. Auth recovery/onboarding endpoints (`POST /api/futures/auth/logout`, `GET/POST /api/futures/auth/google/**`) are stateless, keep the unsafe-method Origin guard for writes, but do not resolve the `accessToken` cookie. Legacy `/register`, `/duplicate`, and `/login` are disabled by default through `app.auth.legacy-password-endpoints-enabled=false` and exist only as non-production fixture compatibility when explicitly enabled.
+4. The remaining `/api/futures/**` API chain resolves the existing `accessToken` cookie as the resource-server bearer token. Public reads permit anonymous requests when the cookie is absent, authenticate to a DB-backed `Actor` when the cookie is valid, and return the standard `UNAUTHORIZED` JSON when the cookie is malformed, expired, non-ACCESS, or points to an inactive member.
 
 JWT claims are compatibility input only. The authenticated principal and authorities are derived from active member lookup at the request boundary, and admin access uses the DB-backed actor role. Existing controller-level admin guards may remain as defense-in-depth during the migration window.
+
+Google onboarding status checks read the pending cookie by hashing it server-side without a write lock. Link/signup completion paths consume the same pending token by locking `member_oauth_pending_links.token_hash` with a unique equality predicate. Linking verifies a legacy account/password once, attaches `member_oauth_identities` to the existing member id, and never copies trading/account data. Fresh Google signup creates a normal member profile without local `account/password_hash`, provisions the default trading account synchronously, then links the Google identity in the same short DB transaction; terminal identity conflicts soft-consume the pending row and expire the pending cookie without committing partial signup state.
 
 Security failures must use the same public JSON error contract as application failures: `ErrorResponse(code, message)` with `UNAUTHORIZED` or `FORBIDDEN`. Token/cookie raw values and raw member ids must not be logged or emitted as metric labels.
 
@@ -42,4 +45,3 @@ Security failures must use the same public JSON error contract as application fa
 
 - [../../docs/architecture/foundations.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/architecture/foundations.md)
 - [../../docs/code-quality/clean-code-responsibility.md](/Users/hj.park/projects/coin-zzickmock/backend/docs/code-quality/clean-code-responsibility.md)
-

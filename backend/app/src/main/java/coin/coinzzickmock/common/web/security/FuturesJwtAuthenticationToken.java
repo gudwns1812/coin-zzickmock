@@ -25,6 +25,9 @@ public class FuturesJwtAuthenticationToken extends AbstractAuthenticationToken {
     
     @Override
     public String getName() {
-        return principal.account();
+        if (principal.account() != null && !principal.account().isBlank()) {
+            return principal.account();
+        }
+        return String.valueOf(principal.memberId());
     }
 }

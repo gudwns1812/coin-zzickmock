@@ -78,6 +78,33 @@ public record MemberCredential(
         );
     }
 
+    public static MemberCredential registerGoogleOnly(
+            String memberName,
+            String nickname,
+            String memberEmail,
+            String phoneNumber,
+            String zipCode,
+            String address,
+            String addressDetail,
+            int investScore
+    ) {
+        return new MemberCredential(
+                null,
+                null,
+                null,
+                MemberIdentityRules.normalizeRequired(memberName),
+                MemberIdentityRules.normalizeNickname(nickname),
+                MemberIdentityRules.normalizeRequired(memberEmail),
+                MemberIdentityRules.normalizeRequired(phoneNumber),
+                MemberIdentityRules.normalizeRequired(zipCode),
+                MemberIdentityRules.normalizeRequired(address),
+                MemberIdentityRules.normalizeAddressDetail(addressDetail),
+                investScore,
+                MemberRole.USER,
+                null
+        );
+    }
+
     public MemberCredential withMemberId(Long memberId) {
         return new MemberCredential(
                 memberId,

@@ -55,6 +55,17 @@ export function createFuturesBackendApiUrl(path: string) {
   return `${publicBaseUrl}${relativeUrl}`;
 }
 
+export function createFuturesBackendUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const publicBaseUrl = getPublicFuturesApiBaseUrl();
+
+  if (!publicBaseUrl) {
+    return normalizedPath;
+  }
+
+  return `${publicBaseUrl}${normalizedPath}`;
+}
+
 export function createUnifiedMarketSseUrl(
   symbol: string,
   interval: string

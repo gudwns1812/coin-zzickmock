@@ -16,7 +16,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ## Status
 
 - 상태: 구현 반영됨
-- 마지막 스키마 동기화: 2026-05-20
+- 마지막 스키마 동기화: 2026-05-30
 - 기준 소스: Flyway migration + JPA entity + Spring Boot datasource 설정
 
 ## Source Of Truth
@@ -33,7 +33,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [TradingAccountEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/TradingAccountEntity.java)
   [AccountRefillStateEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/AccountRefillStateEntity.java)
   [WalletHistoryEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/account/infrastructure/persistence/WalletHistoryEntity.java)
-  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+  [MemberOAuthIdentityEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberOAuthIdentityEntity.java)
+  [MemberOAuthPendingLinkEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberOAuthPendingLinkEntity.java)
   [FuturesOrderEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/order/infrastructure/persistence/FuturesOrderEntity.java)
   [OpenPositionEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/position/infrastructure/persistence/OpenPositionEntity.java)
   [RewardPointWalletEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/reward/infrastructure/persistence/RewardPointWalletEntity.java)
@@ -78,6 +80,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V32__add_reward_shop_purchases.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V32__add_reward_shop_purchases.sql)
   [V33__add_trading_account_non_negative_checks.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V33__add_trading_account_non_negative_checks.sql)
   [V34__generalize_completed_market_candles.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V34__generalize_completed_market_candles.sql)
+  [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -199,13 +202,17 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 ### `member_credentials`
 
 - 목적:
-  내부 회원 PK, 로그인 계정, 비밀번호 해시와 회원 프로필을 저장한다.
+  내부 회원 PK, legacy 로컬 로그인 계정/비밀번호 해시와 회원 프로필을 저장한다. Google-only 신규 회원은
+  `account`, `password_hash`를 `NULL`로 저장하며 공개 placeholder 계정을 만들지 않는다.
 - PK:
   `id` (auto increment surrogate key)
 - 유니크:
   `account`
 - 주요 컬럼:
   `account`, `password_hash`, `member_name`, `nickname`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `role`, `withdrawn_at`, `created_at`, `updated_at`
+- 로컬 자격 증명:
+  `account`, `password_hash`는 Google 로그인 전환 이후 legacy 계정 연결 증명에만 쓰는 nullable column이다.
+  MySQL unique key는 non-null legacy `account` 중복을 막고 여러 Google-only `NULL` 계정을 허용한다.
 - 닉네임 정책:
   저장 전 trim 및 연속 공백 축약을 적용하고, 2~30자 Unicode 문자/숫자/공백/`_`/`-`만 허용한다. 화면 표시명은 `member_name`이 아니라 `nickname`을 사용한다.
 - 권한:
@@ -221,7 +228,46 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V12__add_reward_shop_foundation.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V12__add_reward_shop_foundation.sql),
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql),
-  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/app/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+  [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql),
+  [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
+
+### `member_oauth_identities`
+
+- 목적:
+  외부 OAuth identity와 기존 `member_credentials.id`를 연결한다. 현재 provider는 `google`만 사용한다.
+- PK:
+  `id` (auto increment surrogate key)
+- 유니크:
+  `(provider, provider_subject)`, `(member_id, provider)`
+- 주요 컬럼:
+  `member_id`, `provider`, `provider_subject`, `provider_email`, `provider_name`, `created_at`, `updated_at`
+- 인증 기준:
+  로그인은 `provider + provider_subject`로 기존 member를 찾고, role/profile/withdrawn 상태는
+  `member_credentials` active row에서 다시 확인한다. `provider_email`은 표시/지원 힌트이며 계정 소유권 증명으로 자동 사용하지 않는다.
+- 관련 엔티티/모듈:
+  `feature.member`
+- 관련 migration 또는 schema 파일:
+  [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql),
+  [MemberOAuthIdentityEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberOAuthIdentityEntity.java)
+
+### `member_oauth_pending_links`
+
+- 목적:
+  unlinked Google OAuth callback 이후 가입/연결 결정을 완료하기 전까지 opaque pending token hash와 provider subject를 TTL-bound로 저장한다.
+- PK:
+  `id` (auto increment surrogate key)
+- 유니크:
+  `token_hash`
+- 주요 컬럼:
+  `token_hash`, `provider`, `provider_subject`, `provider_email`, `provider_name`, `expires_at`, `consumed_at`, `attempt_count`, `last_failed_at`, `created_at`, `updated_at`
+- 소비 기준:
+  가입/연결 POST는 HttpOnly pending cookie의 raw token을 서버에서 hash한 뒤 `token_hash = ?` pessimistic lock으로 소비한다.
+  성공 또는 terminal failure는 row를 즉시 삭제하지 않고 `consumed_at`을 채워 replay를 결정적으로 차단한다.
+- 관련 엔티티/모듈:
+  `feature.member`
+- 관련 migration 또는 schema 파일:
+  [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql),
+  [MemberOAuthPendingLinkEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberOAuthPendingLinkEntity.java)
 
 ### `member_daily_activity`
 
@@ -700,6 +746,9 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `V34__generalize_completed_market_candles.sql`로 `market_completed_candles` generic completed candle table을 추가하고 기존 `market_candles_1h` row를 `candle_interval=ONE_HOUR`로 복사한 뒤 `ONE_DAY`/`ONE_MONTH` 초기 row를 시간 버킷 기준으로 생성했다.
 - 2026-05-14:
   `V31__add_community_posts.sql`로 커뮤니티 게시글, 댓글, 좋아요, 이미지 intent 저장 테이블과 soft-delete/list/ownership 검증 인덱스를 추가했다.
+- 2026-05-30:
+  `V35__google_oauth_member_identity.sql`로 `member_credentials.account/password_hash`를 nullable legacy credential로 전환하고,
+  Google identity link table과 pending onboarding/link table을 추가했다.
 - 2026-05-13:
   `V27__weekly_account_refill_description.sql`로 리필 추가권 운영 데이터 설명을 다음 KST 월요일 00:00 리셋 정책에 맞췄다.
 - 2026-05-07:

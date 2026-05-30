@@ -20,8 +20,8 @@ test("login route leaves auth ownership with the backend", () => {
   assert.doesNotMatch(loginPageSource, /redirect\("\/markets"\);/);
   assert.match(loginPageSource, /<LoginFormClient \/>/);
   assert.match(loginFormSource, /"use client"/);
-  assert.match(loginFormSource, /loginToFutures/);
-  assert.match(loginFormSource, /notifyFuturesAuthChanged\("login"\)/);
+  assert.match(loginFormSource, /createGoogleLoginUrl/);
+  assert.doesNotMatch(loginFormSource, /loginToFutures/);
 });
 
 test("frontend authenticated-user lookup uses the non-mutating auth me endpoint", () => {
@@ -79,13 +79,15 @@ test("auth events encode explicit cache-policy actions", () => {
   const authStateSource = readFrontendSource("lib/futures-auth-state.ts");
   const loginPageSource = readFrontendSource("app/login/LoginFormClient.tsx");
   const headerLoginSource = readFrontendSource("components/ui/shared/header/LoginForm.tsx");
+  const onboardingSource = readFrontendSource("app/auth/google/onboarding/page.tsx");
   const logoutSource = readFrontendSource("components/ui/shared/header/LogoutForm.tsx");
   const withdrawalSource = readFrontendSource("components/ui/shared/header/WithdrawalForm.tsx");
 
   assert.match(authStateSource, /type FuturesAuthChangeAction/);
   assert.match(authStateSource, /new CustomEvent\(FUTURES_AUTH_CHANGED_EVENT/);
-  assert.match(loginPageSource, /notifyFuturesAuthChanged\("login"\)/);
-  assert.match(headerLoginSource, /notifyFuturesAuthChanged\("login"\)/);
+  assert.match(loginPageSource, /createGoogleLoginUrl/);
+  assert.match(headerLoginSource, /createGoogleLoginUrl/);
+  assert.match(onboardingSource, /notifyFuturesAuthChanged\("login"\)/);
   assert.match(logoutSource, /notifyFuturesAuthChanged\("logout"\)/);
   assert.match(withdrawalSource, /notifyFuturesAuthChanged\("withdraw"\)/);
 });

@@ -24,10 +24,10 @@ public class MemberCredentialEntity extends AuditableEntity {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "account", nullable = false, length = 64, unique = true)
+    @Column(name = "account", length = 64, unique = true)
     private String account;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
     @Column(name = "member_name", nullable = false, length = 100)

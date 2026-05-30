@@ -23,6 +23,10 @@ spring:
     scheduling:
       enabled: false
 
+app:
+  auth:
+    legacy-password-endpoints-enabled: true
+
 coin:
   bitget:
     websocket:

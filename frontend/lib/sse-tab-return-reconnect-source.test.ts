@@ -102,7 +102,9 @@ test("client auth requests target the backend origin for backend-owned cookies",
   const headerLoginSource = readFrontendSource("components/ui/shared/header/LoginForm.tsx");
   const refreshSource = readFrontendSource("hooks/useSessionActivityRefresh.ts");
 
-  assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/login"'), true);
+  assert.equal(authSource.includes('createFuturesBackendUrl("/oauth2/authorization/google"'), true);
+  assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/google/link"'), true);
+  assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/google/signup"'), true);
   assert.equal(authSource.includes('fetchFuturesBackendApi("/auth/logout"'), true);
   assert.equal(authStateSource.includes('fetchFuturesBackendApi("/auth/me"'), true);
   assert.equal(urlSource.includes("PUBLIC_FUTURES_API_BASE_URL"), true);
@@ -114,8 +116,8 @@ test("client auth requests target the backend origin for backend-owned cookies",
   assert.equal(authSource.includes("credentials: \"include\""), true);
   assert.equal(authStateSource.includes("credentials: \"include\""), true);
   assert.equal(authStateSource.includes("cache: \"no-store\""), true);
-  assert.equal(pageLoginSource.includes("loginToFutures"), true);
-  assert.equal(headerLoginSource.includes("loginToFutures"), true);
+  assert.equal(pageLoginSource.includes("createGoogleLoginUrl"), true);
+  assert.equal(headerLoginSource.includes("createGoogleLoginUrl"), true);
 });
 
 test("authenticated order SSE targets backend origin for backend-owned cookies", () => {

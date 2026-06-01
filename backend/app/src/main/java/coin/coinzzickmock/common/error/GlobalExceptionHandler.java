@@ -4,7 +4,9 @@ import coin.coinzzickmock.common.web.SseClientKeyException;
 import coin.coinzzickmock.common.web.SseSubscriptionLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -18,12 +20,26 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private final List<CoreExceptionResponseCustomizer> coreExceptionResponseCustomizers;
+
+    public GlobalExceptionHandler() {
+        this(List.of());
+    }
+
+    @Autowired
+    public GlobalExceptionHandler(List<CoreExceptionResponseCustomizer> coreExceptionResponseCustomizers) {
+        this.coreExceptionResponseCustomizers = List.copyOf(coreExceptionResponseCustomizers);
+    }
+
     @ExceptionHandler(CoreException.class)
     public ResponseEntity<ErrorResponse> handleCoreException(CoreException exception, HttpServletRequest request) {
         ErrorCode errorCode = exception.errorCode();
         logCoreException(errorCode, request, exception);
-        return ResponseEntity.status(errorCode.httpStatusCode())
-                .body(new ErrorResponse(errorCode.name(), errorCode.message()));
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(errorCode.httpStatusCode());
+        for (CoreExceptionResponseCustomizer customizer : coreExceptionResponseCustomizers) {
+            customizer.customize(exception, request, response);
+        }
+        return response.body(new ErrorResponse(errorCode.name(), errorCode.message()));
     }
 
     @ExceptionHandler(AsyncRequestNotUsableException.class)

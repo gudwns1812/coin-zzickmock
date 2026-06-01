@@ -88,9 +88,6 @@ class LeaderboardProjectionPersistenceRepositoryTest {
                 "Nick " + account.substring(0, Math.min(account.length(), 20)),
                 account + "@coinzzickmock.dev",
                 "010-0000-0000",
-                "00000",
-                "Seoul",
-                "101",
                 0
         ));
         accountRepository.create(new TradingAccount(

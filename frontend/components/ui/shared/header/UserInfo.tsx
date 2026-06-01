@@ -10,17 +10,14 @@ import { usePathname } from "next/navigation";
 
 export type HeaderUser = {
   memberId: number;
-  account: string;
+  account: string | null;
   nickname: string;
   memberName?: string;
   email?: string;
   role?: "USER" | "ADMIN";
   admin?: boolean;
   exp?: number;
-  Address?: string;
-  AddressDetail?: string;
   phoneNumber?: string;
-  zipCode?: string;
 };
 
 const UserInfo = ({
@@ -84,12 +81,6 @@ const UserInfo = ({
 
             <span>이메일</span>
             <span>{token.email || "-"}</span>
-
-            <span>집주소</span>
-            <span>
-              {token.zipCode || ""} {token.Address || ""} {token.AddressDetail || ""}
-              {!(token.zipCode || token.Address || token.AddressDetail) && "-"}
-            </span>
           </div>
 
           {children}

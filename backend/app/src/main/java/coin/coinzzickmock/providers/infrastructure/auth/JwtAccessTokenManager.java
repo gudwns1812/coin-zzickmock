@@ -48,17 +48,19 @@ public class JwtAccessTokenManager implements AccessTokenManager {
         Instant expiresAt = now.plusSeconds(accessTokenExpirationSeconds);
         ActorRole role = sessionClaims.role() == null ? ActorRole.USER : sessionClaims.role();
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
                 .subject(accessTokenSubject(sessionClaims))
                 .issuedAt(now)
                 .expiresAt(expiresAt)
                 .claim(AccessTokenTypeValidator.TOKEN_TYPE_CLAIM, AccessTokenTypeValidator.ACCESS_TOKEN_TYPE)
                 .claim("memberId", sessionClaims.memberId())
-                .claim("account", sessionClaims.account())
                 .claim("nickname", sessionClaims.nickname())
                 .claim("email", sessionClaims.email())
-                .claim("role", role.name())
-                .build();
+                .claim("role", role.name());
+        if (sessionClaims.account() != null && !sessionClaims.account().isBlank()) {
+            claimsBuilder.claim("account", sessionClaims.account());
+        }
+        JwtClaimsSet claims = claimsBuilder.build();
         return jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
     }
 

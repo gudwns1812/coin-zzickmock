@@ -11,9 +11,6 @@ public record MemberCredential(
         String nickname,
         String memberEmail,
         String phoneNumber,
-        String zipCode,
-        String address,
-        String addressDetail,
         int investScore,
         MemberRole role,
         Instant withdrawnAt
@@ -26,9 +23,6 @@ public record MemberCredential(
             String nickname,
             String memberEmail,
             String phoneNumber,
-            String zipCode,
-            String address,
-            String addressDetail,
             int investScore,
             MemberRole role
     ) {
@@ -40,9 +34,6 @@ public record MemberCredential(
                 nickname,
                 memberEmail,
                 phoneNumber,
-                zipCode,
-                address,
-                addressDetail,
                 investScore,
                 role,
                 null
@@ -56,9 +47,6 @@ public record MemberCredential(
             String nickname,
             String memberEmail,
             String phoneNumber,
-            String zipCode,
-            String address,
-            String addressDetail,
             int investScore
     ) {
         return new MemberCredential(
@@ -69,9 +57,27 @@ public record MemberCredential(
                 MemberIdentityRules.normalizeNickname(nickname),
                 MemberIdentityRules.normalizeRequired(memberEmail),
                 MemberIdentityRules.normalizeRequired(phoneNumber),
-                MemberIdentityRules.normalizeRequired(zipCode),
-                MemberIdentityRules.normalizeRequired(address),
-                MemberIdentityRules.normalizeAddressDetail(addressDetail),
+                investScore,
+                MemberRole.USER,
+                null
+        );
+    }
+
+    public static MemberCredential registerGoogleOnly(
+            String memberName,
+            String nickname,
+            String memberEmail,
+            String phoneNumber,
+            int investScore
+    ) {
+        return new MemberCredential(
+                null,
+                null,
+                null,
+                MemberIdentityRules.normalizeRequired(memberName),
+                MemberIdentityRules.normalizeNickname(nickname),
+                MemberIdentityRules.normalizeRequired(memberEmail),
+                MemberIdentityRules.normalizeRequired(phoneNumber),
                 investScore,
                 MemberRole.USER,
                 null
@@ -87,9 +93,6 @@ public record MemberCredential(
                 nickname,
                 memberEmail,
                 phoneNumber,
-                zipCode,
-                address,
-                addressDetail,
                 investScore,
                 role,
                 withdrawnAt
@@ -109,9 +112,6 @@ public record MemberCredential(
                 nickname,
                 memberEmail,
                 phoneNumber,
-                zipCode,
-                address,
-                addressDetail,
                 investScore,
                 role == null ? MemberRole.USER : role,
                 withdrawnAt
@@ -131,9 +131,6 @@ public record MemberCredential(
                 nickname,
                 memberEmail,
                 phoneNumber,
-                zipCode,
-                address,
-                addressDetail,
                 investScore,
                 role,
                 Objects.requireNonNull(withdrawnAt, "withdrawnAt")

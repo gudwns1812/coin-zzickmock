@@ -20,10 +20,7 @@ public class RegisterMemberService {
             String memberName,
             String nickname,
             String memberEmail,
-            String phoneNumber,
-            String zipCode,
-            String address,
-            String addressDetail
+            String phoneNumber
     ) {
         String normalizedAccount = MemberIdentityRules.normalizeAccount(account);
         String normalizedPassword = MemberIdentityRules.validateRawPassword(rawPassword);
@@ -35,9 +32,6 @@ public class RegisterMemberService {
                 nickname,
                 memberEmail,
                 phoneNumber,
-                zipCode,
-                address,
-                addressDetail,
                 0
         );
         MemberCredential savedMemberCredential = memberRegistrationProvisioner.provision(memberCredential);

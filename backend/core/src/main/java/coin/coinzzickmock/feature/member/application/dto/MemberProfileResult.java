@@ -10,9 +10,6 @@ public record MemberProfileResult(
         String nickname,
         String memberEmail,
         String phoneNumber,
-        String zipCode,
-        String address,
-        String addressDetail,
         int investScore,
         MemberRole role
 ) {
@@ -24,9 +21,6 @@ public record MemberProfileResult(
                 memberCredential.nickname(),
                 memberCredential.memberEmail(),
                 memberCredential.phoneNumber(),
-                memberCredential.zipCode(),
-                memberCredential.address(),
-                memberCredential.addressDetail(),
                 memberCredential.investScore(),
                 memberCredential.role()
         );

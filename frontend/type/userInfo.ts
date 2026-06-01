@@ -1,11 +1,6 @@
 export type UserInfo = {
   name: string;
   nickname: string;
-  address: {
-    zipcode: string;
-    address: string;
-    detail: string;
-  };
   phone: {
     countryCode: string;
     phoneNumber1: string;

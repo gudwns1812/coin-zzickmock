@@ -5,6 +5,8 @@ import com.jayway.jsonpath.JsonPath;
 import coin.coinzzickmock.feature.activity.application.service.SnapshotDailyActiveUserSummaryService;
 import coin.coinzzickmock.feature.activity.domain.ActivityDate;
 import jakarta.persistence.EntityManager;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,9 @@ class AuthControllerTest {
 
     @Autowired
     private SnapshotDailyActiveUserSummaryService snapshotDailyActiveUserSummaryService;
+
+    @Autowired
+    private GoogleOAuthPendingTokenCodec googleOAuthPendingTokenCodec;
 
     @Autowired
     private EntityManager entityManager;
@@ -112,12 +117,7 @@ class AuthControllerTest {
                                   "nickname": "new-user-name",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "new-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -149,12 +149,7 @@ class AuthControllerTest {
                                   "nickname": "account-seed-user",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "account-seed-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -192,12 +187,7 @@ class AuthControllerTest {
                                   "nickname": " trimmed-name ",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "trimmed-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": " 12층 "
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -305,12 +295,7 @@ class AuthControllerTest {
                                   "nickname": "public-stale-user",
                                   "phoneNumber": "010-7777-9999",
                                   "email": "public-stale-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -356,12 +341,7 @@ class AuthControllerTest {
                                   "nickname": "plain-user-admin-denied",
                                   "phoneNumber": "010-2222-3333",
                                   "email": "plain-user-admin-denied@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -401,12 +381,7 @@ class AuthControllerTest {
                                   "nickname": "withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "withdraw-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -464,12 +439,7 @@ class AuthControllerTest {
                                   "nickname": "withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "withdraw-user-again@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isConflict());
@@ -487,12 +457,7 @@ class AuthControllerTest {
                                   "nickname": "refresh-withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "refresh-withdraw-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -526,6 +491,199 @@ class AuthControllerTest {
     }
 
     @Test
+    void googleOnboardingRequiresPendingCookieAndExpiresItWhenMissing() throws Exception {
+        mockMvc.perform(get("/api/futures/auth/google/onboarding"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("googleOAuthPending=")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
+                .andExpect(jsonPath("$.code").value("OAUTH_ONBOARDING_EXPIRED"));
+    }
+
+    @Test
+    void googleLinkAttachesIdentityToExistingMemberAndPreservesMemberId() throws Exception {
+        GoogleOAuthPendingTokenCodec.PendingToken pendingToken = createPendingGoogleLink(
+                "google-sub-link-existing",
+                "existing-google@coinzzickmock.dev",
+                "Existing Google User"
+        );
+        Long demoMemberId = jdbcTemplate.queryForObject(
+                "select id from member_credentials where account = ?",
+                Long.class,
+                "test"
+        );
+
+        MvcResult result = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/google/link")
+                        .cookie(pendingCookie(pendingToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "test@1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.memberId").value(demoMemberId))
+                .andReturn();
+
+        assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .anySatisfy(header -> assertThat(header).contains("accessToken="));
+        assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .anySatisfy(header -> assertThat(header).contains("googleOAuthPending=").contains("Max-Age=0"));
+        assertThat(identityMemberId("google-sub-link-existing")).isEqualTo(demoMemberId);
+    }
+
+    @Test
+    void googleLinkTerminalIdentityConflictConsumesPendingLink() throws Exception {
+        GoogleOAuthPendingTokenCodec.PendingToken pendingToken = createPendingGoogleLink(
+                "google-sub-conflict-existing",
+                "conflict-google@coinzzickmock.dev",
+                "Conflict Google User"
+        );
+        Long demoMemberId = jdbcTemplate.queryForObject(
+                "select id from member_credentials where account = ?",
+                Long.class,
+                "test"
+        );
+        jdbcTemplate.update(
+                """
+                        insert into member_oauth_identities
+                            (member_id, provider, provider_subject, provider_email, provider_name)
+                        values (?, 'google', ?, ?, ?)
+                        """,
+                demoMemberId,
+                "google-sub-conflict-existing",
+                "conflict-google@coinzzickmock.dev",
+                "Conflict Google User"
+        );
+
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/google/link")
+                        .cookie(pendingCookie(pendingToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "test@1234"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("googleOAuthPending=")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
+                .andExpect(jsonPath("$.code").value("OAUTH_IDENTITY_ALREADY_LINKED"));
+
+        entityManager.flush();
+        assertThat(pendingConsumedAt(pendingToken.tokenHash())).isNotNull();
+    }
+
+    @Test
+    void googleLinkExpiresPendingCookieAfterTooManyInvalidCredentialAttempts() throws Exception {
+        GoogleOAuthPendingTokenCodec.PendingToken pendingToken = createPendingGoogleLink(
+                "google-sub-link-too-many-attempts",
+                "too-many-attempts@coinzzickmock.dev",
+                "Too Many Attempts"
+        );
+        Cookie pendingCookie = pendingCookie(pendingToken);
+
+        for (int attempt = 1; attempt < 5; attempt++) {
+            mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/google/link")
+                            .cookie(pendingCookie)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "account": "test",
+                                      "password": "wrong-password"
+                                    }
+                                    """))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+        }
+
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/google/link")
+                        .cookie(pendingCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "test",
+                                  "password": "wrong-password"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("googleOAuthPending=")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
+                .andExpect(jsonPath("$.code").value("OAUTH_LINK_TOO_MANY_ATTEMPTS"));
+    }
+
+    @Test
+    void googleSignupCreatesGoogleOnlyMemberAndProvisionedTradingAccount() throws Exception {
+        GoogleOAuthPendingTokenCodec.PendingToken pendingToken = createPendingGoogleLink(
+                "google-sub-new-member",
+                "new-google@coinzzickmock.dev",
+                "New Google User"
+        );
+
+        MvcResult result = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/google/signup")
+                        .cookie(pendingCookie(pendingToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "New Google User",
+                                  "nickname": "New Google Nick",
+                                  "phoneNumber": "010-3333-4444",
+                                  "email": "new-google@coinzzickmock.dev",
+                                  "agreement": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.account").doesNotExist())
+                .andExpect(jsonPath("$.data.nickname").value("New Google Nick"))
+                .andReturn();
+
+        Long memberId = memberId(result);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from member_credentials where id = ? and account is null and password_hash is null",
+                Long.class,
+                memberId
+        )).isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from trading_accounts where member_id = ?",
+                Long.class,
+                memberId
+        )).isEqualTo(1L);
+        assertThat(identityMemberId("google-sub-new-member")).isEqualTo(memberId);
+    }
+
+    @Test
+    void googleSignupRejectsEmailChangedFromPendingGoogleIdentity() throws Exception {
+        GoogleOAuthPendingTokenCodec.PendingToken pendingToken = createPendingGoogleLink(
+                "google-sub-email-tampered",
+                "real-google@coinzzickmock.dev",
+                "Real Google User"
+        );
+
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/google/signup")
+                        .cookie(pendingCookie(pendingToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Real Google User",
+                                  "nickname": "Real Google Nick",
+                                  "phoneNumber": "010-3333-4444",
+                                  "email": "attacker@coinzzickmock.dev",
+                                  "agreement": true
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from member_oauth_identities where provider_subject = ?",
+                Long.class,
+                "google-sub-email-tampered"
+        )).isEqualTo(0L);
+    }
+
+    @Test
     void meRejectsStaleWithdrawnMemberToken() throws Exception {
         mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -537,12 +695,7 @@ class AuthControllerTest {
                                   "nickname": "me-withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "me-withdraw-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -621,6 +774,47 @@ class AuthControllerTest {
                                 }
                                 """))
                 .andExpect(status().isForbidden());
+    }
+
+    private GoogleOAuthPendingTokenCodec.PendingToken createPendingGoogleLink(
+            String providerSubject,
+            String providerEmail,
+            String providerName
+    ) {
+        GoogleOAuthPendingTokenCodec.PendingToken pendingToken = googleOAuthPendingTokenCodec.issue();
+        jdbcTemplate.update(
+                """
+                        insert into member_oauth_pending_links
+                            (token_hash, provider, provider_subject, provider_email, provider_name, expires_at)
+                        values (?, 'google', ?, ?, ?, ?)
+                        """,
+                pendingToken.tokenHash(),
+                providerSubject,
+                providerEmail,
+                providerName,
+                Timestamp.from(Instant.now().plusSeconds(600))
+        );
+        return pendingToken;
+    }
+
+    private Cookie pendingCookie(GoogleOAuthPendingTokenCodec.PendingToken pendingToken) {
+        return new Cookie(GoogleOAuthPendingCookieFactory.COOKIE_NAME, pendingToken.rawToken());
+    }
+
+    private Long identityMemberId(String providerSubject) {
+        return jdbcTemplate.queryForObject(
+                "select member_id from member_oauth_identities where provider = 'google' and provider_subject = ?",
+                Long.class,
+                providerSubject
+        );
+    }
+
+    private java.sql.Timestamp pendingConsumedAt(String tokenHash) {
+        return jdbcTemplate.queryForObject(
+                "select consumed_at from member_oauth_pending_links where token_hash = ?",
+                java.sql.Timestamp.class,
+                tokenHash
+        );
     }
 
     private Cookie accessTokenCookie(MvcResult loginResult) {

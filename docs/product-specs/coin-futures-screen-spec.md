@@ -54,6 +54,7 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 - `/signup`
 - `/login`
+- `/auth/google/onboarding`
 
 ### 메인
 
@@ -78,32 +79,28 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 목표
 
-사용자가 모의투자 계정을 생성하고 최초 자산 `100000 USDT`를 지급받아 서비스에 진입하게 만든다.
+비밀번호 회원가입 진입점은 더 이상 제공하지 않는다. 사용자는 `/login`의 Google 로그인으로 시작하고, 신규 Google identity일 때 `/auth/google/onboarding`의 새 계정 시작 흐름에서 모의투자 계정을 생성한다.
 
 ### 필수 요소
 
-- 이메일
-- 비밀번호
-- 비밀번호 확인
-- 닉네임
-- 약관/리스크 동의 체크
-- "모의투자 서비스" 안내 문구
+- `/login`으로 안내 또는 리다이렉트
+- Google onboarding에서 이름, 닉네임, Google 계정 이메일, 휴대폰 번호, 약관/리스크 동의 체크를 입력한다. 이메일은 Google 인증값으로 고정 표시하며 사용자가 수정할 수 없다.
 
 ### 성공 동작
 
-- 가입 완료 후 로그인 상태로 전환하거나 `/login`으로 보낸다
+- Google onboarding 가입 완료 후 로그인 상태로 전환하고 `/markets`로 보낸다
 - 가입 성공 시 초기 계정, 포인트 지갑, 기본 관심 심볼을 생성한다
 
 ### 실패 상태
 
-- 중복 이메일
-- 약한 비밀번호
+- pending Google onboarding 만료
 - 닉네임 중복
+- 필수 동의 누락
 - 서버 오류
 
 ### 수용 기준
 
-- 정상 입력 시 계정이 생성된다
+- 정상 입력 시 Google-only member가 생성된다
 - 생성 직후 `100000 USDT`가 준비된다
 - 실패 시 어떤 필드가 문제인지 문장으로 보여준다
 
@@ -111,25 +108,47 @@ MVP는 최소 가로 폭을 유지한 데스크톱 우선 경험으로 간다.
 
 ### 목표
 
-기존 사용자가 자신의 모의투자 계정으로 진입하게 만든다.
+사용자가 Google 계정으로 서비스에 진입하게 만든다.
 
 ### 필수 요소
 
-- 이메일
-- 비밀번호
-- 로그인 버튼
-- 회원가입 이동 버튼
+- Google 로그인 CTA
+- 기존 계정 자산은 onboarding에서 연결할 수 있다는 안내
+- 비밀번호 로그인/회원가입 form은 표시하지 않는다
 
 ### 성공 동작
 
-- 로그인 후 `/markets`로 이동한다
+- 이미 연결된 Google identity는 로그인 후 `/markets`로 이동한다
+- 아직 연결되지 않은 Google identity는 `/auth/google/onboarding`으로 이동한다
 - 헤더와 사이드바에 사용자 계정 정보가 표시된다
 
 ### 실패 상태
 
-- 잘못된 비밀번호
-- 없는 이메일
+- Google OAuth state 만료 또는 실패
 - 잠긴 계정 또는 비활성 계정
+
+## 화면 2-1. Google onboarding `/auth/google/onboarding`
+
+### 목표
+
+신규 Google identity가 기존 모의투자 계정을 연결하거나 새 Google-only 계정으로 시작하게 만든다.
+
+### 필수 요소
+
+- 기존 계정 연결 선택: legacy 아이디, 비밀번호
+- 새 계정 시작 선택: 이름, 닉네임, Google 계정 이메일, 휴대폰 번호, 필수 동의. 이메일은 pending Google provider email과 서버에서 일치 검증한다.
+- pending 요청이 없거나 만료되면 Google 로그인 재시작 CTA
+
+### 성공 동작
+
+- 기존 계정 연결은 같은 `member_credentials.id`에 Google identity를 붙이고 기존 잔고/포지션/포인트/히스토리를 그대로 유지한다
+- 새 계정 시작은 `account/password_hash`가 없는 Google-only member를 만들고 초기 잔고를 지급한다
+- 성공 후 backend-owned `accessToken` cookie가 발급되고 `/markets`로 이동한다
+
+### 수용 기준
+
+- pending token은 URL이나 프론트 상태에 노출되지 않고 backend HttpOnly cookie로만 전달된다
+- 연결 시도 실패 횟수는 제한되며, 실패 로그/메트릭은 provider subject, email, member id, token 원문을 남기지 않는다
 
 ## 화면 3. 마켓 대시보드 `/markets`
 

@@ -1,6 +1,8 @@
 const PUBLIC_FUTURES_API_BASE_URL = (
   process.env.NEXT_PUBLIC_FUTURES_API_BASE_URL ?? ""
-).replace(/\/+$/, "");
+)
+  .trim()
+  .replace(/\/+$/, "");
 
 function isLoopbackHost(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
@@ -53,6 +55,17 @@ export function createFuturesBackendApiUrl(path: string) {
   }
 
   return `${publicBaseUrl}${relativeUrl}`;
+}
+
+export function createFuturesBackendUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const publicBaseUrl = getPublicFuturesApiBaseUrl();
+
+  if (!publicBaseUrl) {
+    return normalizedPath;
+  }
+
+  return `${publicBaseUrl}${normalizedPath}`;
 }
 
 export function createUnifiedMarketSseUrl(

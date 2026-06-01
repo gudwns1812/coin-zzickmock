@@ -47,10 +47,7 @@ class RegisterMemberServiceTest {
                 "New Ranker",
                 "New Ranker",
                 "new-ranker@coinzzickmock.dev",
-                "010-5555-6666",
-                "04524",
-                "서울 중구 세종대로 110",
-                "12층"
+                "010-5555-6666"
         );
 
         TradingAccount account = accountRepository.accountsByMemberId.get(result.memberId());
@@ -82,10 +79,7 @@ class RegisterMemberServiceTest {
                 "Duplicate Ranker",
                 "Duplicate Ranker",
                 "duplicate-ranker@coinzzickmock.dev",
-                "010-5555-6666",
-                "04524",
-                "서울 중구 세종대로 110",
-                "12층"
+                "010-5555-6666"
         );
 
         CoreException exception = assertThrows(CoreException.class, () -> service.register(
@@ -94,10 +88,7 @@ class RegisterMemberServiceTest {
                 "Duplicate Ranker 2",
                 "Duplicate Ranker 2",
                 "duplicate-ranker-2@coinzzickmock.dev",
-                "010-7777-8888",
-                "04524",
-                "서울 중구 세종대로 110",
-                "13층"
+                "010-7777-8888"
         ));
         assertEquals(ErrorCode.MEMBER_ALREADY_EXISTS, exception.errorCode());
     }

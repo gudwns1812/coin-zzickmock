@@ -150,12 +150,7 @@ class PositionPeekControllerIntegrationTest {
                                   "nickname": "%s",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "%s@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """.formatted(account, account, account, account)))
                 .andExpect(status().isOk());

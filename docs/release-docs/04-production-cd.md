@@ -136,10 +136,12 @@ Backend host `.env.prod`에는 최소 아래 값이 필요하다.
 - `BACKEND_IMAGE`: 현재 운영 backend image. 예: `dockerhub-user/coin-zzickmock-backend:<tag>`
 - `PUSH_IMAGE`: 현재 운영 push server image. 예: `dockerhub-user/coin-zzickmock-push-app:<tag>`
 - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USERNAME`, `MYSQL_PASSWORD`
+- `FRONTEND_BASE_URL`: Google OAuth 성공/실패 후 돌아갈 frontend origin. 예: `https://coin-zzickmock-frontend.vercel.app`
 - `JWT_SECRET`
 - `REDIS_HOST`: infra Redis private DNS/IP
 - `REDIS_PORT`, `REDIS_DATABASE`
 - `REDIS_PASSWORD`: 선택값. Redis auth/ACL을 켠 경우에만 설정한다
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google OAuth endpoint를 운영에서 활성화할 때 설정한다
 - `BACKEND_PORT`: direct/private backend scrape port, 기본 `8080`
 - `BACKEND_BIND_ADDRESS`: 선택값. backend host에서 8080을 bind할 주소이며 기본은 `0.0.0.0`이다. public 노출은 security group으로 막는다
 - `NODE_EXPORTER_PORT`: backend host node-exporter local/exporter port, 기본 `9100`

@@ -68,6 +68,12 @@ backend/spy.log
 scripts/*
 !scripts/k6/
 !scripts/k6-reports/k6-candle-latency-report.html
+scripts/k6/reports/**
+k6-summary.html
+k6-summary.md
+
+# Local AI tool metadata
+.antigravitycli/*.json
 .omx/
 .codex/*
 !.codex/hooks.json

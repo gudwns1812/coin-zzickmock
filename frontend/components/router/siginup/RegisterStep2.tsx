@@ -92,9 +92,7 @@ const RegisterStep2 = ({
       !userInfo.passwordConfirm ||
       !userInfo.name ||
       !userInfo.nickname ||
-      !userInfo.email ||
-      !userInfo.address.zipcode ||
-      !userInfo.address.address
+      !userInfo.email
     ) {
       toast.error("입력되지 않은 항목이 있습니다");
       return;
@@ -131,9 +129,7 @@ const RegisterStep2 = ({
       !userInfo.passwordConfirm.trim() ||
       !userInfo.name.trim() ||
       !userInfo.nickname.trim() ||
-      !userInfo.email.trim() ||
-      !userInfo.address.zipcode.trim() ||
-      !userInfo.address.address.trim()
+      !userInfo.email.trim()
     ) {
       toast.error("입력되지 않은 항목이 있습니다");
       return;
@@ -161,11 +157,6 @@ const RegisterStep2 = ({
       phoneNumber: `${userInfo.phone.countryCode}-${userInfo.phone.phoneNumber1}-${userInfo.phone.phoneNumber2}`,
       email: userInfo.email,
       fgOffset: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      address: {
-        zipcode: userInfo.address.zipcode,
-        address: userInfo.address.address,
-        addressDetail: userInfo.address.detail || "",
-      },
     };
 
     // --- 모든 유효성 통과 후 회원가입 요청 ---

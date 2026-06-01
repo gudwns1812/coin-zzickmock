@@ -27,9 +27,6 @@ export default function GoogleOnboardingPage() {
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [zipcode, setZipcode] = useState("");
-  const [address, setAddress] = useState("");
-  const [addressDetail, setAddressDetail] = useState("");
   const [agreement, setAgreement] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -94,7 +91,6 @@ export default function GoogleOnboardingPage() {
         nickname,
         email,
         phoneNumber,
-        address: { zipcode, address, addressDetail },
         agreement,
       });
       if (!response.ok) {
@@ -182,13 +178,19 @@ export default function GoogleOnboardingPage() {
                 <form className="mt-main-4 grid grid-cols-2 gap-main-2" onSubmit={handleSignup}>
                   <Input id="google-name" placeholder="이름" value={name} onChange={(event) => setName(event.target.value)} />
                   <Input id="google-nickname" placeholder="닉네임" value={nickname} onChange={(event) => setNickname(event.target.value)} />
-                  <Input id="google-email" placeholder="이메일" value={email} onChange={(event) => setEmail(event.target.value)} />
+                  <Input
+                    id="google-email"
+                    placeholder="Google 계정 이메일"
+                    value={email}
+                    readOnly
+                    disabled
+                    aria-readonly="true"
+                    className="cursor-not-allowed bg-slate-50 text-slate-500"
+                  />
                   <Input id="google-phone" placeholder="휴대폰 번호" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} />
-                  <Input id="google-zipcode" placeholder="우편번호" value={zipcode} onChange={(event) => setZipcode(event.target.value)} />
-                  <Input id="google-address" placeholder="주소" value={address} onChange={(event) => setAddress(event.target.value)} />
-                  <div className="col-span-2">
-                    <Input id="google-address-detail" placeholder="상세 주소" value={addressDetail} onChange={(event) => setAddressDetail(event.target.value)} />
-                  </div>
+                  <p className="col-span-2 text-xs-custom font-semibold text-slate-500">
+                    이메일은 인증한 Google 계정 기준으로 고정되며 변경할 수 없습니다.
+                  </p>
                   <label className="col-span-2 flex items-center gap-main text-sm-custom font-bold text-slate-700">
                     <input type="checkbox" checked={agreement} onChange={(event) => setAgreement(event.target.checked)} />
                     모의투자 서비스 이용과 리스크 안내에 동의합니다.

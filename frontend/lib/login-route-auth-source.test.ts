@@ -103,3 +103,15 @@ test("logout does not probe auth me after logout succeeds", () => {
   assert.match(logoutFunctionSource, /return response\.ok/);
   assert.doesNotMatch(logoutFunctionSource, /\/auth\/me/);
 });
+
+
+test("blank public backend override falls back to the backend base URL", () => {
+  const nextConfigSource = readFrontendSource("next.config.ts");
+  const urlHelperSource = readFrontendSource("lib/futures-sse-url.ts");
+
+  assert.match(nextConfigSource, /function optionalBaseUrl/);
+  assert.match(nextConfigSource, /optionalBaseUrl\(process\.env\.NEXT_PUBLIC_FUTURES_API_BASE_URL\) \?\? FUTURES_API_BASE_URL/);
+  assert.doesNotMatch(nextConfigSource, /process\.env\.NEXT_PUBLIC_FUTURES_API_BASE_URL \?\? FUTURES_API_BASE_URL/);
+  assert.equal(urlHelperSource.includes(".trim()"), true);
+  assert.equal(urlHelperSource.includes(".replace(/\\/+$/, \"\")"), true);
+});

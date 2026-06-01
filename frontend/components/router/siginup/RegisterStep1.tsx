@@ -1,8 +1,7 @@
 "use client";
 
 import Input from "@/components/ui/shared/Input";
-import React, { useState, useRef } from "react";
-import AddressModal from "@/components/ui/shared/AddressModal";
+import React, { useRef } from "react";
 import { UserInfo } from "@/type/userInfo";
 import { toast } from "react-toastify";
 import Button from "@/components/ui/shared/Button";
@@ -19,7 +18,6 @@ const RegisterStep1 = ({
   userInfo,
   setUserInfo,
 }: RegisterStep1Props) => {
-  const [isOpenAddressModal, setIsOpenAddressModal] = useState(false);
   const phone2Ref = useRef<HTMLInputElement>(null);
 
   const handlePhoneContryCode = (code: string) => {
@@ -32,8 +30,6 @@ const RegisterStep1 = ({
   const handleNext = () => {
     if (
       !userInfo.name ||
-      !userInfo.address.zipcode ||
-      !userInfo.address.address ||
       !userInfo.phone.phoneNumber1 ||
       !userInfo.phone.phoneNumber2 ||
       userInfo.phone.phoneNumber1.length !== 4 ||
@@ -60,34 +56,6 @@ const RegisterStep1 = ({
           placeholder="이름"
           value={userInfo.name}
           onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
-        />
-      </div>
-      <div className="flex flex-col gap-[5px]">
-        <label htmlFor="address">주소</label>
-        <div className="flex gap-[5px]">
-          <Input
-            placeholder="우편번호"
-            disabled
-            value={userInfo.address.zipcode}
-          />
-          <Button
-            variant="primary"
-            onClick={() => setIsOpenAddressModal(true)}
-            className="w-full"
-          >
-            주소 찾기
-          </Button>
-        </div>
-        <Input placeholder="주소" disabled value={userInfo.address.address} />
-        <Input
-          placeholder="상세 주소"
-          value={userInfo.address.detail}
-          onChange={(e) =>
-            setUserInfo({
-              ...userInfo,
-              address: { ...userInfo.address, detail: e.target.value },
-            })
-          }
         />
       </div>
       <div className="flex flex-col gap-[5px]">
@@ -149,22 +117,6 @@ const RegisterStep1 = ({
       <Button onClick={handleNext} className="w-fit self-end mt-main-2">
         다음
       </Button>
-
-      <AddressModal
-        isOpen={isOpenAddressModal}
-        onClose={() => setIsOpenAddressModal(false)}
-        handleAddress={(data) => {
-          setUserInfo({
-            ...userInfo,
-            address: {
-              zipcode: data.zonecode,
-              address: data.address,
-              detail: "",
-            },
-          });
-          setIsOpenAddressModal(false);
-        }}
-      />
     </div>
   );
 };

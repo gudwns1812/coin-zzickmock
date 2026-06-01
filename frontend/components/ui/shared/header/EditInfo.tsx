@@ -4,21 +4,16 @@ import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/shared/Input";
 import { Edit } from "lucide-react";
 import React, { useState } from "react";
-import AddressModal from "../AddressModal";
 import { UserInfo } from "@/type/userInfo";
 
 type EditableHeaderUser = {
   nickname: string;
   email?: string;
   phoneNumber?: string;
-  zipCode?: string;
-  Address?: string;
-  AddressDetail?: string;
 };
 
 const EditInfo = ({ token }: { token: EditableHeaderUser }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isOpenAddressModal, setIsOpenAddressModal] = useState(false);
   const [info, setInfo] = useState<UserInfo>(() => {
     const phoneNumber = (token.phoneNumber || "010-0000-0000").split("-");
     return {
@@ -30,11 +25,6 @@ const EditInfo = ({ token }: { token: EditableHeaderUser }) => {
         phoneNumber2: phoneNumber[2],
       },
       email: token.email ?? "",
-      address: {
-        zipcode: token.zipCode || "",
-        address: token.Address || "",
-        detail: token.AddressDetail || "",
-      },
     };
   });
 
@@ -95,77 +85,14 @@ const EditInfo = ({ token }: { token: EditableHeaderUser }) => {
               onChange={(e) => setInfo({ ...info, email: e.target.value })}
             />
           </div>
-          <div className="flex flex-col gap-[5px]">
-            <label htmlFor="address">집주소</label>
-            <div className="flex gap-main">
-              <Input
-                type="text"
-                placeholder="우편번호"
-                disabled
-                value={info.address.zipcode}
-                onChange={(e) =>
-                  setInfo({
-                    ...info,
-                    address: { ...info.address, zipcode: e.target.value },
-                  })
-                }
-              />
-              <button
-                className="w-full bg-main-blue text-white rounded-main px-main-2 py-main"
-                onClick={() => setIsOpenAddressModal(true)}
-              >
-                주소 찾기
-              </button>
-            </div>
-            <Input
-              type="text"
-              placeholder="주소"
-              disabled
-              value={info.address.address}
-              onChange={(e) =>
-                setInfo({
-                  ...info,
-                  address: { ...info.address, address: e.target.value },
-                })
-              }
-            />
-            <Input
-              type="text"
-              placeholder="상세주소"
-              value={info.address.detail}
-              onChange={(e) =>
-                setInfo({
-                  ...info,
-                  address: { ...info.address, detail: e.target.value },
-                })
-              }
-            />
-          </div>
-
           <button
             type="submit"
             className="bg-main-blue text-white rounded-main px-main-2 py-main"
           >
-            수정하기
+          수정하기
           </button>
         </form>
       </Modal>
-
-      <AddressModal
-        isOpen={isOpenAddressModal}
-        onClose={() => setIsOpenAddressModal(false)}
-        handleAddress={(data) => {
-          setInfo({
-            ...info,
-            address: {
-              zipcode: data.zonecode,
-              address: data.address,
-              detail: "",
-            },
-          });
-          setIsOpenAddressModal(false);
-        }}
-      />
     </>
   );
 };

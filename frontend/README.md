@@ -192,7 +192,7 @@ npm run build --workspace frontend
 ## Environment Variables
 
 - `FUTURES_API_BASE_URL`: backend base URL. 로컬 기본값은 `http://127.0.0.1:18080`, Vercel production 값은 `https://coin-zzickmock.duckdns.org`. Next.js rewrite, server fetch, SSE proxy의 upstream 기준이다.
-- `NEXT_PUBLIC_FUTURES_API_BASE_URL`: optional browser-visible override for direct backend auth and SSE calls. 설정하지 않으면 `next.config.ts`가 `FUTURES_API_BASE_URL` 값을 브라우저용으로 주입한다. Auth cookie는 backend origin에서 발급/만료하며 frontend route handler가 앱 도메인 쿠키로 재발급하지 않는다.
+- `NEXT_PUBLIC_FUTURES_API_BASE_URL`: optional browser-visible override for direct backend auth and SSE calls. 설정하지 않거나 공백이면 `next.config.ts`가 `FUTURES_API_BASE_URL` 값을 브라우저용으로 주입한다. Auth cookie는 backend origin에서 발급/만료하며 frontend route handler가 앱 도메인 쿠키로 재발급하지 않는다.
 - Google 로그인 CTA는 `${NEXT_PUBLIC_FUTURES_API_BASE_URL}/oauth2/authorization/google`로 이동한다. 비밀번호 login/signup API는 production-visible UI에서 호출하지 않으며, legacy 아이디/비밀번호는 Google onboarding의 기존 계정 연결 증명에만 사용한다.
 - `NEXT_PUBLIC_API_MOCKING=enabled`: 선택, MSW 사용 시
 

@@ -1,6 +1,8 @@
 const PUBLIC_FUTURES_API_BASE_URL = (
   process.env.NEXT_PUBLIC_FUTURES_API_BASE_URL ?? ""
-).replace(/\/+$/, "");
+)
+  .trim()
+  .replace(/\/+$/, "");
 
 function isLoopbackHost(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";

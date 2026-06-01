@@ -59,11 +59,6 @@ export type GoogleSignupProfile = {
   nickname: string;
   email: string;
   phoneNumber: string;
-  address: {
-    zipcode: string;
-    address: string;
-    addressDetail: string;
-  };
   agreement: boolean;
 };
 

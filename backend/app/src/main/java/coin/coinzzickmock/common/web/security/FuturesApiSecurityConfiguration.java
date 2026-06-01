@@ -9,8 +9,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
@@ -60,8 +60,11 @@ public class FuturesApiSecurityConfiguration {
 
     @Bean
     @Order(2)
-    @ConditionalOnBean(ClientRegistrationRepository.class)
-    SecurityFilterChain googleOAuthSecurityFilterChain(HttpSecurity http) throws Exception {
+    @Conditional(GoogleOAuthCredentialsConfigured.class)
+    SecurityFilterChain googleOAuthSecurityFilterChain(
+            HttpSecurity http,
+            ClientRegistrationRepository clientRegistrationRepository
+    ) throws Exception {
         return http
                 .securityMatcher(new OrRequestMatcher(
                         pathPrefixMatcher("/oauth2/"),

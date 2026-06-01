@@ -172,9 +172,11 @@
   cloud security group에서는 TCP 8080 inbound를 `INFRA_EC2_HOST`에서 오는 트래픽으로 제한한다.
 - Backend-owned auth cookie는 runtime 환경별로 `APP_AUTH_COOKIE_SECURE`, `APP_AUTH_COOKIE_SAME_SITE`를 명시한다.
   로컬 Compose 기본값은 HTTP 개발을 위해 `false`/`Lax`이고, 운영 Compose 기본값은 Vercel frontend에서 backend origin API 인증에 사용할 수 있도록 `true`/`None`이다.
-- Google OAuth 운영 환경은 `FRONTEND_BASE_URL`, `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID`,
-  `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET`를 서버 secret/env로 주입한다. Google Console에는
-  backend public origin의 `/login/oauth2/code/google` redirect URI를 등록한다. `LEGACY_PASSWORD_ENDPOINTS_ENABLED`는
+- Google OAuth 운영 환경은 `FRONTEND_BASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`를 서버 secret/env로 주입한다.
+  `docker-compose*.yml`은 이 두 값을 backend container로 전달하고, backend는 두 값이 모두 있을 때만
+  `/oauth2/authorization/google` 및 `/login/oauth2/code/google` OAuth login chain을 활성화한다. Google Console에는
+  backend public origin의 `/login/oauth2/code/google` redirect URI를 등록한다. Public Nginx는 `/oauth2/**`와
+  `/login/oauth2/**`를 backend로 proxy하고, OAuth redirect URI 계산을 위해 원래 Host/Proto/Port forwarded header를 보존한다. `LEGACY_PASSWORD_ENDPOINTS_ENABLED`는
   production 기본값 `false`를 유지해 `/api/futures/auth/login`/`register`를 일반 진입점으로 열지 않는다.
 - 시장 히스토리 repair queue/worker/retry 운영값은 `MARKET_HISTORY_REPAIR_*` 변수 묶음으로 조정한다. 이 값들은 비밀값이 아니며
   `application-prod.yml`, `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/prod.env.example`의 계약을 함께 맞춘다.

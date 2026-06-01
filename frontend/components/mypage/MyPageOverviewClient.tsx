@@ -87,7 +87,7 @@ export default function MyPageOverviewClient() {
         <div className="mt-main-2 grid grid-cols-3 gap-main">
           <InfoRow icon={<Mail size={17} />} label="이메일" value="-" />
           <InfoRow icon={<Phone size={17} />} label="휴대폰" value="-" />
-          <InfoRow icon={<ShieldCheck size={17} />} label="아이디" value={account.account} />
+          <InfoRow icon={<ShieldCheck size={17} />} label="아이디" value={account.account ?? "Google 계정"} />
         </div>
       </section>
 

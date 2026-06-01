@@ -24,7 +24,7 @@ type ApiResponse<T> = {
 
 export type AuthUser = {
   memberId: number;
-  account: string;
+  account: string | null;
   memberName: string;
   nickname: string;
   role: "USER" | "ADMIN";
@@ -60,7 +60,7 @@ export type FuturesMarketResult = {
 
 export type FuturesAccountSummary = {
   memberId: number;
-  account: string;
+  account: string | null;
   memberName: string;
   nickname: string;
   usdtBalance: number;

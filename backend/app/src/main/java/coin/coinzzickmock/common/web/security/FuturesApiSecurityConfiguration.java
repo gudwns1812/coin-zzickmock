@@ -10,6 +10,7 @@ import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
@@ -18,10 +19,13 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -32,6 +36,9 @@ public class FuturesApiSecurityConfiguration {
     private final FuturesCookieBearerTokenResolver cookieBearerTokenResolver;
     private final FuturesJwtAuthenticationConverter jwtAuthenticationConverter;
     private final ObjectMapper objectMapper;
+    private final CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
+    private final AuthenticationSuccessHandler googleOAuthLoginSuccessHandler;
+    private final AuthenticationFailureHandler googleOAuthLoginFailureHandler;
 
     @Bean
     FilterRegistrationBean<FuturesUnsafeMethodOriginFilter> futuresUnsafeMethodOriginFilterRegistration(
@@ -53,13 +60,44 @@ public class FuturesApiSecurityConfiguration {
 
     @Bean
     @Order(2)
+    @Conditional(GoogleOAuthCredentialsConfigured.class)
+    SecurityFilterChain googleOAuthSecurityFilterChain(
+            HttpSecurity http,
+            ClientRegistrationRepository clientRegistrationRepository
+    ) throws Exception {
+        return http
+                .securityMatcher(new OrRequestMatcher(
+                        pathPrefixMatcher("/oauth2/"),
+                        pathPrefixMatcher("/login/oauth2/")
+                ))
+                .cors(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .requestCache(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestRepository(authorizationRequestRepository))
+                        .successHandler(googleOAuthLoginSuccessHandler)
+                        .failureHandler(googleOAuthLoginFailureHandler))
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     SecurityFilterChain futuresAuthRecoverySecurityFilterChain(HttpSecurity http) throws Exception {
         return statelessApi(http)
                 .securityMatcher(new OrRequestMatcher(
                         exactPathMatcher(HttpMethod.POST, "/api/futures/auth/register"),
                         exactPathMatcher(HttpMethod.POST, "/api/futures/auth/duplicate"),
                         exactPathMatcher(HttpMethod.POST, "/api/futures/auth/login"),
-                        exactPathMatcher(HttpMethod.POST, "/api/futures/auth/logout")
+                        exactPathMatcher(HttpMethod.POST, "/api/futures/auth/logout"),
+                        exactPathMatcher(HttpMethod.GET, "/api/futures/auth/google/onboarding"),
+                        exactPathMatcher(HttpMethod.POST, "/api/futures/auth/google/link"),
+                        exactPathMatcher(HttpMethod.POST, "/api/futures/auth/google/signup")
                 ))
                 .addFilterBefore(unsafeMethodOriginFilter, BearerTokenAuthenticationFilter.class)
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
@@ -67,7 +105,7 @@ public class FuturesApiSecurityConfiguration {
     }
 
     @Bean
-    @Order(3)
+    @Order(4)
     SecurityFilterChain futuresApiSecurityFilterChain(HttpSecurity http) throws Exception {
         return statelessApi(http)
                 .securityMatcher("/api/futures/**")
@@ -127,6 +165,10 @@ public class FuturesApiSecurityConfiguration {
 
     private RequestMatcher exactPathMatcher(HttpMethod method, String path) {
         return request -> method.matches(request.getMethod()) && path.equals(requestPath(request));
+    }
+
+    private RequestMatcher pathPrefixMatcher(String prefix) {
+        return request -> requestPath(request).startsWith(prefix);
     }
 
     private boolean isFuturesApiPath(String path) {

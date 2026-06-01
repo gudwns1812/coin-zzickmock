@@ -2,8 +2,13 @@ import type { NextConfig } from "next";
 import createBundleAnalyzer from "@next/bundle-analyzer";
 import { FUTURES_API_BASE_URL } from "./lib/futures-env";
 
+function optionalBaseUrl(value: string | undefined) {
+  const normalized = value?.trim().replace(/\/+$/, "");
+  return normalized || undefined;
+}
+
 const PUBLIC_FUTURES_API_BASE_URL =
-  process.env.NEXT_PUBLIC_FUTURES_API_BASE_URL ?? FUTURES_API_BASE_URL;
+  optionalBaseUrl(process.env.NEXT_PUBLIC_FUTURES_API_BASE_URL) ?? FUTURES_API_BASE_URL;
 
 const withBundleAnalyzer = createBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",

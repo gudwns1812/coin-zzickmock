@@ -11,16 +11,15 @@ function readFrontendSource(relativePath: string): string {
   return readFileSync(path.join(rootDir, relativePath), "utf8");
 }
 
-test("header login form submits from Enter in login inputs", () => {
+test("header login control starts Google login without password inputs", () => {
   const loginFormSource = readFrontendSource(
     "components/ui/shared/header/LoginForm.tsx"
   );
 
-  assert.match(loginFormSource, /handleLoginInputKeyDown/);
-  assert.match(loginFormSource, /e\.key !== "Enter"/);
-  assert.match(loginFormSource, /e\.target instanceof HTMLInputElement/);
-  assert.match(loginFormSource, /e\.currentTarget\.requestSubmit\(\)/);
-  assert.match(loginFormSource, /onKeyDown=\{handleLoginInputKeyDown\}/);
+  assert.match(loginFormSource, /createGoogleLoginUrl/);
+  assert.match(loginFormSource, /Google 로그인/);
+  assert.doesNotMatch(loginFormSource, /password/);
+  assert.doesNotMatch(loginFormSource, /loginToFutures/);
 });
 
 test("header logout form uses explicit client submit handling", () => {

@@ -64,10 +64,6 @@ public final class MemberIdentityRules {
         return value;
     }
 
-    static String normalizeAddressDetail(String addressDetail) {
-        return addressDetail == null ? "" : addressDetail.trim();
-    }
-
     private static String normalizeWhitespace(String value) {
         validateRequired(value);
         return WHITESPACE.matcher(value.trim()).replaceAll(" ");

@@ -4,6 +4,7 @@ import coin.coinzzickmock.common.error.CoreException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MemberCredentialTest {
@@ -16,9 +17,6 @@ class MemberCredentialTest {
                 " Demo Nick ",
                 " demo@coinzzickmock.dev ",
                 " 010-1111-2222 ",
-                " 04524 ",
-                " 서울 중구 세종대로 110 ",
-                " 12층 ",
                 0
         );
 
@@ -27,9 +25,23 @@ class MemberCredentialTest {
         assertEquals("Demo User", credential.memberName());
         assertEquals("demo@coinzzickmock.dev", credential.memberEmail());
         assertEquals("010-1111-2222", credential.phoneNumber());
-        assertEquals("04524", credential.zipCode());
-        assertEquals("서울 중구 세종대로 110", credential.address());
-        assertEquals("12층", credential.addressDetail());
+    }
+
+    @Test
+    void registerGoogleOnlyKeepsLegacyCredentialFieldsEmpty() {
+        MemberCredential credential = MemberCredential.registerGoogleOnly(
+                " Google User ",
+                " Google Nick ",
+                " google-user@coinzzickmock.dev ",
+                " 010-3333-4444 ",
+                0
+        );
+
+        assertNull(credential.account());
+        assertNull(credential.passwordHash());
+        assertEquals("Google User", credential.memberName());
+        assertEquals("Google Nick", credential.nickname());
+        assertEquals("google-user@coinzzickmock.dev", credential.memberEmail());
     }
 
     @Test

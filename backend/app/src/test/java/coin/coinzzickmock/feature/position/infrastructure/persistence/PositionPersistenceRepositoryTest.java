@@ -226,9 +226,9 @@ class PositionPersistenceRepositoryTest {
         jdbcTemplate.update("""
                 INSERT INTO member_credentials (
                     id, account, password_hash, member_name, nickname, member_email,
-                    phone_number, zip_code, address, address_detail, invest_score, role
+                    phone_number, invest_score, role
                 )
-                VALUES (?, ?, 'hash', ?, ?, ?, '010-0000-0000', '00000', '서울', '', 0, 'USER')
+                VALUES (?, ?, 'hash', ?, ?, ?, '010-0000-0000', 0, 'USER')
                 """,
                 memberId,
                 "account-" + memberId,

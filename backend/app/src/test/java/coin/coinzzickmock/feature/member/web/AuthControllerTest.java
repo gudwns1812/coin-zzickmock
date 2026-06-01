@@ -117,12 +117,7 @@ class AuthControllerTest {
                                   "nickname": "new-user-name",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "new-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -154,12 +149,7 @@ class AuthControllerTest {
                                   "nickname": "account-seed-user",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "account-seed-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -197,12 +187,7 @@ class AuthControllerTest {
                                   "nickname": " trimmed-name ",
                                   "phoneNumber": "010-5555-6666",
                                   "email": "trimmed-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": " 12층 "
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -310,12 +295,7 @@ class AuthControllerTest {
                                   "nickname": "public-stale-user",
                                   "phoneNumber": "010-7777-9999",
                                   "email": "public-stale-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -361,12 +341,7 @@ class AuthControllerTest {
                                   "nickname": "plain-user-admin-denied",
                                   "phoneNumber": "010-2222-3333",
                                   "email": "plain-user-admin-denied@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -406,12 +381,7 @@ class AuthControllerTest {
                                   "nickname": "withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "withdraw-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -469,12 +439,7 @@ class AuthControllerTest {
                                   "nickname": "withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "withdraw-user-again@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isConflict());
@@ -492,12 +457,7 @@ class AuthControllerTest {
                                   "nickname": "refresh-withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "refresh-withdraw-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -670,12 +630,7 @@ class AuthControllerTest {
                                   "nickname": "New Google Nick",
                                   "phoneNumber": "010-3333-4444",
                                   "email": "new-google@coinzzickmock.dev",
-                                  "agreement": true,
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "agreement": true
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -699,6 +654,36 @@ class AuthControllerTest {
     }
 
     @Test
+    void googleSignupRejectsEmailChangedFromPendingGoogleIdentity() throws Exception {
+        GoogleOAuthPendingTokenCodec.PendingToken pendingToken = createPendingGoogleLink(
+                "google-sub-email-tampered",
+                "real-google@coinzzickmock.dev",
+                "Real Google User"
+        );
+
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/google/signup")
+                        .cookie(pendingCookie(pendingToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Real Google User",
+                                  "nickname": "Real Google Nick",
+                                  "phoneNumber": "010-3333-4444",
+                                  "email": "attacker@coinzzickmock.dev",
+                                  "agreement": true
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from member_oauth_identities where provider_subject = ?",
+                Long.class,
+                "google-sub-email-tampered"
+        )).isEqualTo(0L);
+    }
+
+    @Test
     void meRejectsStaleWithdrawnMemberToken() throws Exception {
         mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -710,12 +695,7 @@ class AuthControllerTest {
                                   "nickname": "me-withdraw-user",
                                   "phoneNumber": "010-7777-8888",
                                   "email": "me-withdraw-user@coinzzickmock.dev",
-                                  "fgOffset": "unused",
-                                  "address": {
-                                    "zipcode": "06236",
-                                    "address": "서울 강남구 논현로 507",
-                                    "addressDetail": "7층"
-                                  }
+                                  "fgOffset": "unused"
                                 }
                                 """))
                 .andExpect(status().isOk());

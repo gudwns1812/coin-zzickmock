@@ -55,6 +55,7 @@ public class CompleteGoogleSignupService {
         MemberOAuthPendingLink pending = memberOAuthPendingLinkRepository.findByTokenHashForUpdate(pendingTokenHash)
                 .orElseThrow(() -> new CoreException(ErrorCode.OAUTH_ONBOARDING_EXPIRED));
         pending.validateConsumable(now);
+        String googleEmail = verifiedGoogleEmail(pending, command);
         if (memberOAuthIdentityRepository.findByProviderAndProviderSubject(pending.provider(), pending.providerSubject()).isPresent()) {
             memberOAuthPendingLinkRepository.save(pending.consume(now));
             return CompletionResult.error(ErrorCode.OAUTH_IDENTITY_ALREADY_LINKED);
@@ -63,11 +64,8 @@ public class CompleteGoogleSignupService {
         MemberCredential savedMember = memberRegistrationProvisioner.provision(MemberCredential.registerGoogleOnly(
                 command.memberName(),
                 command.nickname(),
-                command.memberEmail(),
+                googleEmail,
                 command.phoneNumber(),
-                command.zipCode(),
-                command.address(),
-                command.addressDetail(),
                 0
         ));
         memberOAuthIdentityRepository.create(MemberOAuthIdentity.google(
@@ -78,6 +76,22 @@ public class CompleteGoogleSignupService {
         ));
         memberOAuthPendingLinkRepository.save(pending.consume(now));
         return CompletionResult.success(MemberProfileResult.from(savedMember));
+    }
+
+    private String verifiedGoogleEmail(MemberOAuthPendingLink pending, GoogleSignupProfileCommand command) {
+        String googleEmail = normalizeRequiredEmail(pending.providerEmail());
+        String requestedEmail = normalizeRequiredEmail(command.memberEmail());
+        if (!googleEmail.equalsIgnoreCase(requestedEmail)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        return googleEmail;
+    }
+
+    private String normalizeRequiredEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+        return email.trim();
     }
 
     private void consumePendingAfterTerminalConflict(String pendingTokenHash) {

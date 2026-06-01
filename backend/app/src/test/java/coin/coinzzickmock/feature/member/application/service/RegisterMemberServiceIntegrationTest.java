@@ -57,10 +57,7 @@ class RegisterMemberServiceIntegrationTest {
                 "Signup Member",
                 "Signup Member",
                 "signup-" + suffix + "@coinzzickmock.dev",
-                "010-1111-2222",
-                "04524",
-                "서울 중구 세종대로 110",
-                "12층"
+                "010-1111-2222"
         );
 
         TradingAccount account = accountRepository.findByMemberId(result.memberId()).orElseThrow();

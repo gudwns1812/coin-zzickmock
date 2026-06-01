@@ -5,9 +5,6 @@ public record GoogleSignupProfileCommand(
         String nickname,
         String memberEmail,
         String phoneNumber,
-        String zipCode,
-        String address,
-        String addressDetail,
         boolean requiredAgreement
 ) {
 }

@@ -43,12 +43,7 @@ class AuthControllerLegacyPasswordDisabledTest {
                                   "name": "disabled-register",
                                   "nickname": "disabled-register",
                                   "phoneNumber": "010-5555-6666",
-                                  "email": "disabled-register@coinzzickmock.dev",
-                                  "address": {
-                                    "zipcode": "04524",
-                                    "address": "서울 중구 세종대로 110",
-                                    "addressDetail": "12층"
-                                  }
+                                  "email": "disabled-register@coinzzickmock.dev"
                                 }
                                 """))
                 .andExpect(status().isGone())

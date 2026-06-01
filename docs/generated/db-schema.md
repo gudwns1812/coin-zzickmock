@@ -81,6 +81,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V33__add_trading_account_non_negative_checks.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V33__add_trading_account_non_negative_checks.sql)
   [V34__generalize_completed_market_candles.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V34__generalize_completed_market_candles.sql)
   [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql)
+  [V36__drop_member_address_columns.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V36__drop_member_address_columns.sql)
 - 수동 SQL 기준 여부: 없음
 
 읽기/수정 규칙:
@@ -209,7 +210,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
 - 유니크:
   `account`
 - 주요 컬럼:
-  `account`, `password_hash`, `member_name`, `nickname`, `member_email`, `phone_number`, `zip_code`, `address`, `address_detail`, `invest_score`, `role`, `withdrawn_at`, `created_at`, `updated_at`
+  `account`, `password_hash`, `member_name`, `nickname`, `member_email`, `phone_number`, `invest_score`, `role`, `withdrawn_at`, `created_at`, `updated_at`
 - 로컬 자격 증명:
   `account`, `password_hash`는 Google 로그인 전환 이후 legacy 계정 연결 증명에만 쓰는 nullable column이다.
   MySQL unique key는 non-null legacy `account` 중복을 막고 여러 Google-only `NULL` 계정을 허용한다.
@@ -229,6 +230,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   [V18__member_surrogate_pk_and_nickname.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V18__member_surrogate_pk_and_nickname.sql),
   [V20__add_member_withdrawn_at.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V20__add_member_withdrawn_at.sql),
   [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql),
+  [V36__drop_member_address_columns.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V36__drop_member_address_columns.sql),
   [MemberCredentialEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberCredentialEntity.java)
 
 ### `member_oauth_identities`
@@ -248,6 +250,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `feature.member`
 - 관련 migration 또는 schema 파일:
   [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql),
+  [V36__drop_member_address_columns.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V36__drop_member_address_columns.sql),
   [MemberOAuthIdentityEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberOAuthIdentityEntity.java)
 
 ### `member_oauth_pending_links`
@@ -267,6 +270,7 @@ DDL 원문이나 migration 파일 자체를 대체하지는 않지만, 백엔드
   `feature.member`
 - 관련 migration 또는 schema 파일:
   [V35__google_oauth_member_identity.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V35__google_oauth_member_identity.sql),
+  [V36__drop_member_address_columns.sql](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/resources/db/migration/V36__drop_member_address_columns.sql),
   [MemberOAuthPendingLinkEntity](/Users/hj.park/projects/coin-zzickmock/backend/storage/src/main/java/coin/coinzzickmock/feature/member/infrastructure/persistence/MemberOAuthPendingLinkEntity.java)
 
 ### `member_daily_activity`

@@ -54,20 +54,13 @@ public class AuthController {
     @PostMapping("/register")
     public ApiResponse<AuthUserResponse> register(@RequestBody RegisterMemberRequest request) {
         ensureLegacyPasswordEndpointEnabled();
-        if (request.address() == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-
         MemberProfileResult memberProfile = registerMemberService.register(
                 request.account(),
                 request.password(),
                 request.name(),
                 request.nickname(),
                 request.email(),
-                request.phoneNumber(),
-                request.address().zipcode(),
-                request.address().address(),
-                request.address().addressDetail()
+                request.phoneNumber()
         );
 
         return ApiResponse.success(AuthUserResponse.from(memberProfile));

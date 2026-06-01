@@ -94,9 +94,6 @@ class MemberCredentialPersistenceRepositoryTest {
                 "Nick " + account,
                 account + "@coinzzickmock.dev",
                 "010-0000-0000",
-                "00000",
-                "Seoul",
-                "101",
                 0
         );
     }

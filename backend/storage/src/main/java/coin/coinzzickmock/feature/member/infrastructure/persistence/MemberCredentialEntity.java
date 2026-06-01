@@ -42,15 +42,6 @@ public class MemberCredentialEntity extends AuditableEntity {
     @Column(name = "phone_number", nullable = false, length = 30)
     private String phoneNumber;
 
-    @Column(name = "zip_code", nullable = false, length = 20)
-    private String zipCode;
-
-    @Column(name = "address", nullable = false, length = 255)
-    private String address;
-
-    @Column(name = "address_detail", nullable = false, length = 255)
-    private String addressDetail;
-
     @Column(name = "invest_score", nullable = false)
     private int investScore;
 
@@ -69,9 +60,6 @@ public class MemberCredentialEntity extends AuditableEntity {
             String nickname,
             String memberEmail,
             String phoneNumber,
-            String zipCode,
-            String address,
-            String addressDetail,
             int investScore,
             MemberRole role,
             Instant withdrawnAt
@@ -83,9 +71,6 @@ public class MemberCredentialEntity extends AuditableEntity {
         this.nickname = nickname;
         this.memberEmail = memberEmail;
         this.phoneNumber = phoneNumber;
-        this.zipCode = zipCode;
-        this.address = address;
-        this.addressDetail = addressDetail;
         this.investScore = investScore;
         this.role = role == null ? MemberRole.USER : role;
         this.withdrawnAt = withdrawnAt;
@@ -100,9 +85,6 @@ public class MemberCredentialEntity extends AuditableEntity {
                 memberCredential.nickname(),
                 memberCredential.memberEmail(),
                 memberCredential.phoneNumber(),
-                memberCredential.zipCode(),
-                memberCredential.address(),
-                memberCredential.addressDetail(),
                 memberCredential.investScore(),
                 memberCredential.role(),
                 memberCredential.withdrawnAt()
@@ -116,9 +98,6 @@ public class MemberCredentialEntity extends AuditableEntity {
         this.nickname = memberCredential.nickname();
         this.memberEmail = memberCredential.memberEmail();
         this.phoneNumber = memberCredential.phoneNumber();
-        this.zipCode = memberCredential.zipCode();
-        this.address = memberCredential.address();
-        this.addressDetail = memberCredential.addressDetail();
         this.investScore = memberCredential.investScore();
         this.role = memberCredential.role() == null ? MemberRole.USER : memberCredential.role();
         this.withdrawnAt = memberCredential.withdrawnAt();
@@ -133,9 +112,6 @@ public class MemberCredentialEntity extends AuditableEntity {
                 nickname,
                 memberEmail,
                 phoneNumber,
-                zipCode,
-                address,
-                addressDetail,
                 investScore,
                 role,
                 withdrawnAt

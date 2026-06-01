@@ -86,9 +86,6 @@ class GetAccountSummaryServiceTest {
                                 "DemoNick",
                                 "demo@coinzzickmock.dev",
                                 "010-0000-0000",
-                                "04524",
-                                "서울",
-                                "",
                                 0
                         ).withMemberId(memberId));
                     }
@@ -262,9 +259,6 @@ class GetAccountSummaryServiceTest {
                         "DemoNick",
                         "demo@coinzzickmock.dev",
                         "010-0000-0000",
-                        "04524",
-                        "서울",
-                        "",
                         0
                 ).withMemberId(memberId));
             }

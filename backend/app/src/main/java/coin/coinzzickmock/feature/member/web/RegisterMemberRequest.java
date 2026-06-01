@@ -7,13 +7,6 @@ public record RegisterMemberRequest(
         String nickname,
         String phoneNumber,
         String email,
-        String fgOffset,
-        AddressRequest address
+        String fgOffset
 ) {
-    public record AddressRequest(
-            String zipcode,
-            String address,
-            String addressDetail
-    ) {
-    }
 }

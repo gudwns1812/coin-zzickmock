@@ -62,6 +62,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/futures/community")
@@ -135,7 +136,7 @@ public class CommunityController {
     }
 
     @PostMapping("/posts")
-    public ApiResponse<CommunityPostMutationResponse> createPost(@RequestBody CommunityPostUpsertRequest request) {
+    public ApiResponse<CommunityPostMutationResponse> createPost(@Valid @RequestBody CommunityPostUpsertRequest request) {
         Actor actor = providers.auth().currentActor();
         CommunityPostMutationResult result = createCommunityPostService.execute(new CreateCommunityPostCommand(
                 actor.memberId(),
@@ -171,7 +172,7 @@ public class CommunityController {
     @PutMapping("/posts/{postId}")
     public ApiResponse<CommunityPostMutationResponse> updatePost(
             @PathVariable Long postId,
-            @RequestBody CommunityPostUpsertRequest request
+            @Valid @RequestBody CommunityPostUpsertRequest request
     ) {
         Actor actor = providers.auth().currentActor();
         CommunityPostMutationResult result = updateCommunityPostService.execute(new UpdateCommunityPostCommand(
@@ -210,7 +211,7 @@ public class CommunityController {
     @PostMapping("/posts/{postId}/comments")
     public ApiResponse<CommunityCommentMutationResponse> createComment(
             @PathVariable Long postId,
-            @RequestBody CommunityCommentCreateRequest request
+            @Valid @RequestBody CommunityCommentCreateRequest request
     ) {
         Actor actor = providers.auth().currentActor();
         CommunityCommentMutationResult result = createCommunityCommentService.execute(new CreateCommunityCommentCommand(
@@ -254,7 +255,7 @@ public class CommunityController {
 
     @PostMapping("/images/presign")
     public ApiResponse<CommunityImageUploadPresignedUrlResponse> presignImage(
-            @RequestBody CommunityImageUploadPresignRequest request
+            @Valid @RequestBody CommunityImageUploadPresignRequest request
     ) {
         Actor actor = providers.auth().currentActor();
         CommunityImageUploadPresignedUrlResult result = generateImageUploadPresignedUrlService.execute(

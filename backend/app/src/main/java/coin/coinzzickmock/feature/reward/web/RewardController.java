@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/futures")
@@ -72,7 +73,7 @@ public class RewardController {
     }
 
     @PostMapping("/shop/redemptions")
-    public ApiResponse<RewardRedemptionResponse> createRedemption(@RequestBody CreateRedemptionRequest request) {
+    public ApiResponse<RewardRedemptionResponse> createRedemption(@Valid @RequestBody CreateRedemptionRequest request) {
         Actor actor = providers.auth().currentActor();
         RewardRedemptionResult result = createRewardRedemptionService.create(
                 actor.memberId(),
@@ -192,7 +193,7 @@ public class RewardController {
     }
 
     @PostMapping("/admin/shop-items")
-    public ApiResponse<AdminShopItemResponse> createAdminShopItem(@RequestBody AdminShopItemRequest request) {
+    public ApiResponse<AdminShopItemResponse> createAdminShopItem(@Valid @RequestBody AdminShopItemRequest request) {
         requireAdmin();
         AdminShopItemResult result = adminRewardShopItemService.create(toAdminShopItemCommand(request));
         return ApiResponse.success(AdminShopItemResponse.from(result));
@@ -201,7 +202,7 @@ public class RewardController {
     @PostMapping("/admin/shop-items/{code}")
     public ApiResponse<AdminShopItemResponse> updateAdminShopItem(
             @PathVariable String code,
-            @RequestBody AdminShopItemRequest request
+            @Valid @RequestBody AdminShopItemRequest request
     ) {
         requireAdmin();
         AdminShopItemResult result = adminRewardShopItemService.update(code, toAdminShopItemCommand(request));

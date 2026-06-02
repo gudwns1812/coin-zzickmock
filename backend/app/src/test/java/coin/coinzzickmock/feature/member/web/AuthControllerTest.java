@@ -79,6 +79,21 @@ class AuthControllerTest {
     }
 
     @Test
+    void blankLoginRequestFailsAtWebValidationBoundary() throws Exception {
+        mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "account": "   ",
+                                  "password": ""
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.message").value("잘못된 요청입니다."));
+    }
+
+    @Test
     void loginAndAuthenticatedApiRecordDailyActivity() throws Exception {
         MvcResult loginResult = mockMvc.perform(postWithTrustedOrigin("/api/futures/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -773,7 +788,9 @@ class AuthControllerTest {
                                   "memberId": "   "
                                 }
                                 """))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.message").value("잘못된 요청입니다."));
     }
 
     private GoogleOAuthPendingTokenCodec.PendingToken createPendingGoogleLink(

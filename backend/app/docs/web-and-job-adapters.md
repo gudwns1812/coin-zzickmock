@@ -17,6 +17,18 @@ This document defines app-owned inbound runtime adapters.
 
 `web` must not implement business rules, call repositories directly, or expose persistence/external DTOs.
 
+### Request validation
+
+Spring Bean Validation is a web-boundary tool in this project.
+
+Rules:
+
+- Use Bean Validation annotations only on app-owned `web` request DTOs or web controller parameters.
+- Add `@Valid` to `@RequestBody` parameters when the request DTO owns shape validation.
+- Map Bean Validation failures through the global error contract as `ErrorResponse(INVALID_REQUEST, message)`.
+- Do not add `jakarta.validation` annotations to `core` application/domain types, storage entities/repositories, or external adapters.
+- Keep business invariants in domain/application even when web DTOs reject malformed HTTP input earlier.
+
 ## `job`
 
 `job` owns scheduler, startup, backfill, retry, and background triggers.

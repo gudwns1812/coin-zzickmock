@@ -4,14 +4,20 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.AssertTrue;
 
 public record CreateOrderRequest(
         @NotBlank String symbol,
-        @NotBlank String positionSide,
-        @NotBlank String orderType,
-        @NotBlank String marginMode,
+        @Pattern(regexp = "(?i)^(LONG|SHORT)$") String positionSide,
+        @Pattern(regexp = "(?i)^(MARKET|LIMIT)$") String orderType,
+        @Pattern(regexp = "(?i)^(CROSS|ISOLATED)$") String marginMode,
         @Min(1) @Max(50) int leverage,
         @Positive double quantity,
-        Double limitPrice
+        @Positive Double limitPrice
 ) {
+    @AssertTrue
+    public boolean isLimitPricePresentForLimitOrder() {
+        return orderType == null || !orderType.equalsIgnoreCase("LIMIT") || limitPrice != null;
+    }
 }

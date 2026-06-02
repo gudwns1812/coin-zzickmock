@@ -17,7 +17,7 @@ export default function CommunityTiptapRenderer({ contentJson }: { contentJson: 
   }
 
   return (
-    <div className="community-rich-content space-y-4 text-base-custom leading-7 text-main-dark-gray">
+    <div className="community-rich-content space-y-4 text-base-custom leading-7 text-main-dark-gray break-words">
       {renderChildren(document.content)}
     </div>
   );

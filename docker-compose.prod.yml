@@ -15,6 +15,28 @@ services:
     networks:
       - coin
 
+  scouter-collector:
+    image: ${SCOUTER_COLLECTOR_IMAGE:?Set SCOUTER_COLLECTOR_IMAGE}
+    restart: unless-stopped
+    environment:
+      SC_SERVER_ID: ${SCOUTER_SERVER_ID:-COIN-ZZICKMOCK-COLLECTOR}
+      NET_HTTP_SERVER_ENABLED: "true"
+      NET_HTTP_API_SWAGGER_ENABLED: "true"
+      NET_HTTP_API_ENABLED: "true"
+      MGR_PURGE_PROFILE_KEEP_DAYS: ${SCOUTER_PROFILE_KEEP_DAYS:-2}
+      MGR_PURGE_XLOG_KEEP_DAYS: ${SCOUTER_XLOG_KEEP_DAYS:-5}
+      MGR_PURGE_COUNTER_KEEP_DAYS: ${SCOUTER_COUNTER_KEEP_DAYS:-15}
+      JAVA_OPT: ${SCOUTER_JAVA_OPT:--Xms256m -Xmx512m}
+    ports:
+      - "${SCOUTER_BIND_ADDRESS:-127.0.0.1}:${SCOUTER_WEB_PORT:-6180}:6180"
+      - "${SCOUTER_BIND_ADDRESS:-127.0.0.1}:${SCOUTER_COLLECTOR_PORT:-6100}:6100"
+      - "${SCOUTER_BIND_ADDRESS:-127.0.0.1}:${SCOUTER_COLLECTOR_PORT:-6100}:6100/udp"
+    volumes:
+      - scouter-logs:/home/scouter-server/logs
+      - scouter-data:/home/scouter-server/database
+    networks:
+      - coin
+
   backend:
     image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE}
     restart: unless-stopped
@@ -24,7 +46,7 @@ services:
       coin.zzickmock.application: coin-zzickmock
       coin.zzickmock.environment: ${APP_ENV:-prod}
     environment:
-      JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError}
+      JAVA_TOOL_OPTIONS: "-javaagent:/app/scouter/scouter.agent.jar -Dscouter.config=/app/scouter/conf/scouter.conf ${BACKEND_JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError}"
       SPRING_PROFILES_ACTIVE: prod
       APP_ENV: prod
       MYSQL_HOST: ${MYSQL_HOST}
@@ -61,6 +83,8 @@ services:
       COMMUNITY_IMAGE_MAX_BYTES: ${COMMUNITY_IMAGE_MAX_BYTES:-5242880}
       COMMUNITY_IMAGE_PRESIGN_TTL: ${COMMUNITY_IMAGE_PRESIGN_TTL:-PT10M}
     depends_on:
+      scouter-collector:
+        condition: service_started
       redis:
         condition: service_healthy
     ports:
@@ -211,3 +235,5 @@ volumes:
   prometheus-data:
   grafana-data:
   loki-data:
+  scouter-logs:
+  scouter-data:

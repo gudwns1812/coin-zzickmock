@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.leaderboard.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
@@ -13,13 +14,31 @@ import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
 import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenCodec;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Transactional;
 
 class GetLeaderboardServiceTest {
+    @Test
+    void leaderboardReadDoesNotOpenTransactionBeforeRedisSnapshotLookup() throws NoSuchMethodException {
+        assertNull(GetLeaderboardService.class.getAnnotation(Transactional.class));
+
+        Method anonymousRead = GetLeaderboardService.class.getDeclaredMethod("get", String.class, String.class);
+        Method memberRead = GetLeaderboardService.class.getDeclaredMethod(
+                "get",
+                String.class,
+                String.class,
+                Long.class
+        );
+
+        assertNull(anonymousRead.getAnnotation(Transactional.class));
+        assertNull(memberRead.getAnnotation(Transactional.class));
+    }
+
     @Test
     void ranksProfitRateFromRealizedWalletBalance() {
         GetLeaderboardService service = service(List.of(
@@ -65,6 +84,25 @@ class GetLeaderboardServiceTest {
 
         assertEquals("redis", result.source());
         assertEquals("Redis", result.entries().get(0).nickname());
+    }
+
+    @Test
+    void keepsRedisSnapshotOrderWithoutApplicationResort() {
+        GetLeaderboardService service = service(
+                List.of(entry(10L, "Database", 200_000)),
+                new InMemorySnapshotStore(List.of(
+                        entry(11L, "RedisFirst", 100_000),
+                        entry(12L, "RedisSecond", 150_000)
+                ))
+        );
+
+        LeaderboardResult result = service.get("profitRate", "2");
+
+        assertEquals("redis", result.source());
+        assertEquals("RedisFirst", result.entries().get(0).nickname());
+        assertEquals(1, result.entries().get(0).rank());
+        assertEquals("RedisSecond", result.entries().get(1).nickname());
+        assertEquals(2, result.entries().get(1).rank());
     }
 
     @Test

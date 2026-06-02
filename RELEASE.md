@@ -41,8 +41,8 @@
 
 - `.github/workflows/ci.yml`는 프론트엔드 빌드와 백엔드 `check`를 검증한다.
 - `.github/workflows/cd.yml`는 `main`/`master`의 `backend/**`, `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/**` 변경 또는 수동 실행 기준으로 `backend_image`, `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포 효과를 분류한다.
-- `backend_image` 배포는 backend 릴리즈 후보를 다시 검증하고 backend/push-app Docker 이미지를 Docker Hub에 발행한 뒤, EC2 `.env.prod`의 `BACKEND_IMAGE`와 `PUSH_IMAGE`를 새 태그로 바꾸고 backend/push-app을 pull/restart한다.
-- `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포는 backend 이미지를 새로 만들지 않으며, staged compose/env preflight 후 필요한 host의 runtime 파일과 서비스만 반영한다.
+- `backend_image` 배포는 backend 릴리즈 후보를 다시 검증하고 backend/push-app/Scouter collector Docker 이미지를 Docker Hub에 발행한 뒤, EC2 `.env.prod`의 `BACKEND_IMAGE`, `PUSH_IMAGE`, `SCOUTER_COLLECTOR_IMAGE`를 새 태그로 바꾸고 backend/push-app/Scouter collector를 pull/restart한다.
+- `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포는 backend 이미지를 새로 만들지 않으며, staged compose/env preflight 후 필요한 host의 runtime 파일과 서비스만 반영한다. Backend-host agent runtime에는 Scouter collector, promtail, nginx exporter, node exporter가 포함된다.
 - Redis/Grafana/Prometheus/Loki 변경은 `docker-compose.infra.prod.yml` 또는 `infra/{prometheus,grafana,loki}/**` scope로 분류되어 infra host만 배포하고 backend host app/Nginx를 건드리지 않는다.
 - 현재 기본 원칙은 "CI/CD 검증을 통과한 backend 고정 이미지 태그를 기준으로 하는 EC2 Docker Compose 릴리즈"다.
 

@@ -37,3 +37,7 @@ local.env
 
 ### VS Code ###
 .vscode/
+
+# Local Scouter APM agent files.
+# Keep these files on disk for local Docker builds, but do not commit them.
+agent/

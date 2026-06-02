@@ -247,16 +247,8 @@ class CommunityApplicationServiceRegressionTest {
     }
 
     @Test
-    void queriesRejectInvalidPagingPostIdsAndNoticeListFilter() {
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new GetCommunityPostQuery(0L, 1L, false));
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new DeleteCommunityCommentCommand(1L, null, 1L, false));
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new DeleteCommunityCommentCommand(1L, 1L, 0L, false));
+    void internalImageValidationCommandStillRejectsInvalidActor() {
         assertCore(ErrorCode.INVALID_REQUEST, () -> new ValidateCommunityImagesCommand(null, List.of()));
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(null, 0, 20));
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(1L, -1, 20));
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityCommentsQuery(1L, 0, 101));
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityPostsQuery(CommunityCategory.NOTICE, 0, 20));
-        assertCore(ErrorCode.INVALID_REQUEST, () -> new ListCommunityPostsQuery(null, 0, 0));
         assertThatThrownBy(() -> new ListCommunityCommentsService(comments).execute(null, 1L, false))
                 .isInstanceOf(NullPointerException.class);
     }

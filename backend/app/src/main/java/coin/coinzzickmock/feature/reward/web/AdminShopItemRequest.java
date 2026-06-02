@@ -1,16 +1,18 @@
 package coin.coinzzickmock.feature.reward.web;
 
 import coin.coinzzickmock.feature.reward.application.service.AdminRewardShopItemService.AdminShopItemCommand;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 
 public record AdminShopItemRequest(
-        String code,
-        String name,
+        @NotBlank String code,
+        @NotBlank String name,
         String description,
-        String itemType,
-        int price,
+        @NotBlank String itemType,
+        @PositiveOrZero int price,
         Boolean active,
-        Integer totalStock,
-        Integer perMemberPurchaseLimit,
+        @PositiveOrZero Integer totalStock,
+        @PositiveOrZero Integer perMemberPurchaseLimit,
         int sortOrder
 ) {
     public AdminShopItemCommand toCommand() {

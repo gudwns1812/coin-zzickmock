@@ -1,11 +1,14 @@
 package coin.coinzzickmock.feature.position.web;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+
 public record ClosePositionRequest(
-        String symbol,
-        String positionSide,
-        String marginMode,
-        double quantity,
-        String orderType,
+        @NotBlank String symbol,
+        @NotBlank String positionSide,
+        @NotBlank String marginMode,
+        @Positive double quantity,
+        @NotBlank String orderType,
         Double limitPrice
 ) {
 }

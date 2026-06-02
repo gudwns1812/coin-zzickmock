@@ -1,4 +1,6 @@
 package coin.coinzzickmock.feature.community.web.request;
 
-public record CommunityCommentCreateRequest(String content) {
+import jakarta.validation.constraints.NotBlank;
+
+public record CommunityCommentCreateRequest(@NotBlank String content) {
 }

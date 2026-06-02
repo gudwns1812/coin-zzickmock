@@ -1,6 +1,8 @@
 package coin.coinzzickmock.feature.member.web;
 
+import jakarta.validation.constraints.NotBlank;
+
 public record DuplicateAccountRequest(
-        String account
+        @NotBlank String account
 ) {
 }

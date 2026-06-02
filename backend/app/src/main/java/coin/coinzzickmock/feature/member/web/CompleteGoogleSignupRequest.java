@@ -1,13 +1,15 @@
 package coin.coinzzickmock.feature.member.web;
 
 import coin.coinzzickmock.feature.member.application.dto.GoogleSignupProfileCommand;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotBlank;
 
 public record CompleteGoogleSignupRequest(
-        String name,
-        String nickname,
-        String email,
-        String phoneNumber,
-        boolean agreement
+        @NotBlank String name,
+        @NotBlank String nickname,
+        @NotBlank String email,
+        @NotBlank String phoneNumber,
+        @AssertTrue boolean agreement
 ) {
     GoogleSignupProfileCommand toCommand() {
         return new GoogleSignupProfileCommand(

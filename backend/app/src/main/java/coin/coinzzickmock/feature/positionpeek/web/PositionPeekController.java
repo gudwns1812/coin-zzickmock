@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/futures/position-peeks")
@@ -20,7 +21,7 @@ public class PositionPeekController {
     private final Providers providers;
 
     @PostMapping
-    public ApiResponse<PositionPeekSnapshotResponse> consume(@RequestBody PositionPeekRequest request) {
+    public ApiResponse<PositionPeekSnapshotResponse> consume(@Valid @RequestBody PositionPeekRequest request) {
         Actor actor = providers.auth().currentActor();
         return ApiResponse.success(PositionPeekSnapshotResponse.from(
                 positionPeekService.consume(actor.memberId(), request.targetToken())
@@ -29,7 +30,7 @@ public class PositionPeekController {
     }
 
     @PostMapping("/latest")
-    public ApiResponse<PositionPeekStatusResponse> latest(@RequestBody PositionPeekRequest request) {
+    public ApiResponse<PositionPeekStatusResponse> latest(@Valid @RequestBody PositionPeekRequest request) {
         Actor actor = providers.auth().currentActor();
         return ApiResponse.success(PositionPeekStatusResponse.from(
                 positionPeekService.latest(actor.memberId(), request.targetToken())

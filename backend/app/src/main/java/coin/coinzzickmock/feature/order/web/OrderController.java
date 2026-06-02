@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/futures/orders")
@@ -69,7 +70,7 @@ public class OrderController {
     }
 
     @PostMapping("/preview")
-    public ApiResponse<OrderPreviewResponse> preview(@RequestBody CreateOrderRequest request) {
+    public ApiResponse<OrderPreviewResponse> preview(@Valid @RequestBody CreateOrderRequest request) {
         OrderPreview preview = createOrderService.preview(toCommand(request));
         return ApiResponse.success(new OrderPreviewResponse(
                 preview.feeType(),
@@ -83,7 +84,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public ApiResponse<OrderExecutionResponse> create(@RequestBody CreateOrderRequest request) {
+    public ApiResponse<OrderExecutionResponse> create(@Valid @RequestBody CreateOrderRequest request) {
         CreateOrderResult result = createOrderService.execute(toCommand(request));
         return ApiResponse.success(new OrderExecutionResponse(
                 result.orderId(),
@@ -101,12 +102,12 @@ public class OrderController {
     @PostMapping("/{orderId}/modify")
     public ApiResponse<ModifyOrderResponse> modify(
             @PathVariable String orderId,
-            @RequestBody ModifyOrderRequest request
+            @Valid @RequestBody ModifyOrderRequest request
     ) {
         ModifyOrderResult result = modifyOrderService.modify(new ModifyOrderCommand(
                 providers.auth().currentActor().memberId(),
                 orderId,
-                request.requireLimitPrice()
+                request.limitPrice()
         ));
         return ApiResponse.success(ModifyOrderResponse.from(result));
     }

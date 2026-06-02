@@ -78,13 +78,6 @@ class AdminRewardShopItemServiceTest {
         assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
     }
 
-    @Test
-    void rejectsInvalidCreateInput() {
-        CoreException thrown = assertThrows(CoreException.class,
-                () -> adminRewardShopItemService.create(command("voucher.zero", 0, true, 10, 1)));
-
-        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-    }
 
     @Test
     void updatesMutableFieldsWithoutChangingRedemptionSnapshot() {

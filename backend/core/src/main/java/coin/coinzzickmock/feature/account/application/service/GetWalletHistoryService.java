@@ -32,10 +32,6 @@ public class GetWalletHistoryService {
         LocalDate today = WalletHistoryDate.from(now);
         LocalDate to = query.to() == null ? today : WalletHistoryDate.from(query.to());
         LocalDate from = query.from() == null ? to.minusDays(DEFAULT_HISTORY_DAYS - 1) : WalletHistoryDate.from(query.from());
-        if (from.isAfter(to)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-
         List<WalletHistoryResult> results = new ArrayList<>(walletHistoryRepository
                 .findByMemberIdBetween(query.memberId(), from, to).stream()
                 .map(WalletHistoryResult::from)

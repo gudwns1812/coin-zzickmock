@@ -63,7 +63,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @RestController
 @RequestMapping("/api/futures/community")
 public class CommunityController {
@@ -125,8 +131,8 @@ public class CommunityController {
     @GetMapping("/posts")
     public ApiResponse<CommunityPostListResponse> posts(
             @RequestParam(required = false) String category,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @PositiveOrZero @RequestParam(defaultValue = "0") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size
     ) {
         providers.auth().currentActor();
         CommunityPostListResult result = listCommunityPostsService.execute(
@@ -152,7 +158,7 @@ public class CommunityController {
     }
 
     @GetMapping("/posts/{postId}")
-    public ApiResponse<CommunityPostDetailResponse> post(@PathVariable Long postId) {
+    public ApiResponse<CommunityPostDetailResponse> post(@Positive @PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
         CommunityPostDetailResult result = getCommunityPostService.execute(
                 new GetCommunityPostQuery(postId, actor.memberId(), actor.admin(), CommunityPostReadIntent.DETAIL)
@@ -161,7 +167,7 @@ public class CommunityController {
     }
 
     @GetMapping("/posts/{postId}/edit")
-    public ApiResponse<CommunityPostDetailResponse> editPost(@PathVariable Long postId) {
+    public ApiResponse<CommunityPostDetailResponse> editPost(@Positive @PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
         CommunityPostDetailResult result = getCommunityPostService.execute(
                 new GetCommunityPostQuery(postId, actor.memberId(), actor.admin(), CommunityPostReadIntent.EDIT_PRELOAD)
@@ -171,7 +177,7 @@ public class CommunityController {
 
     @PutMapping("/posts/{postId}")
     public ApiResponse<CommunityPostMutationResponse> updatePost(
-            @PathVariable Long postId,
+            @Positive @PathVariable Long postId,
             @Valid @RequestBody CommunityPostUpsertRequest request
     ) {
         Actor actor = providers.auth().currentActor();
@@ -189,7 +195,7 @@ public class CommunityController {
     }
 
     @DeleteMapping("/posts/{postId}")
-    public ApiResponse<CommunityDeleteResponse> deletePost(@PathVariable Long postId) {
+    public ApiResponse<CommunityDeleteResponse> deletePost(@Positive @PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
         deleteCommunityPostService.execute(new DeleteCommunityPostCommand(postId, actor.memberId(), actor.admin()));
         return ApiResponse.success(new CommunityDeleteResponse(true));
@@ -197,9 +203,9 @@ public class CommunityController {
 
     @GetMapping("/posts/{postId}/comments")
     public ApiResponse<CommunityCommentListResponse> comments(
-            @PathVariable Long postId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @Positive @PathVariable Long postId,
+            @PositiveOrZero @RequestParam(defaultValue = "0") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size
     ) {
         Actor actor = providers.auth().currentActor();
         CommunityCommentListResult result = listCommunityCommentsService.execute(
@@ -210,7 +216,7 @@ public class CommunityController {
 
     @PostMapping("/posts/{postId}/comments")
     public ApiResponse<CommunityCommentMutationResponse> createComment(
-            @PathVariable Long postId,
+            @Positive @PathVariable Long postId,
             @Valid @RequestBody CommunityCommentCreateRequest request
     ) {
         Actor actor = providers.auth().currentActor();
@@ -225,8 +231,8 @@ public class CommunityController {
 
     @DeleteMapping("/posts/{postId}/comments/{commentId}")
     public ApiResponse<CommunityDeleteResponse> deleteComment(
-            @PathVariable Long postId,
-            @PathVariable Long commentId
+            @Positive @PathVariable Long postId,
+            @Positive @PathVariable Long commentId
     ) {
         Actor actor = providers.auth().currentActor();
         deleteCommunityCommentService.execute(
@@ -236,7 +242,7 @@ public class CommunityController {
     }
 
     @PostMapping("/posts/{postId}/like")
-    public ApiResponse<CommunityLikeResponse> like(@PathVariable Long postId) {
+    public ApiResponse<CommunityLikeResponse> like(@Positive @PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
         CommunityLikeResult result = toggleCommunityPostLikeService.like(
                 new ToggleCommunityPostLikeCommand(postId, actor.memberId())
@@ -245,7 +251,7 @@ public class CommunityController {
     }
 
     @DeleteMapping("/posts/{postId}/like")
-    public ApiResponse<CommunityLikeResponse> unlike(@PathVariable Long postId) {
+    public ApiResponse<CommunityLikeResponse> unlike(@Positive @PathVariable Long postId) {
         Actor actor = providers.auth().currentActor();
         CommunityLikeResult result = toggleCommunityPostLikeService.unlike(
                 new ToggleCommunityPostLikeCommand(postId, actor.memberId())
@@ -277,7 +283,11 @@ public class CommunityController {
             return null;
         }
         try {
-            return CommunityCategory.valueOf(category.trim());
+            CommunityCategory parsed = CommunityCategory.valueOf(category.trim());
+            if (!required && parsed.isNotice()) {
+                throw new CoreException(ErrorCode.INVALID_REQUEST);
+            }
+            return parsed;
         } catch (IllegalArgumentException exception) {
             throw new CoreException(ErrorCode.COMMUNITY_POST_INVALID_CATEGORY);
         }

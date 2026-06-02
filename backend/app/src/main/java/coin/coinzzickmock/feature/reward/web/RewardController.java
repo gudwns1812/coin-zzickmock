@@ -33,7 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @RestController
 @RequestMapping("/api/futures")
 @RequiredArgsConstructor
@@ -84,7 +88,7 @@ public class RewardController {
     }
 
     @PostMapping("/shop/items/{code}/purchase")
-    public ApiResponse<ShopPurchaseResponse> purchaseShopItem(@PathVariable String code) {
+    public ApiResponse<ShopPurchaseResponse> purchaseShopItem(@NotBlank @PathVariable String code) {
         Actor actor = providers.auth().currentActor();
         ShopPurchaseResult result = purchaseShopItemService.purchase(actor.memberId(), code);
         return ApiResponse.success(new ShopPurchaseResponse(
@@ -112,7 +116,7 @@ public class RewardController {
     }
 
     @PostMapping("/shop/redemptions/{requestId}/cancel")
-    public ApiResponse<RewardRedemptionResponse> cancelOwnRedemption(@PathVariable String requestId) {
+    public ApiResponse<RewardRedemptionResponse> cancelOwnRedemption(@NotBlank @PathVariable String requestId) {
         Actor actor = providers.auth().currentActor();
         RewardRedemptionResult result = cancelRewardRedemptionService.cancel(actor.memberId(), requestId);
         return ApiResponse.success(RewardRedemptionResponse.from(result));
@@ -120,7 +124,7 @@ public class RewardController {
 
     @GetMapping("/admin/reward-redemptions")
     public ApiResponse<List<RewardRedemptionResponse>> adminRedemptions(
-            @RequestParam(defaultValue = "PENDING") String status
+            @Pattern(regexp = "^(PENDING|APPROVED|SENT|REJECTED|CANCELLED|CANCELLED_REFUNDED)$") @RequestParam(defaultValue = "PENDING") String status
     ) {
         requireAdmin();
         return ApiResponse.success(adminRewardRedemptionService.list(parseStatus(status)).stream()
@@ -130,7 +134,7 @@ public class RewardController {
 
     @PostMapping("/admin/reward-redemptions/{requestId}/send")
     public ApiResponse<RewardRedemptionResponse> markRedemptionSent(
-            @PathVariable String requestId,
+            @NotBlank @PathVariable String requestId,
             @RequestBody(required = false) AdminRedemptionActionRequest request
     ) {
         Actor actor = requireAdmin();
@@ -144,7 +148,7 @@ public class RewardController {
 
     @PostMapping("/admin/reward-redemptions/{requestId}/approve")
     public ApiResponse<RewardRedemptionResponse> approveRedemption(
-            @PathVariable String requestId,
+            @NotBlank @PathVariable String requestId,
             @RequestBody(required = false) AdminRedemptionActionRequest request
     ) {
         Actor actor = requireAdmin();
@@ -158,7 +162,7 @@ public class RewardController {
 
     @PostMapping("/admin/reward-redemptions/{requestId}/cancel")
     public ApiResponse<RewardRedemptionResponse> cancelRedemption(
-            @PathVariable String requestId,
+            @NotBlank @PathVariable String requestId,
             @RequestBody(required = false) AdminRedemptionActionRequest request
     ) {
         Actor actor = requireAdmin();
@@ -172,7 +176,7 @@ public class RewardController {
 
     @PostMapping("/admin/reward-redemptions/{requestId}/reject")
     public ApiResponse<RewardRedemptionResponse> rejectRedemption(
-            @PathVariable String requestId,
+            @NotBlank @PathVariable String requestId,
             @RequestBody(required = false) AdminRedemptionActionRequest request
     ) {
         Actor actor = requireAdmin();
@@ -193,7 +197,9 @@ public class RewardController {
     }
 
     @PostMapping("/admin/shop-items")
-    public ApiResponse<AdminShopItemResponse> createAdminShopItem(@Valid @RequestBody AdminShopItemRequest request) {
+    public ApiResponse<AdminShopItemResponse> createAdminShopItem(
+            @Validated(AdminShopItemRequest.Create.class) @RequestBody AdminShopItemRequest request
+    ) {
         requireAdmin();
         AdminShopItemResult result = adminRewardShopItemService.create(toAdminShopItemCommand(request));
         return ApiResponse.success(AdminShopItemResponse.from(result));
@@ -201,7 +207,7 @@ public class RewardController {
 
     @PostMapping("/admin/shop-items/{code}")
     public ApiResponse<AdminShopItemResponse> updateAdminShopItem(
-            @PathVariable String code,
+            @NotBlank @PathVariable String code,
             @Valid @RequestBody AdminShopItemRequest request
     ) {
         requireAdmin();
@@ -210,7 +216,7 @@ public class RewardController {
     }
 
     @PostMapping("/admin/shop-items/{code}/deactivate")
-    public ApiResponse<AdminShopItemResponse> deactivateAdminShopItem(@PathVariable String code) {
+    public ApiResponse<AdminShopItemResponse> deactivateAdminShopItem(@NotBlank @PathVariable String code) {
         requireAdmin();
         AdminShopItemResult result = adminRewardShopItemService.deactivate(code);
         return ApiResponse.success(AdminShopItemResponse.from(result));
@@ -242,9 +248,6 @@ public class RewardController {
     }
 
     private AdminRewardShopItemService.AdminShopItemCommand toAdminShopItemCommand(AdminShopItemRequest request) {
-        if (request == null) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
         return request.toCommand();
     }
 

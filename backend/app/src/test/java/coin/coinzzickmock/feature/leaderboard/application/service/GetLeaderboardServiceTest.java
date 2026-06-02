@@ -2,10 +2,6 @@ package coin.coinzzickmock.feature.leaderboard.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardResult;
@@ -27,11 +23,11 @@ class GetLeaderboardServiceTest {
     void leaderboardReadDoesNotOpenTransactionBeforeRedisSnapshotLookup() throws NoSuchMethodException {
         assertNull(GetLeaderboardService.class.getAnnotation(Transactional.class));
 
-        Method anonymousRead = GetLeaderboardService.class.getDeclaredMethod("get", String.class, String.class);
+        Method anonymousRead = GetLeaderboardService.class.getDeclaredMethod("get", LeaderboardMode.class, int.class);
         Method memberRead = GetLeaderboardService.class.getDeclaredMethod(
                 "get",
-                String.class,
-                String.class,
+                LeaderboardMode.class,
+                int.class,
                 Long.class
         );
 
@@ -47,7 +43,7 @@ class GetLeaderboardServiceTest {
                 entry(3L, "Loss", 95_000)
         ));
 
-        LeaderboardResult result = service.get("profitRate", "3");
+        LeaderboardResult result = service.get(LeaderboardMode.PROFIT_RATE, 3);
 
         assertEquals("database", result.source());
         assertEquals("Winner", result.entries().get(0).nickname());
@@ -65,7 +61,7 @@ class GetLeaderboardServiceTest {
                 entry(2L, "LargestWallet", 150_000)
         ));
 
-        LeaderboardResult result = service.get("walletBalance", "1");
+        LeaderboardResult result = service.get(LeaderboardMode.WALLET_BALANCE, 1);
 
         assertEquals("walletBalance", result.mode());
         assertEquals(1, result.entries().size());
@@ -80,7 +76,7 @@ class GetLeaderboardServiceTest {
                 new InMemorySnapshotStore(List.of(entry(11L, "Redis", 130_000)))
         );
 
-        LeaderboardResult result = service.get(null, null);
+        LeaderboardResult result = service.get(LeaderboardMode.PROFIT_RATE, 5);
 
         assertEquals("redis", result.source());
         assertEquals("Redis", result.entries().get(0).nickname());
@@ -96,7 +92,7 @@ class GetLeaderboardServiceTest {
                 ))
         );
 
-        LeaderboardResult result = service.get("profitRate", "2");
+        LeaderboardResult result = service.get(LeaderboardMode.PROFIT_RATE, 2);
 
         assertEquals("redis", result.source());
         assertEquals("RedisFirst", result.entries().get(0).nickname());
@@ -112,7 +108,7 @@ class GetLeaderboardServiceTest {
                 new InMemorySnapshotStore(List.of())
         );
 
-        LeaderboardResult result = service.get("profitRate", "5");
+        LeaderboardResult result = service.get(LeaderboardMode.PROFIT_RATE, 5);
 
         assertEquals("database", result.source());
         assertEquals("Database", result.entries().get(0).nickname());
@@ -126,7 +122,7 @@ class GetLeaderboardServiceTest {
                 new FailingSnapshotStore()
         );
 
-        LeaderboardResult result = service.get("profitRate", "5");
+        LeaderboardResult result = service.get(LeaderboardMode.PROFIT_RATE, 5);
 
         assertEquals("database", result.source());
         assertEquals("Database", result.entries().get(0).nickname());
@@ -141,7 +137,7 @@ class GetLeaderboardServiceTest {
                 entry(4L, "Loss", 90_000)
         ));
 
-        LeaderboardResult result = service.get("profitRate", "2", 3L);
+        LeaderboardResult result = service.get(LeaderboardMode.PROFIT_RATE, 2, 3L);
 
         assertEquals("database", result.source());
         assertEquals(2, result.myRank().orElseThrow().rank());
@@ -158,24 +154,10 @@ class GetLeaderboardServiceTest {
                 )
         );
 
-        LeaderboardResult result = service.get("profitRate", "1", 99L);
+        LeaderboardResult result = service.get(LeaderboardMode.PROFIT_RATE, 1, 99L);
 
         assertEquals("redis", result.source());
         assertEquals(7, result.myRank().orElseThrow().rank());
-    }
-
-    @Test
-    void rejectsInvalidModeAndLimit() {
-        GetLeaderboardService service = service(List.of());
-
-        CoreException invalidMode = assertThrows(CoreException.class, () -> service.get("unrealizedPnl", "5"));
-        assertEquals(ErrorCode.INVALID_REQUEST, invalidMode.errorCode());
-
-        CoreException invalidLimit = assertThrows(CoreException.class, () -> service.get("profitRate", "0"));
-        assertEquals(ErrorCode.INVALID_REQUEST, invalidLimit.errorCode());
-
-        CoreException nonNumericLimit = assertThrows(CoreException.class, () -> service.get("profitRate", "many"));
-        assertEquals(ErrorCode.INVALID_REQUEST, nonNumericLimit.errorCode());
     }
 
     private GetLeaderboardService service(List<LeaderboardEntry> entries) {

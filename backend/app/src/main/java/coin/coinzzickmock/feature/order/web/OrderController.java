@@ -24,7 +24,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @RestController
 @RequestMapping("/api/futures/orders")
 public class OrderController {
@@ -101,7 +104,7 @@ public class OrderController {
 
     @PostMapping("/{orderId}/modify")
     public ApiResponse<ModifyOrderResponse> modify(
-            @PathVariable String orderId,
+            @NotBlank @PathVariable String orderId,
             @Valid @RequestBody ModifyOrderRequest request
     ) {
         ModifyOrderResult result = modifyOrderService.modify(new ModifyOrderCommand(
@@ -113,7 +116,7 @@ public class OrderController {
     }
 
     @PostMapping("/{orderId}/cancel")
-    public ApiResponse<CancelOrderResponse> cancel(@PathVariable String orderId) {
+    public ApiResponse<CancelOrderResponse> cancel(@NotBlank @PathVariable String orderId) {
         CancelOrderResult result = cancelOrderService.cancel(
                 providers.auth().currentActor().memberId(),
                 orderId

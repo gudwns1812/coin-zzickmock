@@ -63,29 +63,6 @@ class RewardControllerAuthorizationTest {
         assertEquals(ErrorCode.FORBIDDEN, thrown.errorCode());
     }
 
-    @Test
-    void adminShopItemWritesRejectMissingBodyBeforeCallingServices() {
-        RewardController controller = new RewardController(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                providers(new Actor(99L, "admin", "admin@coinzzickmock.dev", "Admin", ActorRole.ADMIN))
-        );
-
-        CoreException thrown = assertThrows(
-                CoreException.class,
-                () -> controller.createAdminShopItem(null)
-        );
-
-        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
-    }
 
     private Providers providers(Actor actor) {
         return new Providers() {

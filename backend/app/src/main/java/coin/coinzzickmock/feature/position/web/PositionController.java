@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @RestController
 @RequestMapping("/api/futures/positions")
 @RequiredArgsConstructor

@@ -12,7 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @RestController
 @RequestMapping("/api/futures/position-peeks")
 @RequiredArgsConstructor
@@ -38,7 +41,7 @@ public class PositionPeekController {
     }
 
     @GetMapping("/{peekId}")
-    public ApiResponse<PositionPeekSnapshotResponse> get(@PathVariable String peekId) {
+    public ApiResponse<PositionPeekSnapshotResponse> get(@NotBlank @PathVariable String peekId) {
         Actor actor = providers.auth().currentActor();
         return ApiResponse.success(PositionPeekSnapshotResponse.from(
                 positionPeekService.getSnapshot(actor.memberId(), peekId)

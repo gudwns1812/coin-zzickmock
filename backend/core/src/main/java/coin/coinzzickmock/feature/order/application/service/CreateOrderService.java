@@ -1,7 +1,5 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
@@ -48,7 +46,6 @@ public class CreateOrderService {
 
     @Transactional(readOnly = true)
     public OrderPreview preview(CreateOrderCommand command) {
-        validateOrderType(command.orderType());
         orderPositionInvariantValidator.validateOpenPositionCompatibility(command);
         return preview(command, loadMarket(command.symbol()));
     }
@@ -56,7 +53,6 @@ public class CreateOrderService {
     @Transactional
     public CreateOrderResult execute(CreateOrderCommand command) {
         orderMutationLock.lock(command.memberId());
-        validateOrderType(command.orderType());
         orderPositionInvariantValidator.validateOpenPositionCompatibility(command);
 
         MarketSnapshot marketSnapshot = loadMarket(command.symbol());
@@ -157,11 +153,5 @@ public class CreateOrderService {
 
     private MarketSnapshot loadMarket(String symbol) {
         return realtimeMarketPriceReader.requireFreshMarket(symbol);
-    }
-
-    private void validateOrderType(String orderType) {
-        if (!FuturesOrder.isOpenOrderType(orderType)) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
     }
 }

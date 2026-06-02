@@ -19,7 +19,6 @@ import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -32,12 +31,10 @@ public class GetLeaderboardService {
     private final LeaderboardSnapshotStore snapshotStore;
     private final PositionPeekTargetTokenCodec targetTokenService;
 
-    @Transactional(readOnly = true)
     public LeaderboardResult get(String modeValue, String limitValue) {
         return get(modeValue, limitValue, null);
     }
 
-    @Transactional(readOnly = true)
     public LeaderboardResult get(String modeValue, String limitValue, Long currentMemberId) {
         LeaderboardMode mode = parseMode(modeValue);
         int limit = parseLimit(limitValue);
@@ -49,7 +46,7 @@ public class GetLeaderboardService {
                             mode,
                             "redis",
                             new LeaderboardSnapshot(snapshot.entries(), snapshot.refreshedAt()),
-                            toEntryResults(mode, snapshot.entries(), limit),
+                            toOrderedEntryResults(mode, snapshot.entries()),
                             snapshot.myRank()
                     ))
                     .orElse(null);
@@ -65,7 +62,7 @@ public class GetLeaderboardService {
                 mode,
                 "database",
                 new LeaderboardSnapshot(entries, Instant.now()),
-                toEntryResults(mode, entries, limit),
+                toSortedEntryResults(mode, entries, limit),
                 findDatabaseMyRank(mode, entries, currentMemberId)
         );
     }
@@ -112,15 +109,23 @@ public class GetLeaderboardService {
                 });
     }
 
-    private List<LeaderboardEntryResult> toEntryResults(LeaderboardMode mode, List<LeaderboardEntry> entries, int limit) {
+    private List<LeaderboardEntryResult> toSortedEntryResults(
+            LeaderboardMode mode,
+            List<LeaderboardEntry> entries,
+            int limit
+    ) {
         List<LeaderboardEntry> sortedEntries = entries.stream()
                 .sorted(comparator(mode))
                 .limit(limit)
                 .toList();
-        return IntStream.range(0, sortedEntries.size())
+        return toOrderedEntryResults(mode, sortedEntries);
+    }
+
+    private List<LeaderboardEntryResult> toOrderedEntryResults(LeaderboardMode mode, List<LeaderboardEntry> entries) {
+        return IntStream.range(0, entries.size())
                 .mapToObj(index -> {
                     int rank = index + 1;
-                    LeaderboardEntry entry = sortedEntries.get(index);
+                    LeaderboardEntry entry = entries.get(index);
                     return LeaderboardEntryResult.from(entry, rank, issueTargetToken(mode, rank, entry));
                 })
                 .toList();

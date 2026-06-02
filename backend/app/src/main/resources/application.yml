@@ -113,8 +113,6 @@ coin:
       enabled: false
       delay-ms: 3600000
       initial-delay-ms: 0
-    warmup:
-      enabled: false
   community:
     images:
       allowed-mime: ${COMMUNITY_IMAGE_ALLOWED_MIME:image/png,image/jpeg,image/webp,image/gif}

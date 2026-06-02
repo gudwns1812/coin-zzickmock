@@ -3,3 +3,5 @@ build
 bin
 *.log
 !app/build/libs/*.jar
+agent/scouter/scouter-agent-java-*.jar
+!agent/scouter/scouter.agent.jar

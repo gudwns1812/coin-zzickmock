@@ -30,9 +30,6 @@ public class CompleteGoogleSignupService {
     private final Clock clock;
 
     public MemberProfileResult complete(String pendingTokenHash, GoogleSignupProfileCommand command) {
-        if (command == null || !command.requiredAgreement()) {
-            throw new CoreException(ErrorCode.MISSING_REQUIRED_AGREEMENT);
-        }
         CompletionResult result;
         try {
             result = Objects.requireNonNull(transactionTemplate.execute(

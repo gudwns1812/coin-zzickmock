@@ -35,7 +35,7 @@ public class CreateRewardRedemptionService {
 
     @Transactional
     public RewardRedemptionResult create(Long memberId, String itemCode, String phoneNumber) {
-        String normalizedItemCode = requireItemCode(itemCode);
+        String normalizedItemCode = itemCode.trim();
         RewardShopItem item = loadCoffeeVoucherForUpdate(normalizedItemCode);
         RewardPhoneNumber normalizedPhoneNumber = RewardPhoneNumber.from(phoneNumber);
         RewardShopMemberItemUsage usage = loadUsageForUpdate(memberId, item);
@@ -51,13 +51,6 @@ public class CreateRewardRedemptionService {
         recordHistory(memberId, item.price(), savedWallet.rewardPoint(), savedRequest.requestId());
         publishRedemptionCreated(savedRequest);
         return RewardRedemptionResult.from(savedRequest);
-    }
-
-    private String requireItemCode(String itemCode) {
-        if (itemCode == null || itemCode.isBlank()) {
-            throw invalid();
-        }
-        return itemCode;
     }
 
     private RewardShopItem loadCoffeeVoucherForUpdate(String itemCode) {

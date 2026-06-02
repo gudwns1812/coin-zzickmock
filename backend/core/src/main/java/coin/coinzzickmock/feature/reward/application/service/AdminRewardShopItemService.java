@@ -6,7 +6,6 @@ import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRe
 import coin.coinzzickmock.feature.reward.application.dto.AdminShopItemResult;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import java.util.List;
-import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,7 +28,7 @@ public class AdminRewardShopItemService {
     @Transactional
     public AdminShopItemResult create(AdminShopItemCommand command) {
         AdminShopItemCommand normalized = normalize(command);
-        String code = requireText(normalized.code(), String::trim);
+        String code = normalized.code();
         rewardShopItemRepository.findByCode(code)
                 .ifPresent(existing -> {
                     throw invalid();
@@ -99,46 +98,23 @@ public class AdminRewardShopItemService {
     }
 
     private RewardShopItem findForUpdate(String code) {
-        String normalizedCode = requireText(code, String::trim);
+        String normalizedCode = code.trim();
         return rewardShopItemRepository.findByCodeForUpdate(normalizedCode)
                 .orElseThrow(() -> invalid());
     }
 
     private AdminShopItemCommand normalize(AdminShopItemCommand command) {
-        if (command == null) {
-            throw invalid();
-        }
-        String code = command.code() == null ? null : command.code().trim();
-        String name = requireText(command.name(), String::trim);
-        String description = requireText(command.description(), String::trim);
-        String itemType = requireText(command.itemType(), String::trim);
-        if (command.price() <= 0) {
-            throw invalid();
-        }
-        if (command.totalStock() != null && command.totalStock() < 0) {
-            throw invalid();
-        }
-        if (command.perMemberPurchaseLimit() != null && command.perMemberPurchaseLimit() <= 0) {
-            throw invalid();
-        }
         return new AdminShopItemCommand(
-                code,
-                name,
-                description,
-                itemType,
+                command.code() == null ? null : command.code().trim(),
+                command.name().trim(),
+                command.description().trim(),
+                command.itemType().trim(),
                 command.price(),
                 command.active(),
                 command.totalStock(),
                 command.perMemberPurchaseLimit(),
                 command.sortOrder()
         );
-    }
-
-    private String requireText(String value, Function<String, String> normalizer) {
-        if (value == null || value.isBlank()) {
-            throw invalid();
-        }
-        return normalizer.apply(value);
     }
 
     private CoreException invalid() {

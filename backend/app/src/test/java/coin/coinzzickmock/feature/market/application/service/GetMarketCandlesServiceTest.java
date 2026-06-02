@@ -61,7 +61,7 @@ class GetMarketCandlesServiceTest {
 
         GetMarketCandlesService service = service(repository);
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "5m", 1, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("5m"), 1, null));
 
         assertEquals(1, results.size());
         assertEquals(100.0, results.get(0).openPrice(), 0.0001);
@@ -83,7 +83,7 @@ class GetMarketCandlesServiceTest {
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
-                "1m",
+                interval("1m"),
                 2,
                 Instant.parse("2026-04-21T00:03:00Z")
         ));
@@ -115,7 +115,7 @@ class GetMarketCandlesServiceTest {
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
-                "5m",
+                interval("5m"),
                 1,
                 Instant.parse("2026-04-21T00:05:00Z")
         ));
@@ -151,7 +151,7 @@ class GetMarketCandlesServiceTest {
 
         GetMarketCandlesService service = service(repository);
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "4h", 2, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("4h"), 2, null));
 
         assertEquals(1, results.size());
         assertEquals(Instant.parse("2026-04-24T16:00:00Z"), results.get(0).openTime());
@@ -176,7 +176,7 @@ class GetMarketCandlesServiceTest {
 
         GetMarketCandlesService service = service(repository);
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1D", 2, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1D"), 2, null));
 
         assertEquals(1, results.size());
         assertEquals(Instant.parse("2026-04-22T00:00:00Z"), results.get(0).openTime());
@@ -196,7 +196,7 @@ class GetMarketCandlesServiceTest {
 
         GetMarketCandlesService service = service(repository);
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1W", 2, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1W"), 2, null));
 
         assertEquals(1, results.size());
         assertEquals(Instant.parse("2026-04-20T00:00:00Z"), results.get(0).openTime());
@@ -231,7 +231,7 @@ class GetMarketCandlesServiceTest {
         FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
         GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1D", 2, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1D"), 2, null));
 
         assertEquals(2, results.size());
         assertEquals(Instant.parse("2026-04-27T00:00:00Z"), results.get(0).openTime());
@@ -256,7 +256,7 @@ class GetMarketCandlesServiceTest {
         FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
         GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1W", 2, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1W"), 2, null));
 
         assertEquals(2, results.size());
         assertEquals(Instant.parse("2026-04-06T00:00:00Z"), results.get(0).openTime());
@@ -291,7 +291,7 @@ class GetMarketCandlesServiceTest {
         FakeMarketDataGateway gateway = FakeMarketDataGateway.withHistoricalCandles();
         GetMarketCandlesService service = service(repository, gateway, distributedCacheManager());
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1M", 2, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1M"), 2, null));
 
         assertEquals(2, results.size());
         assertEquals(Instant.parse("2026-02-01T00:00:00Z"), results.get(0).openTime());
@@ -320,7 +320,7 @@ class GetMarketCandlesServiceTest {
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
-                "1m",
+                interval("1m"),
                 200,
                 Instant.parse("2026-03-01T01:20:00Z")
         ));
@@ -343,13 +343,13 @@ class GetMarketCandlesServiceTest {
 
         service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
-                "1m",
+                interval("1m"),
                 20,
                 Instant.parse("2026-03-01T00:40:00Z")
         ));
         service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
-                "1m",
+                interval("1m"),
                 20,
                 Instant.parse("2026-03-01T00:35:00Z")
         ));
@@ -365,7 +365,7 @@ class GetMarketCandlesServiceTest {
 
         GetMarketCandlesQuery query = new GetMarketCandlesQuery(
                 "BTCUSDT",
-                "1W",
+                interval("1W"),
                 20,
                 Instant.parse("2099-01-01T00:00:00Z")
         );
@@ -383,7 +383,7 @@ class GetMarketCandlesServiceTest {
 
         List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery(
                 "BTCUSDT",
-                "1m",
+                interval("1m"),
                 20,
                 Instant.parse("2026-03-01T00:40:00Z")
         ));
@@ -399,7 +399,7 @@ class GetMarketCandlesServiceTest {
         FakeProviders providers = new FakeProviders(FakeMarketDataGateway.empty());
         GetMarketCandlesService service = service(repository, providers, distributedCacheManager());
 
-        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 2, null));
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 2, null));
 
         RecordedEvent dbLookup = providers.telemetry().events.stream()
                 .filter(event -> "db".equals(event.tags().get("source")))
@@ -425,8 +425,8 @@ class GetMarketCandlesServiceTest {
         GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
                 latestWindowCache);
 
-        List<MarketCandleResult> first = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
-        List<MarketCandleResult> second = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+        List<MarketCandleResult> first = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, null));
+        List<MarketCandleResult> second = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, null));
 
         assertEquals(first, second);
         assertEquals(1, latestWindowCache.writeCount);
@@ -445,7 +445,7 @@ class GetMarketCandlesServiceTest {
         GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
                 latestWindowCache);
 
-        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, Instant.parse("2026-04-21T01:00:00Z")));
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, Instant.parse("2026-04-21T01:00:00Z")));
 
         assertEquals(0, latestWindowCache.readCount);
         assertEquals(0, latestWindowCache.writeCount);
@@ -462,7 +462,7 @@ class GetMarketCandlesServiceTest {
         GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
                 latestWindowCache);
 
-        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 121, null));
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 121, null));
 
         assertEquals(0, latestWindowCache.readCount);
         assertEquals(0, latestWindowCache.writeCount);
@@ -479,7 +479,7 @@ class GetMarketCandlesServiceTest {
         GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
                 latestWindowCache);
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, null));
 
         assertEquals(80, results.size());
         assertEquals(1, latestWindowCache.writeCount);
@@ -509,7 +509,7 @@ class GetMarketCandlesServiceTest {
         GetMarketCandlesService service = service(repository, FakeMarketDataGateway.empty(), distributedCacheManager(),
                 latestWindowCache, resolver);
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, null));
 
         assertEquals(120, results.size());
         assertEquals(0, latestWindowCache.writeCount);
@@ -558,7 +558,7 @@ class GetMarketCandlesServiceTest {
                 oversizedReader
         );
 
-        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+        List<MarketCandleResult> results = service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, null));
 
         assertEquals(121, results.size());
         assertEquals(0, latestWindowCache.writeCount);
@@ -581,7 +581,7 @@ class GetMarketCandlesServiceTest {
                 new RestVisibleCandleBoundaryResolver(repository, new MarketCandleRollupProjector())
         );
 
-        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, null));
 
         RecordedEvent unavailable = providers.telemetry().events.stream()
                 .filter(event -> "market.history.latest_window.unavailable".equals(event.eventName()))
@@ -607,7 +607,7 @@ class GetMarketCandlesServiceTest {
                 new RestVisibleCandleBoundaryResolver(repository, new MarketCandleRollupProjector())
         );
 
-        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", "1m", 120, null));
+        service.getCandles(new GetMarketCandlesQuery("BTCUSDT", interval("1m"), 120, null));
 
         RecordedEvent unavailable = providers.telemetry().events.stream()
                 .filter(event -> "market.history.latest_window.write_unavailable".equals(event.eventName()))
@@ -615,6 +615,10 @@ class GetMarketCandlesServiceTest {
                 .orElseThrow();
         assertEquals("redis", unavailable.tags().get("source"));
         assertEquals("write_unavailable", unavailable.tags().get("result"));
+    }
+
+    private static MarketCandleInterval interval(String value) {
+        return MarketCandleInterval.from(value);
     }
 
     private static GetMarketCandlesService service(InMemoryMarketHistoryRepository repository) {

@@ -1,7 +1,5 @@
 package coin.coinzzickmock.feature.positionpeek.application.service;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
@@ -17,17 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class SearchLeaderboardMembersService {
-    private static final int DEFAULT_LIMIT = 10;
-    private static final int MAX_LIMIT = 20;
-
     private final LeaderboardProjectionRepository projectionRepository;
     private final PositionPeekTargetTokenCodec targetTokenService;
 
     @Transactional(readOnly = true)
-    public List<PositionPeekTargetResult> search(String modeValue, String query, String limitValue) {
-        String normalizedQuery = requireQuery(query);
-        LeaderboardMode mode = parseMode(modeValue);
-        int limit = parseLimit(limitValue);
+    public List<PositionPeekTargetResult> search(LeaderboardMode mode, String normalizedQuery, int limit) {
         AtomicInteger rank = new AtomicInteger(0);
         return projectionRepository.findAll().stream()
                 .sorted(comparator(mode))
@@ -51,33 +43,6 @@ public class SearchLeaderboardMembersService {
                 entry.profitRate(),
                 mode.value()
         ));
-    }
-
-    private String requireQuery(String query) {
-        if (query == null || query.isBlank()) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
-        return query.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private LeaderboardMode parseMode(String value) {
-        return LeaderboardMode.parse(value)
-                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-    }
-
-    private int parseLimit(String value) {
-        if (value == null || value.isBlank()) {
-            return DEFAULT_LIMIT;
-        }
-        try {
-            int limit = Integer.parseInt(value);
-            if (limit < 1 || limit > MAX_LIMIT) {
-                throw new CoreException(ErrorCode.INVALID_REQUEST);
-            }
-            return limit;
-        } catch (NumberFormatException exception) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
     }
 
     private Comparator<LeaderboardEntry> comparator(LeaderboardMode mode) {

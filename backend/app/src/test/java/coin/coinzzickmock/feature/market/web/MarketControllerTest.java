@@ -54,8 +54,8 @@ class MarketControllerTest {
 
         verify(candleService).getCandles(argThat(query ->
                 query.symbol().equals("BTCUSDT")
-                        && query.interval().equals("1m")
-                        && query.limit().equals(120)
+                        && query.interval() == coin.coinzzickmock.feature.market.domain.MarketCandleInterval.ONE_MINUTE
+                        && query.limit() == 120
                         && before.equals(query.beforeOpenTime())
         ));
     }

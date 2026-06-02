@@ -1,7 +1,5 @@
 package coin.coinzzickmock.feature.leaderboard.application.service;
 
-import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardEntryResult;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardMemberRankResult;
@@ -24,21 +22,15 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class GetLeaderboardService {
-    private static final int DEFAULT_LIMIT = 5;
-    private static final int MAX_LIMIT = 50;
-
     private final LeaderboardProjectionRepository projectionRepository;
     private final LeaderboardSnapshotStore snapshotStore;
     private final PositionPeekTargetTokenCodec targetTokenService;
 
-    public LeaderboardResult get(String modeValue, String limitValue) {
-        return get(modeValue, limitValue, null);
+    public LeaderboardResult get(LeaderboardMode mode, int limit) {
+        return get(mode, limit, null);
     }
 
-    public LeaderboardResult get(String modeValue, String limitValue, Long currentMemberId) {
-        LeaderboardMode mode = parseMode(modeValue);
-        int limit = parseLimit(limitValue);
-
+    public LeaderboardResult get(LeaderboardMode mode, int limit, Long currentMemberId) {
         try {
             LeaderboardResult snapshotResult = snapshotStore.findSnapshot(mode, limit, currentMemberId)
                     .filter(snapshot -> !snapshot.entries().isEmpty())
@@ -65,27 +57,6 @@ public class GetLeaderboardService {
                 toSortedEntryResults(mode, entries, limit),
                 findDatabaseMyRank(mode, entries, currentMemberId)
         );
-    }
-
-    private LeaderboardMode parseMode(String value) {
-        return LeaderboardMode.parse(value)
-                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
-    }
-
-    private int parseLimit(String value) {
-        if (value == null || value.isBlank()) {
-            return DEFAULT_LIMIT;
-        }
-
-        try {
-            int limit = Integer.parseInt(value);
-            if (limit < 1 || limit > MAX_LIMIT) {
-                throw new CoreException(ErrorCode.INVALID_REQUEST);
-            }
-            return limit;
-        } catch (NumberFormatException exception) {
-            throw new CoreException(ErrorCode.INVALID_REQUEST);
-        }
     }
 
     private Optional<LeaderboardMemberRankResult> findDatabaseMyRank(

@@ -42,36 +42,20 @@ public interface CommunityPostEntityRepository extends JpaRepository<CommunityPo
     @Modifying(flushAutomatically = true)
     @Query("""
             update CommunityPostEntity post
-               set post.likeCount = post.likeCount + 1
+               set post.likeCount = case
+                       when post.likeCount + :likeDelta > 0 then post.likeCount + :likeDelta
+                       else 0
+                   end,
+                   post.commentCount = case
+                       when post.commentCount + :commentDelta > 0 then post.commentCount + :commentDelta
+                       else 0
+                   end
              where post.id = :postId
                and post.deletedAt is null
             """)
-    int incrementLikeCountIfActive(@Param("postId") Long postId);
-
-    @Modifying(flushAutomatically = true)
-    @Query("""
-            update CommunityPostEntity post
-               set post.likeCount = case when post.likeCount > 0 then post.likeCount - 1 else 0 end
-             where post.id = :postId
-               and post.deletedAt is null
-            """)
-    int decrementLikeCountIfActive(@Param("postId") Long postId);
-
-    @Modifying(flushAutomatically = true)
-    @Query("""
-            update CommunityPostEntity post
-               set post.commentCount = post.commentCount + 1
-             where post.id = :postId
-               and post.deletedAt is null
-            """)
-    int incrementCommentCountIfActive(@Param("postId") Long postId);
-
-    @Modifying(flushAutomatically = true)
-    @Query("""
-            update CommunityPostEntity post
-               set post.commentCount = case when post.commentCount > 0 then post.commentCount - 1 else 0 end
-             where post.id = :postId
-               and post.deletedAt is null
-            """)
-    int decrementCommentCountIfActive(@Param("postId") Long postId);
+    int applyCountDeltaIfActive(
+            @Param("postId") Long postId,
+            @Param("likeDelta") long likeDelta,
+            @Param("commentDelta") long commentDelta
+    );
 }

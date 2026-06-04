@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.persistence.AuditableEntity;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostCountDelta;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
@@ -29,7 +30,6 @@ import org.springframework.data.domain.PageRequest;
 
 class CommunityPostPersistenceRepositoryTest {
     private CommunityPostEntityRepository postEntityRepository;
-    private CommunityCommentEntityRepository commentEntityRepository;
     private CommunityPostLikeEntityRepository likeEntityRepository;
     private CommunityPostImageEntityRepository imageEntityRepository;
     private CommunityPostPersistenceRepository repository;
@@ -37,42 +37,34 @@ class CommunityPostPersistenceRepositoryTest {
     @BeforeEach
     void setUp() {
         postEntityRepository = mock(CommunityPostEntityRepository.class);
-        commentEntityRepository = mock(CommunityCommentEntityRepository.class);
         likeEntityRepository = mock(CommunityPostLikeEntityRepository.class);
         imageEntityRepository = mock(CommunityPostImageEntityRepository.class);
         repository = new CommunityPostPersistenceRepository(
                 postEntityRepository,
-                commentEntityRepository,
                 likeEntityRepository,
                 imageEntityRepository
         );
     }
 
     @Test
-    void counterIncrementThrowsWhenNoActivePostUpdated() {
-        when(postEntityRepository.incrementLikeCountIfActive(1L)).thenReturn(0);
+    void countDeltaApplyIgnoresMissingActivePost() {
+        when(postEntityRepository.applyCountDeltaIfActive(1L, 1, 0)).thenReturn(0);
 
-        assertThatThrownBy(() -> repository.incrementLikeCount(1L))
-                .isInstanceOfSatisfying(CoreException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+        repository.applyCountDeltas(List.of(new CommunityPostCountDelta(1L, 1, 0)));
+
+        verify(postEntityRepository).applyCountDeltaIfActive(1L, 1, 0);
     }
 
     @Test
-    void counterMutationsUseAtomicUpdateQueriesInsteadOfPessimisticPostLocks() {
+    void counterMutationsUseAtomicDeltaQueriesInsteadOfPessimisticPostLocks() {
         when(postEntityRepository.incrementViewCountIfActive(1L)).thenReturn(1);
-        when(postEntityRepository.incrementLikeCountIfActive(1L)).thenReturn(1);
-        when(postEntityRepository.decrementLikeCountIfActive(1L)).thenReturn(1);
-        when(postEntityRepository.incrementCommentCountIfActive(1L)).thenReturn(1);
+        when(postEntityRepository.applyCountDeltaIfActive(1L, 1, -1)).thenReturn(1);
 
         repository.incrementViewCount(1L);
-        repository.incrementLikeCount(1L);
-        repository.decrementLikeCount(1L);
-        repository.incrementCommentCount(1L);
+        repository.applyCountDeltas(List.of(new CommunityPostCountDelta(1L, 1, -1)));
 
         verify(postEntityRepository).incrementViewCountIfActive(1L);
-        verify(postEntityRepository).incrementLikeCountIfActive(1L);
-        verify(postEntityRepository).decrementLikeCountIfActive(1L);
-        verify(postEntityRepository).incrementCommentCountIfActive(1L);
+        verify(postEntityRepository).applyCountDeltaIfActive(1L, 1, -1);
         verify(postEntityRepository, never()).findWithLockingByIdAndDeletedAtIsNull(1L);
     }
 
@@ -120,10 +112,8 @@ class CommunityPostPersistenceRepositoryTest {
     }
 
     @Test
-    void addIfAbsentReliesOnUniqueConstraint() {
-        when(likeEntityRepository.saveAndFlush(any(CommunityPostLikeEntity.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate"));
-        when(likeEntityRepository.existsByPostIdAndMemberId(1L, 2L)).thenReturn(true);
+    void addIfAbsentUsesInsertAffectedRowsToAvoidDuplicateCountDeltas() {
+        when(likeEntityRepository.insertIgnore(any(), any(), any())).thenReturn(0);
 
         assertThat(repository.addIfAbsent(1L, 2L)).isFalse();
     }

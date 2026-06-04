@@ -28,7 +28,6 @@ The backend host remains the only public application ingress for ports 80/443. O
 - `backend`: Spring Boot application runtime.
 - `push-app`: Spring Boot push server runtime. It consumes Redis Stream push events and owns long-lived SSE fan-out.
 - `nginx`: public HTTPS edge for API, `/actuator/health`, and the operator Grafana subpath proxy if the existing public Grafana route is retained.
-- `scouter-collector`: backend-host-local Scouter collector for the backend Java agent.
 - `backend-promtail`: backend-host-local Docker log collector that pushes to infra Loki.
 - `backend-node-exporter`: backend host metrics, scraped by infra Prometheus over private networking.
 - `nginx-exporter`: Nginx status exporter, scraped by infra Prometheus over private networking.
@@ -54,7 +53,6 @@ The backend host remains the only public application ingress for ports 80/443. O
 | Backend host metrics scrape | Infra-host Prometheus | Backend-host Nginx private relay to node exporter | tcp 80, `/internal/metrics/node` | Private CIDR only at Nginx location; target label remains `backend-private:9100` | Prometheus target up |
 | Nginx metrics scrape | Infra-host Prometheus | Backend-host Nginx private relay to nginx exporter | tcp 80, `/internal/metrics/nginx` | Private CIDR only at Nginx location; target label remains `backend-private:9113` | Prometheus target up |
 | Push-app metrics scrape | Infra-host Prometheus or backend-host Prometheus in local topology | Push-app private endpoint | tcp 8081, `/actuator/prometheus` | Private only; not public Nginx actuator | `curl -fsS http://<backend-private-host>:8081/actuator/prometheus` if host bind allows infra access |
-| Backend Scouter APM | Backend Java agent and operator | Backend-host Scouter collector | tcp/udp 6100, HTTP/API 6180 | Backend Docker network for the Java agent; host bind defaults to `127.0.0.1` and must not be public | Scouter collector container running and backend logs show Java agent startup |
 | Backend logs push | Backend-host promtail | Infra-host Loki | tcp 3100, `/loki/api/v1/push` | Infra private interface/security group only | Loki receives backend-host log stream |
 | Redis metrics scrape | Infra-host Prometheus | Infra-host redis exporter | tcp 9121 | Infra-local or infra private only | Prometheus target up |
 | Grafana operator UI | Operator via current public route or private operator path | Grafana | `/grafana/` through backend Nginx if retained, or direct private operator access in a later change | Public UI path is an operator surface only; it is not a backend metrics scrape path | Grafana subpath/private UI check |
@@ -70,9 +68,6 @@ Backend host `.env.prod`:
 - `REDIS_PASSWORD`: optional server-owned Redis password or ACL secret. Set it only when Redis auth/ACL is enabled.
 - `BACKEND_PORT`: host port for direct/private backend scrape, default `8080`.
 - `BACKEND_BIND_ADDRESS`: optional host bind address for backend `8080`, default `0.0.0.0`; restrict public exposure with the cloud security group.
-- `SCOUTER_COLLECTOR_IMAGE`: current backend-host Scouter collector image.
-- `SCOUTER_BIND_ADDRESS`: optional host bind for Scouter `6180` and `6100`, default `127.0.0.1`.
-- `SCOUTER_WEB_PORT`, `SCOUTER_COLLECTOR_PORT`: optional Scouter host ports, defaults `6180` and `6100`.
 - `NODE_EXPORTER_PORT`: backend host node-exporter scrape port, default `9100`.
 - `NODE_EXPORTER_BIND_ADDRESS`: optional host bind address for node-exporter `9100`, default `0.0.0.0`; restrict inbound to the infra host with the cloud security group.
 - `NGINX_EXPORTER_PORT`: backend host Nginx exporter scrape port, default `9113`.
@@ -107,15 +102,15 @@ Grafana system dashboards must not assume the local colocated node-exporter job 
 
 The CD workflow deploys split host scopes through separate compose files and separate host jobs:
 
-- `docker-compose.backend.prod.yml` is the backend host contract. It contains backend, push-app, Nginx, Scouter collector, backend-host promtail, nginx exporter, and backend node exporter. It does not contain Redis, Prometheus, Grafana, or Loki.
+- `docker-compose.backend.prod.yml` is the backend host contract. It contains backend, push-app, Nginx, backend-host promtail, nginx exporter, and backend node exporter. It does not contain Redis, Prometheus, Grafana, or Loki.
 - `docker-compose.infra.prod.yml` is the infra host contract. It contains Redis, Prometheus, Grafana, Loki, infra-host promtail, Redis exporter, and infra node exporter. It does not contain backend or Nginx.
 - `docker-compose.prod.yml` is a colocated rollback anchor and is not deployed by normal CD.
 
 Deployment effects:
 
-- `backend_image`: build/publish backend, push-app, and Scouter collector images, mutate backend host `.env.prod` `BACKEND_IMAGE`/`PUSH_IMAGE`/`SCOUTER_COLLECTOR_IMAGE`, recreate Scouter collector/backend/push-app only, verify backend health and direct metrics reachability. It must not restart central infra services.
+- `backend_image`: build/publish backend and push-app images, mutate backend host `.env.prod` `BACKEND_IMAGE`/`PUSH_IMAGE`, recreate backend and push-app only, verify backend health and direct metrics reachability. It must not restart central infra services.
 - `backend_runtime`: apply backend host compose/env/runtime changes and recreate backend/push-app runtime only. It must not publish an image or restart infra services.
-- `backend_agent_runtime`: apply backend-host-local Scouter collector/promtail/exporter runtime only. It must not recreate the backend application.
+- `backend_agent_runtime`: apply backend-host-local promtail/exporter runtime only. It must not recreate the backend application.
 - `nginx_config`: apply backend host Nginx config, run `nginx -t`, reload/recreate Nginx according to config vs service-definition scope. It must not restart backend unless paired with a backend effect.
 - `infra_runtime`: apply infra host Redis/Prometheus/Grafana/Loki/exporter/storage changes and verify Redis, Prometheus, Grafana, and Loki. It must not build/publish/recreate backend.
 

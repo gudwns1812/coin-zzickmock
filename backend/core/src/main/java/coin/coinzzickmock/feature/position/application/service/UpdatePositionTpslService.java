@@ -62,10 +62,19 @@ public class UpdatePositionTpslService {
             Double stopLossPrice,
             double markPrice
     ) {
+        validatePositivePrice(takeProfitPrice);
+        validatePositivePrice(stopLossPrice);
+
         if (takeProfitPrice != null && triggersTakeProfit(position, takeProfitPrice, markPrice)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
         if (stopLossPrice != null && triggersStopLoss(position, stopLossPrice, markPrice)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private void validatePositivePrice(Double price) {
+        if (price != null && (!Double.isFinite(price) || price <= 0)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }

@@ -7,25 +7,12 @@ import coin.coinzzickmock.feature.leaderboard.application.repository.Leaderboard
 import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.springframework.transaction.annotation.Transactional;
 
 class RefreshLeaderboardServiceTest {
-    @Test
-    void leaderboardRefreshDoesNotKeepRedisUpdateInsideReadTransaction() throws NoSuchMethodException {
-        assertThat(RefreshLeaderboardService.class.getAnnotation(Transactional.class)).isNull();
-
-        Method refreshAll = RefreshLeaderboardService.class.getDeclaredMethod("refreshAll");
-        Method refreshMember = RefreshLeaderboardService.class.getDeclaredMethod("refreshMember", Long.class);
-
-        assertThat(refreshAll.getAnnotation(Transactional.class)).isNull();
-        assertThat(refreshMember.getAnnotation(Transactional.class)).isNull();
-    }
-
     @Test
     void recordOpenedAccountUpdatesSnapshotWithoutProjectionLookup() {
         RecordingSnapshotStore snapshotStore = new RecordingSnapshotStore();

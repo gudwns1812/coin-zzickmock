@@ -37,30 +37,6 @@ services:
     networks:
       - coin
 
-  scouter-collector:
-    build:
-      context: ./backend
-      target: scouter-collector-runtime
-    image: ${SCOUTER_COLLECTOR_IMAGE:-coin-zzickmock-scouter-collector:local}
-    environment:
-      SC_SERVER_ID: ${SCOUTER_SERVER_ID:-COIN-ZZICKMOCK-COLLECTOR}
-      NET_HTTP_SERVER_ENABLED: "true"
-      NET_HTTP_API_SWAGGER_ENABLED: "true"
-      NET_HTTP_API_ENABLED: "true"
-      MGR_PURGE_PROFILE_KEEP_DAYS: ${SCOUTER_PROFILE_KEEP_DAYS:-2}
-      MGR_PURGE_XLOG_KEEP_DAYS: ${SCOUTER_XLOG_KEEP_DAYS:-5}
-      MGR_PURGE_COUNTER_KEEP_DAYS: ${SCOUTER_COUNTER_KEEP_DAYS:-15}
-      JAVA_OPT: ${SCOUTER_JAVA_OPT:--Xms256m -Xmx512m}
-    ports:
-      - "${SCOUTER_BIND_ADDRESS:-127.0.0.1}:${SCOUTER_WEB_PORT:-6180}:6180"
-      - "${SCOUTER_BIND_ADDRESS:-127.0.0.1}:${SCOUTER_COLLECTOR_PORT:-6100}:6100"
-      - "${SCOUTER_BIND_ADDRESS:-127.0.0.1}:${SCOUTER_COLLECTOR_PORT:-6100}:6100/udp"
-    volumes:
-      - scouter-logs:/home/scouter-server/logs
-      - scouter-data:/home/scouter-server/database
-    networks:
-      - coin
-
   backend:
     build:
       context: ./backend
@@ -71,7 +47,7 @@ services:
       coin.zzickmock.application: coin-zzickmock
       coin.zzickmock.environment: ${APP_ENV:-local}
     environment:
-      JAVA_TOOL_OPTIONS: "-javaagent:/app/scouter/scouter.agent.jar -Dscouter.config=/app/scouter/conf/scouter.conf ${BACKEND_JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError}"
+      JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError}
       APP_ENV: ${APP_ENV:-local}
       MYSQL_POOL_MAX_SIZE: 50
       MYSQL_HOST: mysql
@@ -83,6 +59,7 @@ services:
       REDIS_PORT: 6379
       REDIS_DATABASE: 0
       REDIS_PASSWORD: ""
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
       JWT_SECRET: ${JWT_SECRET:-dGhlLXF1aWNrLWJyb3duLWZveC1qdW1wcy1vdmVyLXRoZS1sYXp5LWRvZy1hbmQtc29tZS1vdGhlci1zZWNyZXQtc3R1ZmY=}
       APP_AUTH_COOKIE_SECURE: ${APP_AUTH_COOKIE_SECURE:-false}
       APP_AUTH_COOKIE_SAME_SITE: ${APP_AUTH_COOKIE_SAME_SITE:-Lax}
@@ -113,8 +90,6 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      scouter-collector:
-        condition: service_started
       mysql:
         condition: service_healthy
       redis:
@@ -295,5 +270,3 @@ volumes:
   prometheus-data:
   grafana-data:
   loki-data:
-  scouter-logs:
-  scouter-data:

@@ -61,11 +61,6 @@ class AccessTokenCookieFactoryTest {
         }
 
         @Override
-        public AuthSessionClaims parse(String token) {
-            return null;
-        }
-
-        @Override
         public String accessTokenCookieName() {
             return "accessToken";
         }

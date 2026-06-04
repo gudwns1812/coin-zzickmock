@@ -172,7 +172,6 @@ tasks.register('architectureLint') {
                             'JOB_TRIGGER_ONLY',
                             'INFRASTRUCTURE_NO_INBOUND_DELIVERY',
                             'DOMAIN_FRAMEWORK_FREE',
-                            'SPRING_VALIDATION_WEB_ONLY',
                             'INTERFACE_DEFAULT_METHOD_FORBIDDEN',
                             'APPLICATION_NO_SECURITY_CONTEXT',
                             'APPLICATION_SERVICE_NO_SERVICE_DEPENDENCY',
@@ -508,26 +507,6 @@ tasks.register('architectureLint') {
                     def importMatcher = lineText =~ /^\s*import\s+([A-Za-z0-9_.]+)\s*;/
                     importMatcher.find() ? importMatcher.group(1) : null
                 }.findAll { it != null }
-                def validationImports = importTypes.findAll { it.startsWith('jakarta.validation.') }
-                if (!validationImports.isEmpty()) {
-                    def validationAllowed = isAppSource && (
-                            (topLevel == 'feature' && layer == 'web') ||
-                                    (packageName == "${architectureRootPackage}.common.error" &&
-                                            text.contains('@RestControllerAdvice'))
-                    )
-                    if (!validationAllowed) {
-                        validationImports.each { importedType ->
-                            logViolation(
-                                    sourceFile,
-                                    lines.findIndexOf { it.contains(importedType) } + 1,
-                                    'SPRING_VALIDATION_WEB_ONLY',
-                                    'Spring Bean Validation은 HTTP 요청/응답 경계의 web adapter에서만 사용합니다.',
-                                    '요청 형식 검증은 app feature web DTO/controller 또는 전역 web error boundary에 두고, core/storage/external에는 jakarta.validation 의존을 추가하지 마세요.',
-                                    [packageName: packageName, importLine: "import ${importedType};"]
-                            )
-                        }
-                    }
-                }
 
                 if (topLevel == 'feature' && layer == 'application' && packageSegments.size() > 3 &&
                         ['command', 'result', 'realtime'].contains(packageSegments[3])) {

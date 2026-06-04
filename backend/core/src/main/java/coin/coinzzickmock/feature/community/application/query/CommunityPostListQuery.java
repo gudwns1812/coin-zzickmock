@@ -7,4 +7,15 @@ public record CommunityPostListQuery(
         int page,
         int size
 ) {
+    public CommunityPostListQuery {
+        if (page < 0) {
+            page = 0;
+        }
+        if (size < 1) {
+            size = 20;
+        }
+        if (size > 100) {
+            size = 100;
+        }
+    }
 }

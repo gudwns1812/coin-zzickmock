@@ -12,6 +12,8 @@ import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnaps
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekSnapshotResult;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekStatusResult;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
+import coin.coinzzickmock.feature.positionpeek.application.token.PositionPeekTargetTokenRegistry;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
@@ -26,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PositionPeekService {
-    private final PositionPeekTargetTokenCodec targetTokenService;
+    private final PositionPeekTargetTokenRegistry targetTokenRegistry;
     private final LeaderboardProjectionRepository leaderboardProjectionRepository;
     private final RewardShopItemRepository rewardShopItemRepository;
     private final RewardItemBalanceRepository rewardItemBalanceRepository;
@@ -65,7 +67,7 @@ public class PositionPeekService {
                 UUID.randomUUID().toString(),
                 viewerMemberId,
                 target.memberId(),
-                targetTokenService.fingerprint(targetToken),
+                targetTokenRegistry.fingerprint(targetToken),
                 target.result().nickname(),
                 target.result().rank(),
                 target.leaderboardMode(),
@@ -87,7 +89,7 @@ public class PositionPeekService {
     }
 
     private ResolvedTarget resolveTarget(String targetToken) {
-        PositionPeekTargetTokenCodec.TargetTokenPayload payload = targetTokenService.validate(targetToken);
+        PositionPeekTargetTokenPayload payload = targetTokenRegistry.validate(targetToken);
         LeaderboardEntry entry = leaderboardProjectionRepository.findByMemberId(payload.targetMemberId())
                 .orElseThrow(this::invalid);
         return new ResolvedTarget(

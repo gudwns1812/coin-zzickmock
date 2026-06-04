@@ -20,10 +20,12 @@ public class AuthenticateMemberService {
     @Transactional(readOnly = true)
     public MemberProfileResult authenticate(String account, String rawPassword) {
         String normalizedAccount = MemberIdentityRules.normalizeAccount(account);
+        String requiredPassword = MemberIdentityRules.requirePasswordInput(rawPassword);
+
         MemberCredential memberCredential = memberCredentialRepository.findActiveByAccount(normalizedAccount)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_CREDENTIALS));
 
-        if (!memberPasswordHasher.matches(rawPassword, memberCredential.passwordHash())) {
+        if (!memberPasswordHasher.matches(requiredPassword, memberCredential.passwordHash())) {
             throw new CoreException(ErrorCode.INVALID_CREDENTIALS);
         }
 

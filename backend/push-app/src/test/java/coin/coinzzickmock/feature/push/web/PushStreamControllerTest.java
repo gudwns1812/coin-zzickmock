@@ -15,8 +15,7 @@ class PushStreamControllerTest {
     void rejectsBlankMarketSummarySymbolsAsBadRequest() {
         PushStreamController controller = new PushStreamController(
                 new PushSseConnectionRegistry(properties()),
-                properties(),
-                null
+                properties()
         );
 
         ResponseStatusException exception = assertThrows(

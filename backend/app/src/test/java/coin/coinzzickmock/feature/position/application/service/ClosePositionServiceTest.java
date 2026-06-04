@@ -519,6 +519,33 @@ class ClosePositionServiceTest {
         assertEquals(96995.5, account.availableMargin(), 0.0001);
     }
 
+    @Test
+    void closeRejectsUnsupportedOrderType() {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        InMemoryOrderRepository orderRepository = new InMemoryOrderRepository();
+        positionRepository.save(1L, PositionSnapshot.open(
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                10,
+                0.2,
+                100000,
+                100000
+        ));
+        ClosePositionService service = closeService(positionRepository, orderRepository, realtimePriceReader(100000, 100000));
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.close(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "ISOLATED",
+                0.1,
+                "STOP",
+                101000.0
+        ));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
 
     @Test
     void closeRejectsOppositeSidePositionAsNotFound() {

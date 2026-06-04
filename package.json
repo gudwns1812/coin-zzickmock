@@ -9,10 +9,6 @@
     "lint": "npm run lint --workspace frontend",
     "check:branch": "node .github/branch-policy/validate-branch-name.cjs",
     "k6:candle:html": "node scripts/k6/run-k6-candle-latency-html.mjs",
-    "k6:community": "k6 run scripts/k6/community-scenario.js",
-    "k6:community:500vu": "COMMUNITY_SCENARIO=reaction COMMUNITY_TARGET_VUS=500 k6 run scripts/k6/community-scenario.js",
-    "k6:community:prepare-users": "node scripts/k6/prepare-community-users.mjs",
-    "k6:community:prepare-500vu": "COMMUNITY_TARGET_VUS=500 node scripts/k6/prepare-community-users.mjs",
     "k6:report": "node scripts/k6/generate-k6-report.mjs",
     "k6:clean": "node scripts/truncate_test_data.js",
     "db:clean-test": "node scripts/truncate_test_data.js"

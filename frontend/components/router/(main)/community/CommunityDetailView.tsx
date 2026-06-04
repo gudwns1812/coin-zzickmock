@@ -63,7 +63,7 @@ export default function CommunityDetailView({
               {formatCommunityDate(post.createdAt)}
             </span>
           </div>
-          <h1 className="mt-5 text-3xl-custom font-bold leading-tight text-main-dark-gray break-words">{post.title}</h1>
+          <h1 className="mt-5 text-3xl-custom font-bold leading-tight text-main-dark-gray">{post.title}</h1>
           <div className="mt-5 grid gap-main rounded-main bg-white/64 p-main shadow-sm ring-1 ring-main-light-gray/45 sm:grid-cols-[1fr_auto] sm:items-center">
             <p className="text-sm-custom font-semibold text-main-dark-gray">
               <span className="text-main-dark-gray/55">작성자:</span> {post.authorNickname}

@@ -51,7 +51,7 @@ public class ClosePositionService {
         orderMutationLock.lock(memberId);
         PositionSnapshot position = positionRepository.findOpenPosition(memberId, symbol, positionSide, marginMode)
                 .orElseThrow(() -> new CoreException(ErrorCode.POSITION_NOT_FOUND));
-        rejectExcessCloseQuantity(quantity, position);
+        validateCloseRequest(quantity, orderType, limitPrice, position);
 
         MarketSnapshot market = loadMarket(symbol);
         OrderPlacementDecision decision = orderPlacementPolicy.decide(
@@ -135,8 +135,22 @@ public class ClosePositionService {
         return realtimeMarketPriceReader.requireFreshMarket(symbol);
     }
 
-    private void rejectExcessCloseQuantity(double quantity, PositionSnapshot position) {
-        if (quantity > position.quantity()) {
+    private void validateCloseRequest(
+            double quantity,
+            String orderType,
+            Double limitPrice,
+            PositionSnapshot position
+    ) {
+        if (!Double.isFinite(quantity) || quantity <= 0 || quantity > position.quantity()) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (!ORDER_TYPE_MARKET.equalsIgnoreCase(orderType) && !ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (ORDER_TYPE_LIMIT.equalsIgnoreCase(orderType)
+                && (limitPrice == null || !Double.isFinite(limitPrice) || limitPrice <= 0)) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
     }

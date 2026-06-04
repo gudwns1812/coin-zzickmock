@@ -23,11 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import org.springframework.validation.annotation.Validated;
 
-@Validated
 @RestController
 @RequestMapping("/api/futures/orders")
 public class OrderController {
@@ -73,7 +69,7 @@ public class OrderController {
     }
 
     @PostMapping("/preview")
-    public ApiResponse<OrderPreviewResponse> preview(@Valid @RequestBody CreateOrderRequest request) {
+    public ApiResponse<OrderPreviewResponse> preview(@RequestBody CreateOrderRequest request) {
         OrderPreview preview = createOrderService.preview(toCommand(request));
         return ApiResponse.success(new OrderPreviewResponse(
                 preview.feeType(),
@@ -87,7 +83,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public ApiResponse<OrderExecutionResponse> create(@Valid @RequestBody CreateOrderRequest request) {
+    public ApiResponse<OrderExecutionResponse> create(@RequestBody CreateOrderRequest request) {
         CreateOrderResult result = createOrderService.execute(toCommand(request));
         return ApiResponse.success(new OrderExecutionResponse(
                 result.orderId(),
@@ -104,19 +100,19 @@ public class OrderController {
 
     @PostMapping("/{orderId}/modify")
     public ApiResponse<ModifyOrderResponse> modify(
-            @NotBlank @PathVariable String orderId,
-            @Valid @RequestBody ModifyOrderRequest request
+            @PathVariable String orderId,
+            @RequestBody ModifyOrderRequest request
     ) {
         ModifyOrderResult result = modifyOrderService.modify(new ModifyOrderCommand(
                 providers.auth().currentActor().memberId(),
                 orderId,
-                request.limitPrice()
+                request.requireLimitPrice()
         ));
         return ApiResponse.success(ModifyOrderResponse.from(result));
     }
 
     @PostMapping("/{orderId}/cancel")
-    public ApiResponse<CancelOrderResponse> cancel(@NotBlank @PathVariable String orderId) {
+    public ApiResponse<CancelOrderResponse> cancel(@PathVariable String orderId) {
         CancelOrderResult result = cancelOrderService.cancel(
                 providers.auth().currentActor().memberId(),
                 orderId

@@ -9,6 +9,7 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -17,6 +18,7 @@ public class RefreshLeaderboardService {
     private final LeaderboardProjectionRepository projectionRepository;
     private final LeaderboardSnapshotStore snapshotStore;
 
+    @Transactional(readOnly = true)
     public void refreshAll() {
         LeaderboardSnapshot snapshot = new LeaderboardSnapshot(projectionRepository.findAll(), Instant.now());
         try {
@@ -41,6 +43,7 @@ public class RefreshLeaderboardService {
         }
     }
 
+    @Transactional(readOnly = true)
     public void refreshMember(Long memberId) {
         LeaderboardEntry entry = projectionRepository.findByMemberId(memberId).orElse(null);
         if (entry == null) {

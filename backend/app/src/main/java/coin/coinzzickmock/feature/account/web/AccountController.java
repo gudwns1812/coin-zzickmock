@@ -11,16 +11,15 @@ import coin.coinzzickmock.feature.account.application.service.GetAccountRefillSt
 import coin.coinzzickmock.feature.account.application.service.GetWalletHistoryService;
 import coin.coinzzickmock.feature.account.application.service.RefillTradingAccountService;
 import coin.coinzzickmock.providers.Providers;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.validation.annotation.Validated;
-import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Validated
 @RestController
 @RequestMapping("/api/futures/account")
 @RequiredArgsConstructor
@@ -74,9 +73,12 @@ public class AccountController {
     }
 
     @GetMapping("/me/wallet-history")
-    public ApiResponse<List<WalletHistoryResponse>> walletHistory(@Valid WalletHistoryRequest request) {
+    public ApiResponse<List<WalletHistoryResponse>> walletHistory(
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to
+    ) {
         List<WalletHistoryResponse> responses = getWalletHistoryService.execute(
-                        new GetWalletHistoryQuery(providers.auth().currentActor().memberId(), request.from(), request.to())
+                        new GetWalletHistoryQuery(providers.auth().currentActor().memberId(), from, to)
                 ).stream()
                 .map(WalletHistoryResponse::from)
                 .toList();

@@ -36,7 +36,7 @@ public class PurchaseShopItemService {
 
     @Transactional
     public ShopPurchaseResult purchase(Long memberId, String itemCode) {
-        String normalizedItemCode = itemCode.trim();
+        String normalizedItemCode = requireItemCode(itemCode);
         RewardShopItem item = loadPurchasableInstantItemForUpdate(normalizedItemCode);
         RewardShopMemberItemUsage usage = loadUsageForUpdate(memberId, item);
         validatePurchase(item, usage);
@@ -53,6 +53,13 @@ public class PurchaseShopItemService {
         recordHistory(memberId, item.price(), savedWallet.rewardPoint(), purchaseId);
 
         return effect.toResult(normalizedItemCode, savedWallet.rewardPoint());
+    }
+
+    private String requireItemCode(String itemCode) {
+        if (itemCode == null || itemCode.isBlank()) {
+            throw invalid();
+        }
+        return itemCode;
     }
 
     private RewardShopItem loadPurchasableInstantItemForUpdate(String itemCode) {

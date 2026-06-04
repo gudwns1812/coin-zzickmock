@@ -25,7 +25,7 @@
 - 기본 검증:
   - 프론트엔드 `npm run lint`, `npm run build`
   - 백엔드 `./gradlew check :app:bootJar :push-app:bootJar`
-  - backend/push-app/Scouter collector Docker image 포장 smoke build
+  - backend/push-app Docker image 포장 smoke build
 - 비고: 현재는 배포를 수행하지 않는다
 
 ### CD
@@ -35,9 +35,9 @@
 - 기본 동작:
   - `main`/`master`의 `backend/**`, `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/**` 변경 또는 수동 실행으로 시작한다
   - 변경 범위를 `backend_image`, `backend_runtime`, `backend_agent_runtime`, `infra_runtime`, `nginx_config` 배포 효과로 분류한다
-  - `backend_image`일 때만 백엔드 `./gradlew check :app:bootJar :push-app:bootJar`와 backend/push-app/Scouter collector Docker image push를 수행한다
+  - `backend_image`일 때만 백엔드 `./gradlew check :app:bootJar :push-app:bootJar`와 backend/push-app Docker image push를 수행한다
   - backend host와 infra host에 각각 SSH 접속하며, 각 host에서 staged compose/env preflight를 먼저 수행한다
-  - `backend_image`는 backend host `.env.prod`의 `BACKEND_IMAGE`, `PUSH_IMAGE`, `SCOUTER_COLLECTOR_IMAGE`를 새 태그로 교체한 뒤 Scouter collector, backend, push-app을 pull/restart한다
+  - `backend_image`는 backend host `.env.prod`의 `BACKEND_IMAGE`와 `PUSH_IMAGE`를 새 태그로 교체한 뒤 backend와 push-app을 pull/restart한다
   - `infra/prometheus/**`, `infra/grafana/**`, `infra/loki/**`, `docker-compose.infra.prod.yml` 변경은 infra host만 반영하고 backend host를 건드리지 않는다
   - `docker-compose.prod.yml`은 rollback anchor이며 정상 CD 범위에 포함하지 않는다
 - 상세 기준: [04-production-cd.md](04-production-cd.md)
@@ -106,7 +106,6 @@
 - 기준 이미지:
   - `dockerhub-user/coin-zzickmock-backend:<tag>`
   - `dockerhub-user/coin-zzickmock-push-app:<tag>`
-  - `dockerhub-user/coin-zzickmock-scouter-collector:<tag>`
 - 기준 플랫폼: `linux/arm64` Amazon Linux `aarch64`
 - 운영 compose 기준:
   - `docker-compose.backend.prod.yml`
@@ -115,7 +114,7 @@
   - `infra/prod.env.example`
 - rollback anchor:
   - `docker-compose.prod.yml`
-- 의미: 운영 프로필과 host별 Docker Compose로 backend host의 backend/push-app/Nginx/Scouter collector/telemetry agents와 infra host의 Redis/Prometheus/Grafana/Loki/exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다. Host별 책임과 private port 계약은 [backend-infra-split-topology.md](backend-infra-split-topology.md)를 따른다.
+- 의미: 운영 프로필과 host별 Docker Compose로 backend host의 backend/push-app/Nginx/telemetry agents와 infra host의 Redis/Prometheus/Grafana/Loki/exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다. Host별 책임과 private port 계약은 [backend-infra-split-topology.md](backend-infra-split-topology.md)를 따른다.
 
 ### Documentation And Config Artifact
 
@@ -167,8 +166,7 @@
   Infra/cache/observability container가 별도 host로 분리되므로 backend split compose에는 Redis/Prometheus/Grafana/Loki를 포함하지 않는다.
 - Push server container resource 기본값은 Compose에서 `PUSH_CPUS=1.0`, `PUSH_MEMORY_LIMIT=512m`, host port `${PUSH_PORT:-8081}` private bind로 둔다. `PUSH_IMAGE`, `PUSH_MARKET_STREAM_KEY`, `PUSH_TRADING_STREAM_KEY`는 backend host `.env.prod`가 소유한다.
 - `BACKEND_JAVA_TOOL_OPTIONS` 기본값은 `-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError`다.
-  Compose는 이 JVM 옵션 앞에 `/app/scouter/scouter.agent.jar` Java agent와 `/app/scouter/conf/scouter.conf` config path를 붙여 backend runtime을 Scouter collector(`scouter-collector:6100`)에 연결한다. JVM heap은 1GB container limit 기준으로 잡고 native memory 여유를 남긴다.
-- Scouter collector는 backend host-local APM collector다. 운영 이미지는 backend Dockerfile의 `scouter-collector-runtime` target에서 ARM64로 빌드해 `SCOUTER_COLLECTOR_IMAGE`로 주입한다. 기본 bind는 `127.0.0.1`, port는 HTTP/API `6180`과 collector tcp/udp `6100`이다. 외부 operator network에서 직접 접속해야 할 때만 `SCOUTER_BIND_ADDRESS`를 제한된 private 주소로 바꾼다.
+  JVM heap은 1GB container limit 기준으로 잡고 native memory 여유를 남긴다.
 - 운영 backend는 별도 infra host의 Prometheus scrape를 위해 container `8080`을 host `${BACKEND_BIND_ADDRESS:-0.0.0.0}:${BACKEND_PORT:-8080}`로 publish한다.
   split topology에서는 scrape endpoint가 Nginx public route가 아니라 `http://<BACKEND_PRIVATE_HOST>:8080/actuator/prometheus`다.
   cloud security group에서는 TCP 8080 inbound를 `INFRA_EC2_HOST`에서 오는 트래픽으로 제한한다.
@@ -198,8 +196,8 @@
 ### Production Docker Host
 
 - Backend host와 infra host에는 각각 비밀값을 담은 `.env.prod`가 있어야 한다.
-- Backend host `.env.prod`에는 현재 운영 backend image를 가리키는 `BACKEND_IMAGE`, 현재 운영 push server image를 가리키는 `PUSH_IMAGE`, 현재 운영 Scouter collector image를 가리키는 `SCOUTER_COLLECTOR_IMAGE`가 있어야 한다.
-- CD는 backend image 배포 때 backend host `.env.prod`의 `BACKEND_IMAGE`, `PUSH_IMAGE`, `SCOUTER_COLLECTOR_IMAGE`를 새 Docker Hub 태그로 교체한다.
+- Backend host `.env.prod`에는 현재 운영 backend image를 가리키는 `BACKEND_IMAGE`와 현재 운영 push server image를 가리키는 `PUSH_IMAGE`가 있어야 한다.
+- CD는 backend image 배포 때 backend host `.env.prod`의 `BACKEND_IMAGE`와 `PUSH_IMAGE`를 새 Docker Hub 태그로 교체한다.
 - CD는 backend-host runtime 변경 때 `docker-compose.backend.prod.yml`, `infra/nginx/`, `infra/promtail/`만 backend host로 복사한다.
 - CD는 infra-host runtime 변경 때 `docker-compose.infra.prod.yml`, `infra/prometheus/`, `infra/grafana/`, `infra/loki/`, `infra/promtail/`만 infra host로 복사한다. Redis/Grafana/Prometheus/Loki 변경은 backend host를 건드리지 않는다.
 - `.env.prod`의 공개 가능한 예시는 `infra/prod.env.example`에서 관리한다.

@@ -57,9 +57,10 @@ public class LinkGoogleIdentityService {
         Instant now = Instant.now(clock);
         MemberOAuthPendingLink pending = loadPending(pendingTokenHash, now);
         String normalizedAccount = MemberIdentityRules.normalizeAccount(account);
+        String requiredPassword = MemberIdentityRules.requirePasswordInput(rawPassword);
         Optional<MemberCredential> matchedMember = memberCredentialRepository.findActiveByAccount(normalizedAccount)
                 .filter(candidate -> candidate.passwordHash() != null)
-                .filter(candidate -> memberPasswordHasher.matches(rawPassword, candidate.passwordHash()));
+                .filter(candidate -> memberPasswordHasher.matches(requiredPassword, candidate.passwordHash()));
         if (matchedMember.isEmpty()) {
             return LinkResult.error(invalidCredentials(pending, now));
         }

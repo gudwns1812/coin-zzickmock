@@ -19,10 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import jakarta.validation.Valid;
-import org.springframework.validation.annotation.Validated;
 
-@Validated
 @RestController
 @RequestMapping("/api/futures/positions")
 @RequiredArgsConstructor
@@ -55,7 +52,7 @@ public class PositionController {
     }
 
     @PostMapping("/close")
-    public ApiResponse<ClosePositionResponse> close(@Valid @RequestBody ClosePositionRequest request) {
+    public ApiResponse<ClosePositionResponse> close(@RequestBody ClosePositionRequest request) {
         ClosePositionResult result = closePositionService.close(
                 providers.auth().currentActor().memberId(),
                 request.symbol(),
@@ -74,7 +71,7 @@ public class PositionController {
     }
 
     @PatchMapping("/tpsl")
-    public ApiResponse<PositionSummaryResponse> updateTpsl(@Valid @RequestBody UpdatePositionTpslRequest request) {
+    public ApiResponse<PositionSummaryResponse> updateTpsl(@RequestBody UpdatePositionTpslRequest request) {
         PositionSnapshotResult result = updatePositionTpslService.update(
                 providers.auth().currentActor().memberId(),
                 request.symbol(),
@@ -87,7 +84,7 @@ public class PositionController {
     }
 
     @PatchMapping("/leverage")
-    public ApiResponse<PositionSummaryResponse> updateLeverage(@Valid @RequestBody UpdatePositionLeverageRequest request) {
+    public ApiResponse<PositionSummaryResponse> updateLeverage(@RequestBody UpdatePositionLeverageRequest request) {
         PositionSnapshotResult result = updatePositionLeverageService.update(
                 providers.auth().currentActor().memberId(),
                 request.symbol(),

@@ -29,10 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import jakarta.validation.Valid;
-import org.springframework.validation.annotation.Validated;
 
-@Validated
 @RestController
 @RequestMapping("/api/futures/auth")
 @RequiredArgsConstructor
@@ -55,7 +52,7 @@ public class AuthController {
     private boolean legacyPasswordEndpointsEnabled;
 
     @PostMapping("/register")
-    public ApiResponse<AuthUserResponse> register(@Valid @RequestBody RegisterMemberRequest request) {
+    public ApiResponse<AuthUserResponse> register(@RequestBody RegisterMemberRequest request) {
         ensureLegacyPasswordEndpointEnabled();
         MemberProfileResult memberProfile = registerMemberService.register(
                 request.account(),
@@ -70,7 +67,7 @@ public class AuthController {
     }
 
     @PostMapping("/duplicate")
-    public ApiResponse<AccountAvailabilityResponse> duplicate(@Valid @RequestBody DuplicateAccountRequest request) {
+    public ApiResponse<AccountAvailabilityResponse> duplicate(@RequestBody DuplicateAccountRequest request) {
         ensureLegacyPasswordEndpointEnabled();
         boolean available = checkMemberAvailabilityService.isAvailable(request.account());
         if (!available) {
@@ -80,7 +77,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthUserResponse>> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthUserResponse>> login(@RequestBody LoginRequest request) {
         ensureLegacyPasswordEndpointEnabled();
         MemberProfileResult memberProfile = authenticateMemberService.authenticate(request.account(), request.password());
         recordMemberActivityService.record(memberProfile.memberId(), ActivitySource.LOGIN);
@@ -107,7 +104,7 @@ public class AuthController {
     @PostMapping("/google/link")
     public ResponseEntity<?> linkGoogleAccount(
             @CookieValue(name = GoogleOAuthPendingCookieFactory.COOKIE_NAME, required = false) String pendingToken,
-            @Valid @RequestBody LinkGoogleAccountRequest request
+            @RequestBody LinkGoogleAccountRequest request
     ) {
         String tokenHash = pendingTokenHash(pendingToken);
         MemberProfileResult memberProfile = linkGoogleIdentityService.linkExisting(
@@ -125,7 +122,7 @@ public class AuthController {
     @PostMapping("/google/signup")
     public ResponseEntity<?> completeGoogleSignup(
             @CookieValue(name = GoogleOAuthPendingCookieFactory.COOKIE_NAME, required = false) String pendingToken,
-            @Valid @RequestBody CompleteGoogleSignupRequest request
+            @RequestBody CompleteGoogleSignupRequest request
     ) {
         String tokenHash = pendingTokenHash(pendingToken);
         GoogleSignupProfileCommand command = request.toCommand();
@@ -152,7 +149,7 @@ public class AuthController {
     }
 
     @DeleteMapping("/withdraw")
-    public ResponseEntity<ApiResponse<Void>> withdraw(@Valid @RequestBody WithdrawMemberRequest request) {
+    public ResponseEntity<ApiResponse<Void>> withdraw(@RequestBody WithdrawMemberRequest request) {
         Actor actor = providers.auth().currentActor();
         withdrawMemberService.withdraw(actor.memberId(), request.memberId());
         return ResponseEntity.ok()

@@ -27,6 +27,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class GetMarketCandlesService {
+    private static final int DEFAULT_LIMIT = 120;
+    private static final int MAX_LIMIT = 240;
+
     private final MarketHistoryRepository marketHistoryRepository;
     private final MarketPersistedCandleReader persistedCandleReader;
     private final MarketHistoricalCandleAppender historicalCandleAppender;
@@ -37,8 +40,8 @@ public class GetMarketCandlesService {
     private final MarketLatestCandleWindowSingleflight latestWindowSingleflight;
 
     public List<MarketCandleResult> getCandles(GetMarketCandlesQuery query) {
-        MarketCandleInterval interval = query.interval();
-        int limit = query.limit();
+        MarketCandleInterval interval = MarketCandleInterval.from(query.interval());
+        int limit = normalizeLimit(query.limit());
         long symbolId = resolveSymbolId(query.symbol());
 
         if (!latestWindowPolicy.isEligible(query.beforeOpenTime(), limit)) {
@@ -185,6 +188,13 @@ public class GetMarketCandlesService {
                 && page.limit() == key.limit()
                 && key.latestOutputOpenTime().equals(page.latestOutputOpenTime())
                 && page.candles().size() <= key.limit();
+    }
+
+    private int normalizeLimit(Integer requestedLimit) {
+        if (requestedLimit == null || requestedLimit <= 0) {
+            return DEFAULT_LIMIT;
+        }
+        return Math.min(requestedLimit, MAX_LIMIT);
     }
 
     private long resolveSymbolId(String symbol) {

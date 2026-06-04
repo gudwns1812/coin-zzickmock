@@ -175,13 +175,7 @@ function collectMetricRows(metrics) {
     .filter((name) => !preferred.includes(name))
     .filter((name) => {
       const values = metricValues(metrics[name]);
-      return values && (
-        name.includes("_ms") ||
-        name.includes("fail") ||
-        name.includes("duration") ||
-        name.endsWith("_attempts") ||
-        name.endsWith("_successes")
-      );
+      return values && (name.includes("_ms") || name.includes("fail") || name.includes("duration"));
     })
     .sort();
 

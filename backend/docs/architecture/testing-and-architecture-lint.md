@@ -94,10 +94,6 @@ PR-7부터 `CROSS_FEATURE_INFRASTRUCTURE_IMPORTS`는 전체 feature infrastructu
 이 advisory는 `violations`에 포함되지 않으며 `architectureLint` 성공 여부를 바꾸지 않는다.
 후속 PR에서 같은 개념의 strict rule을 켤 때는 해당 PR이 현재 위반도 함께 제거해야 한다.
 
-Strict regression rule:
-
-- `SPRING_VALIDATION_WEB_ONLY`는 Bean Validation을 app feature web DTO/controller와 전역 web error boundary에만 허용한다. core/storage/external 또는 application/domain/infrastructure 레이어에 `jakarta.validation` import를 추가하면 실패한다.
-
 로그 출력 규칙:
 
 - stdout에도 JSON line으로 출력한다.
@@ -109,7 +105,6 @@ Strict regression rule:
 - `rg '"event":"architecture_violation"' backend/build/reports/architecture-lint/violations.jsonl`
 - `rg '"event":"architecture_advisory"' backend/build/reports/architecture-lint/violations.jsonl`
 - `rg '"rule":"DOMAIN_FRAMEWORK_FREE"' backend/build/reports/architecture-lint/violations.jsonl`
-- `rg '"rule":"SPRING_VALIDATION_WEB_ONLY"' backend/build/reports/architecture-lint/violations.jsonl`
 - `rg '"rule":"INTERFACE_DEFAULT_METHOD_FORBIDDEN"' backend/build/reports/architecture-lint/violations.jsonl`
 
 즉, 루프는 아래처럼 동작한다.

@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UpdatePositionLeverageService {
+    private static final int MIN_LEVERAGE = 1;
+    private static final int MAX_LEVERAGE = 50;
     private static final String POSITION_SIDE_LONG = "LONG";
     private static final String POSITION_SIDE_SHORT = "SHORT";
 
@@ -41,6 +43,7 @@ public class UpdatePositionLeverageService {
             String marginMode,
             int leverage
     ) {
+        validateLeverage(leverage);
         List<PositionSnapshot> targets = findLeverageTargets(memberId, symbol, marginMode);
         PositionSnapshot responseTarget = selectResponseTarget(targets, positionSide);
 
@@ -138,6 +141,12 @@ public class UpdatePositionLeverageService {
             throw new CoreException(ErrorCode.ACCOUNT_NOT_FOUND);
         }
         throw new CoreException(ErrorCode.ACCOUNT_CHANGED);
+    }
+
+    private void validateLeverage(int leverage) {
+        if (leverage < MIN_LEVERAGE || leverage > MAX_LEVERAGE) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
     }
 
     private void rejectPendingOpenOrders(Long memberId, String symbol) {

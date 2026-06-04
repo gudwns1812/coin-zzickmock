@@ -1,5 +1,7 @@
 package coin.coinzzickmock.feature.leaderboard.application.service;
 
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardProjectionRepository;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardEntryResult;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardMemberRankResult;
@@ -8,7 +10,8 @@ import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnaps
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
-import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenCodec;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
+import coin.coinzzickmock.feature.positionpeek.application.token.PositionPeekTargetTokenRegistry;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -17,20 +20,29 @@ import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GetLeaderboardService {
+    private static final int DEFAULT_LIMIT = 5;
+    private static final int MAX_LIMIT = 50;
+
     private final LeaderboardProjectionRepository projectionRepository;
     private final LeaderboardSnapshotStore snapshotStore;
-    private final PositionPeekTargetTokenCodec targetTokenService;
+    private final PositionPeekTargetTokenRegistry targetTokenRegistry;
 
-    public LeaderboardResult get(LeaderboardMode mode, int limit) {
-        return get(mode, limit, null);
+    @Transactional(readOnly = true)
+    public LeaderboardResult get(String modeValue, String limitValue) {
+        return get(modeValue, limitValue, null);
     }
 
-    public LeaderboardResult get(LeaderboardMode mode, int limit, Long currentMemberId) {
+    @Transactional(readOnly = true)
+    public LeaderboardResult get(String modeValue, String limitValue, Long currentMemberId) {
+        LeaderboardMode mode = parseMode(modeValue);
+        int limit = parseLimit(limitValue);
+
         try {
             LeaderboardResult snapshotResult = snapshotStore.findSnapshot(mode, limit, currentMemberId)
                     .filter(snapshot -> !snapshot.entries().isEmpty())
@@ -38,7 +50,7 @@ public class GetLeaderboardService {
                             mode,
                             "redis",
                             new LeaderboardSnapshot(snapshot.entries(), snapshot.refreshedAt()),
-                            toOrderedEntryResults(mode, snapshot.entries()),
+                            toEntryResults(mode, snapshot.entries(), limit),
                             snapshot.myRank()
                     ))
                     .orElse(null);
@@ -54,9 +66,30 @@ public class GetLeaderboardService {
                 mode,
                 "database",
                 new LeaderboardSnapshot(entries, Instant.now()),
-                toSortedEntryResults(mode, entries, limit),
+                toEntryResults(mode, entries, limit),
                 findDatabaseMyRank(mode, entries, currentMemberId)
         );
+    }
+
+    private LeaderboardMode parseMode(String value) {
+        return LeaderboardMode.parse(value)
+                .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
+    }
+
+    private int parseLimit(String value) {
+        if (value == null || value.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
+
+        try {
+            int limit = Integer.parseInt(value);
+            if (limit < 1 || limit > MAX_LIMIT) {
+                throw new CoreException(ErrorCode.INVALID_REQUEST);
+            }
+            return limit;
+        } catch (NumberFormatException exception) {
+            throw new CoreException(ErrorCode.INVALID_REQUEST);
+        }
     }
 
     private Optional<LeaderboardMemberRankResult> findDatabaseMyRank(
@@ -80,30 +113,22 @@ public class GetLeaderboardService {
                 });
     }
 
-    private List<LeaderboardEntryResult> toSortedEntryResults(
-            LeaderboardMode mode,
-            List<LeaderboardEntry> entries,
-            int limit
-    ) {
+    private List<LeaderboardEntryResult> toEntryResults(LeaderboardMode mode, List<LeaderboardEntry> entries, int limit) {
         List<LeaderboardEntry> sortedEntries = entries.stream()
                 .sorted(comparator(mode))
                 .limit(limit)
                 .toList();
-        return toOrderedEntryResults(mode, sortedEntries);
-    }
-
-    private List<LeaderboardEntryResult> toOrderedEntryResults(LeaderboardMode mode, List<LeaderboardEntry> entries) {
-        return IntStream.range(0, entries.size())
+        return IntStream.range(0, sortedEntries.size())
                 .mapToObj(index -> {
                     int rank = index + 1;
-                    LeaderboardEntry entry = entries.get(index);
+                    LeaderboardEntry entry = sortedEntries.get(index);
                     return LeaderboardEntryResult.from(entry, rank, issueTargetToken(mode, rank, entry));
                 })
                 .toList();
     }
 
     private String issueTargetToken(LeaderboardMode mode, int rank, LeaderboardEntry entry) {
-        return targetTokenService.issue(new PositionPeekTargetTokenCodec.TargetTokenPayload(
+        return targetTokenRegistry.issue(new PositionPeekTargetTokenPayload(
                 entry.memberId(),
                 rank,
                 entry.nickname(),

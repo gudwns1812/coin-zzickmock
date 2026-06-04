@@ -45,11 +45,6 @@ class FuturesCookieBearerTokenResolverTest {
         }
 
         @Override
-        public AuthSessionClaims parse(String token) {
-            throw new UnsupportedOperationException("parse should not be called by the cookie bearer token resolver.");
-        }
-
-        @Override
         public String accessTokenCookieName() {
             return "accessToken";
         }

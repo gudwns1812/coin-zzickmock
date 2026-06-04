@@ -10,18 +10,26 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
+import coin.coinzzickmock.feature.positionpeek.application.store.PositionPeekTargetTokenStore;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;
 import coin.coinzzickmock.feature.reward.domain.RewardShopItem;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
+import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,7 +37,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest(classes = CoinZzickmockApplication.class, properties = {
+@SpringBootTest(classes = {
+        CoinZzickmockApplication.class,
+        PositionPeekControllerIntegrationTest.TargetTokenTestConfiguration.class
+}, properties = {
         "spring.task.scheduling.enabled=false",
         "spring.mail.host="
 })
@@ -181,5 +192,28 @@ class PositionPeekControllerIntegrationTest {
     private static MockHttpServletRequestBuilder postWithTrustedOrigin(String urlTemplate, Object... uriVars) {
         return post(urlTemplate, uriVars)
                 .header(HttpHeaders.ORIGIN, "http://localhost:3000");
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class TargetTokenTestConfiguration {
+        @Bean
+        @Primary
+        PositionPeekTargetTokenStore positionPeekTargetTokenStore() {
+            return new InMemoryTargetTokenStore();
+        }
+    }
+
+    private static class InMemoryTargetTokenStore implements PositionPeekTargetTokenStore {
+        private final Map<String, PositionPeekTargetTokenPayload> payloads = new HashMap<>();
+
+        @Override
+        public void save(String tokenHash, PositionPeekTargetTokenPayload payload, Duration ttl) {
+            payloads.put(tokenHash, payload);
+        }
+
+        @Override
+        public Optional<PositionPeekTargetTokenPayload> findByTokenHash(String tokenHash) {
+            return Optional.ofNullable(payloads.get(tokenHash));
+        }
     }
 }

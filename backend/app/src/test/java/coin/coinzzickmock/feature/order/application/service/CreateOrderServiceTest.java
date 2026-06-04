@@ -479,6 +479,30 @@ class CreateOrderServiceTest {
         assertEquals(55.3040201005, preview.estimatedLiquidationPrice(), 0.0001);
     }
 
+    @Test
+    void previewRejectsUnsupportedOrderType() {
+        CreateOrderService service = service(
+                realtimePriceReader(),
+                new InMemoryOrderRepository(),
+                new InMemoryAccountRepository(),
+                new InMemoryPositionRepository(),
+                event -> {
+                }
+        );
+
+        CoreException thrown = assertThrows(CoreException.class, () -> service.preview(new CreateOrderCommand(
+                1L,
+                "BTCUSDT",
+                "LONG",
+                "LIMT",
+                "ISOLATED",
+                10,
+                0.1,
+                75000.0
+        )));
+
+        assertEquals(ErrorCode.INVALID_REQUEST, thrown.errorCode());
+    }
 
     @Test
     void previewRejectsDifferentMarginModeWhenSameSidePositionExists() {

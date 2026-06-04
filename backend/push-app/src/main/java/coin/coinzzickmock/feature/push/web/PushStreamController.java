@@ -2,13 +2,13 @@ package coin.coinzzickmock.feature.push.web;
 
 import coin.coinzzickmock.feature.push.application.PushSseConnectionRegistry;
 import coin.coinzzickmock.feature.push.application.PushServerProperties;
-import coin.coinzzickmock.common.web.security.PushAccessTokenVerifier;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,15 +23,13 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class PushStreamController {
     private final PushSseConnectionRegistry registry;
     private final PushServerProperties properties;
-    private final PushAccessTokenVerifier accessTokenVerifier;
 
     @GetMapping(value = {"/stream/orders", "/orders/stream"}, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter orderStream(
-            HttpServletRequest request,
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) String clientKey
     ) {
-        Long memberId = accessTokenVerifier.requireMemberId(request);
-        return registry.register("member:" + memberId, clientKey, properties.sseTimeoutMs());
+        return registry.register("member:" + memberId(jwt), clientKey, properties.sseTimeoutMs());
     }
 
     @GetMapping(value = {"/stream/markets", "/markets/stream"}, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -89,5 +87,13 @@ public class PushStreamController {
 
     private String normalize(String symbol) {
         return symbol.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private Long memberId(Jwt jwt) {
+        try {
+            return Long.parseLong(jwt.getSubject());
+        } catch (NumberFormatException exception) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid access token.", exception);
+        }
     }
 }

@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CommunityCommentPersistenceRepository implements CommunityCommentRepository {
     private final CommunityCommentEntityRepository commentEntityRepository;
-    private final CommunityPostRepositorySupport postRepositorySupport;
 
     @Override
     @Transactional(readOnly = true)
@@ -49,7 +48,6 @@ public class CommunityCommentPersistenceRepository implements CommunityCommentRe
         CommunityCommentEntity comment = commentEntityRepository.findWithLockingByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(CommunityCommentPersistenceRepository::invalidRequest);
         comment.softDelete(deletedAt);
-        postRepositorySupport.decrementCommentCount(comment.postId());
     }
 
     private static CoreException invalidRequest() {

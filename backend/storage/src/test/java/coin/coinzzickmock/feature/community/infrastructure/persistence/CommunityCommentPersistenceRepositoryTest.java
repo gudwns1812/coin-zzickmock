@@ -3,8 +3,6 @@ package coin.coinzzickmock.feature.community.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import coin.coinzzickmock.common.error.CoreException;
@@ -17,14 +15,12 @@ import org.junit.jupiter.api.Test;
 
 class CommunityCommentPersistenceRepositoryTest {
     private CommunityCommentEntityRepository commentEntityRepository;
-    private CommunityPostRepositorySupport postRepositorySupport;
     private CommunityCommentPersistenceRepository repository;
 
     @BeforeEach
     void setUp() {
         commentEntityRepository = mock(CommunityCommentEntityRepository.class);
-        postRepositorySupport = mock(CommunityPostRepositorySupport.class);
-        repository = new CommunityCommentPersistenceRepository(commentEntityRepository, postRepositorySupport);
+        repository = new CommunityCommentPersistenceRepository(commentEntityRepository);
     }
 
     @Test
@@ -49,8 +45,6 @@ class CommunityCommentPersistenceRepositoryTest {
 
         assertThatThrownBy(() -> repository.softDelete(99L, Instant.parse("2026-05-13T00:00:00Z")))
                 .isInstanceOf(CoreException.class);
-
-        verify(postRepositorySupport, never()).decrementCommentCount(org.mockito.ArgumentMatchers.any());
     }
 
     @Test

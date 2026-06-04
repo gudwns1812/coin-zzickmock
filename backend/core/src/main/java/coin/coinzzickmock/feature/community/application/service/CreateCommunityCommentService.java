@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.community.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.application.dto.CreateCommunityCommentCommand;
+import coin.coinzzickmock.feature.community.application.implement.CommunityPostCountDeltaBuffer;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
 import coin.coinzzickmock.feature.community.application.dto.CommunityCommentMutationResult;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreateCommunityCommentService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityCommentRepository communityCommentRepository;
+    private final CommunityPostCountDeltaBuffer countDeltaBuffer;
     private final Clock clock;
 
     @Transactional
@@ -32,7 +34,7 @@ public class CreateCommunityCommentService {
                 Instant.now(clock)
         );
         CommunityComment saved = communityCommentRepository.save(comment);
-        communityPostRepository.incrementCommentCount(command.postId());
+        countDeltaBuffer.recordCommentAfterCommit(command.postId(), 1);
 
         return CommunityCommentMutationResult.from(saved);
     }

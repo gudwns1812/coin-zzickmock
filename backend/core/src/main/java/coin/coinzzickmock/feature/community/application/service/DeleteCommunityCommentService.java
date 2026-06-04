@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.community.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.application.dto.DeleteCommunityCommentCommand;
+import coin.coinzzickmock.feature.community.application.implement.CommunityPostCountDeltaBuffer;
 import coin.coinzzickmock.feature.community.application.repository.CommunityCommentRepository;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import coin.coinzzickmock.feature.community.domain.CommunityPermissionPolicy;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DeleteCommunityCommentService {
     private final CommunityCommentRepository communityCommentRepository;
+    private final CommunityPostCountDeltaBuffer countDeltaBuffer;
     private final Clock clock;
 
     @Transactional
@@ -28,5 +30,6 @@ public class DeleteCommunityCommentService {
             throw new CoreException(ErrorCode.FORBIDDEN);
         }
         communityCommentRepository.softDelete(command.commentId(), Instant.now(clock));
+        countDeltaBuffer.recordCommentAfterCommit(comment.postId(), -1);
     }
 }

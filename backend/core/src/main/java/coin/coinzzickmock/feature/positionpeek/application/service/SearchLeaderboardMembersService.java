@@ -6,6 +6,8 @@ import coin.coinzzickmock.feature.leaderboard.application.repository.Leaderboard
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetResult;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
+import coin.coinzzickmock.feature.positionpeek.application.token.PositionPeekTargetTokenRegistry;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -21,7 +23,7 @@ public class SearchLeaderboardMembersService {
     private static final int MAX_LIMIT = 20;
 
     private final LeaderboardProjectionRepository projectionRepository;
-    private final PositionPeekTargetTokenCodec targetTokenService;
+    private final PositionPeekTargetTokenRegistry targetTokenRegistry;
 
     @Transactional(readOnly = true)
     public List<PositionPeekTargetResult> search(String modeValue, String query, String limitValue) {
@@ -43,7 +45,7 @@ public class SearchLeaderboardMembersService {
     }
 
     private String issueTargetToken(LeaderboardMode mode, int rank, LeaderboardEntry entry) {
-        return targetTokenService.issue(new PositionPeekTargetTokenCodec.TargetTokenPayload(
+        return targetTokenRegistry.issue(new PositionPeekTargetTokenPayload(
                 entry.memberId(),
                 rank,
                 entry.nickname(),

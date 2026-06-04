@@ -12,10 +12,15 @@ import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnaps
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
-import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenCodec;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
+import coin.coinzzickmock.feature.positionpeek.application.store.PositionPeekTargetTokenStore;
+import coin.coinzzickmock.feature.positionpeek.application.token.PositionPeekTargetTokenRegistry;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -148,7 +153,7 @@ class GetLeaderboardServiceTest {
         return new GetLeaderboardService(
                 new InMemoryProjectionRepository(entries),
                 store,
-                new PositionPeekTargetTokenCodec()
+                new PositionPeekTargetTokenRegistry(new InMemoryTargetTokenStore())
         );
     }
 
@@ -226,6 +231,20 @@ class GetLeaderboardServiceTest {
 
         @Override
         public void remove(Long memberId) {
+        }
+    }
+
+    private static class InMemoryTargetTokenStore implements PositionPeekTargetTokenStore {
+        private final Map<String, PositionPeekTargetTokenPayload> payloads = new HashMap<>();
+
+        @Override
+        public void save(String tokenHash, PositionPeekTargetTokenPayload payload, Duration ttl) {
+            payloads.put(tokenHash, payload);
+        }
+
+        @Override
+        public Optional<PositionPeekTargetTokenPayload> findByTokenHash(String tokenHash) {
+            return Optional.ofNullable(payloads.get(tokenHash));
         }
     }
 }

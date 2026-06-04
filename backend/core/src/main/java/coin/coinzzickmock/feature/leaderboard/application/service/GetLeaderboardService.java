@@ -10,7 +10,8 @@ import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnaps
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
-import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenCodec;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
+import coin.coinzzickmock.feature.positionpeek.application.token.PositionPeekTargetTokenRegistry;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -30,7 +31,7 @@ public class GetLeaderboardService {
 
     private final LeaderboardProjectionRepository projectionRepository;
     private final LeaderboardSnapshotStore snapshotStore;
-    private final PositionPeekTargetTokenCodec targetTokenService;
+    private final PositionPeekTargetTokenRegistry targetTokenRegistry;
 
     @Transactional(readOnly = true)
     public LeaderboardResult get(String modeValue, String limitValue) {
@@ -127,7 +128,7 @@ public class GetLeaderboardService {
     }
 
     private String issueTargetToken(LeaderboardMode mode, int rank, LeaderboardEntry entry) {
-        return targetTokenService.issue(new PositionPeekTargetTokenCodec.TargetTokenPayload(
+        return targetTokenRegistry.issue(new PositionPeekTargetTokenPayload(
                 entry.memberId(),
                 rank,
                 entry.nickname(),

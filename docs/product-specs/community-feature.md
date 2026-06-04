@@ -169,7 +169,14 @@
 - `POST /api/futures/community/posts/{postId}/like`
 - `DELETE /api/futures/community/posts/{postId}/like`
 
-한 회원은 한 게시글에 하나의 active like만 가질 수 있다. `POST`는 idempotent하게 동작한다. 이미 `(post_id, member_id)` like가 있으면 backend는 unique constraint 충돌을 사용자 오류로 노출하지 않고 성공 응답과 현재 count를 반환한다. like 생성/삭제와 denormalized `likeCount` 갱신은 한 트랜잭션에서 수행하며, concurrent duplicate insert는 duplicate-key 처리를 통해 client 실패로 번지지 않게 한다. `DELETE`도 이미 좋아요가 없어도 현재 상태를 성공적으로 반환하는 idempotent 흐름으로 시작한다.
+한 회원은 한 게시글에 하나의 active like만 가질 수 있다. `POST`는 idempotent하게 동작한다. 이미 `(post_id, member_id)` like가 있으면 backend는 unique constraint 충돌을 사용자 오류로 노출하지 않고 성공 응답을 반환한다. like 생성/삭제 row write는 DB 트랜잭션에서 정합성 기준으로 처리하고, denormalized `likeCount`는 커밋된 상태 전이만 로컬 delta buffer에 적재한 뒤 주기적으로 `community_posts`에 bulk 반영한다. `DELETE`도 이미 좋아요가 없어도 현재 상태를 성공적으로 반환하는 idempotent 흐름으로 시작하며, 실제 row 삭제가 있었던 경우에만 `likeCount` delta `-1`을 적재한다.
+
+### Denormalized count aggregation
+
+- `community_posts.like_count`와 `community_posts.comment_count`는 좋아요/댓글 row의 source of truth를 빠르게 표시하기 위한 denormalized count다.
+- 좋아요 생성/취소, 댓글 생성/삭제 요청은 row write가 실제 성공한 경우에만 DB commit 이후 로컬 delta buffer에 `postId` 기준 `+1` 또는 `-1`을 적재한다.
+- 로컬 delta buffer는 같은 post의 여러 변화를 net delta로 합산하며, flush job은 post별 delta를 bulk update로 반영한다.
+- crash 또는 flush 실패로 인한 일시 drift는 후속 reconciliation job으로 보정할 수 있다. API 정합성의 최종 기준은 `community_post_likes`와 `community_comments` row 상태다.
 
 ### 이미지 presign
 

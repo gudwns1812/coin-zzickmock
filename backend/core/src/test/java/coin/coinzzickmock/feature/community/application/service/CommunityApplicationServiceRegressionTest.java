@@ -22,10 +22,12 @@ import coin.coinzzickmock.feature.community.application.view.CommunityPostReadIn
 import coin.coinzzickmock.feature.community.application.view.CommunityPostViewThrottle;
 import coin.coinzzickmock.feature.community.application.dto.CommunityCommentMutationResult;
 import coin.coinzzickmock.feature.community.application.dto.CommunityCommentResult;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostCountDelta;
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostListResult;
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostMutationResult;
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostSummaryResult;
+import coin.coinzzickmock.feature.community.application.implement.CommunityPostCountDeltaBuffer;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.domain.CommunityComment;
 import coin.coinzzickmock.feature.community.domain.CommunityImageStatus;
@@ -39,7 +41,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -169,17 +170,22 @@ class CommunityApplicationServiceRegressionTest {
         Long postId = new CreateCommunityPostService(posts, images, CLOCK)
                 .execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages()))
                 .postId();
-        CreateCommunityCommentService createComment = new CreateCommunityCommentService(posts, comments, CLOCK);
-        DeleteCommunityCommentService deleteComment = new DeleteCommunityCommentService(comments, CLOCK);
+        CommunityPostCountDeltaBuffer countDeltas = new CommunityPostCountDeltaBuffer();
+        FlushCommunityPostCountDeltasService flushCounts = new FlushCommunityPostCountDeltasService(countDeltas, posts);
+        CreateCommunityCommentService createComment = new CreateCommunityCommentService(posts, comments, countDeltas, CLOCK);
+        DeleteCommunityCommentService deleteComment = new DeleteCommunityCommentService(comments, countDeltas, CLOCK);
 
         assertCore(ErrorCode.INVALID_REQUEST, () -> createComment.execute(new CreateCommunityCommentCommand(postId, 2L, "commenter", "   ")));
         Long commentId = createComment.execute(new CreateCommunityCommentCommand(postId, 2L, "commenter", "  hi  ")).commentId();
+        flushCounts.flush();
         assertThat(comments.findActiveById(commentId)).map(CommunityComment::content).contains("hi");
         assertThat(posts.findActiveById(postId)).map(CommunityPost::commentCount).contains(1L);
 
         assertCore(ErrorCode.FORBIDDEN, () -> deleteComment.execute(new DeleteCommunityCommentCommand(postId, commentId, 3L, false)));
         deleteComment.execute(new DeleteCommunityCommentCommand(postId, commentId, 99L, true));
+        flushCounts.flush();
         assertThat(comments.findActiveById(commentId)).isEmpty();
+        assertThat(posts.findActiveById(postId)).map(CommunityPost::commentCount).contains(0L);
     }
 
     @Test
@@ -187,15 +193,19 @@ class CommunityApplicationServiceRegressionTest {
         Long postId = new CreateCommunityPostService(posts, images, CLOCK)
                 .execute(createPost(1L, false, CommunityCategory.CHAT, CONTENT, Set.of(), TiptapContentPolicy.withoutImages()))
                 .postId();
-        ToggleCommunityPostLikeService like = new ToggleCommunityPostLikeService(posts, likes);
+        CommunityPostCountDeltaBuffer countDeltas = new CommunityPostCountDeltaBuffer();
+        FlushCommunityPostCountDeltasService flushCounts = new FlushCommunityPostCountDeltasService(countDeltas, posts);
+        ToggleCommunityPostLikeService like = new ToggleCommunityPostLikeService(posts, likes, countDeltas);
         ToggleCommunityPostLikeCommand command = new ToggleCommunityPostLikeCommand(postId, 7L);
 
         like.like(command);
         like.like(command);
+        flushCounts.flush();
         assertThat(posts.findActiveById(postId)).map(CommunityPost::likeCount).contains(1L);
 
         like.unlike(command);
         like.unlike(command);
+        flushCounts.flush();
         assertThat(posts.findActiveById(postId)).map(CommunityPost::likeCount).contains(0L);
     }
 
@@ -370,18 +380,33 @@ class CommunityApplicationServiceRegressionTest {
         }
 
         @Override
-        public void incrementLikeCount(Long postId) {
-            posts.computeIfPresent(postId, (id, post) -> post.incrementLikeCount(CLOCK.instant()));
+        public void applyCountDeltas(java.util.Collection<CommunityPostCountDelta> deltas) {
+            for (CommunityPostCountDelta delta : deltas) {
+                posts.computeIfPresent(delta.postId(), (id, post) -> applyDelta(post, delta));
+            }
         }
 
-        @Override
-        public void decrementLikeCount(Long postId) {
-            posts.computeIfPresent(postId, (id, post) -> post.decrementLikeCount(CLOCK.instant()));
-        }
-
-        @Override
-        public void incrementCommentCount(Long postId) {
-            posts.computeIfPresent(postId, (id, post) -> post.incrementCommentCount(CLOCK.instant()));
+        private static CommunityPost applyDelta(CommunityPost post, CommunityPostCountDelta delta) {
+            CommunityPost changed = post;
+            long likeDelta = delta.likeDelta();
+            while (likeDelta > 0) {
+                changed = changed.incrementLikeCount(CLOCK.instant());
+                likeDelta--;
+            }
+            while (likeDelta < 0 && changed.likeCount() > 0) {
+                changed = changed.decrementLikeCount(CLOCK.instant());
+                likeDelta++;
+            }
+            long commentDelta = delta.commentDelta();
+            while (commentDelta > 0) {
+                changed = changed.incrementCommentCount(CLOCK.instant());
+                commentDelta--;
+            }
+            while (commentDelta < 0 && changed.commentCount() > 0) {
+                changed = changed.decrementCommentCount(CLOCK.instant());
+                commentDelta++;
+            }
+            return changed;
         }
     }
 

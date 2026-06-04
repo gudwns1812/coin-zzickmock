@@ -2,6 +2,7 @@ package coin.coinzzickmock.feature.community.infrastructure.persistence;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostCountDelta;
 import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostImageRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
@@ -32,7 +33,6 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
     private static final Set<String> ATTACHABLE_IMAGE_STATUSES = Set.of(PRESIGNED_STATUS, ATTACHED_STATUS);
 
     private final CommunityPostEntityRepository postEntityRepository;
-    private final CommunityCommentEntityRepository commentEntityRepository;
     private final CommunityPostLikeEntityRepository likeEntityRepository;
     private final CommunityPostImageEntityRepository imageEntityRepository;
 
@@ -86,20 +86,17 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
 
     @Override
     @Transactional
-    public void incrementLikeCount(Long postId) {
-        requireUpdated(postEntityRepository.incrementLikeCountIfActive(postId));
-    }
-
-    @Override
-    @Transactional
-    public void decrementLikeCount(Long postId) {
-        requireUpdated(postEntityRepository.decrementLikeCountIfActive(postId));
-    }
-
-    @Override
-    @Transactional
-    public void incrementCommentCount(Long postId) {
-        requireUpdated(postEntityRepository.incrementCommentCountIfActive(postId));
+    public void applyCountDeltas(Collection<CommunityPostCountDelta> deltas) {
+        if (deltas == null || deltas.isEmpty()) {
+            return;
+        }
+        deltas.stream()
+                .filter(CommunityPostCountDelta::hasChanges)
+                .forEach(delta -> postEntityRepository.applyCountDeltaIfActive(
+                        delta.postId(),
+                        delta.likeDelta(),
+                        delta.commentDelta()
+                ));
     }
 
     @Override
@@ -123,15 +120,7 @@ public class CommunityPostPersistenceRepository implements CommunityPostReposito
     @Override
     @Transactional
     public boolean addIfAbsent(Long postId, Long memberId) {
-        try {
-            likeEntityRepository.saveAndFlush(new CommunityPostLikeEntity(postId, memberId, Instant.now()));
-            return true;
-        } catch (DataIntegrityViolationException exception) {
-            if (likeEntityRepository.existsByPostIdAndMemberId(postId, memberId)) {
-                return false;
-            }
-            throw exception;
-        }
+        return likeEntityRepository.insertIgnore(postId, memberId, Instant.now()) > 0;
     }
 
     @Override

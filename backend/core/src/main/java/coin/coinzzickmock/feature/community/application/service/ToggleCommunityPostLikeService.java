@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.community.application.service;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.application.dto.ToggleCommunityPostLikeCommand;
+import coin.coinzzickmock.feature.community.application.implement.CommunityPostCountDeltaBuffer;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
 import coin.coinzzickmock.feature.community.application.dto.CommunityLikeResult;
@@ -15,12 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ToggleCommunityPostLikeService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostLikeRepository communityPostLikeRepository;
+    private final CommunityPostCountDeltaBuffer countDeltaBuffer;
 
     @Transactional
     public CommunityLikeResult like(ToggleCommunityPostLikeCommand command) {
         ensurePostExists(command.postId());
         if (communityPostLikeRepository.addIfAbsent(command.postId(), command.actorMemberId())) {
-            communityPostRepository.incrementLikeCount(command.postId());
+            countDeltaBuffer.recordLikeAfterCommit(command.postId(), 1);
         }
         return new CommunityLikeResult(command.postId(), true);
     }
@@ -29,7 +31,7 @@ public class ToggleCommunityPostLikeService {
     public CommunityLikeResult unlike(ToggleCommunityPostLikeCommand command) {
         ensurePostExists(command.postId());
         if (communityPostLikeRepository.removeIfPresent(command.postId(), command.actorMemberId())) {
-            communityPostRepository.decrementLikeCount(command.postId());
+            countDeltaBuffer.recordLikeAfterCommit(command.postId(), -1);
         }
         return new CommunityLikeResult(command.postId(), false);
     }

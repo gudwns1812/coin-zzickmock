@@ -476,29 +476,34 @@ tasks.register('architectureLint') {
                     )
                 }
 
+                def featureLayerIndex = -1
                 if (topLevel == 'feature') {
                     if (packageSegments.size() < 3) {
                         logViolation(
                                 sourceFile,
                                 packageLine,
                                 'FEATURE_LAYER_REQUIRED',
-                                'feature 패키지 아래 파일은 `feature.<name>.<layer>` 형태를 따라야 합니다.',
-                                '예: `feature.market.application`, `feature.member.domain`.',
+                                'feature 패키지 아래 파일은 `feature.<name>.<layer>` 또는 `feature.<name>.<capability>.<layer>` 형태를 따라야 합니다.',
+                                '예: `feature.market.application`, `feature.market.history.application`, `feature.member.domain`.',
                                 [packageName: packageName]
                         )
-                    } else if (!architectureLayers.contains(packageSegments[2])) {
+                    } else if (architectureLayers.contains(packageSegments[2])) {
+                        featureLayerIndex = 2
+                    } else if (packageSegments.size() >= 4 && architectureLayers.contains(packageSegments[3])) {
+                        featureLayerIndex = 3
+                    } else {
                         logViolation(
                                 sourceFile,
                                 packageLine,
                                 'FEATURE_LAYER_REQUIRED',
-                                "feature 레이어는 `${architectureLayers.join(', ')}` 중 하나여야 합니다. 현재 값: `${packageSegments[2]}`.",
-                                '`web`, `job`, `application`, `domain`, `infrastructure` 중 하나로 레이어를 정리하세요. `api` Java package는 더 이상 허용하지 않습니다.',
-                                [packageName: packageName, layer: packageSegments[2]]
+                                "feature 레이어는 `${architectureLayers.join(', ')}` 중 하나여야 합니다. 현재 후보: `${packageSegments.size() > 2 ? packageSegments[2] : ''}`.",
+                                '`web`, `job`, `application`, `domain`, `infrastructure` 중 하나를 feature 바로 아래 또는 큰 capability 바로 아래에 두세요. `api` Java package는 더 이상 허용하지 않습니다.',
+                                [packageName: packageName, layer: packageSegments.size() > 2 ? packageSegments[2] : null]
                         )
                     }
                 }
 
-                def layer = packageSegments.find { architectureLayers.contains(it) }
+                def layer = featureLayerIndex >= 0 ? packageSegments[featureLayerIndex] : packageSegments.find { architectureLayers.contains(it) }
                 def isAppSource = relativePath.startsWith('app/src/main/java/')
                 def isAssemblyPath = relativePath.contains('/configuration/') || relativePath.contains('/assembly/') ||
                         relativePath.contains('/config/') || packageName.contains('.configuration.') ||
@@ -508,15 +513,17 @@ tasks.register('architectureLint') {
                     importMatcher.find() ? importMatcher.group(1) : null
                 }.findAll { it != null }
 
-                if (topLevel == 'feature' && layer == 'application' && packageSegments.size() > 3 &&
-                        ['command', 'result', 'realtime'].contains(packageSegments[3])) {
+                def applicationSubpackageIndex = featureLayerIndex >= 0 && layer == 'application' ? featureLayerIndex + 1 : -1
+                if (topLevel == 'feature' && layer == 'application' && applicationSubpackageIndex >= 0 &&
+                        packageSegments.size() > applicationSubpackageIndex &&
+                        ['command', 'result', 'realtime'].contains(packageSegments[applicationSubpackageIndex])) {
                     logViolation(
                             sourceFile,
                             packageLine,
                             'APPLICATION_CONTEXT_PACKAGE_RESIDUE_FORBIDDEN',
                             'feature application 하위에 command/result/realtime residue package가 다시 추가되었습니다.',
                             'application DTO는 `application.dto`, public use case는 `application.service`, query facade는 `application.query`, 실행 협력 객체는 `application.implement` 또는 책임별 purpose package로 이동하세요.',
-                            [packageName: packageName, relativePath: relativePath, residuePackage: packageSegments[3]]
+                            [packageName: packageName, relativePath: relativePath, residuePackage: packageSegments[applicationSubpackageIndex]]
                     )
                 }
 

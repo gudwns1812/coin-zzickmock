@@ -1,9 +1,9 @@
 package coin.coinzzickmock.feature.push.infrastructure;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketCandleUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.dto.MarketHistoryFinalizedEvent;
-import coin.coinzzickmock.feature.market.application.dto.MarketSummaryUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketCandleProjector;
+import coin.coinzzickmock.feature.market.candle.application.dto.MarketCandleUpdatedEvent;
+import coin.coinzzickmock.feature.market.history.application.dto.MarketHistoryFinalizedEvent;
+import coin.coinzzickmock.feature.market.catalog.application.dto.MarketSummaryUpdatedEvent;
+import coin.coinzzickmock.feature.market.candle.application.implement.RealtimeMarketCandleProjector;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.web.MarketFinalizedCandleIntervalsReader;
 import coin.coinzzickmock.feature.market.web.MarketSummaryResponse;

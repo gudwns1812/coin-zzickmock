@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.job;
 
-import coin.coinzzickmock.feature.market.application.history.MarketCalendarCandleBackfill;
+import coin.coinzzickmock.feature.market.history.application.service.MarketCalendarCandleBackfill;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;

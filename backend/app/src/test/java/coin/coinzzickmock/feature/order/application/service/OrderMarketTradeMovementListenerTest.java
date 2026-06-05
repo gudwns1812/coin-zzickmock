@@ -1,13 +1,13 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
-import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
+import coin.coinzzickmock.feature.market.quote.application.dto.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.quote.application.dto.MarketTradePriceMovedEvent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import coin.coinzzickmock.feature.market.application.implement.MarketTradePriceMovementPublisher;
+import coin.coinzzickmock.feature.market.quote.application.implement.MarketTradePriceMovementPublisher;
 import coin.coinzzickmock.feature.order.application.implement.OrderMarketTradeMovementQueue;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

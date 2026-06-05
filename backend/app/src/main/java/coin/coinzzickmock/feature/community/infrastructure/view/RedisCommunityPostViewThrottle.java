@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.community.infrastructure.view;
 
-import coin.coinzzickmock.feature.community.application.view.CommunityPostViewThrottle;
+import coin.coinzzickmock.feature.community.application.gateway.CommunityPostViewThrottle;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

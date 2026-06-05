@@ -1,15 +1,15 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeTick;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.quote.application.service.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.dto.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;

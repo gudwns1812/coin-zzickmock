@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import coin.coinzzickmock.feature.market.application.implement.MarketRealtimeRefreshCoordinator;
+import coin.coinzzickmock.feature.market.catalog.application.implement.MarketRealtimeRefreshCoordinator;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.annotation.Scheduled;

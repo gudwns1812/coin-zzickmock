@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
+import coin.coinzzickmock.feature.market.quote.application.dto.MarketTradePriceMovedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.SmartLifecycle;

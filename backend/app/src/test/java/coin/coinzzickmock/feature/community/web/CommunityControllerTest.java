@@ -10,7 +10,7 @@ import coin.coinzzickmock.common.api.ApiResponse;
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostDetailResult;
 import coin.coinzzickmock.feature.community.application.dto.GenerateCommunityImageUploadPresignedUrlCommand;
 import coin.coinzzickmock.feature.community.application.dto.CommunityImageUploadPresignedUrlResult;
-import coin.coinzzickmock.feature.community.application.query.GetCommunityPostQuery;
+import coin.coinzzickmock.feature.community.application.dto.GetCommunityPostQuery;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityCommentService;
 import coin.coinzzickmock.feature.community.application.service.CreateCommunityPostService;
 import coin.coinzzickmock.feature.community.application.service.DeleteCommunityCommentService;
@@ -21,7 +21,7 @@ import coin.coinzzickmock.feature.community.application.service.ListCommunityCom
 import coin.coinzzickmock.feature.community.application.service.ListCommunityPostsService;
 import coin.coinzzickmock.feature.community.application.service.ToggleCommunityPostLikeService;
 import coin.coinzzickmock.feature.community.application.service.UpdateCommunityPostService;
-import coin.coinzzickmock.feature.community.application.view.CommunityPostReadIntent;
+import coin.coinzzickmock.feature.community.application.dto.CommunityPostReadIntent;
 import coin.coinzzickmock.feature.community.domain.CommunityCategory;
 import coin.coinzzickmock.feature.community.web.request.CommunityImageUploadPresignRequest;
 import coin.coinzzickmock.feature.community.web.response.CommunityImageUploadPresignedUrlResponse;

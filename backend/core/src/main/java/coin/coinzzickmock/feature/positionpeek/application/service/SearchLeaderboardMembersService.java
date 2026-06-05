@@ -7,7 +7,6 @@ import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetResult;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
-import coin.coinzzickmock.feature.positionpeek.application.token.PositionPeekTargetTokenRegistry;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;

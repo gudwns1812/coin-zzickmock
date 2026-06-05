@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostCountDelta;
 import coin.coinzzickmock.feature.community.application.implement.CommunityPostCountDeltaBuffer;
-import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
+import coin.coinzzickmock.feature.community.application.dto.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostRepository;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;

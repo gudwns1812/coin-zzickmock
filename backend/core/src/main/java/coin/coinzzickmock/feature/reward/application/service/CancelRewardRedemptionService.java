@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.reward.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.reward.application.refund.RewardRedemptionRefundProcessor;
+import coin.coinzzickmock.feature.reward.application.implement.RewardRedemptionRefundProcessor;
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;
 import coin.coinzzickmock.feature.reward.application.dto.RewardRedemptionResult;
 import coin.coinzzickmock.feature.reward.domain.RewardRedemptionRequest;

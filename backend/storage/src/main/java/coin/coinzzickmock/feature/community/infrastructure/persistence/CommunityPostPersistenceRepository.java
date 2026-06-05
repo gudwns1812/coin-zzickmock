@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.community.infrastructure.persistence;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostCountDelta;
-import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
+import coin.coinzzickmock.feature.community.application.dto.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostImageRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostLikeRepository;
 import coin.coinzzickmock.feature.community.application.repository.CommunityPostPage;

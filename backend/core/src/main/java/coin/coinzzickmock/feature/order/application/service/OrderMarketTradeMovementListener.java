@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
-import coin.coinzzickmock.feature.market.application.implement.MarketTradePriceMovementPublisher;
+import coin.coinzzickmock.feature.market.quote.application.dto.MarketTradePriceMovedEvent;
+import coin.coinzzickmock.feature.market.quote.application.implement.MarketTradePriceMovementPublisher;
 import coin.coinzzickmock.feature.order.application.implement.OrderMarketTradeMovementQueue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

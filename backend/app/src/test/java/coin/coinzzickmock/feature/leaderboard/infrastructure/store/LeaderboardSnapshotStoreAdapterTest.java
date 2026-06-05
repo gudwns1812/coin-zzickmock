@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardSnapshotResult;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.infrastructure.config.LeaderboardProperties;
 import java.util.Collections;

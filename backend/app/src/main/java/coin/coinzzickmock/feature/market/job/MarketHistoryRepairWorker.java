@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.job;
 
-import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairProcessor;
+import coin.coinzzickmock.feature.market.history.application.repair.MarketHistoryRepairProcessor;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

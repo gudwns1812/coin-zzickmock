@@ -62,6 +62,9 @@ backend/.gradle/
 backend/build/
 backend/spy.log
 
+# local backend agents
+backend/agent/
+
 # compiled artifacts
 *.class
 

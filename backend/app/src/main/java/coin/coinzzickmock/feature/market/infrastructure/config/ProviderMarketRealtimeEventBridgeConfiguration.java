@@ -1,10 +1,10 @@
 package coin.coinzzickmock.feature.market.infrastructure.config;
 
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
-import coin.coinzzickmock.feature.market.application.service.ProviderMarketRealtimeEventBridge;
-import coin.coinzzickmock.feature.market.application.implement.MarketTradePriceMovementPublisher;
-import coin.coinzzickmock.feature.market.application.service.RealtimeMarketCandleUpdateService;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.candle.application.dto.RealtimeMarketCandleUpdate;
+import coin.coinzzickmock.feature.market.quote.application.service.ProviderMarketRealtimeEventBridge;
+import coin.coinzzickmock.feature.market.quote.application.implement.MarketTradePriceMovementPublisher;
+import coin.coinzzickmock.feature.market.candle.application.service.RealtimeMarketCandleUpdateService;
+import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.connector.ProviderMarketRealtimeEvent;
 import java.util.function.Consumer;

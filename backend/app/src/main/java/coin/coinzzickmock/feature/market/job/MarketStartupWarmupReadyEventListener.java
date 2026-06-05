@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.job;
 
-import coin.coinzzickmock.feature.market.application.implement.MarketSupportedMarketRefresher;
+import coin.coinzzickmock.feature.market.catalog.application.implement.MarketSupportedMarketRefresher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;

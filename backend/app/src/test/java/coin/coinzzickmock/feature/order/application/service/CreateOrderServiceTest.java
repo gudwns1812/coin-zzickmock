@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.order.application.service;
 
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeTick;
 import coin.coinzzickmock.common.event.AfterCommitEventPublisher;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
@@ -9,8 +9,8 @@ import coin.coinzzickmock.feature.account.application.repository.AccountReposito
 import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.quote.application.service.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.dto.CreateOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderFillApplier;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;

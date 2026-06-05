@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
-import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairStatus;
+import coin.coinzzickmock.feature.market.history.application.repair.MarketHistoryRepairStatus;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
 import jakarta.persistence.Column;

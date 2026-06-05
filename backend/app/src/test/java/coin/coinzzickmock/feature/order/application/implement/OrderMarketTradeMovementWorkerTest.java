@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
-import coin.coinzzickmock.feature.market.application.dto.MarketTradePriceMovedEvent;
+import coin.coinzzickmock.feature.market.quote.application.dto.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.quote.application.dto.MarketTradePriceMovedEvent;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;

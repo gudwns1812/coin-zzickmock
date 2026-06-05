@@ -4,14 +4,23 @@ import jakarta.servlet.http.Cookie;
 import com.jayway.jsonpath.JsonPath;
 import coin.coinzzickmock.feature.activity.application.service.SnapshotDailyActiveUserSummaryService;
 import coin.coinzzickmock.feature.activity.domain.ActivityDate;
+import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
+import coin.coinzzickmock.feature.positionpeek.application.repository.PositionPeekTargetTokenStore;
 import jakarta.persistence.EntityManager;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -885,5 +894,28 @@ class AuthControllerTest {
     private static MockHttpServletRequestBuilder deleteWithTrustedOrigin(String urlTemplate, Object... uriVars) {
         return delete(urlTemplate, uriVars)
                 .header(HttpHeaders.ORIGIN, "http://localhost:3000");
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class TargetTokenTestConfiguration {
+        @Bean
+        @Primary
+        PositionPeekTargetTokenStore positionPeekTargetTokenStore() {
+            return new InMemoryTargetTokenStore();
+        }
+    }
+
+    private static class InMemoryTargetTokenStore implements PositionPeekTargetTokenStore {
+        private final Map<String, PositionPeekTargetTokenPayload> payloads = new HashMap<>();
+
+        @Override
+        public void save(String tokenHash, PositionPeekTargetTokenPayload payload, Duration ttl) {
+            payloads.put(tokenHash, payload);
+        }
+
+        @Override
+        public Optional<PositionPeekTargetTokenPayload> findByTokenHash(String tokenHash) {
+            return Optional.ofNullable(payloads.get(tokenHash));
+        }
     }
 }

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.account.application.refill.AccountRefillCreditProcessor;
+import coin.coinzzickmock.feature.account.application.service.AccountRefillCreditProcessor;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository;
 import coin.coinzzickmock.feature.account.application.repository.AccountRefillStateRepository.LockedAccountRefillState;
 import coin.coinzzickmock.feature.account.application.service.AccountRefillDatePolicy;

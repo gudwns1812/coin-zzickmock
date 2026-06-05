@@ -8,7 +8,7 @@ import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.leaderboard.application.event.WalletBalanceChangedEvent;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
-import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
+import coin.coinzzickmock.feature.position.application.implement.PositionSnapshotResultAssembler;
 import coin.coinzzickmock.feature.position.application.implement.OpenPositionBookWriter;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.dto.PositionMutationResult;

@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
-import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
-import coin.coinzzickmock.feature.market.application.repository.MarketHistoryStartupBackfillCursor;
+import coin.coinzzickmock.feature.market.history.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.history.application.repository.MarketHistoryStartupBackfillCursor;
 import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;

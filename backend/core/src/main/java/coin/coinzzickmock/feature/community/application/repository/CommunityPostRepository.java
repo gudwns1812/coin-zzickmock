@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.community.application.repository;
 
 import coin.coinzzickmock.feature.community.application.dto.CommunityPostCountDelta;
-import coin.coinzzickmock.feature.community.application.query.ListCommunityPostsQuery;
+import coin.coinzzickmock.feature.community.application.dto.ListCommunityPostsQuery;
 import coin.coinzzickmock.feature.community.domain.CommunityPost;
 import java.time.Instant;
 import java.util.Collection;

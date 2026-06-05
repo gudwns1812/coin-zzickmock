@@ -6,12 +6,12 @@ import coin.coinzzickmock.feature.leaderboard.application.repository.Leaderboard
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardEntryResult;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardMemberRankResult;
 import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardResult;
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
-import coin.coinzzickmock.feature.positionpeek.application.token.PositionPeekTargetTokenRegistry;
+import coin.coinzzickmock.feature.positionpeek.application.service.PositionPeekTargetTokenRegistry;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;

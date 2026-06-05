@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.reward.infrastructure.notification;
 
 import coin.coinzzickmock.feature.reward.application.event.RewardRedemptionCreatedEvent;
-import coin.coinzzickmock.feature.reward.application.notification.RewardRedemptionNotifier;
+import coin.coinzzickmock.feature.reward.application.gateway.RewardRedemptionNotifier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;

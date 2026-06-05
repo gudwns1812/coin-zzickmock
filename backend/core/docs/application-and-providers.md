@@ -134,8 +134,9 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 
 ## Application Service Boundary
 
-`feature/<name>/application/service`는 컨트롤러나 다른 진입점이 호출하는 유스케이스 클래스만 둔다.
-여러 유스케이스가 같이 쓰는 실시간 캐시, 적립 처리기, 조합기 같은 객체는 `application/<purpose>` 하위 패키지의 비-Service 협력 객체로 둔다.
+`feature/<name>/application/service` 또는 큰 capability의 `feature/<name>/<capability>/application/service`는 컨트롤러나 다른 진입점이 호출하는 유스케이스 클래스만 둔다.
+여러 유스케이스가 같이 쓰는 실시간 캐시, 적립 처리기, 조합기 같은 객체는 기본적으로 `application/<purpose>` 하위 패키지의 비-Service 협력 객체로 둔다.
+다만 그 목적이 feature 안에서 독립적인 하위 영역으로 커졌다면 `feature/<name>/<capability>/application`으로 승격한다.
 주문/포지션/계정처럼 큰 쓰기 흐름에서 service의 목차를 흐리는 실행 세부사항은 단일 `application/implement` 하위 패키지에 둘 수 있다.
 
 강한 규칙:
@@ -143,6 +144,9 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 - `application/service`는 다른 `application/service`를 직접 참조하지 않는다.
 - 공유 로직이 필요하면 먼저 [04-domain-modeling-rules.md](/Users/hj.park/projects/coin-zzickmock/backend/core/docs/domain-modeling-rules.md) 기준으로 `domain` 후보인지 본다.
 - `domain`으로 올릴 수 없고 애플리케이션 메커니즘에 가까우면 `application/<purpose>` 또는 `application/implement` 하위 패키지로 분리한다.
+- 목적형 협력 객체가 많아져 feature 내부 domain-like capability가 되면 `feature/<name>/<capability>/application`으로 올린다. 시장의 catalog, candle, quote, history, latestwindow처럼 독립적인 읽기/캐시/현재가 경계가 이에 해당한다.
+- capability-first로 정리한 feature는 root `feature/<name>/application`을 남기지 않는다. root layer와 capability가 같은 depth에 공존하면 package depth가 서로 다른 개념을 섞게 된다.
+- 반대로 클래스 몇 개뿐인 query/store/token/view 구분은 새 capability나 purpose package를 강제하지 않는다. DTO/projection이면 `application/dto`, 저장 계약이면 `application/repository`, 유스케이스 진입이면 `application/service`, 실행 세부사항이면 `application/implement`에 합친다.
 - `application/implement` is not a sixth layer. It contains concrete application execution-detail collaborators, and every class name must start with the owning domain/use-case domain prefix such as `Order`, `Position`, or `Account`.
 - `application/implement`는 feature별 `application` 안에 하나만 둔다. `application/implement/common`, `application/implement/util`, `application/implement/helper` 같은 하위 잡동사니 package를 만들지 않는다.
 - `application/service`는 "무슨 일을 시작하는가"를, 목적형 협력 객체는 "그 일을 어떤 메커니즘으로 지원하는가"를 드러내야 한다.
@@ -154,6 +158,7 @@ leaderboard는 withdrawal 이벤트로 snapshot entry를 제거하고, leaderboa
 | `application/service` | public use-case entrypoint, transaction boundary, top-level orchestration | `CreateOrderService`, `ClosePositionService`처럼 사용자가 시작하는 흐름 | 다른 service 직접 호출, repository/provider/domain 세부 조합을 모두 품는 giant method |
 | `application/implement` | service 흐름을 흐리는 application 실행 절차/계산/조합에 이름을 붙인 concrete collaborator | `OrderFillApplier`, `OrderPlacementFactory`, `PositionCloseProjector`, `AccountBalanceReconciler`처럼 소유 domain/use-case prefix + concise role | 새 layer, generic bucket, interface-first port, `Manager`/`Helper`/`Util`/`CommonService`, prefix 없는 class |
 | `application/<purpose>` | 이미 존재하거나 feature 전반에서 공유되는 명확한 mechanism package | `grant`, `history`, `repair`처럼 package 자체가 목적을 설명하고 class도 concrete role을 드러냄 | 새 convention이 필요한 큰 service refactor에서 목적 없는 ad-hoc package 증식. `realtime`처럼 timing/transport 맥락을 묶은 package는 legacy migration residue로 보고 아래 Technical Package Split Recipe에 따라 재분류 |
+| `<capability>/application` | feature 안에서 독립적인 하위 domain/capability로 커진 application slice | `market/catalog/application`, `market/candle/application`, `market/quote/application`, `market/history/application`, `market/latestwindow/application`처럼 capability 이름 뒤에 고정 layer를 둠 | root `feature/<name>/application`과 capability slice의 병존, query/store/token 같은 작은 폴더를 capability로 과승격, capability 아래 layer가 아닌 임의 package 추가 |
 | `domain` | storage-free이고 오래 살아야 하는 제품 규칙, 불변식, 상태 전이 | 도메인 언어의 model/policy/service/value object | repository/provider 조회, transaction 실행, 외부 시스템/프레임워크 세부사항 |
 
 `application/implement` 추출의 1순위 판단 기준은 service flow readability다.

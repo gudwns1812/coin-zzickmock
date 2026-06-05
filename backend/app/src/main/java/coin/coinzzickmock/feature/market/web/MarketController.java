@@ -1,12 +1,12 @@
 package coin.coinzzickmock.feature.market.web;
 
 import coin.coinzzickmock.common.api.ApiResponse;
-import coin.coinzzickmock.feature.market.application.query.GetMarketCandlesQuery;
-import coin.coinzzickmock.feature.market.application.query.GetMarketQuery;
-import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
-import coin.coinzzickmock.feature.market.application.dto.MarketSummaryResult;
-import coin.coinzzickmock.feature.market.application.service.GetMarketCandlesService;
-import coin.coinzzickmock.feature.market.application.service.GetMarketSummaryService;
+import coin.coinzzickmock.feature.market.candle.application.dto.GetMarketCandlesQuery;
+import coin.coinzzickmock.feature.market.catalog.application.dto.GetMarketQuery;
+import coin.coinzzickmock.feature.market.candle.application.dto.MarketCandleResult;
+import coin.coinzzickmock.feature.market.catalog.application.dto.MarketSummaryResult;
+import coin.coinzzickmock.feature.market.candle.application.service.GetMarketCandlesService;
+import coin.coinzzickmock.feature.market.catalog.application.service.GetMarketSummaryService;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;

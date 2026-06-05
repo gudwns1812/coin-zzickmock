@@ -1,5 +1,7 @@
-package coin.coinzzickmock.feature.position.application.repository;
+package coin.coinzzickmock.feature.position.application.implement;
 
+import coin.coinzzickmock.feature.position.application.repository.OpenPositionSymbolsReader;
+import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

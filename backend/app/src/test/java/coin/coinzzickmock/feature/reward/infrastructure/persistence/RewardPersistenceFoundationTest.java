@@ -4,7 +4,7 @@ import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberRole;
 import coin.coinzzickmock.feature.reward.application.dto.GrantProfitPointCommand;
-import coin.coinzzickmock.feature.reward.application.grant.RewardPointGrantProcessor;
+import coin.coinzzickmock.feature.reward.application.service.RewardPointGrantProcessor;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardRedemptionRequestRepository;

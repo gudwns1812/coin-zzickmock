@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.config;
 
-import coin.coinzzickmock.feature.market.application.query.FinalizedCandleIntervalsReader;
+import coin.coinzzickmock.feature.market.history.application.implement.FinalizedCandleIntervalsReader;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.web.MarketFinalizedCandleIntervalsReader;
 import org.springframework.context.annotation.Bean;

@@ -52,13 +52,13 @@ This inventory gates movement from `backend/storage` to `backend/core` for the b
 | `src/main/java/coin/coinzzickmock/feature/leaderboard/domain/LeaderboardEntry.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/leaderboard/domain/LeaderboardMode.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/leaderboard/domain/LeaderboardSnapshot.java` | pure feature domain model/policy/value |
-| `src/main/java/coin/coinzzickmock/feature/market/application/realtime/MarketFundingScheduleLookup.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/market/application/repair/MarketHistoryRepairEvent.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/market/application/repair/MarketHistoryRepairEventRepository.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/market/application/repair/MarketHistoryRepairStatus.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/market/application/repository/MarketHistoryRepository.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/market/application/result/MarketCandleResult.java` | application repository/result/contract without persistence framework imports |
-| `src/main/java/coin/coinzzickmock/feature/market/application/result/MarketSummaryResult.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/market/catalog/application/repository/MarketFundingScheduleLookup.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/market/history/application/repair/MarketHistoryRepairEvent.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/market/history/application/repair/MarketHistoryRepairEventRepository.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/market/history/application/repair/MarketHistoryRepairStatus.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/market/history/application/repository/MarketHistoryRepository.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/market/candle/application/dto/MarketCandleResult.java` | application repository/result/contract without persistence framework imports |
+| `src/main/java/coin/coinzzickmock/feature/market/catalog/application/dto/MarketSummaryResult.java` | application repository/result/contract without persistence framework imports |
 | `src/main/java/coin/coinzzickmock/feature/market/domain/FundingSchedule.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/market/domain/HourlyMarketCandle.java` | pure feature domain model/policy/value |
 | `src/main/java/coin/coinzzickmock/feature/market/domain/MarketCandleInterval.java` | pure feature domain model/policy/value |

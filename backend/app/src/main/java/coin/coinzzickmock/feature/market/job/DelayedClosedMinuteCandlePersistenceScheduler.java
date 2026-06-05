@@ -1,8 +1,8 @@
 package coin.coinzzickmock.feature.market.job;
 
-import coin.coinzzickmock.feature.market.application.implement.ClosedMinuteCandlePersistenceScheduler;
-import coin.coinzzickmock.feature.market.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator;
-import coin.coinzzickmock.feature.market.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator.ClosedMinutePersistenceTask;
+import coin.coinzzickmock.feature.market.candle.application.implement.ClosedMinuteCandlePersistenceScheduler;
+import coin.coinzzickmock.feature.market.candle.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator;
+import coin.coinzzickmock.feature.market.candle.application.implement.DelayedClosedMinuteCandlePersistenceCoordinator.ClosedMinutePersistenceTask;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;

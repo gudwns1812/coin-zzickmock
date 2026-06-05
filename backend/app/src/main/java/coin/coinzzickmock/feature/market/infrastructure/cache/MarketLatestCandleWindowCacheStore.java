@@ -1,9 +1,9 @@
 package coin.coinzzickmock.feature.market.infrastructure.cache;
 
-import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowCache;
-import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowCacheRead;
-import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowKey;
-import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowPage;
+import coin.coinzzickmock.feature.market.latestwindow.application.repository.MarketLatestCandleWindowCache;
+import coin.coinzzickmock.feature.market.latestwindow.application.dto.MarketLatestCandleWindowCacheRead;
+import coin.coinzzickmock.feature.market.latestwindow.application.dto.MarketLatestCandleWindowKey;
+import coin.coinzzickmock.feature.market.latestwindow.application.dto.MarketLatestCandleWindowPage;
 import coin.coinzzickmock.providers.infrastructure.config.CoinCacheProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;

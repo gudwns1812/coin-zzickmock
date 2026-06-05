@@ -1,0 +1,27 @@
+package coin.coinzzickmock.feature.market.catalog.application.service;
+
+import coin.coinzzickmock.common.error.CoreException;
+import coin.coinzzickmock.common.error.ErrorCode;
+import coin.coinzzickmock.feature.market.catalog.application.dto.GetMarketQuery;
+import coin.coinzzickmock.feature.market.catalog.application.dto.MarketSummaryResult;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class GetMarketSummaryService {
+    private final MarketRealtimeFeed marketRealtimeFeed;
+
+    public List<MarketSummaryResult> getSupportedMarkets() {
+        return marketRealtimeFeed.getSupportedMarkets();
+    }
+
+    public MarketSummaryResult getMarket(GetMarketQuery query) {
+        if (query.symbol() == null || query.symbol().isBlank()) {
+            throw new CoreException(ErrorCode.MARKET_NOT_FOUND);
+        }
+
+        return marketRealtimeFeed.getMarket(query.symbol());
+    }
+}

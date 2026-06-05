@@ -29,6 +29,9 @@
 
 - 기능은 `feature` 아래에서 수직으로 자른다.
 - 모든 기능은 같은 레이어 집합을 사용한다.
+- 기능이 충분히 커지면 `feature/<name>/<capability>/<layer>`처럼 capability 단위로 다시 수직 절단할 수 있다. 예를 들어 시장 feature는 `feature/market/catalog/application`, `feature/market/candle/application`, `feature/market/quote/application`, `feature/market/history/application`, `feature/market/latestwindow/application`처럼 둔다.
+- capability-first로 분해한 feature는 root `feature/<name>/application`을 남겨 capability와 layer를 같은 depth에 섞지 않는다.
+- 작은 책임은 capability package를 억지로 만들지 않는다. 클래스 이름으로 충분히 구분되는 몇 개의 query/store/token 협력 객체는 소유 `application` 하위의 기존 `dto`, `service`, `repository`, `implement` 등에 합친다.
 - 클래스와 메서드는 하나의 변경 이유와 하나의 추상화 수준을 유지한다.
 - 도메인은 프레임워크와 외부 SDK를 모른다.
 - 애플리케이션은 유스케이스를 조합하지만 기술 세부사항을 모른다.
@@ -51,6 +54,7 @@
 
 이 집합은 고정이다.
 새 기능을 만든다고 `service`, `util`, `helper`, `manager`, `common` 같은 임의 레이어를 추가하지 않는다.
+레이어는 feature 바로 아래 또는 큰 capability 바로 아래에만 둔다.
 `application/implement`는 여섯 번째 레이어가 아니라 `application` 내부의 단일 실행 세부 협력 객체 패키지다.
 
 HTTP/SSE delivery Java package는 `web`이다.

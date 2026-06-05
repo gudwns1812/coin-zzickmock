@@ -1,7 +1,7 @@
 package coin.coinzzickmock.testsupport;
 
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotResult;
-import coin.coinzzickmock.feature.leaderboard.application.store.LeaderboardSnapshotStore;
+import coin.coinzzickmock.feature.leaderboard.application.dto.LeaderboardSnapshotResult;
+import coin.coinzzickmock.feature.leaderboard.application.repository.LeaderboardSnapshotStore;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardEntry;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardMode;
 import coin.coinzzickmock.feature.leaderboard.domain.LeaderboardSnapshot;

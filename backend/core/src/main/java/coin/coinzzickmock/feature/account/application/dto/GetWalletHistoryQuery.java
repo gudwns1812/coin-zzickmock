@@ -1,0 +1,10 @@
+package coin.coinzzickmock.feature.account.application.dto;
+
+import java.time.Instant;
+
+public record GetWalletHistoryQuery(
+        Long memberId,
+        Instant from,
+        Instant to
+) {
+}

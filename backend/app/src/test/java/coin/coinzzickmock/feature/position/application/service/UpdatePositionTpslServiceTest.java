@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.position.application.service;
 
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeTick;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,14 +10,14 @@ import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.quote.application.service.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.order.application.repository.OrderRepository;
 import coin.coinzzickmock.feature.order.application.dto.PendingOrderCandidate;
 import coin.coinzzickmock.feature.order.application.implement.OrderMutationLock;
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;
-import coin.coinzzickmock.feature.position.application.close.PendingCloseOrderCapReconciler;
-import coin.coinzzickmock.feature.position.application.query.PositionSnapshotResultAssembler;
+import coin.coinzzickmock.feature.position.application.implement.PendingCloseOrderCapReconciler;
+import coin.coinzzickmock.feature.position.application.implement.PositionSnapshotResultAssembler;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.application.dto.PositionSnapshotResult;

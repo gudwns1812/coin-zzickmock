@@ -2,10 +2,10 @@ package coin.coinzzickmock.feature.push.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketCandleUpdatedEvent;
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketCandleUpdate;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketCandleProjector;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.candle.application.dto.MarketCandleUpdatedEvent;
+import coin.coinzzickmock.feature.market.candle.application.dto.RealtimeMarketCandleUpdate;
+import coin.coinzzickmock.feature.market.candle.application.implement.RealtimeMarketCandleProjector;
+import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.push.application.dto.PushEventEnvelope;
 import coin.coinzzickmock.feature.push.application.dto.PushEventType;

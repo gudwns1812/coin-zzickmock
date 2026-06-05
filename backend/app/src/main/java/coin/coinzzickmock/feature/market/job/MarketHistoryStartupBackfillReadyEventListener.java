@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.market.job;
 
-import coin.coinzzickmock.feature.market.application.repair.MarketHistoryStartupBackfill;
-import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
+import coin.coinzzickmock.feature.market.history.application.repair.MarketHistoryStartupBackfill;
+import coin.coinzzickmock.feature.market.catalog.application.gateway.MarketDataGateway;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

@@ -9,9 +9,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketCandleResult;
-import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowKey;
-import coin.coinzzickmock.feature.market.application.latestwindow.MarketLatestCandleWindowPage;
+import coin.coinzzickmock.feature.market.candle.application.dto.MarketCandleResult;
+import coin.coinzzickmock.feature.market.latestwindow.application.dto.MarketLatestCandleWindowKey;
+import coin.coinzzickmock.feature.market.latestwindow.application.dto.MarketLatestCandleWindowPage;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.providers.infrastructure.config.CoinCacheProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;

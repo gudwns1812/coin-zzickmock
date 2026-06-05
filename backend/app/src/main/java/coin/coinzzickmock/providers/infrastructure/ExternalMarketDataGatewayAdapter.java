@@ -2,7 +2,7 @@ package coin.coinzzickmock.providers.infrastructure;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
+import coin.coinzzickmock.feature.market.catalog.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoricalCandleSnapshot;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;

@@ -11,7 +11,7 @@ import coin.coinzzickmock.feature.member.application.repository.MemberCredential
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
-import coin.coinzzickmock.feature.positionpeek.application.store.PositionPeekTargetTokenStore;
+import coin.coinzzickmock.feature.positionpeek.application.repository.PositionPeekTargetTokenStore;
 import coin.coinzzickmock.feature.reward.application.repository.RewardItemBalanceRepository;
 import coin.coinzzickmock.feature.reward.application.repository.RewardShopItemRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardItemBalance;

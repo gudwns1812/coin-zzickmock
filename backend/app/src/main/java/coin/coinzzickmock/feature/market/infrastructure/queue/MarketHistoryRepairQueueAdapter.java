@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.queue;
 
-import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairQueue;
+import coin.coinzzickmock.feature.market.history.application.repair.MarketHistoryRepairQueue;
 import java.time.Duration;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;

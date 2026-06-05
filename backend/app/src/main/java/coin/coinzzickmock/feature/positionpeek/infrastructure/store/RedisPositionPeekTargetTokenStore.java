@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.positionpeek.infrastructure.store;
 
 import coin.coinzzickmock.feature.positionpeek.application.dto.PositionPeekTargetTokenPayload;
-import coin.coinzzickmock.feature.positionpeek.application.store.PositionPeekTargetTokenStore;
+import coin.coinzzickmock.feature.positionpeek.application.repository.PositionPeekTargetTokenStore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;

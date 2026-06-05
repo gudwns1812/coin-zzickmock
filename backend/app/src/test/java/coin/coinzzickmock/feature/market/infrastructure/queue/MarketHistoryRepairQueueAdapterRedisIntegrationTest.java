@@ -3,7 +3,7 @@ package coin.coinzzickmock.feature.market.infrastructure.queue;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
-import coin.coinzzickmock.feature.market.application.repair.MarketHistoryRepairQueue;
+import coin.coinzzickmock.feature.market.history.application.repair.MarketHistoryRepairQueue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;

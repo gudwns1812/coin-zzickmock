@@ -2,7 +2,7 @@ package coin.coinzzickmock.feature.order.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.quote.application.service.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.market.domain.MarketSnapshot;
 import coin.coinzzickmock.feature.order.application.dto.ModifyOrderCommand;
 import coin.coinzzickmock.feature.order.application.implement.OrderEditFillHandler;

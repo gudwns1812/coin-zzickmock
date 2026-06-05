@@ -1,20 +1,20 @@
 package coin.coinzzickmock.feature.account.application.service;
 
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTickerUpdate;
-import coin.coinzzickmock.feature.market.application.dto.RealtimeMarketTradeTick;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTickerUpdate;
+import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeTick;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQuery;
+import coin.coinzzickmock.feature.account.application.dto.GetAccountSummaryQuery;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.application.dto.AccountSummaryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
+import coin.coinzzickmock.feature.market.quote.application.service.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;

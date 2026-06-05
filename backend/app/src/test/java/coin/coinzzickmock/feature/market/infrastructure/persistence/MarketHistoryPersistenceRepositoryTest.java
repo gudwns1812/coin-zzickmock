@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.testsupport.TestConnectorProvider;
 import coin.coinzzickmock.CoinZzickmockApplication;
-import coin.coinzzickmock.feature.market.application.repository.MarketHistoryRepository;
+import coin.coinzzickmock.feature.market.history.application.repository.MarketHistoryRepository;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
 import coin.coinzzickmock.feature.market.domain.MarketMinuteCandleSnapshot;
@@ -14,7 +14,7 @@ import coin.coinzzickmock.providers.Providers;
 import coin.coinzzickmock.providers.auth.Actor;
 import coin.coinzzickmock.providers.auth.AuthProvider;
 import coin.coinzzickmock.providers.connector.ConnectorProvider;
-import coin.coinzzickmock.feature.market.application.gateway.MarketDataGateway;
+import coin.coinzzickmock.feature.market.catalog.application.gateway.MarketDataGateway;
 import coin.coinzzickmock.providers.featureflag.FeatureFlagProvider;
 import coin.coinzzickmock.providers.telemetry.TelemetryProvider;
 import java.time.Instant;

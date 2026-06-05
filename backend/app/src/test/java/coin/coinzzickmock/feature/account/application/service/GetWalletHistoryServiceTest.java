@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.account.application.query.GetWalletHistoryQuery;
+import coin.coinzzickmock.feature.account.application.dto.GetWalletHistoryQuery;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
 import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;

@@ -1,6 +1,6 @@
 package coin.coinzzickmock.feature.order.application.implement;
 
-import coin.coinzzickmock.feature.market.application.dto.MarketPriceMovementDirection;
+import coin.coinzzickmock.feature.market.quote.application.dto.MarketPriceMovementDirection;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.feature.order.domain.FuturesOrder;

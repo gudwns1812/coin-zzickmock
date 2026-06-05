@@ -45,7 +45,7 @@
 
 - 루트 패키지에는 `*Application`만 허용하고, 최상위 하위 패키지는 `common`, `providers`, `feature`만 허용
 - `support`, `core`, `extern`, `storage` 같은 레거시 광역 패키지 금지
-- `feature.<name>.<layer>` 구조 강제
+- `feature.<name>.<layer>` 또는 `feature.<name>.<capability>.<layer>` 구조 강제
 - 최종 feature layer는 `web`, `job`, `application`, `domain`, `infrastructure`로 고정
 - `api` Java package는 금지하고 HTTP/SSE delivery는 `web` package 아래에 둠
 - `domain` 레이어의 Spring/JPA 의존 금지

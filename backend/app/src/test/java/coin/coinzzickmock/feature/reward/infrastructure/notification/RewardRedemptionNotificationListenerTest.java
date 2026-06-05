@@ -1,7 +1,7 @@
 package coin.coinzzickmock.feature.reward.infrastructure.notification;
 
 import coin.coinzzickmock.feature.reward.application.event.RewardRedemptionCreatedEvent;
-import coin.coinzzickmock.feature.reward.application.notification.RewardRedemptionNotifier;
+import coin.coinzzickmock.feature.reward.application.gateway.RewardRedemptionNotifier;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;

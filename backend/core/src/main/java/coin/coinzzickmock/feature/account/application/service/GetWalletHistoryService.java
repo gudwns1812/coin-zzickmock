@@ -2,10 +2,10 @@ package coin.coinzzickmock.feature.account.application.service;
 
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
-import coin.coinzzickmock.feature.account.application.query.GetWalletHistoryQuery;
+import coin.coinzzickmock.feature.account.application.dto.GetWalletHistoryQuery;
+import coin.coinzzickmock.feature.account.application.dto.WalletHistoryResult;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.repository.WalletHistoryRepository;
-import coin.coinzzickmock.feature.account.application.dto.WalletHistoryResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
 import coin.coinzzickmock.feature.account.domain.WalletHistoryDate;
 import coin.coinzzickmock.feature.account.domain.WalletHistorySnapshot;

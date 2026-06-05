@@ -2,11 +2,11 @@ package coin.coinzzickmock.feature.account.application.service;
 
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.common.error.CoreException;
-import coin.coinzzickmock.feature.account.application.query.GetAccountSummaryQuery;
-import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
+import coin.coinzzickmock.feature.account.application.dto.GetAccountSummaryQuery;
 import coin.coinzzickmock.feature.account.application.dto.AccountSummaryResult;
+import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
-import coin.coinzzickmock.feature.market.application.query.RealtimeMarketPriceReader;
+import coin.coinzzickmock.feature.market.quote.application.service.RealtimeMarketPriceReader;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberCredential;
 import coin.coinzzickmock.feature.position.application.repository.PositionRepository;

@@ -38,7 +38,7 @@ public class RedisPositionPeekTargetTokenStore implements PositionPeekTargetToke
         try {
             return Optional.of(objectMapper.readValue(json, PositionPeekTargetTokenPayload.class));
         } catch (JsonProcessingException exception) {
-            log.warn("Failed to parse position peek target token payload.");
+            log.warn("Failed to parse position peek target token payload. tokenHash={}", tokenHash, exception);
             return Optional.empty();
         }
     }

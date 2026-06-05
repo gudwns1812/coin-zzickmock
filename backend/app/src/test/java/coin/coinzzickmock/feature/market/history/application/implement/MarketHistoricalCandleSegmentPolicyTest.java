@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import coin.coinzzickmock.feature.market.history.application.dto.MarketHistoricalCandleSegment;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
-import coin.coinzzickmock.feature.market.history.application.dto.MarketHistoricalCandleSegment;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

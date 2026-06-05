@@ -9,7 +9,6 @@ import coin.coinzzickmock.feature.market.domain.CompletedMarketCandle;
 import coin.coinzzickmock.feature.market.domain.HourlyMarketCandle;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketHistoryCandle;
-import coin.coinzzickmock.feature.market.latestwindow.application.dto.RestVisibleCandleBoundary;
 import coin.coinzzickmock.testsupport.TestMarketHistoryRepository;
 import java.time.Instant;
 import java.util.Comparator;

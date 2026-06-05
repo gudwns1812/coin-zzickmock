@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MarketHistoryPersistenceCoordinator {
     private final MarketClosedMinuteCandlePersistence marketClosedMinuteCandlePersistence;
-    private final Map<String, Instant> recordedClosedMinuteOpenTimes = new ConcurrentHashMap<>();
+    private final Map<String, Set<Instant>> recordedClosedMinuteOpenTimes = new ConcurrentHashMap<>();
 
     public List<MarketHistoryPersistenceResult> persistClosedMinuteCandles(
             List<String> symbols,
@@ -36,19 +37,20 @@ public class MarketHistoryPersistenceCoordinator {
             Instant openTime,
             Instant closeTime
     ) {
-        if (isAlreadyRecorded(symbol, openTime)) {
+        Set<Instant> recordedOpenTimes = recordedOpenTimes(symbol);
+        if (!recordedOpenTimes.add(openTime)) {
             return toPersistenceResult(symbol, openTime, closeTime, MarketHistoryPersistenceStatus.ALREADY_RECORDED);
         }
 
         MarketHistoryPersistenceResult result = marketClosedMinuteCandlePersistence.persist(symbol, openTime, closeTime);
-        if (result.persisted()) {
-            recordedClosedMinuteOpenTimes.put(symbol, openTime);
+        if (!result.isPersisted()) {
+            recordedOpenTimes.remove(openTime);
         }
         return result;
     }
 
-    private boolean isAlreadyRecorded(String symbol, Instant openTime) {
-        return openTime.equals(recordedClosedMinuteOpenTimes.get(symbol));
+    private Set<Instant> recordedOpenTimes(String symbol) {
+        return recordedClosedMinuteOpenTimes.computeIfAbsent(symbol, ignored -> ConcurrentHashMap.newKeySet());
     }
 
     private MarketHistoryPersistenceResult toPersistenceResult(

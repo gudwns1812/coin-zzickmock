@@ -13,12 +13,12 @@ public record MarketHistoryPersistenceResult(
                 || status == MarketHistoryPersistenceStatus.FAILED;
     }
 
-    public boolean saved() {
+    public boolean isSaved() {
         return status == MarketHistoryPersistenceStatus.PERSISTED
                 || status == MarketHistoryPersistenceStatus.ALREADY_RECORDED;
     }
 
-    public boolean persisted() {
+    public boolean isPersisted() {
         return status == MarketHistoryPersistenceStatus.PERSISTED;
     }
 }

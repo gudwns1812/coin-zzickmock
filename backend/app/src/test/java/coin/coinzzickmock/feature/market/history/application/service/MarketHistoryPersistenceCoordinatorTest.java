@@ -12,6 +12,9 @@ import coin.coinzzickmock.feature.market.history.application.repair.MarketClosed
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -36,6 +39,40 @@ class MarketHistoryPersistenceCoordinatorTest {
                 OPEN_TIME,
                 CLOSE_TIME
         );
+
+        assertThat(firstResults).singleElement()
+                .extracting(MarketHistoryPersistenceResult::status)
+                .isEqualTo(MarketHistoryPersistenceStatus.PERSISTED);
+        assertThat(secondResults).singleElement()
+                .extracting(MarketHistoryPersistenceResult::status)
+                .isEqualTo(MarketHistoryPersistenceStatus.ALREADY_RECORDED);
+        verify(persistence).persist("BTCUSDT", OPEN_TIME, CLOSE_TIME);
+    }
+
+    @Test
+    void preventsDuplicatePersistenceWhileFirstAttemptIsRunning() throws Exception {
+        MarketClosedMinuteCandlePersistence persistence = Mockito.mock(MarketClosedMinuteCandlePersistence.class);
+        CountDownLatch persistEntered = new CountDownLatch(1);
+        CountDownLatch releasePersist = new CountDownLatch(1);
+        when(persistence.persist("BTCUSDT", OPEN_TIME, CLOSE_TIME))
+                .thenAnswer(invocation -> {
+                    persistEntered.countDown();
+                    assertThat(releasePersist.await(1, TimeUnit.SECONDS)).isTrue();
+                    return result(MarketHistoryPersistenceStatus.PERSISTED);
+                });
+        MarketHistoryPersistenceCoordinator coordinator = new MarketHistoryPersistenceCoordinator(persistence);
+
+        CompletableFuture<List<MarketHistoryPersistenceResult>> first = CompletableFuture.supplyAsync(() ->
+                coordinator.persistClosedMinuteCandles(List.of("BTCUSDT"), OPEN_TIME, CLOSE_TIME));
+        assertThat(persistEntered.await(1, TimeUnit.SECONDS)).isTrue();
+
+        List<MarketHistoryPersistenceResult> secondResults = coordinator.persistClosedMinuteCandles(
+                List.of("BTCUSDT"),
+                OPEN_TIME,
+                CLOSE_TIME
+        );
+        releasePersist.countDown();
+        List<MarketHistoryPersistenceResult> firstResults = first.join();
 
         assertThat(firstResults).singleElement()
                 .extracting(MarketHistoryPersistenceResult::status)

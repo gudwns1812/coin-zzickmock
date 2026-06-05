@@ -1,14 +1,13 @@
 package coin.coinzzickmock.feature.market.quote.application.service;
 
-import coin.coinzzickmock.feature.market.quote.application.implement.MarketTradePriceMovementPublisher;
-import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.candle.application.service.RealtimeMarketCandleUpdateService;
 import coin.coinzzickmock.feature.market.candle.application.dto.RealtimeMarketCandleUpdate;
 import coin.coinzzickmock.feature.market.candle.application.service.RealtimeMarketCandleUpdateService;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
+import coin.coinzzickmock.feature.market.quote.application.implement.MarketTradePriceMovementPublisher;
+import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeAcceptance;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.providers.connector.ProviderMarketCandleEvent;
 import coin.coinzzickmock.providers.connector.ProviderMarketCandleInterval;
 import coin.coinzzickmock.providers.connector.ProviderMarketRealtimeEvent;

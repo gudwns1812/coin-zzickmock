@@ -32,7 +32,7 @@ public class MarketHistoryRepairProcessor {
 
     private boolean processQueuedEvent(long eventId) {
         MarketHistoryRepairEvent event = marketHistoryRepairEventRepository.findById(eventId).orElse(null);
-        if (event == null || event.terminal()) {
+        if (event == null || event.isTerminal()) {
             return true;
         }
         if (!marketHistoryRepairEventRepository.markProcessing(event.id())) {
@@ -45,11 +45,11 @@ public class MarketHistoryRepairProcessor {
 
     private void process(MarketHistoryRepairEvent event) {
         try {
-            if (event.oneMinute()) {
+            if (event.isOneMinute()) {
                 repairMinute(event);
                 return;
             }
-            if (event.oneHour()) {
+            if (event.isOneHour()) {
                 repairHour(event);
                 return;
             }

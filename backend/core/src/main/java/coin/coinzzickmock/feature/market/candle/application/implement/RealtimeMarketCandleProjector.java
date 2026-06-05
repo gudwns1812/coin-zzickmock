@@ -4,7 +4,6 @@ import coin.coinzzickmock.feature.market.candle.application.dto.MarketCandleResu
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.domain.MarketTime;
 import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

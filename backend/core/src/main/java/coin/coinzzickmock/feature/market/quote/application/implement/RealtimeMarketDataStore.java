@@ -1,28 +1,27 @@
 package coin.coinzzickmock.feature.market.quote.application.implement;
 
+import coin.coinzzickmock.feature.market.candle.application.dto.RealtimeMarketCandleUpdate;
 import coin.coinzzickmock.feature.market.candle.application.implement.RealtimeMarketCandleState;
+import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import coin.coinzzickmock.feature.market.quote.application.dto.MarketPriceMovementDirection;
 import coin.coinzzickmock.feature.market.quote.application.dto.MarketRealtimeHealth;
 import coin.coinzzickmock.feature.market.quote.application.dto.MarketRealtimeSourceSnapshot;
 import coin.coinzzickmock.feature.market.quote.application.dto.MarketRealtimeSourceType;
 import coin.coinzzickmock.feature.market.quote.application.dto.MarketTradePriceMovedEvent;
-import coin.coinzzickmock.feature.market.candle.application.dto.RealtimeMarketCandleUpdate;
-import coin.coinzzickmock.feature.market.candle.application.implement.RealtimeMarketCandleState;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTickerSnapshot;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTickerUpdate;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeAcceptance;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeSnapshot;
 import coin.coinzzickmock.feature.market.quote.application.dto.RealtimeMarketTradeTick;
-import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -310,13 +309,13 @@ public class RealtimeMarketDataStore {
     private static final class BoundedTradeIdSet {
         private final int limit;
         private final Set<String> ids = ConcurrentHashMap.newKeySet();
-        private final Queue<String> insertionOrder = new ConcurrentLinkedQueue<>();
+        private final Deque<String> insertionOrder = new ConcurrentLinkedDeque<>();
 
         private BoundedTradeIdSet(int limit) {
             this.limit = limit;
         }
 
-        private boolean reserve(String tradeId) {
+        private synchronized boolean reserve(String tradeId) {
             boolean added = ids.add(tradeId);
             if (added) {
                 insertionOrder.add(tradeId);
@@ -324,18 +323,17 @@ public class RealtimeMarketDataStore {
             return added;
         }
 
-        private void commit() {
+        private synchronized void commit() {
             trim();
         }
 
-        private void remove(String tradeId) {
+        private synchronized void remove(String tradeId) {
             ids.remove(tradeId);
-            insertionOrder.remove(tradeId);
         }
 
         private void trim() {
             while (ids.size() > limit) {
-                String oldest = insertionOrder.poll();
+                String oldest = insertionOrder.pollFirst();
                 if (oldest == null) {
                     return;
                 }

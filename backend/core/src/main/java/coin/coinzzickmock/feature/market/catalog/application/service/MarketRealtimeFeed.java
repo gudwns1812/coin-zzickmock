@@ -1,16 +1,12 @@
 package coin.coinzzickmock.feature.market.catalog.application.service;
 
-import coin.coinzzickmock.feature.market.catalog.application.implement.MarketRealtimeRefreshCoordinator;
-import coin.coinzzickmock.feature.market.catalog.application.implement.MarketSnapshotStore;
-import coin.coinzzickmock.feature.market.catalog.application.implement.MarketSupportedMarketRefresher;
-import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
-import coin.coinzzickmock.feature.market.catalog.application.implement.RealtimeMarketSummaryProjector;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
 import coin.coinzzickmock.feature.market.catalog.application.dto.MarketSummaryResult;
-import coin.coinzzickmock.feature.market.domain.FundingSchedule;
+import coin.coinzzickmock.feature.market.catalog.application.implement.MarketRealtimeRefreshCoordinator;
+import coin.coinzzickmock.feature.market.catalog.application.implement.MarketSnapshotStore;
+import coin.coinzzickmock.feature.market.catalog.application.implement.RealtimeMarketSummaryProjector;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,7 +16,6 @@ public class MarketRealtimeFeed {
     private final MarketSnapshotStore marketSnapshotStore;
     private final RealtimeMarketSummaryProjector realtimeMarketSummaryProjector;
 
-    @Autowired
     public MarketRealtimeFeed(
             MarketRealtimeRefreshCoordinator marketRealtimeRefreshCoordinator,
             MarketSnapshotStore marketSnapshotStore,
@@ -29,18 +24,6 @@ public class MarketRealtimeFeed {
         this.marketRealtimeRefreshCoordinator = marketRealtimeRefreshCoordinator;
         this.marketSnapshotStore = marketSnapshotStore;
         this.realtimeMarketSummaryProjector = realtimeMarketSummaryProjector;
-    }
-
-    public MarketRealtimeFeed(
-            MarketSupportedMarketRefresher marketSupportedMarketRefresher,
-            MarketSnapshotStore marketSnapshotStore
-    ) {
-        this(
-                new MarketRealtimeRefreshCoordinator(marketSupportedMarketRefresher),
-                marketSnapshotStore,
-                new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(),
-                        symbol -> FundingSchedule.defaultUsdtPerpetual())
-        );
     }
 
     public void refreshSupportedMarkets() {

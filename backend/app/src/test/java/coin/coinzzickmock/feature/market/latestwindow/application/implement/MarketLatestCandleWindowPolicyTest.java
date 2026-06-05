@@ -8,8 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import coin.coinzzickmock.feature.market.latestwindow.application.dto.MarketLatestCandleWindowKey;
 import coin.coinzzickmock.feature.market.latestwindow.application.dto.RestVisibleCandleBoundary;
 import coin.coinzzickmock.feature.market.domain.MarketCandleInterval;
-import coin.coinzzickmock.feature.market.latestwindow.application.dto.MarketLatestCandleWindowKey;
-import coin.coinzzickmock.feature.market.latestwindow.application.dto.RestVisibleCandleBoundary;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,7 @@
 package coin.coinzzickmock.feature.market.catalog.application.service;
 
 import coin.coinzzickmock.feature.market.catalog.application.service.MarketRealtimeFeed;
+import coin.coinzzickmock.feature.market.catalog.application.implement.MarketRealtimeRefreshCoordinator;
 import coin.coinzzickmock.feature.market.catalog.application.implement.RealtimeMarketSummaryProjector;
 import coin.coinzzickmock.feature.market.quote.application.implement.RealtimeMarketDataStore;
 import coin.coinzzickmock.feature.market.history.application.service.MarketHistoryPersistenceCoordinator;
@@ -311,15 +312,19 @@ class MarketRealtimeFeedTest {
             ApplicationEventPublisher applicationEventPublisher
     ) {
         MarketSnapshotStore marketSnapshotStore = newSnapshotStore();
+        RealtimeMarketSummaryProjector realtimeMarketSummaryProjector =
+                new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup());
+        MarketSupportedMarketRefresher marketSupportedMarketRefresher = new MarketSupportedMarketRefresher(
+                marketDataGateway,
+                marketSnapshotStore,
+                applicationEventPublisher,
+                defaultFundingScheduleLookup(),
+                realtimeMarketSummaryProjector
+        );
         return new MarketRealtimeFeed(
-                new MarketSupportedMarketRefresher(
-                        marketDataGateway,
-                        marketSnapshotStore,
-                        applicationEventPublisher,
-                        defaultFundingScheduleLookup(),
-                        new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup())
-                ),
-                marketSnapshotStore
+                new MarketRealtimeRefreshCoordinator(marketSupportedMarketRefresher),
+                marketSnapshotStore,
+                realtimeMarketSummaryProjector
         );
     }
 
@@ -351,15 +356,19 @@ class MarketRealtimeFeedTest {
         ClosedMinuteCandlePersistenceScheduler delayedPersistenceScheduler = (symbols, openTime, closeTime) ->
                 delayedPersistenceCoordinator.claimClosedMinutePersistence(symbols, openTime, closeTime)
                         .ifPresent(DelayedClosedMinuteCandlePersistenceCoordinator.ClosedMinutePersistenceTask::persistAndRelease);
+        RealtimeMarketSummaryProjector realtimeMarketSummaryProjector =
+                new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup());
+        MarketSupportedMarketRefresher marketSupportedMarketRefresher = new MarketSupportedMarketRefresher(
+                marketDataGateway,
+                marketSnapshotStore,
+                applicationEventPublisher,
+                defaultFundingScheduleLookup(),
+                realtimeMarketSummaryProjector
+        );
         MarketRealtimeFeed feed = new MarketRealtimeFeed(
-                new MarketSupportedMarketRefresher(
-                        marketDataGateway,
-                        marketSnapshotStore,
-                        applicationEventPublisher,
-                        defaultFundingScheduleLookup(),
-                        new RealtimeMarketSummaryProjector(new RealtimeMarketDataStore(), defaultFundingScheduleLookup())
-                ),
-                marketSnapshotStore
+                new MarketRealtimeRefreshCoordinator(marketSupportedMarketRefresher),
+                marketSnapshotStore,
+                realtimeMarketSummaryProjector
         );
         MarketMinuteCandleHistoryListener listener = new MarketMinuteCandleHistoryListener(
                 marketSnapshotStore,

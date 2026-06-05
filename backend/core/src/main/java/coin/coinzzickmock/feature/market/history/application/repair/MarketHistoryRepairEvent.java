@@ -12,16 +12,16 @@ public record MarketHistoryRepairEvent(
         MarketHistoryRepairStatus status,
         int attemptCount
 ) {
-    public boolean terminal() {
+    public boolean isTerminal() {
         return status == MarketHistoryRepairStatus.SUCCEEDED
                 || status == MarketHistoryRepairStatus.FAILED;
     }
 
-    public boolean oneMinute() {
+    public boolean isOneMinute() {
         return interval == MarketCandleInterval.ONE_MINUTE;
     }
 
-    public boolean oneHour() {
+    public boolean isOneHour() {
         return interval == MarketCandleInterval.ONE_HOUR;
     }
 }

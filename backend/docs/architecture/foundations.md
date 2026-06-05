@@ -31,6 +31,7 @@
 - 모든 기능은 같은 레이어 집합을 사용한다.
 - 기능이 충분히 커지면 `feature/<name>/<capability>/<layer>`처럼 capability 단위로 다시 수직 절단할 수 있다. 예를 들어 시장 feature는 `feature/market/catalog/application`, `feature/market/candle/application`, `feature/market/quote/application`, `feature/market/history/application`, `feature/market/latestwindow/application`처럼 둔다.
 - capability-first로 분해한 feature는 root `feature/<name>/application`을 남겨 capability와 layer를 같은 depth에 섞지 않는다.
+- capability들이 같은 domain model/value/policy를 공유하면 root `feature/<name>/domain`은 유지할 수 있다. 이 예외는 capability 공통 domain에만 쓰며, capability별 domain 규칙이 독립적으로 커지면 `feature/<name>/<capability>/domain`으로 분리한다.
 - 작은 책임은 capability package를 억지로 만들지 않는다. 클래스 이름으로 충분히 구분되는 몇 개의 query/store/token 협력 객체는 소유 `application` 하위의 기존 `dto`, `service`, `repository`, `implement` 등에 합친다.
 - 클래스와 메서드는 하나의 변경 이유와 하나의 추상화 수준을 유지한다.
 - 도메인은 프레임워크와 외부 SDK를 모른다.

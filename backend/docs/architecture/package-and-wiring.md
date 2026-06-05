@@ -94,6 +94,7 @@ backend/push-app/src/main/java/coin/coinzzickmock/
 - 기본 형태는 `feature/<feature>/<layer>`다. feature 내부 책임이 충분히 커지고 독립적으로 움직이면 `feature/<feature>/<capability>/<layer>` 형태를 허용한다.
 - capability package는 도메인에 가까운 큰 하위 영역을 위한 것이다. 예: `market/catalog/application`, `market/candle/application`, `market/quote/application`, `market/history/application`, `market/latestwindow/application`.
 - feature가 capability-first로 분해되면 feature root의 `application` layer를 남겨 두지 않는다. 같은 depth에 `application` layer와 `history`, `quote` 같은 capability가 섞이면 개념 축이 어긋난다.
+- capability-first feature라도 capability들이 같은 model/value/policy를 공유하면 root `domain`은 둘 수 있다. 예: `market/domain`은 catalog/candle/quote/history/latestwindow가 함께 쓰는 시장 도메인 model과 시간/interval 정책을 소유한다. capability별 domain 규칙이 독립적으로 커지면 `market/<capability>/domain`으로 내린다.
 - 몇 개 클래스뿐인 query/store/token/view 같은 작은 구분은 capability package로 승격하지 않는다. 기존 `application/dto`, `application/service`, `application/repository`, `application/implement` 중 가장 가까운 책임에 합치고 클래스 이름으로 역할을 드러낸다.
 - `application/implement`는 최종 feature layer가 아니라 `application` 내부의 단일 subpackage다. service 흐름을 흐리는 concrete execution-detail collaborator를 둘 때만 사용한다.
 - `application/implement` 아래에는 추가 subpackage를 만들지 않는다. class 이름은 `OrderFillApplier`, `PositionCloseProjector`, `AccountBalanceReconciler`처럼 owning domain/use-case prefix로 시작하고, prefix 뒤에는 package context를 반복하지 않는 짧은 role을 쓴다.

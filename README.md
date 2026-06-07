@@ -43,7 +43,6 @@ coin-zzickmock/
 ├── docker-compose.yml              # 로컬 backend + DB/cache + 관측성 스택
 ├── docker-compose.backend.prod.yml # 운영 backend host compose 계약
 ├── docker-compose.infra.prod.yml   # 운영 infra/cache/observability host compose 계약
-├── docker-compose.prod.yml         # 기존 colocated 운영 rollback anchor
 ├── FRONTEND.md                # 프론트 작업 기준 문서
 ├── BACKEND.md                 # 백엔드 작업 기준 문서
 ├── RELEASE.md                 # 배포/릴리즈 기준 문서
@@ -175,7 +174,6 @@ CI는 브랜치명 정책, 프론트 typecheck/build, 백엔드 `./gradlew check
   운영: [docs/release-docs/05-frontend-vercel-operations.md](docs/release-docs/05-frontend-vercel-operations.md)
 - Backend CD: [.github/workflows/cd.yml](.github/workflows/cd.yml)
 - 운영 compose 계약: [docker-compose.backend.prod.yml](docker-compose.backend.prod.yml), [docker-compose.infra.prod.yml](docker-compose.infra.prod.yml)
-- 기존 colocated rollback anchor: [docker-compose.prod.yml](docker-compose.prod.yml)
 - 운영 환경/산출물 기준: [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
 - Backend production CD 기준: [docs/release-docs/04-production-cd.md](docs/release-docs/04-production-cd.md)
 

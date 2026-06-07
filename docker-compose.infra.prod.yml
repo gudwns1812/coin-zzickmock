@@ -93,6 +93,7 @@ services:
       LOKI_PUSH_URL: ${LOKI_PUSH_URL:-http://loki:3100/loki/api/v1/push}
     volumes:
       - ./infra/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - promtail-data:/var/lib/promtail
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - infra
@@ -134,3 +135,4 @@ volumes:
   prometheus-data:
   grafana-data:
   loki-data:
+  promtail-data:

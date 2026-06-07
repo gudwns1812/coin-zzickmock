@@ -39,7 +39,6 @@
   - backend host와 infra host에 각각 SSH 접속하며, 각 host에서 staged compose/env preflight를 먼저 수행한다
   - `backend_image`는 backend host `.env.prod`의 `BACKEND_IMAGE`와 `PUSH_IMAGE`를 새 태그로 교체한 뒤 backend와 push-app을 pull/restart한다
   - `infra/prometheus/**`, `infra/grafana/**`, `infra/loki/**`, `docker-compose.infra.prod.yml` 변경은 infra host만 반영하고 backend host를 건드리지 않는다
-  - `docker-compose.prod.yml`은 rollback anchor이며 정상 CD 범위에 포함하지 않는다
 - 상세 기준: [04-production-cd.md](04-production-cd.md)
 
 ### Preview
@@ -112,8 +111,6 @@
   - `docker-compose.infra.prod.yml`
   - `backend/app/src/main/resources/application-prod.yml`
   - `infra/prod.env.example`
-- rollback anchor:
-  - `docker-compose.prod.yml`
 - 의미: 운영 프로필과 host별 Docker Compose로 backend host의 backend/push-app/Nginx/telemetry agents와 infra host의 Redis/Prometheus/Grafana/Loki/exporter를 실행 가능한 상태. Frontend는 이 Docker artifact에 포함하지 않고 Vercel에서 배포한다. Host별 책임과 private port 계약은 [backend-infra-split-topology.md](backend-infra-split-topology.md)를 따른다.
 
 ### Documentation And Config Artifact

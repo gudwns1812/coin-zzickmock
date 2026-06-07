@@ -104,7 +104,6 @@ The CD workflow deploys split host scopes through separate compose files and sep
 
 - `docker-compose.backend.prod.yml` is the backend host contract. It contains backend, push-app, Nginx, backend-host promtail, nginx exporter, and backend node exporter. It does not contain Redis, Prometheus, Grafana, or Loki.
 - `docker-compose.infra.prod.yml` is the infra host contract. It contains Redis, Prometheus, Grafana, Loki, infra-host promtail, Redis exporter, and infra node exporter. It does not contain backend or Nginx.
-- `docker-compose.prod.yml` is a colocated rollback anchor and is not deployed by normal CD.
 
 Deployment effects:
 

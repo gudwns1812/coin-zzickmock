@@ -1073,6 +1073,21 @@ jobs:
           cleanup() { rm -rf "${REMOTE_STAGE_DIR}" || true; }
           trap cleanup EXIT
 
+          cleanup_host_storage_before_docker() {
+            df -h "${INFRA_DEPLOY_PATH}" /tmp || true
+            if command -v journalctl >/dev/null 2>&1; then
+              sudo journalctl --vacuum-size=200M || true
+            fi
+            sudo find /var/log -type f \( -name '*.gz' -o -name '*.1' -o -name '*.old' \) -delete || true
+            sudo find /var/log -type f -name '*.log' -size +50M -exec truncate -s 0 -- {} + || true
+            sudo find /var/lib/docker/containers -type f -name '*-json.log' -size +50M -exec truncate -s 0 -- {} + || true
+            if command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get clean || true
+            fi
+            sudo rm -rf /var/lib/apt/lists/* /tmp/tmp.* || true
+            df -h "${INFRA_DEPLOY_PATH}" /tmp || true
+          }
+
           print_infra_disk_state() {
             echo "::group::Infra host disk state"
             df -h "${INFRA_DEPLOY_PATH}" /tmp || true
@@ -1149,6 +1164,7 @@ jobs:
             sudo rm -rf "${previous}"
           }
 
+          cleanup_host_storage_before_docker
           detect_compose
           live_env="${INFRA_DEPLOY_PATH}/.env.prod"
           if [[ ! -f "${live_env}" ]]; then

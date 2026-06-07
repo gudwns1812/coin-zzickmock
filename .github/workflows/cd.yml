@@ -1205,9 +1205,32 @@ jobs:
             fi
             redis_state="$("${docker_cmd[@]}" inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${redis_container}" 2>/dev/null || true)"
             if [[ "${redis_state}" == "unhealthy" || "${redis_state}" == "exited" || "${redis_state}" == "dead" ]]; then
+              repair_redis_aof_if_corrupt "${redis_container}"
               echo "Redis container is ${redis_state}; recreating redis before dependent infra services."
               compose_live up -d --no-deps --force-recreate redis
             fi
+          }
+
+          repair_redis_aof_if_corrupt() {
+            local redis_container="$1"
+            local redis_logs redis_data_source backup_name
+            redis_logs="$(compose_live logs --tail=80 redis || true)"
+            if [[ "${redis_logs}" != *"Bad file format reading the append only file"* ]]; then
+              return
+            fi
+            redis_data_source="$("${docker_cmd[@]}" inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "${redis_container}" 2>/dev/null || true)"
+            if [[ -z "${redis_data_source}" ]]; then
+              echo "Redis AOF appears corrupt, but redis /data mount could not be resolved." >&2
+              return
+            fi
+            backup_name="appendonlydir.backup.$(date -u +%Y%m%dT%H%M%SZ)"
+            echo "Redis AOF appears corrupt; backing up appendonlydir to ${backup_name} and running redis-check-aof."
+            compose_live stop redis || true
+            sudo cp -a "${redis_data_source}/appendonlydir" "${redis_data_source}/${backup_name}"
+            "${docker_cmd[@]}" run --rm \
+              -v "${redis_data_source}:/data" \
+              redis:7.4-alpine \
+              sh -lc 'cd /data/appendonlydir && printf "y\n" | redis-check-aof --fix appendonly.aof.manifest'
           }
 
           cleanup_host_storage_before_docker

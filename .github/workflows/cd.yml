@@ -1048,12 +1048,27 @@ jobs:
           file_mounted_infra_services=(loki promtail prometheus grafana)
           infra_dirs=(prometheus grafana loki promtail)
 
+          ensure_docker_service_running() {
+            if docker version >/dev/null 2>&1 || sudo -n docker version >/dev/null 2>&1; then
+              return
+            fi
+            if command -v systemctl >/dev/null 2>&1; then
+              echo "Docker is not responding on the infra host; attempting to start docker service."
+              sudo systemctl start docker || true
+            fi
+          }
+
           detect_compose() {
+            ensure_docker_service_running
             if docker version >/dev/null 2>&1; then
               docker_cmd=(docker)
             elif sudo -n docker version >/dev/null 2>&1; then
               docker_cmd=(sudo -n docker)
             else
+              command -v docker >/dev/null 2>&1 || echo "docker CLI is missing on the infra host." >&2
+              if command -v systemctl >/dev/null 2>&1; then
+                sudo systemctl is-active docker >&2 || true
+              fi
               echo "Docker is not available to the infra SSH user. Grant docker group access or passwordless sudo for docker." >&2
               exit 1
             fi

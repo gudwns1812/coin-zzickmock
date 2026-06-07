@@ -1179,6 +1179,37 @@ jobs:
             sudo rm -rf "${previous}"
           }
 
+          dump_infra_diagnostics() {
+            echo "::group::Infra compose status"
+            compose_live ps redis loki promtail redis-exporter node-exporter prometheus grafana || true
+            echo "::endgroup::"
+            for service in redis redis-exporter loki prometheus grafana promtail; do
+              echo "::group::${service} logs"
+              compose_live logs --tail=120 "${service}" || true
+              echo "::endgroup::"
+            done
+            local redis_container
+            redis_container="$(compose_live ps -q redis || true)"
+            if [[ -n "${redis_container}" ]]; then
+              echo "::group::redis health"
+              "${docker_cmd[@]}" inspect -f '{{json .State.Health}}' "${redis_container}" || true
+              echo "::endgroup::"
+            fi
+          }
+
+          recover_unhealthy_redis() {
+            local redis_container redis_state
+            redis_container="$(compose_live ps -q redis || true)"
+            if [[ -z "${redis_container}" ]]; then
+              return
+            fi
+            redis_state="$("${docker_cmd[@]}" inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${redis_container}" 2>/dev/null || true)"
+            if [[ "${redis_state}" == "unhealthy" || "${redis_state}" == "exited" || "${redis_state}" == "dead" ]]; then
+              echo "Redis container is ${redis_state}; recreating redis before dependent infra services."
+              compose_live up -d --no-deps --force-recreate redis
+            fi
+          }
+
           cleanup_host_storage_before_docker
           detect_compose
           live_env="${INFRA_DEPLOY_PATH}/.env.prod"
@@ -1201,8 +1232,15 @@ jobs:
             env -u BACKEND_IMAGE "${compose[@]}" --env-file .env.prod -f "${infra_compose_file}" "$@"
           }
           compose_live pull "${infra_services[@]}"
-          compose_live up -d --no-deps "${infra_services[@]}"
-          compose_live up -d --no-deps --force-recreate "${file_mounted_infra_services[@]}"
+          recover_unhealthy_redis
+          if ! compose_live up -d --no-deps "${infra_services[@]}"; then
+            dump_infra_diagnostics
+            exit 1
+          fi
+          if ! compose_live up -d --no-deps --force-recreate "${file_mounted_infra_services[@]}"; then
+            dump_infra_diagnostics
+            exit 1
+          fi
           compose_live ps redis loki promtail redis-exporter node-exporter prometheus grafana
           REMOTE_INFRA_DEPLOY
 

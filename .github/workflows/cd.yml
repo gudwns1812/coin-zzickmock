@@ -1073,6 +1073,68 @@ jobs:
           cleanup() { rm -rf "${REMOTE_STAGE_DIR}" || true; }
           trap cleanup EXIT
 
+          print_infra_disk_state() {
+            echo "::group::Infra host disk state"
+            df -h "${INFRA_DEPLOY_PATH}" /tmp || true
+            "${docker_cmd[@]}" system df || true
+            echo "::endgroup::"
+          }
+
+          cleanup_stale_infra_stage_dirs() {
+            sudo find /tmp -maxdepth 1 -type d -name 'coin-zzickmock-infra-*' \
+              ! -path "${REMOTE_STAGE_DIR}" -exec rm -rf -- {} + || true
+          }
+
+          prune_unused_docker_storage() {
+            "${docker_cmd[@]}" image prune -f || true
+            "${docker_cmd[@]}" builder prune -f || true
+          }
+
+          require_free_space_kb() {
+            local path="$1"
+            local min_kb="$2"
+            local available_kb
+            available_kb="$(df -Pk "${path}" | awk 'NR == 2 { print $4 }')"
+            if [[ -z "${available_kb}" || "${available_kb}" -lt "${min_kb}" ]]; then
+              echo "Infra host has only ${available_kb:-unknown} KiB free at ${path}; refusing to modify live infra files." >&2
+              exit 1
+            fi
+          }
+
+          prepare_infra_disk_space() {
+            print_infra_disk_state
+            cleanup_stale_infra_stage_dirs
+            prune_unused_docker_storage
+            print_infra_disk_state
+            require_free_space_kb "${INFRA_DEPLOY_PATH}" 65536
+          }
+
+          promote_file_atomic() {
+            local source="$1"
+            local target="$2"
+            local target_dir tmp_file
+            target_dir="$(dirname "${target}")"
+            tmp_file="${target}.tmp.$$"
+            sudo mkdir -p "${target_dir}"
+            sudo cp "${source}" "${tmp_file}"
+            sudo mv "${tmp_file}" "${target}"
+          }
+
+          promote_infra_dir_atomic() {
+            local dir="$1"
+            local target="${INFRA_DEPLOY_PATH}/infra/${dir}"
+            local next="${INFRA_DEPLOY_PATH}/infra/.${dir}.next.$$"
+            local previous="${INFRA_DEPLOY_PATH}/infra/.${dir}.previous.$$"
+            sudo mkdir -p "${INFRA_DEPLOY_PATH}/infra"
+            sudo rm -rf "${next}" "${previous}"
+            sudo cp -R "${REMOTE_STAGE_DIR}/infra/${dir}" "${next}"
+            if [[ -e "${target}" ]]; then
+              sudo mv "${target}" "${previous}"
+            fi
+            sudo mv "${next}" "${target}"
+            sudo rm -rf "${previous}"
+          }
+
           detect_compose
           live_env="${INFRA_DEPLOY_PATH}/.env.prod"
           if [[ ! -f "${live_env}" ]]; then
@@ -1083,12 +1145,10 @@ jobs:
           cp "${live_env}" "${candidate_env}"
           env -u BACKEND_IMAGE "${compose[@]}" --env-file "${candidate_env}" -f "${REMOTE_STAGE_DIR}/${infra_compose_file}" config --quiet
 
-          sudo cp "${REMOTE_STAGE_DIR}/${infra_compose_file}" "${INFRA_DEPLOY_PATH}/${infra_compose_file}"
-          sudo mkdir -p "${INFRA_DEPLOY_PATH}/infra"
+          prepare_infra_disk_space
+          promote_file_atomic "${REMOTE_STAGE_DIR}/${infra_compose_file}" "${INFRA_DEPLOY_PATH}/${infra_compose_file}"
           for dir in "${infra_dirs[@]}"; do
-            sudo mkdir -p "${INFRA_DEPLOY_PATH}/infra/${dir}"
-            sudo find "${INFRA_DEPLOY_PATH}/infra/${dir}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-            sudo cp -R "${REMOTE_STAGE_DIR}/infra/${dir}/." "${INFRA_DEPLOY_PATH}/infra/${dir}/"
+            promote_infra_dir_atomic "${dir}"
           done
 
           cd "${INFRA_DEPLOY_PATH}"

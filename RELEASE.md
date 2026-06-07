@@ -59,7 +59,7 @@
 - 프론트 변경이 있으면 `npm run build`를 기준 검증으로 삼는다.
 - 백엔드 변경이 있으면 `./gradlew check`를 기준 검증으로 삼고, 구조 변경이 있으면 `./gradlew architectureLint`도 확인한다.
 - 백엔드 module 구조 변경은 executable이 `app`과 `push-app`으로 제한되고, `push-app`은 `core`/`stream`만 의존하며, `stream`/`storage`/`external` leaf library가 서로 source/project dependency를 갖지 않는지 확인한다.
-- 운영 배포는 `application-prod.yml`, repo의 `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/`, 각 서버의 `.env.prod` 계약이 서로 맞는지 확인한 뒤 실행한다. `docker-compose.prod.yml`은 colocated rollback anchor로만 취급한다.
+- 운영 배포는 `application-prod.yml`, repo의 `docker-compose.backend.prod.yml`, `docker-compose.infra.prod.yml`, `infra/`, 각 서버의 `.env.prod` 계약이 서로 맞는지 확인한 뒤 실행한다.
 - 각 릴리즈는 하나의 고정된 commit SHA를 기준으로 식별한다.
 - 릴리즈마다 변경 범위, 실행자, 대상 환경, 스모크 테스트 결과, 롤백 기준점을 기록한다.
 - 환경 변수나 비밀값 계약이 바뀌면 [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)도 함께 갱신한다.

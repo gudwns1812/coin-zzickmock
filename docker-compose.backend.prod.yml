@@ -134,6 +134,7 @@ services:
       LOKI_PUSH_URL: ${LOKI_PUSH_URL:-http://${REDIS_HOST}:3100/loki/api/v1/push}
     volumes:
       - ./infra/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - promtail-data:/var/lib/promtail
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - backend
@@ -167,3 +168,6 @@ services:
 networks:
   backend:
     driver: bridge
+
+volumes:
+  promtail-data:

@@ -1090,6 +1090,19 @@ jobs:
             "${docker_cmd[@]}" builder prune -f || true
           }
 
+          cleanup_non_data_host_storage() {
+            if command -v journalctl >/dev/null 2>&1; then
+              sudo journalctl --vacuum-size=200M || true
+            fi
+            sudo find /var/log -type f \( -name '*.gz' -o -name '*.1' -o -name '*.old' \) -delete || true
+            sudo find /var/log -type f -name '*.log' -size +50M -exec truncate -s 0 -- {} + || true
+            sudo find /var/lib/docker/containers -type f -name '*-json.log' -size +50M -exec truncate -s 0 -- {} + || true
+            if command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get clean || true
+            fi
+            sudo rm -rf /var/lib/apt/lists/* /tmp/tmp.* || true
+          }
+
           require_free_space_kb() {
             local path="$1"
             local min_kb="$2"
@@ -1105,6 +1118,7 @@ jobs:
             print_infra_disk_state
             cleanup_stale_infra_stage_dirs
             prune_unused_docker_storage
+            cleanup_non_data_host_storage
             print_infra_disk_state
             require_free_space_kb "${INFRA_DEPLOY_PATH}" 65536
           }

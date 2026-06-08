@@ -7,12 +7,18 @@
 
 - 서비스 URL: [https://coin-zzickmock-frontend.vercel.app](https://coin-zzickmock-frontend.vercel.app)
 
+## 화면
+
+![마켓 대시보드](docs/assets/readme/markets-dashboard.jpg)
+
+![BTCUSDT 거래 화면](docs/assets/readme/trading-screen.jpg)
+
 ## 핵심 구현
 
 - 선물 거래 도메인을 주문, 포지션, 계정, 리워드 기능으로 나누고, 각 기능의 상태 전이와 계산 규칙을 분리했습니다.
 - 실시간 가격, 캔들, SSE, Redis, DB 저장소가 섞이는 흐름에서 거래 판단용 데이터와 조회/표시용 데이터를 구분합니다.
 - Spring Boot multi-project 구조를 `core`, `app`, `stream`, `storage`, `external`로 나누고, 도메인 규칙과 기술 어댑터가 섞이지 않도록 아키텍처 린트로 일부를 검증합니다.
-- 로컬 Compose, GitHub Actions, Docker Hub, EC2, Prometheus/Grafana/Loki를 연결해 개발, 배포, 관측 흐름을 함께 다룹니다.
+- 로컬 Compose와 CI를 통해 실행과 검증 흐름을 함께 다룹니다.
 
 ## 프로젝트 기능
 
@@ -31,8 +37,7 @@
 - Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 4, React Query, Zustand, MSW
 - Backend: Spring Boot 3.5, Java 17, Spring Data JPA, QueryDSL, Flyway, Spring Cache, Redis, MySQL, H2 tests, Actuator,
   Micrometer
-- Infra/Operations: Docker Compose, Nginx, Prometheus, Grafana, Loki, Promtail, GitHub Actions CI/CD, Docker Hub, EC2
-  SSH deploy
+- Infra: Docker Compose, Nginx, Redis, MySQL, GitHub Actions
 - Workspace: npm workspace for `frontend/`, Gradle wrapper for `backend/`
 
 ## 프로젝트 구조
@@ -46,12 +51,9 @@ coin-zzickmock/
 ├── docs/
 │   ├── product-specs/         # 제품 동작, 사용자 흐름, 계산 규칙
 │   ├── design-docs/           # 백엔드/UI 설계 기준
-│   ├── release-docs/          # 릴리즈, 롤아웃, 롤백, 관측성 운영 문서
 │   └── generated/             # 현재 DB schema 같은 생성 산출물
 ├── infra/                     # Nginx, Prometheus, Grafana, Loki, Promtail 설정
 ├── docker-compose.yml              # 로컬 backend + DB/cache + 관측성 스택
-├── docker-compose.backend.prod.yml # 운영 backend host compose 계약
-├── docker-compose.infra.prod.yml   # 운영 infra/cache/observability host compose 계약
 └── README.md
 ```
 
@@ -67,7 +69,6 @@ npm run dev
 ```
 
 - 기본 개발 서버: `http://localhost:3000`
-- 프론트 운영 배포는 Vercel이 담당하며 Docker Compose/CD 스택에는 포함하지 않습니다.
 - 백엔드 API를 목킹해야 하면 `NEXT_PUBLIC_API_MOCKING=enabled`를 사용합니다.
 
 주요 명령어:
@@ -94,7 +95,6 @@ docker compose up --build -d
 ```
 
 로컬 Compose는 backend Dockerfile의 `source-runtime` target을 사용하므로 Docker build 안에서 JAR를 만듭니다.
-CI/CD의 운영 이미지 발행 경로는 `jar-runtime` target을 사용해 GitHub Actions에서 만든 JAR만 이미지에 복사합니다.
 
 정리:
 
@@ -146,19 +146,4 @@ cd backend
 ./gradlew check --console=plain
 ```
 
-CI는 프론트 typecheck/build, 백엔드 `./gradlew check :app:bootJar`, backend Docker image 포장을 검증합니다.
-
-## 배포와 운영
-
-- CI: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-- Frontend production: [https://coin-zzickmock-frontend.vercel.app](https://coin-zzickmock-frontend.vercel.app)
-- Frontend Vercel
-  운영: [docs/release-docs/05-frontend-vercel-operations.md](docs/release-docs/05-frontend-vercel-operations.md)
-- Backend CD: [.github/workflows/cd.yml](.github/workflows/cd.yml)
-- 운영 compose 계약: [docker-compose.backend.prod.yml](docker-compose.backend.prod.yml), [docker-compose.infra.prod.yml](docker-compose.infra.prod.yml)
-- 운영 환경/산출물 기준: [docs/release-docs/01-environments-and-artifacts.md](docs/release-docs/01-environments-and-artifacts.md)
-- Backend production CD 기준: [docs/release-docs/04-production-cd.md](docs/release-docs/04-production-cd.md)
-
-현재 CD는 `main`/`master`의 backend, split production compose, infra 변경 또는 수동 실행을 배포 효과로 분류합니다. Backend 코드 변경은 backend 릴리즈 후보를
-검증하고 Docker Hub에 ARM64 backend 이미지를 발행한 뒤 backend host의 EC2 `.env.prod`의 `BACKEND_IMAGE`만 새 태그로 바꿔 backend를 pull/restart합니다.
-Redis/Grafana/Prometheus/Loki 변경은 infra host scope로만 반영하며 backend image를 새로 만들거나 backend app을 재시작하지 않습니다.
+CI는 프론트 typecheck/build와 백엔드 `./gradlew check :app:bootJar`를 검증합니다.

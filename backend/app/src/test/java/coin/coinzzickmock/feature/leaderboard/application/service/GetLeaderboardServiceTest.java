@@ -173,6 +173,32 @@ class GetLeaderboardServiceTest {
         }
 
         @Override
+        public List<LeaderboardEntry> findTop(int limit) {
+            return entries.stream()
+                    .sorted(java.util.Comparator.comparingDouble(LeaderboardEntry::walletBalance).reversed()
+                            .thenComparing(LeaderboardEntry::nickname)
+                            .thenComparing(LeaderboardEntry::memberId))
+                    .limit(limit)
+                    .toList();
+        }
+
+        @Override
+        public Optional<Long> findRankByMemberId(Long memberId) {
+            List<LeaderboardEntry> sorted = entries.stream()
+                    .sorted(java.util.Comparator.comparingDouble(LeaderboardEntry::walletBalance).reversed()
+                            .thenComparing(LeaderboardEntry::nickname)
+                            .thenComparing(LeaderboardEntry::memberId))
+                    .toList();
+
+            for (int i = 0; i < sorted.size(); i++) {
+                if (sorted.get(i).memberId().equals(memberId)) {
+                    return Optional.of((long) (i + 1));
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
             return entries.stream()
                     .filter(entry -> entry.memberId().equals(memberId))

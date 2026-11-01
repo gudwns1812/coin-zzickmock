@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.testsupport.TestConnectorProvider;
@@ -36,6 +37,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(
         classes = {CoinZzickmockApplication.class,
                 MarketHistoryPersistenceRepositoryTest.MarketHistoryRepositoryTestConfiguration.class},

@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.account.infrastructure.persistence;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -15,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
 class AccountPersistenceRepositoryTest {

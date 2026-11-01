@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.reward.web;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.feature.reward.application.repository.RewardPointRepository;
 import coin.coinzzickmock.feature.reward.domain.RewardPointWallet;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
@@ -23,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@IntegrationTest
 @SpringBootTest(properties = {
         "spring.task.scheduling.enabled=false",
         "spring.mail.host="

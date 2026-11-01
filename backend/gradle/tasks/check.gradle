@@ -1,0 +1,24 @@
+tasks.register('unitTest') {
+    group = 'verification'
+    description = 'Runs backend unit tests across all subprojects.'
+    dependsOn subprojects.collect { it.tasks.named('test') }
+}
+
+tasks.register('integrationTest') {
+    group = 'verification'
+    description = 'Runs backend integration tests across all subprojects.'
+    dependsOn subprojects.collect { it.tasks.named('integrationTest') }
+}
+
+// Root backend verification task wiring.
+tasks.register('check') {
+    group = 'verification'
+    description = 'Runs backend subproject checks and project architecture/runtime lint.'
+    dependsOn tasks.named('verifyExecutableRuntimes')
+    dependsOn tasks.named('architectureLint')
+    dependsOn tasks.named('verifyExecutableStorageResources')
+    dependsOn project(':push-app').tasks.named('bootJar')
+    dependsOn tasks.named('unitTest')
+    dependsOn tasks.named('integrationTest')
+    dependsOn subprojects.collect { it.tasks.named('check') }
+}

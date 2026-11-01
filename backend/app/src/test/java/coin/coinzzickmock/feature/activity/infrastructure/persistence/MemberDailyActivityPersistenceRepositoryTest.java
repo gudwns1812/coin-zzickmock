@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.activity.infrastructure.persistence;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.activity.domain.ActivitySource;
 import coin.coinzzickmock.feature.activity.domain.MemberDailyActivity;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@IntegrationTest
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
 @Transactional

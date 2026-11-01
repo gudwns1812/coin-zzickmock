@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.persistence;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@IntegrationTest
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
 class MarketHistorySchemaMigrationTest {

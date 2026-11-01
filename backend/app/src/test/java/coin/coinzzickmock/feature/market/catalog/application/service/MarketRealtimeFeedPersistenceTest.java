@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.catalog.application.service;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.feature.market.catalog.application.service.MarketRealtimeFeed;
 import coin.coinzzickmock.feature.market.history.application.service.MarketMinuteCandleHistoryListener;
 import coin.coinzzickmock.feature.market.catalog.application.implement.MarketSnapshotStore;
@@ -34,6 +35,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+@IntegrationTest
 @SpringBootTest(
         classes = {CoinZzickmockApplication.class, MarketRealtimeFeedPersistenceTest.MarketRealtimeFeedTestConfiguration.class},
         properties = {

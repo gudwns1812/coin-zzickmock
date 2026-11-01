@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.order.application.service;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
@@ -28,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
+@IntegrationTest
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
 class ModifyOrderServiceTransactionTest {

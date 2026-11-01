@@ -1,0 +1,62 @@
+// Verifies storage-owned runtime resources are packaged into the executable app artifact.
+tasks.register('verifyExecutableStorageResources') {
+    group = 'verification'
+    description = 'Verifies the executable app jar carries storage-owned Flyway migrations and runtime config.'
+
+    dependsOn project(':app').tasks.named('bootJar')
+
+    def storageMigrationTree = project(':storage').fileTree('src/main/resources/db/migration') {
+        include 'V*.sql'
+    }
+    def storageRuntimeConfig = project(':storage').file('src/main/resources/db.yml')
+    def bootJarFile = project(':app').tasks.named('bootJar').flatMap { it.archiveFile }
+
+    inputs.files(storageMigrationTree)
+    inputs.file(storageRuntimeConfig)
+    inputs.file(bootJarFile)
+
+    doLast {
+        def expectedMigrations = storageMigrationTree.files
+                .collect { it.name }
+                .sort()
+        if (expectedMigrations.isEmpty()) {
+            throw new GradleException('No storage Flyway migrations were found to validate.')
+        }
+
+        def appJar = bootJarFile.get().asFile
+        java.util.zip.ZipFile appZip = new java.util.zip.ZipFile(appJar)
+        try {
+            def storageJarEntry = appZip.entries().find { entry ->
+                entry.name ==~ /BOOT-INF\/lib\/storage-[^\/]+\.jar/
+            }
+            if (storageJarEntry == null) {
+                throw new GradleException("Expected ${appJar.name} to contain the storage module jar under BOOT-INF/lib.")
+            }
+
+            def tempStorageJar = File.createTempFile('storage-migrations-', '.jar', temporaryDir)
+            tempStorageJar.withOutputStream { output ->
+                appZip.getInputStream(storageJarEntry).withCloseable { input ->
+                    output << input
+                }
+            }
+
+            java.util.zip.ZipFile storageZip = new java.util.zip.ZipFile(tempStorageJar)
+            try {
+                if (storageZip.getEntry('db.yml') == null) {
+                    throw new GradleException("Storage jar in ${appJar.name} is missing db.yml.")
+                }
+
+                def missing = expectedMigrations.findAll { migrationName ->
+                    storageZip.getEntry("db/migration/${migrationName}") == null
+                }
+                if (!missing.isEmpty()) {
+                    throw new GradleException("Storage jar in ${appJar.name} is missing Flyway migrations: ${missing.join(', ')}")
+                }
+            } finally {
+                storageZip.close()
+            }
+        } finally {
+            appZip.close()
+        }
+    }
+}

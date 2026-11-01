@@ -139,6 +139,11 @@ class SnapshotWalletHistoryServiceTest {
         }
 
         @Override
+        public Optional<Double> findWalletBalanceByMemberId(Long memberId) {
+            return Optional.of(account.walletBalance());
+        }
+
+        @Override
         public List<TradingAccount> findAll() {
             return List.of(account);
         }
@@ -163,6 +168,11 @@ class SnapshotWalletHistoryServiceTest {
         @Override
         public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
             throw new AssertionError("opened account projection must not lock account repository");
+        }
+
+        @Override
+        public Optional<Double> findWalletBalanceByMemberId(Long memberId) {
+            throw new AssertionError("opened account projection must not read wallet balance");
         }
 
         @Override

@@ -86,6 +86,44 @@ class OrderPositionLiquidationProcessorTest {
     }
 
     @Test
+    void doesNotLockAccountWhenCrossWalletEquityIsNotBreached() {
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
+        scenario.positions.save(1L, PositionSnapshot.open("BTCUSDT", "LONG", "CROSS", 10, 1, 100, 100));
+
+        scenario.liquidationProcessor()
+                .liquidateBreachedPositions(scenario.market(99, 99));
+
+        assertTrue(scenario.accounts.lockedMemberIds().isEmpty());
+    }
+
+    @Test
+    void locksAccountBeforeLiquidatingBreachedCrossPosition() {
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
+        scenario.positions.save(1L, PositionSnapshot.open("BTCUSDT", "LONG", "CROSS", 50, 40_000, 100, 100));
+
+        scenario.liquidationProcessor()
+                .liquidateBreachedPositions(scenario.market(97, 97));
+
+        assertTrue(scenario.accounts.lockedMemberIds().contains(1L));
+        assertTrue(scenario.positions.findOpenPositions(1L).isEmpty());
+    }
+
+    @Test
+    void rechecksCrossBreachWithLockedAccountBeforeLiquidating() {
+        OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
+        scenario.positions.save(1L, PositionSnapshot.open("BTCUSDT", "LONG", "CROSS", 10, 1_000, 100, 100));
+        // 락 없이 읽은 잔고(5,000)로는 청산 대상이지만, 락을 잡고 읽은 실제 잔고(100,000)로는 아니다.
+        scenario.accounts.observeStaleWalletBalance(1L, 5_000);
+
+        scenario.liquidationProcessor()
+                .liquidateBreachedPositions(scenario.market(95, 95));
+
+        assertEquals(List.of(1L), scenario.accounts.lockedMemberIds());
+        assertTrue(scenario.positions.findOpenPosition(1L, "BTCUSDT", "LONG", "CROSS").isPresent());
+        assertTrue(scenario.events.tradingEvents().isEmpty());
+    }
+
+    @Test
     void liquidationUsesMarkPriceForEventHistoryAndRawPnlWhenLastPriceDiffers() {
         OrderExecutionProcessorFixtures.Scenario scenario = OrderExecutionProcessorFixtures.scenario();
         scenario.positions.save(1L, scenario.openPosition("LONG", "ISOLATED", 2, 100));

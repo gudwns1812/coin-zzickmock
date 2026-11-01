@@ -183,6 +183,11 @@ class RegisterMemberServiceTest {
         }
 
         @Override
+        public Optional<Double> findWalletBalanceByMemberId(Long memberId) {
+            return findByMemberId(memberId).map(TradingAccount::walletBalance);
+        }
+
+        @Override
         public List<TradingAccount> findAll() {
             return new ArrayList<>(accountsByMemberId.values());
         }

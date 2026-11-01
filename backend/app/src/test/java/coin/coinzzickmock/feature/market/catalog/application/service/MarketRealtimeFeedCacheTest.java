@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.catalog.application.service;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.feature.market.catalog.application.service.MarketRealtimeFeed;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,6 +35,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(
         classes = {CoinZzickmockApplication.class, MarketRealtimeFeedCacheTest.MarketRealtimeFeedCacheTestConfiguration.class},
         properties = {

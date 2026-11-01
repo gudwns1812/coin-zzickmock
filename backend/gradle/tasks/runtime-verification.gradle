@@ -1,0 +1,67 @@
+// Backend executable runtime verification tasks.
+tasks.register('verifyExecutableRuntimes') {
+    group = 'verification'
+    description = 'Verifies app and push-app are the only executable Spring Boot runtimes.'
+
+    def runtimeSourceFiles = provider {
+        subprojects.collectMany { subproject ->
+            def sourceRoot = subproject.layout.projectDirectory.dir('src/main/java').asFile
+            sourceRoot.exists()
+                    ? fileTree(sourceRoot) { include '**/*.java' }.files
+                    : []
+        }.sort { it.path }
+    }
+
+    inputs.files(provider { runtimeSourceFiles.get() })
+
+    doLast {
+        def expectedRuntimeProjects = [':app', ':push-app']
+        def bootProjects = subprojects
+                .findAll { subproject -> subproject.plugins.hasPlugin('org.springframework.boot') }
+                .collect { it.path }
+                .sort()
+        if (bootProjects != expectedRuntimeProjects) {
+            throw new GradleException("Only executable Spring Boot runtime modules are allowed: ${expectedRuntimeProjects}. Found: ${bootProjects}")
+        }
+
+        def executableJarProjects = subprojects
+                .findAll { subproject ->
+                    def bootJar = subproject.tasks.findByName('bootJar')
+                    bootJar != null && bootJar.enabled
+                }
+                .collect { it.path }
+                .sort()
+        if (executableJarProjects != expectedRuntimeProjects) {
+            throw new GradleException("Only ${expectedRuntimeProjects} may produce executable bootJars. Found enabled bootJar tasks: ${executableJarProjects}")
+        }
+
+        def runtimeMarkers = runtimeSourceFiles.get().collect { sourceFile ->
+            def text = sourceFile.getText('UTF-8')
+            [
+                    file                : sourceFile,
+                    path                : rootProject.relativePath(sourceFile).replace('\\', '/'),
+                    applicationMarker   : text.contains('@SpringBootApplication') || text.contains('@SpringBootConfiguration'),
+                    springApplicationRun: text.contains('SpringApplication.run('),
+            ]
+        }
+
+        def applicationMarkers = runtimeMarkers.findAll { it.applicationMarker }
+        def springApplicationRuns = runtimeMarkers.findAll { it.springApplicationRun }
+        def allowedPrefixes = ['app/src/main/java/', 'push-app/src/main/java/']
+
+        if (applicationMarkers.size() != 2) {
+            throw new GradleException("Exactly two Spring Boot runtime entrypoints are allowed. Found: ${applicationMarkers.collect { it.path }}")
+        }
+        if (springApplicationRuns.size() != 2) {
+            throw new GradleException("Exactly two SpringApplication.run entrypoints are allowed. Found: ${springApplicationRuns.collect { it.path }}")
+        }
+
+        def runtimeEntrypoints = (applicationMarkers + springApplicationRuns)
+                .collect { it.path }
+                .unique()
+        def invalidEntrypoints = runtimeEntrypoints.findAll { path -> !allowedPrefixes.any { path.startsWith(it) } }
+        if (!invalidEntrypoints.isEmpty()) {
+            throw new GradleException("Runtime entrypoints must stay in :app or :push-app. Invalid files: ${invalidEntrypoints}")
+        }
+    }
+}

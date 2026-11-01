@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.position.infrastructure.persistence;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(classes = CoinZzickmockApplication.class)
 @ActiveProfiles("test")
 class PositionAccountingSchemaMigrationTest {

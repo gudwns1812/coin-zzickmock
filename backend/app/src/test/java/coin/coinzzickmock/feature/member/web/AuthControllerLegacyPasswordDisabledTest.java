@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.member.web;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,6 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@IntegrationTest
 @SpringBootTest(properties = "app.auth.legacy-password-endpoints-enabled=false")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

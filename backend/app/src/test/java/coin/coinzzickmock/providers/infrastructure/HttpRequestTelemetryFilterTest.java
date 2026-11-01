@@ -1,5 +1,6 @@
 package coin.coinzzickmock.providers.infrastructure;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+@IntegrationTest
 @SpringBootTest(classes = HttpRequestTelemetryFilterTest.TestApplication.class)
 @AutoConfigureMockMvc
 @ExtendWith(OutputCaptureExtension.class)

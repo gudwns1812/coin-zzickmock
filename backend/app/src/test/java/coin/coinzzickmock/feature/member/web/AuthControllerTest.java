@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.member.web;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import jakarta.servlet.http.Cookie;
 import com.jayway.jsonpath.JsonPath;
 import coin.coinzzickmock.feature.activity.application.service.SnapshotDailyActiveUserSummaryService;
@@ -39,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@IntegrationTest
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

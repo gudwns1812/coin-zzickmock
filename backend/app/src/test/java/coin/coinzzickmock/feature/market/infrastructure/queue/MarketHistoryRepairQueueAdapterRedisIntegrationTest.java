@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.infrastructure.queue;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(
         classes = CoinZzickmockApplication.class,
         properties = {

@@ -8,6 +8,7 @@ The generated schema artifact remains [../../../docs/generated/db-schema.md](/Us
 ## Source Of Truth
 
 - Flyway migrations under `backend/storage/src/main/resources/db/migration` are the executable schema source.
+- DB/JPA/Flyway Spring config fragments live in `backend/storage/src/main/resources/db.yml` and `backend/storage/src/test/resources/db-test.yml`; executable apps import them from their own `application*.yml`.
 - [../../../docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md) is the generated/current schema reference for humans and agents.
 - JPA entities and QueryDSL code must match the executable schema.
 
@@ -27,7 +28,7 @@ If no schema changes are made, do not add a migration.
 ```bash
 cd backend
 ./gradlew :storage:test --console=plain
-./gradlew :app:verifyBootJarStorageMigrations --console=plain
+./gradlew verifyExecutableStorageResources --console=plain
 ./gradlew architectureLint --console=plain
 ```
 

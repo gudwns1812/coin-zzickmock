@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.reward.application.service;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.common.error.CoreException;
 import coin.coinzzickmock.common.error.ErrorCode;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@IntegrationTest
 @SpringBootTest(
         classes = CoinZzickmockApplication.class,
         properties = {

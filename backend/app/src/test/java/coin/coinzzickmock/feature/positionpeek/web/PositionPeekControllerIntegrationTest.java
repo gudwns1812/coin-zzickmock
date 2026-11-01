@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.positionpeek.web;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +38,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+@IntegrationTest
 @SpringBootTest(classes = {
         CoinZzickmockApplication.class,
         PositionPeekControllerIntegrationTest.TargetTokenTestConfiguration.class

@@ -1,5 +1,6 @@
 package coin.coinzzickmock.providers.infrastructure;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(
         classes = CoinZzickmockApplication.class,
         webEnvironment = WebEnvironment.RANDOM_PORT,

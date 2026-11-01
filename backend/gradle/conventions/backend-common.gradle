@@ -1,0 +1,85 @@
+// Shared backend module conventions. Keep task-specific logic outside this file.
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:${rootProject.ext.springBootVersion}"
+        }
+    }
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+        testCompileOnly {
+            extendsFrom testAnnotationProcessor
+        }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        if (System.getProperty('coin.redis.integration') != null) {
+            systemProperty 'coin.redis.integration', System.getProperty('coin.redis.integration')
+        }
+    }
+
+    tasks.named('test') {
+        description = 'Runs unit tests only. Tests tagged integration run in integrationTest.'
+        useJUnitPlatform {
+            excludeTags 'integration'
+        }
+    }
+
+    tasks.register('integrationTest', Test) {
+        group = 'verification'
+        description = 'Runs integration tests tagged with JUnit tag "integration".'
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+        shouldRunAfter tasks.named('test')
+        useJUnitPlatform {
+            includeTags 'integration'
+        }
+    }
+
+    tasks.named('check') {
+        dependsOn tasks.named('integrationTest')
+    }
+
+    if (tasks.findByName('prepareKotlinBuildScriptModel') == null) {
+        tasks.register('prepareKotlinBuildScriptModel') {
+            group = 'ide'
+            description = 'No-op compatibility task for IntelliJ Gradle sync in this Groovy-only build.'
+        }
+    }
+}
+
+configure([project(':stream'), project(':storage'), project(':external')]) {
+    apply plugin: 'java-library'
+}

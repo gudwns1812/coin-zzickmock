@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.reward.infrastructure.persistence;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.member.application.repository.MemberCredentialRepository;
 import coin.coinzzickmock.feature.member.domain.MemberRole;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@IntegrationTest
 @SpringBootTest(
         classes = CoinZzickmockApplication.class,
         properties = "spring.task.scheduling.enabled=false"

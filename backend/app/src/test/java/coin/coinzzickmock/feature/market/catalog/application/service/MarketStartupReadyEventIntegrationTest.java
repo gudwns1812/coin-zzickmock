@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.market.catalog.application.service;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.feature.market.catalog.application.implement.MarketSnapshotStore;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(
         classes = {
                 CoinZzickmockApplication.class,

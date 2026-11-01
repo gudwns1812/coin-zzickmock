@@ -1,5 +1,6 @@
 package coin.coinzzickmock.feature.member.application.service;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import coin.coinzzickmock.CoinZzickmockApplication;
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.test.context.ActiveProfiles;
 
+@IntegrationTest
 @SpringBootTest(classes = {
         CoinZzickmockApplication.class,
         RegisterMemberServiceIntegrationTest.WalletEventCaptureConfiguration.class

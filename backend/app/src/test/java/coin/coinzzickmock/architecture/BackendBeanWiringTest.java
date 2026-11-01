@@ -1,5 +1,6 @@
 package coin.coinzzickmock.architecture;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import coin.coinzzickmock.feature.member.application.repository.MemberPasswordHasher;
 import coin.coinzzickmock.feature.order.domain.OrderPreviewPolicy;
@@ -13,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@IntegrationTest
 @SpringBootTest(
         classes = CoinZzickmockApplication.class,
         properties = "spring.task.scheduling.enabled=false"

@@ -1,5 +1,6 @@
 package coin.coinzzickmock.common.web.security;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import coin.coinzzickmock.CoinZzickmockApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@IntegrationTest
 @SpringBootTest(classes = CoinZzickmockApplication.class, properties = {
         "app.auth.google.client-id=google-client-id",
         "app.auth.google.client-secret=google-client-secret"

@@ -1,5 +1,6 @@
 package coin.coinzzickmock.common.web;
 
+import coin.coinzzickmock.testsupport.IntegrationTest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@IntegrationTest
 @SpringBootTest(classes = FuturesUnsafeMethodOriginFilterTest.TestApplication.class)
 @AutoConfigureMockMvc
 class FuturesUnsafeMethodOriginFilterTest {

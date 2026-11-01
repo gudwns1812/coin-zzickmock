@@ -28,7 +28,7 @@ Repository/application contracts that do not depend on JPA, QueryDSL, Specificat
 기본 선택:
 
 - 운영 DB는 `MySQL`을 기준으로 설계한다.
-- 테스트 DB는 인메모리 `H2`를 기본값으로 사용한다.
+- 테스트 DB는 인메모리 `H2`를 기본값으로 사용한다. 락과 격리 수준 동작을 검증하는 테스트만 `@MySqlIntegrationTest`(Testcontainers MySQL 8.4)를 사용한다.
 - DB 마이그레이션은 `Flyway`를 표준으로 사용한다.
 - 저장소와 엔티티 기반 영속성 구현은 `Spring Data JPA`를 기본으로 한다.
 - 동적 조건 조합과 타입 세이프 조회는 OpenFeign 포크 `QueryDSL`을 기본 선택지로 사용한다.

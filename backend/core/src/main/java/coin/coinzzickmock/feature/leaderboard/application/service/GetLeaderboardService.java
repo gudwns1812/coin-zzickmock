@@ -61,17 +61,26 @@ public class GetLeaderboardService {
             log.warn("Leaderboard snapshot read failed. operation=get_leaderboard_snapshot", exception);
         }
 
-        List<LeaderboardEntry> entries = projectionRepository.findAll();
+        int fallbackLimit = Math.min(limit, 4);
+        List<LeaderboardEntry> entries = projectionRepository.findTop(fallbackLimit);
+        Optional<LeaderboardMemberRankResult> myRankResult = Optional.empty();
+        if (currentMemberId != null) {
+            myRankResult = projectionRepository.findRankByMemberId(currentMemberId)
+                    .map(LeaderboardMemberRankResult::fromRank);
+        }
+
         return LeaderboardResult.from(
                 mode,
                 "database",
                 new LeaderboardSnapshot(entries, Instant.now()),
-                toEntryResults(mode, entries, limit),
-                findDatabaseMyRank(mode, entries, currentMemberId)
+                toEntryResults(mode, entries, fallbackLimit),
+                myRankResult
         );
     }
 
+
     private LeaderboardMode parseMode(String value) {
+
         return LeaderboardMode.parse(value)
                 .orElseThrow(() -> new CoreException(ErrorCode.INVALID_REQUEST));
     }
@@ -90,27 +99,6 @@ public class GetLeaderboardService {
         } catch (NumberFormatException exception) {
             throw new CoreException(ErrorCode.INVALID_REQUEST);
         }
-    }
-
-    private Optional<LeaderboardMemberRankResult> findDatabaseMyRank(
-            LeaderboardMode mode,
-            List<LeaderboardEntry> entries,
-            Long currentMemberId
-    ) {
-        if (currentMemberId == null) {
-            return Optional.empty();
-        }
-
-        return entries.stream()
-                .filter(entry -> entry.memberId().equals(currentMemberId))
-                .findFirst()
-                .map(currentEntry -> {
-                    double currentScore = mode.score(currentEntry);
-                    long higherRankedMemberCount = entries.stream()
-                            .filter(entry -> mode.score(entry) > currentScore)
-                            .count();
-                    return LeaderboardMemberRankResult.fromRank(higherRankedMemberCount + 1);
-                });
     }
 
     private List<LeaderboardEntryResult> toEntryResults(LeaderboardMode mode, List<LeaderboardEntry> entries, int limit) {

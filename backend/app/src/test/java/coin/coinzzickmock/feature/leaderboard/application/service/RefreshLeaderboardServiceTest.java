@@ -83,6 +83,16 @@ class RefreshLeaderboardServiceTest {
         }
 
         @Override
+        public List<LeaderboardEntry> findTop(int limit) {
+            return List.of();
+        }
+
+        @Override
+        public Optional<Long> findRankByMemberId(Long memberId) {
+            return Optional.empty();
+        }
+
+        @Override
         public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
             return Optional.empty();
         }
@@ -95,6 +105,16 @@ class RefreshLeaderboardServiceTest {
         }
 
         @Override
+        public List<LeaderboardEntry> findTop(int limit) {
+            throw new AssertionError("opened account projection must not query top leaderboard projection");
+        }
+
+        @Override
+        public Optional<Long> findRankByMemberId(Long memberId) {
+            throw new AssertionError("opened account projection must not query member rank projection");
+        }
+
+        @Override
         public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
             throw new AssertionError("opened account projection must not query member leaderboard projection");
         }
@@ -104,6 +124,16 @@ class RefreshLeaderboardServiceTest {
         @Override
         public List<LeaderboardEntry> findAll() {
             return List.of(entry);
+        }
+
+        @Override
+        public List<LeaderboardEntry> findTop(int limit) {
+            return limit >= 1 ? List.of(entry) : List.of();
+        }
+
+        @Override
+        public Optional<Long> findRankByMemberId(Long memberId) {
+            return entry.memberId().equals(memberId) ? Optional.of(1L) : Optional.empty();
         }
 
         @Override

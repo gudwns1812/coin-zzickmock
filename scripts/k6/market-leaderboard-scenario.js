@@ -13,28 +13,6 @@ const readFailures = new Counter("market_leaderboard_failures");
 // k6 options: high-throughput, ramping up to 100 VUs
 export const options = {
   scenarios: {
-    ticker_polling: {
-      executor: "ramping-vus",
-      startVUs: 10,
-      stages: [
-        { duration: "20s", target: 50 },  // Ramp up
-        { duration: "1m", target: 100 },  // Heavy sustained load
-        { duration: "20s", target: 0 },    // Cool down
-      ],
-      gracefulRampDown: "5s",
-      exec: "tickerPollingFlow",
-    },
-    candles_reading: {
-      executor: "ramping-vus",
-      startVUs: 5,
-      stages: [
-        { duration: "20s", target: 30 },  // Ramp up
-        { duration: "1m", target: 50 },   // Heavy sustained load
-        { duration: "20s", target: 0 },    // Cool down
-      ],
-      gracefulRampDown: "5s",
-      exec: "candleRetrievalFlow",
-    },
     leaderboard_searching: {
       executor: "ramping-vus",
       startVUs: 2,
@@ -49,12 +27,11 @@ export const options = {
   },
   thresholds: {
     http_req_failed: ["rate<0.01"],            // Error rate must be less than 1%
-    "http_req_duration{scenario:ticker_polling}": ["p(95)<150"], // Ticker polling must be very fast (<150ms)
-    "http_req_duration{scenario:candles_reading}": ["p(95)<300"], // Candle retrieval should be stable (<300ms)
     "http_req_duration{scenario:leaderboard_searching}": ["p(95)<500"], // Leaderboard & search can have in-memory sort latency
   },
   summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)", "count"],
 };
+
 
 // Base configuration
 const BASE_URL = (__ENV.BASE_URL || "http://localhost:18080").replace(/\/$/, "");

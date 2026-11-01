@@ -39,6 +39,39 @@ public class LeaderboardProjectionPersistenceRepository implements LeaderboardPr
     }
 
     @Override
+    public List<LeaderboardEntry> findTop(int limit) {
+        return jdbcTemplate.query(
+                ACTIVE_LEADERBOARD_SQL + LEADERBOARD_ORDER + " LIMIT ?",
+                rowMapper,
+                limit
+        );
+    }
+
+    @Override
+    public Optional<Long> findRankByMemberId(Long memberId) {
+        String sql = """
+                WITH RankedLeaderboard AS (
+                    SELECT account.member_id,
+                           RANK() OVER (
+                               ORDER BY account.wallet_balance DESC,
+                                        member.nickname ASC,
+                                        account.member_id ASC
+                           ) AS `rank`
+                      FROM trading_accounts account
+                      JOIN member_credentials member
+                        ON member.id = account.member_id
+                     WHERE member.withdrawn_at IS NULL
+                )
+                SELECT `rank`
+                  FROM RankedLeaderboard
+                 WHERE member_id = ?
+                """;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("rank"), memberId)
+                .stream()
+                .findFirst();
+    }
+
+    @Override
     public Optional<LeaderboardEntry> findByMemberId(Long memberId) {
         return jdbcTemplate.query(
                         ACTIVE_LEADERBOARD_SQL + " AND account.member_id = ?" + LEADERBOARD_ORDER,
@@ -48,3 +81,4 @@ public class LeaderboardProjectionPersistenceRepository implements LeaderboardPr
                 .findFirst();
     }
 }
+

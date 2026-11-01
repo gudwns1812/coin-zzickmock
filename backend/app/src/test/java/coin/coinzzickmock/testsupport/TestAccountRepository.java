@@ -18,6 +18,11 @@ public abstract class TestAccountRepository implements AccountRepository {
     }
 
     @Override
+    public Optional<Double> findWalletBalanceByMemberId(Long memberId) {
+        return findByMemberId(memberId).map(TradingAccount::walletBalance);
+    }
+
+    @Override
     public List<TradingAccount> findAll() {
         throw new UnsupportedOperationException("findAll is not implemented for this test fake");
     }

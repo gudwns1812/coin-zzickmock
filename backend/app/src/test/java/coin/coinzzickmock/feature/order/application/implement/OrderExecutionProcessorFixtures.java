@@ -479,6 +479,8 @@ final class OrderExecutionProcessorFixtures {
 
     static final class InMemoryAccountRepository extends coin.coinzzickmock.testsupport.TestAccountRepository {
         private final Map<Long, TradingAccount> accounts = new LinkedHashMap<>();
+        private final Map<Long, Double> observedWalletBalances = new LinkedHashMap<>();
+        private final List<Long> lockedMemberIds = new ArrayList<>();
 
         InMemoryAccountRepository() {
             accounts.put(1L, new TradingAccount(
@@ -494,6 +496,14 @@ final class OrderExecutionProcessorFixtures {
             accounts.put(memberId, account);
         }
 
+        void observeStaleWalletBalance(Long memberId, double walletBalance) {
+            observedWalletBalances.put(memberId, walletBalance);
+        }
+
+        List<Long> lockedMemberIds() {
+            return List.copyOf(lockedMemberIds);
+        }
+
         @Override
         public Optional<TradingAccount> findByMemberId(Long memberId) {
             return Optional.ofNullable(accounts.get(memberId));
@@ -501,7 +511,16 @@ final class OrderExecutionProcessorFixtures {
 
         @Override
         public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
+            lockedMemberIds.add(memberId);
             return Optional.ofNullable(accounts.get(memberId));
+        }
+
+        @Override
+        public Optional<Double> findWalletBalanceByMemberId(Long memberId) {
+            if (observedWalletBalances.containsKey(memberId)) {
+                return Optional.of(observedWalletBalances.get(memberId));
+            }
+            return findByMemberId(memberId).map(TradingAccount::walletBalance);
         }
 
         @Override

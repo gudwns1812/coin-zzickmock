@@ -3,6 +3,7 @@ package coin.coinzzickmock.feature.account.infrastructure.persistence;
 import coin.coinzzickmock.feature.account.application.repository.AccountRepository;
 import coin.coinzzickmock.feature.account.application.dto.AccountMutationResult;
 import coin.coinzzickmock.feature.account.domain.TradingAccount;
+import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,13 @@ public class AccountPersistenceRepository implements AccountRepository {
     public Optional<TradingAccount> findByMemberIdForUpdate(Long memberId) {
         return tradingAccountEntityRepository.findWithLockingByMemberId(memberId)
                 .map(TradingAccountEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Double> findWalletBalanceByMemberId(Long memberId) {
+        return tradingAccountEntityRepository.findWalletBalanceByMemberId(memberId)
+                .map(BigDecimal::doubleValue);
     }
 
     @Override

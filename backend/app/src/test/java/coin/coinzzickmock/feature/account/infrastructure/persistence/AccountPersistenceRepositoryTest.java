@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @IntegrationTest
 @SpringBootTest(classes = CoinZzickmockApplication.class)
@@ -28,6 +31,9 @@ class AccountPersistenceRepositoryTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Test
     void createUsesInsertOnlySemanticsForManuallyAssignedAccountId() {
@@ -96,6 +102,36 @@ class AccountPersistenceRepositoryTest {
 
         assertThat(result.status()).isEqualTo(AccountMutationResult.Status.NOT_FOUND);
         assertThat(accountRepository.findByMemberId(missing.memberId())).isEmpty();
+    }
+
+    @Test
+    void walletBalanceReadKeepsLaterLockedReadFreshInSameTransaction() {
+        MemberCredential member = memberCredentialRepository.save(member("account-balance-read-" + System.nanoTime()));
+        accountRepository.create(TradingAccount.openDefault(
+                member.memberId(),
+                member.memberEmail(),
+                member.memberName()
+        ));
+        TransactionTemplate assessmentTransaction = new TransactionTemplate(transactionManager);
+        TransactionTemplate concurrentTransaction = new TransactionTemplate(transactionManager);
+        concurrentTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        TradingAccount locked = assessmentTransaction.execute(status -> {
+            double observedWalletBalance = accountRepository.findWalletBalanceByMemberId(member.memberId())
+                    .orElseThrow();
+            assertThat(observedWalletBalance).isEqualTo(TradingAccount.INITIAL_WALLET_BALANCE);
+
+            concurrentTransaction.executeWithoutResult(concurrent -> jdbcTemplate.update(
+                    "UPDATE trading_accounts SET wallet_balance = ?, version = version + 1 WHERE member_id = ?",
+                    50_000,
+                    member.memberId()
+            ));
+
+            return accountRepository.findByMemberIdForUpdate(member.memberId()).orElseThrow();
+        });
+
+        assertThat(locked.walletBalance()).isEqualTo(50_000d);
+        assertThat(locked.version()).isEqualTo(1);
     }
 
     @Test

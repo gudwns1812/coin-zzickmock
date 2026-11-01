@@ -17,11 +17,13 @@ import coin.coinzzickmock.feature.position.application.implement.OpenPositionBoo
 import coin.coinzzickmock.feature.position.application.implement.OpenPositionBookHydrator;
 import coin.coinzzickmock.feature.position.application.dto.OpenPositionCandidate;
 import coin.coinzzickmock.feature.position.domain.CrossLiquidationAssessment;
+import coin.coinzzickmock.feature.position.domain.CrossPositionRisk;
 import coin.coinzzickmock.feature.position.domain.IsolatedLiquidationAssessment;
 import coin.coinzzickmock.feature.position.domain.LiquidationPolicy;
 import coin.coinzzickmock.feature.position.domain.PositionSnapshot;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -137,22 +139,37 @@ public class OrderPositionLiquidationProcessor {
     }
 
     private void liquidateCrossIfNeeded(Long memberId, MarketSummaryResult market) {
-        TradingAccount account = accountRepository.findByMemberIdForUpdate(memberId)
+        double observedWalletBalance = accountRepository.findWalletBalanceByMemberId(memberId)
                 .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        if (crossLiquidationTarget(memberId, observedWalletBalance, market).isEmpty()) {
+            return;
+        }
+
+        TradingAccount lockedAccount = accountRepository.findByMemberIdForUpdate(memberId)
+                .orElseThrow(() -> new CoreException(ErrorCode.ACCOUNT_NOT_FOUND));
+        crossLiquidationTarget(memberId, lockedAccount.walletBalance(), market)
+                .ifPresent(position -> liquidate(memberId, position, market.lastPrice(), market.markPrice()));
+    }
+
+    private Optional<PositionSnapshot> crossLiquidationTarget(
+            Long memberId,
+            double walletBalance,
+            MarketSummaryResult market
+    ) {
         List<PositionSnapshot> positions = positionRepository.findOpenPositions(memberId).stream()
                 .map(position -> position.symbol().equalsIgnoreCase(market.symbol())
                         ? position.markToMarket(market.markPrice())
                         : position)
                 .toList();
 
-        CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(account.walletBalance(), positions);
+        CrossLiquidationAssessment assessment = liquidationPolicy.assessCross(walletBalance, positions);
         if (!assessment.breached()) {
-            return;
+            return Optional.empty();
         }
 
-        assessment.liquidationCandidate()
-                .filter(candidate -> candidate.position().symbol().equalsIgnoreCase(market.symbol()))
-                .ifPresent(candidate -> liquidate(memberId, candidate.position(), market.lastPrice(), market.markPrice()));
+        return assessment.liquidationCandidate()
+                .map(CrossPositionRisk::position)
+                .filter(position -> position.symbol().equalsIgnoreCase(market.symbol()));
     }
 
     private void liquidate(Long memberId, PositionSnapshot position, double executionPrice, double markPrice) {

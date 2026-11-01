@@ -27,6 +27,10 @@
 - 외부 시스템 통합 테스트는 실제 SDK 호출보다 adapter 계약 검증에 집중한다.
 - Redis ZSET 같은 파생 읽기 모델은 서비스가 기대하는 rank score, fallback, 관측 계약을 테스트로 고정한다. 특히 DB fallback의 내 순위가 tie-break 없이 "나보다 score가 높은 멤버 수 + 1"로 계산되는지, 잘못된 limit이 전체 Redis range 조회로 이어지지 않는지, 누락된 hash가 조용히 부분 응답으로 노출되지 않는지 검증한다.
 - DB가 필요한 테스트는 기본적으로 인메모리 `H2`를 사용한다.
+- 행 락, 갭 락, 데드락, REPEATABLE READ 스냅샷처럼 InnoDB 동작에 기대는 테스트는 `@MySqlIntegrationTest`를 붙여 Testcontainers MySQL 8.4에서 돌린다. H2(`MODE=MySQL`)는 이 동작을 재현하지 못한다.
+  - 컨테이너는 JVM당 하나를 띄워 여러 스프링 컨텍스트가 같이 쓴다. 테스트 데이터는 서로 겹치지 않는 id로 만든다.
+  - 컨테이너의 `innodb_lock_wait_timeout`은 5초다. 락 대기가 끝나지 않는 테스트를 50초씩 기다리지 않기 위해서다.
+  - `./gradlew check`와 `integrationTest`는 Docker가 떠 있어야 한다. Docker가 없으면 건너뛰지 않고 실패한다.
 - 테스트용 DDL/쿼리는 가능하면 MySQL과 의미 차이가 나지 않게 유지하고, 차이가 생기면 그 이유를 테스트 코드나 설정에서 드러낸다.
 
 ## Architecture Lint Contract

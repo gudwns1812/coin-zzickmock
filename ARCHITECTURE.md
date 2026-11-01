@@ -114,7 +114,7 @@ backend/app/src/main/java/coin/coinzzickmock/
 
 ### Data And Integration Shape
 
-- 운영 DB의 기본값은 MySQL이고, 테스트 DB는 H2다.
+- 운영 DB의 기본값은 MySQL이고, 테스트 DB는 H2다. 락과 격리 수준 동작을 검증하는 테스트는 Testcontainers MySQL을 쓴다.
 - DB 변경은 Flyway migration과 [docs/generated/db-schema.md](/Users/hj.park/projects/coin-zzickmock/docs/generated/db-schema.md)를 함께 갱신한다.
 - 영속성 기본 스택은 Spring Data JPA와 QueryDSL이다.
 - 시장 데이터 외부 연동은 provider/connector 경계 뒤에 둔다.
